@@ -54,8 +54,12 @@ export default function Register() {
       }
       
       router.push("/login");
-    } catch (error: any) {
-      setError(error.message || "เกิดข้อผิดพลาดในการลงทะเบียน");
+    } catch (caughtError: unknown) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("เกิดข้อผิดพลาดในการลงทะเบียน");
+      }
     } finally {
       setLoading(false);
     }

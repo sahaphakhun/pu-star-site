@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       { message: "สร้างแอดมินสำเร็จ" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("การสร้างแอดมินล้มเหลว:", error);
     return NextResponse.json(
       { message: "เกิดข้อผิดพลาดในการสร้างแอดมิน" },

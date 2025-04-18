@@ -36,8 +36,12 @@ export default function Login() {
       
       router.push("/");
       router.refresh();
-    } catch (error) {
-      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
+      }
     } finally {
       setLoading(false);
     }

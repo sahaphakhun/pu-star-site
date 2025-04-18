@@ -82,8 +82,12 @@ export default function CreateAdmin() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
-      setError(error.message || "เกิดข้อผิดพลาดในการสร้างแอดมิน");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("เกิดข้อผิดพลาดในการสร้างแอดมิน");
+      }
     } finally {
       setLoading(false);
     }
