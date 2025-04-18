@@ -53,7 +53,7 @@ export default function Home() {
           <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-2 border border-primary/10">
             <div className="relative w-full h-40 mb-2">
               <Image 
-                src="/blog-construction.jpg" 
+                src="https://placehold.co/600x400/png?text=Construction" 
                 alt="เทคนิคงานก่อสร้าง" 
                 fill
                 className="object-cover rounded-md"
@@ -68,7 +68,7 @@ export default function Home() {
           <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-2 border border-primary/10">
             <div className="relative w-full h-40 mb-2">
               <Image 
-                src="/blog-innovation.jpg" 
+                src="https://placehold.co/600x400/png?text=Innovation" 
                 alt="นวัตกรรมใหม่" 
                 fill
                 className="object-cover rounded-md"
