@@ -103,7 +103,7 @@ const articlesData = [
   }
 ];
 
-export default function Page({ params }: { params: { slug: string } }) {
+export default function Page({ params }: { params: { slug: string } } & any) {
   // ค้นหาบทความจาก slug
   const article = articlesData.find((article) => article.slug === params.slug);
   
