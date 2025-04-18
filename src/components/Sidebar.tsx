@@ -94,11 +94,15 @@ export default function Sidebar() {
       )}
 
       {/* แถบด้านซ้าย - แสดงตลอดเวลาบน Desktop หรือแสดงเมื่อเปิดเมนูบน Mobile */}
-      <aside 
-        className={`${isMobile ? 'fixed inset-0 z-40' : 'w-64 h-screen sticky top-0'} 
-                  ${isMobile && !isMobileMenuOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
-                  bg-white border-r border-primary/20 flex flex-col shadow-md
-                  transition-transform duration-300 ease-in-out overflow-hidden`}
+      <aside
+        className={`
+          ${isMobile
+            ? 'fixed inset-0 z-40 overflow-hidden'
+            : 'w-64 h-screen sticky top-0 overflow-visible z-20'}
+          ${isMobile && !isMobileMenuOpen ? ' translate-x-[-100%]' : ' translate-x-0'}
+          bg-white border-r border-primary/20 flex flex-col shadow-md
+          transition-transform duration-300 ease-in-out
+        `}
       >
         {/* ปุ่มปิดเมนูบนมือถือ */}
         {isMobile && (
