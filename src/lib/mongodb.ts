@@ -1,28 +1,50 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-let isConnected = false;
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
-export const connectToDB = async () => {
-  mongoose.set("strictQuery", true);
+if (!MONGODB_URI) {
+  throw new Error(
+    'กรุณากำหนดค่า MONGODB_URI ในไฟล์ .env หรือในตัวแปรสภาพแวดล้อม'
+  );
+}
 
-  if (isConnected) {
-    console.log("MongoDB is already connected");
-    return;
+// กำหนดรูปแบบ interface สำหรับค่า cached
+interface MongooseCache {
+  conn: mongoose.Connection | null;
+  promise: Promise<mongoose.Mongoose> | null;
+}
+
+// กำหนด global namespace
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: MongooseCache | undefined;
+}
+
+const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+
+if (!global.mongoose) {
+  global.mongoose = cached;
+}
+
+async function connectDB(): Promise<mongoose.Connection> {
+  if (cached.conn) {
+    return cached.conn;
   }
 
-  try {
-    const MONGODB_URI = process.env.MONGODB_URI;
-    
-    if (!MONGODB_URI) {
-      throw new Error("MONGODB_URI is not defined in environment variables");
-    }
-    
-    await mongoose.connect(MONGODB_URI);
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
 
-    isConnected = true;
-    console.log("MongoDB connected");
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw error;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      return mongoose;
+    });
   }
-}; 
+  
+  const instance = await cached.promise;
+  cached.conn = instance.connection;
+  
+  return cached.conn;
+}
+
+export default connectDB;

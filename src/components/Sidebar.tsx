@@ -2,8 +2,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 const menu = [
   {
@@ -55,8 +53,6 @@ export default function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { data: session, status } = useSession();
-  const router = useRouter();
 
   // ตรวจจับขนาดหน้าจอเพื่อกำหนด Mobile mode
   useEffect(() => {
@@ -71,12 +67,7 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ฟังก์ชันจัดการการออกจากระบบ
-  const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    router.push("/");
-    router.refresh();
-  };
+  // ไม่จำเป็นต้องใช้ getSubMenuOffset อีกต่อไป เพราะจะใช้ relative positioning
   
   return (
     <>
@@ -94,15 +85,11 @@ export default function Sidebar() {
       )}
 
       {/* แถบด้านซ้าย - แสดงตลอดเวลาบน Desktop หรือแสดงเมื่อเปิดเมนูบน Mobile */}
-      <aside
-        className={`
-          ${isMobile
-            ? 'fixed inset-0 z-40 overflow-hidden'
-            : 'w-64 h-screen sticky top-0 overflow-visible z-20'}
-          ${isMobile && !isMobileMenuOpen ? ' translate-x-[-100%]' : ' translate-x-0'}
-          bg-white border-r border-primary/20 flex flex-col shadow-md
-          transition-transform duration-300 ease-in-out
-        `}
+      <aside 
+        className={`${isMobile ? 'fixed inset-0 z-40' : 'w-64 min-h-screen'} 
+                  ${isMobile && !isMobileMenuOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
+                  bg-white border-r border-primary/20 flex flex-col items-center py-8 shadow-md
+                  transition-transform duration-300 ease-in-out`}
       >
         {/* ปุ่มปิดเมนูบนมือถือ */}
         {isMobile && (
@@ -115,18 +102,17 @@ export default function Sidebar() {
           </button>
         )}
 
-        <div className="p-4 flex justify-center">
+        <div className="mb-10">
           <Link href="/" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-            <Image src="/logo.jpg" alt="PU STAR Logo" width={isMobile ? 80 : 100} height={isMobile ? 80 : 100} priority />
+            <Image src="/logo.jpg" alt="PU STAR Logo" width={isMobile ? 80 : 120} height={isMobile ? 80 : 120} priority />
           </Link>
         </div>
         
-        {/* ใช้ flex-1 และ overflow-auto เพื่อให้เมนูสามารถเลื่อนได้ */}
-        <nav className="flex-1 overflow-auto px-4 py-2">
+        <nav className="flex flex-col gap-3 w-full px-4">
           {menu.map((item, index) => (
             <div
               key={item.label}
-              className="relative mb-1"
+              className="relative"
               onMouseEnter={() => !isMobile && setHovered(item.label)}
               onMouseLeave={() => !isMobile && setHovered(null)}
               onClick={() => isMobile && setHovered(hovered === item.label ? null : item.label)}
@@ -158,7 +144,7 @@ export default function Sidebar() {
                       : `fixed z-50 left-60 ${hovered === item.label ? 'block' : 'hidden'}`
                     }
                   `}
-                  style={!isMobile ? { top: `${index * 40 + 140}px` } : {}}
+                  style={!isMobile ? { top: `${index * 40 + 200}px` } : {}}
                 >
                   <div className={`
                     ${!isMobile ? 'bg-white border border-primary/20 rounded-md shadow-lg p-2 min-w-[250px]' : ''}
@@ -182,57 +168,6 @@ export default function Sidebar() {
             </div>
           ))}
         </nav>
-
-        {/* ส่วนล็อกอิน/ล็อกเอาท์ ด้านล่าง - มี height คงที่ ไม่ขยายตาม content */}
-        <div className="w-full px-4 py-3 border-t border-primary/10 shrink-0">
-          {status === "loading" ? (
-            <div className="text-center text-gray-500 text-sm">กำลังโหลด...</div>
-          ) : session ? (
-            <div className="flex flex-col gap-2">
-              <div className="text-center text-primary font-medium mb-1">
-                สวัสดี, {session.user.username}
-                <span className="text-xs ml-1 text-gray-500">
-                  ({session.user.role === "admin" ? "ผู้ดูแลระบบ" : "ผู้ใช้"})
-                </span>
-              </div>
-              
-              {session.user.role === "admin" && (
-                <Link
-                  href="/create-admin"
-                  className="w-full rounded-md bg-gray-100 py-2 px-4 text-center text-primary text-sm hover:bg-gray-200 transition"
-                  onClick={() => isMobile && setIsMobileMenuOpen(false)}
-                >
-                  จัดการผู้ดูแลระบบ
-                </Link>
-              )}
-              
-              <button
-                onClick={handleSignOut}
-                className="w-full rounded-md bg-red-100 py-2 px-4 text-red-600 text-sm hover:bg-red-200 transition"
-              >
-                ออกจากระบบ
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/login"
-                className="w-full rounded-md bg-primary py-2 px-4 text-center text-white text-sm hover:bg-primary/90 transition"
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              >
-                เข้าสู่ระบบ
-              </Link>
-              
-              <Link
-                href="/register"
-                className="w-full rounded-md bg-gray-100 py-2 px-4 text-center text-primary text-sm hover:bg-gray-200 transition"
-                onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              >
-                สมัครสมาชิก
-              </Link>
-            </div>
-          )}
-        </div>
       </aside>
 
       {/* Overlay สำหรับปิดเมนูเมื่อคลิกด้านนอก */}
@@ -244,4 +179,4 @@ export default function Sidebar() {
       )}
     </>
   );
-}
+} 
