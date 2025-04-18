@@ -16,7 +16,7 @@ export default function Home() {
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold text-primary">บทความล่าสุด</h2>
-          <Link href="/blog" className="text-accent hover:underline">ดูทั้งหมด</Link>
+          <Link href="/articles" className="text-accent hover:underline">ดูทั้งหมด</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* ตัวอย่างบทความ 1 */}
@@ -31,7 +31,7 @@ export default function Home() {
             </div>
             <h3 className="font-bold text-primary">วิธีเลือกซีลแลนท์ให้เหมาะกับงาน</h3>
             <p className="text-gray-600 text-sm">แนะนำการเลือกใช้ซีลแลนท์แต่ละประเภทให้เหมาะกับงานก่อสร้างและตกแต่งบ้าน...</p>
-            <Link href="/blog/1" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
+            <Link href="/articles/how-to-choose-sealant" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
           </div>
           
           {/* ตัวอย่างบทความ 2 */}
@@ -46,7 +46,7 @@ export default function Home() {
             </div>
             <h3 className="font-bold text-primary">เทคนิคการใช้งานกาว PU อย่างมืออาชีพ</h3>
             <p className="text-gray-600 text-sm">เผยเคล็ดลับการใช้งานกาว PU ให้ได้ประสิทธิภาพสูงสุดและปลอดภัย...</p>
-            <Link href="/blog/2" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
+            <Link href="/articles/pu-adhesive-professional-techniques" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
           </div>
           
           {/* ตัวอย่างบทความ 3 */}
@@ -61,7 +61,7 @@ export default function Home() {
             </div>
             <h3 className="font-bold text-primary">5 เทคนิคงานก่อสร้างที่ช่างมืออาชีพใช้</h3>
             <p className="text-gray-600 text-sm">เคล็ดลับและวิธีการทำงานก่อสร้างให้มีประสิทธิภาพและคุณภาพสูงจากช่างมืออาชีพ...</p>
-            <Link href="/blog/3" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
+            <Link href="/articles/5-professional-construction-techniques" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
           </div>
           
           {/* ตัวอย่างบทความ 4 */}
@@ -76,7 +76,7 @@ export default function Home() {
             </div>
             <h3 className="font-bold text-primary">นวัตกรรมใหม่ในวงการซีลแลนท์ปี 2023</h3>
             <p className="text-gray-600 text-sm">ติดตามความก้าวหน้าและนวัตกรรมล่าสุดในวงการผลิตภัณฑ์ซีลแลนท์และกาว...</p>
-            <Link href="/blog/4" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
+            <Link href="/articles/new-sealant-innovations-2023" className="text-accent text-sm hover:underline">อ่านต่อ</Link>
           </div>
         </div>
       </section>

@@ -5,23 +5,13 @@ import Image from "next/image";
 
 const menu = [
   {
-    label: "สินค้าของเรา",
+    label: "สินค้า",
     href: "/products",
     sub: [
       { label: "ซีลแลนท์ (Sealant)", href: "/products/sealant" },
       { label: "กาว (Adhesive)", href: "/products/adhesive" },
       { label: "อุปกรณ์เสริม", href: "/products/accessories" },
       { label: "สินค้าทั้งหมด", href: "/products/all" },
-    ],
-  },
-  {
-    label: "เกี่ยวกับบริษัท",
-    href: "/about",
-    sub: [
-      { label: "ประวัติบริษัท", href: "/about/history" },
-      { label: "ฐานการผลิต", href: "/about/facilities" },
-      { label: "ทีมงานวิจัยและพัฒนา", href: "/about/research" },
-      { label: "ใบรับรองและมาตรฐาน", href: "/about/certificates" },
     ],
   },
   {
@@ -33,16 +23,18 @@ const menu = [
       { label: "นวัตกรรมใหม่", href: "/articles/innovations" },
       { label: "ข่าวสารอุตสาหกรรม", href: "/articles/industry-news" },
       { label: "ข่าวกิจกรรมบริษัท", href: "/articles/company-news" },
+      { label: "บทความทั้งหมด", href: "/articles" },
     ],
   },
   {
-    label: "บริการลูกค้า",
+    label: "คำถามที่พบบ่อย",
     href: "/customer-service",
     sub: [
-      { label: "คำถามที่พบบ่อย", href: "/customer-service/faq" },
-      { label: "ดาวน์โหลดเอกสาร", href: "/customer-service/downloads" },
-      { label: "ติดต่อฝ่ายเทคนิค", href: "/customer-service/technical-support" },
-      { label: "แจ้งปัญหาสินค้า", href: "/customer-service/report-issue" },
+      { label: "คำถามทั้งหมด", href: "/customer-service/faq" },
+      { label: "การใช้งานผลิตภัณฑ์", href: "/customer-service/faq?category=ผลิตภัณฑ์และการใช้งาน" },
+      { label: "การสั่งซื้อและจัดส่ง", href: "/customer-service/faq?category=การสั่งซื้อและจัดส่ง" },
+      { label: "บริการหลังการขาย", href: "/customer-service/faq?category=บริการหลังการขาย" },
+      { label: "ข้อมูลทั่วไป", href: "/customer-service/faq?category=ข้อมูลทั่วไป" },
     ],
   },
   {
@@ -75,6 +67,8 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ไม่จำเป็นต้องใช้ getSubMenuOffset อีกต่อไป เพราะจะใช้ relative positioning
+  
   return (
     <>
       {/* ปุ่มแฮมเบอร์เกอร์สำหรับมือถือ */}
@@ -114,11 +108,11 @@ export default function Sidebar() {
           </Link>
         </div>
         
-        <nav className="flex flex-col gap-3 w-full px-4 overflow-y-auto">
-          {menu.map((item) => (
+        <nav className="flex flex-col gap-3 w-full px-4">
+          {menu.map((item, index) => (
             <div
               key={item.label}
-              className="relative group"
+              className="relative"
               onMouseEnter={() => !isMobile && setHovered(item.label)}
               onMouseLeave={() => !isMobile && setHovered(null)}
               onClick={() => isMobile && setHovered(hovered === item.label ? null : item.label)}
@@ -147,23 +141,28 @@ export default function Sidebar() {
                   className={`
                     ${isMobile 
                       ? `relative w-full bg-white/80 overflow-hidden transition-all duration-300 ease-in-out ${hovered === item.label ? 'max-h-[500px] opacity-100 py-2' : 'max-h-0 opacity-0'}` 
-                      : `absolute left-full top-0 ml-2 bg-white border border-primary/20 rounded shadow-lg min-w-[200px] z-20 ${hovered === item.label ? 'block' : 'hidden'}`
+                      : `fixed z-50 left-60 ${hovered === item.label ? 'block' : 'hidden'}`
                     }
                   `}
+                  style={!isMobile ? { top: `${index * 40 + 200}px` } : {}}
                 >
-                  {item.sub.map((sub) => (
-                    <Link
-                      key={sub.label}
-                      href={sub.href}
-                      className={`
-                        block px-4 py-2 hover:bg-accent/10 text-primary text-base
-                        ${isMobile ? 'pl-8' : ''}
-                      `}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      {sub.label}
-                    </Link>
-                  ))}
+                  <div className={`
+                    ${!isMobile ? 'bg-white border border-primary/20 rounded-md shadow-lg p-2 min-w-[250px]' : ''}
+                  `}>
+                    {item.sub.map((sub) => (
+                      <Link
+                        key={sub.label}
+                        href={sub.href}
+                        className={`
+                          block px-4 py-2 hover:bg-accent/10 text-primary text-base transition-colors rounded
+                          ${isMobile ? 'pl-8' : ''}
+                        `}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {sub.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
