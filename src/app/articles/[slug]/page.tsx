@@ -103,6 +103,10 @@ const articlesData = [
   }
 ];
 
+type PageProps = {
+  params: Promise<any>;
+};
+
 interface ArticlePageProps {
   params: {
     slug: string;
