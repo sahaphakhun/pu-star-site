@@ -103,9 +103,10 @@ const articlesData = [
   }
 ];
 
-export default function Page({ params }: { params: { slug: string } } & any) {
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   // ค้นหาบทความจาก slug
-  const article = articlesData.find((article) => article.slug === params.slug);
+  const article = articlesData.find((article) => article.slug === slug);
   
   // ถ้าไม่พบบทความให้แสดงหน้า 404
   if (!article) {
