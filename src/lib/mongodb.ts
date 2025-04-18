@@ -1,16 +1,9 @@
 import mongoose from 'mongoose';
 
-declare global {
-  var mongoose: {
-    conn: mongoose.Connection | null;
-    promise: Promise<mongoose.Connection> | null;
-  } | undefined;
-}
-
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error('กรุณากำหนด MONGODB_URI ในไฟล์ .env.local');
+  throw new Error('กรุณาระบุ MONGODB_URI ใน .env.local file');
 }
 
 let cached = global.mongoose;
@@ -20,28 +13,21 @@ if (!cached) {
 }
 
 async function connectDB() {
-  if (cached?.conn) {
+  if (cached.conn) {
     return cached.conn;
   }
 
-  if (!cached?.promise) {
+  if (!cached.promise) {
     const opts = {
       bufferCommands: false,
     };
 
-    cached!.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose.connection;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      return mongoose;
     });
   }
-  
-  try {
-    cached!.conn = await cached!.promise;
-  } catch (e) {
-    cached!.promise = null;
-    throw e;
-  }
-  
-  return cached!.conn;
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
 
 export default connectDB; 

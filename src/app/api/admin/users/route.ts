@@ -4,7 +4,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // ตรวจสอบสิทธิ์
     const session = await getServerSession(authOptions);
@@ -24,10 +24,11 @@ export async function GET(req: NextRequest) {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
 
     return NextResponse.json({ users });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin Users API Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้";
     return NextResponse.json(
-      { message: error.message || "เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้" },
+      { message: errorMessage },
       { status: 500 }
     );
   }

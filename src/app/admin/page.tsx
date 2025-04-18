@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ตรวจสอบสิทธิ์
@@ -95,7 +103,7 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {users.length > 0 ? (
-                users.map((user: any) => (
+                users.map((user: User) => (
                   <tr key={user._id} className="hover:bg-gray-50">
                     <td className="py-2 px-4 border-b">{user.name}</td>
                     <td className="py-2 px-4 border-b">{user.email}</td>
