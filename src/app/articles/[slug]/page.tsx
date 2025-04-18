@@ -103,13 +103,7 @@ const articlesData = [
   }
 ];
 
-interface ArticlePageProps {
-  params: {
-    slug: string;
-  };
-}
-
-export default function ArticlePage({ params }: ArticlePageProps) {
+export default function ArticlePage({ params }: { params: { slug: string } }) {
   // ค้นหาบทความจาก slug
   const article = articlesData.find((article) => article.slug === params.slug);
   
