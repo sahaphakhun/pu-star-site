@@ -54,9 +54,9 @@ export default function RegisterPage() {
       }
 
       router.push("/login?success=Account has been created");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
-      setError(error.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง");
+      setError(error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
     }

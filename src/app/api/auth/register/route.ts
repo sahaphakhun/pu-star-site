@@ -39,16 +39,18 @@ export async function POST(req: NextRequest) {
     });
 
     // ส่งข้อมูลผู้ใช้กลับ โดยไม่รวมรหัสผ่าน
-    const { password: _, ...userWithoutPassword } = user.toObject();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: passwordField, ...userWithoutPassword } = user.toObject();
 
     return NextResponse.json({
       message: "สมัครสมาชิกสำเร็จ",
       user: userWithoutPassword,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการสมัครสมาชิก";
     return NextResponse.json(
-      { message: error.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก" },
+      { message: errorMessage },
       { status: 500 }
     );
   }
