@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Prompt } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar";
+import Sidebar from "../components/Sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +11,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const prompt = Prompt({
+  subsets: ["latin", "thai"],
+  weight: ["400", "500", "700"],
+  variable: "--font-prompt",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,10 +33,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${prompt.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
-        <Navbar />
-        {children}
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 bg-white">
+            {children}
+          </div>
+        </div>
       </body>
     </html>
   );
