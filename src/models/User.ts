@@ -1,44 +1,32 @@
-import mongoose, { Schema, models } from 'mongoose';
+import mongoose, { Schema, models } from "mongoose";
 
-export interface IUser {
-  _id?: string;
-  name: string;
-  email: string;
-  password: string;
-  role: 'user' | 'admin';
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const userSchema = new Schema<IUser>(
+const UserSchema = new Schema(
   {
-    name: {
+    username: {
       type: String,
-      required: [true, 'กรุณาระบุชื่อผู้ใช้'],
+      required: true,
+      unique: true,
+      min: 3,
+      max: 20,
     },
     email: {
       type: String,
-      required: [true, 'กรุณาระบุอีเมล'],
+      required: true,
       unique: true,
-      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'กรุณาระบุอีเมลที่ถูกต้อง'],
+      max: 50,
     },
     password: {
       type: String,
-      required: [true, 'กรุณาตั้งรหัสผ่าน'],
-      minlength: [6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'],
-      select: false,
+      required: true,
+      min: 6,
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ["user", "admin"],
+      default: "user",
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = models.User || mongoose.model<IUser>('User', userSchema);
-
-export default User; 
+export const User = models.User || mongoose.model("User", UserSchema); 

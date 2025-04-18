@@ -1,150 +1,149 @@
 "use client";
-
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
+export default function Register() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email || !password) {
-      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+    // ตรวจสอบข้อมูล
+    if (!username || !email || !password || !confirmPassword) {
+      setError("กรุณากรอกข้อมูลให้ครบทุกช่อง");
       return;
     }
-
+    
     if (password !== confirmPassword) {
       setError("รหัสผ่านไม่ตรงกัน");
       return;
     }
-
+    
     if (password.length < 6) {
-      setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      setError("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
       return;
     }
-
+    
     try {
       setLoading(true);
       setError("");
       
-      const res = await fetch("/api/auth/register", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
+          username,
           email,
           password,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก");
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "การลงทะเบียนล้มเหลว");
       }
-
-      router.push("/login?success=Account has been created");
-    } catch (error: unknown) {
-      console.error("Registration error:", error);
-      setError(error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง");
+      
+      router.push("/login");
+    } catch (error: any) {
+      setError(error.message || "เกิดข้อผิดพลาดในการลงทะเบียน");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center mb-6">สมัครสมาชิก</h1>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="name" className="block text-gray-700 mb-2">
-            ชื่อผู้ใช้
-          </label>
-          <input
-            type="text"
-            id="name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
+    <div className="flex min-h-screen items-center justify-center p-6 bg-gray-50 font-prompt">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h1 className="mb-6 text-center text-2xl font-bold text-primary">สมัครสมาชิก</h1>
         
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-700 mb-2">
-            อีเมล
-          </label>
-          <input
-            type="email"
-            id="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-500">
+            {error}
+          </div>
+        )}
         
-        <div className="mb-4">
-          <label htmlFor="password" className="block text-gray-700 mb-2">
-            รหัสผ่าน
-          </label>
-          <input
-            type="password"
-            id="password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="username" className="mb-1 block text-sm font-medium text-gray-700">
+              ชื่อผู้ใช้
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกชื่อผู้ใช้"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
+              อีเมล
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกอีเมล"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
+              รหัสผ่าน
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกรหัสผ่าน"
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700">
+              ยืนยันรหัสผ่าน
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกรหัสผ่านอีกครั้ง"
+            />
+          </div>
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-primary py-2 text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-primary/70"
+          >
+            {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
+          </button>
+        </form>
         
-        <div className="mb-6">
-          <label htmlFor="confirmPassword" className="block text-gray-700 mb-2">
-            ยืนยันรหัสผ่าน
-          </label>
-          <input
-            type="password"
-            id="confirmPassword"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-        </div>
-        
-        <button
-          type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          disabled={loading}
-        >
-          {loading ? "กำลังดำเนินการ..." : "สมัครสมาชิก"}
-        </button>
-      </form>
-      
-      <div className="mt-4 text-center">
-        <p>
+        <div className="mt-4 text-center text-sm text-gray-600">
           มีบัญชีอยู่แล้ว?{" "}
-          <Link href="/login" className="text-blue-500 hover:text-blue-600">
+          <Link href="/login" className="text-primary hover:underline">
             เข้าสู่ระบบ
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

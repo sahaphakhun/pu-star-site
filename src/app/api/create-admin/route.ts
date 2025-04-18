@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { User } from "@/models/User";
 import { connectToDB } from "@/lib/mongodb";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
 
 export async function POST(request: NextRequest) {
   try {
+    // ตรวจสอบสิทธิ์การเข้าถึง - ต้องเป็น admin เท่านั้น
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user.role !== "admin") {
+      return NextResponse.json(
+        { message: "ไม่มีสิทธิ์เข้าถึง" },
+        { status: 403 }
+      );
+    }
+    
     const { username, email, password } = await request.json();
     
     // ตรวจสอบข้อมูลที่ส่งมา
@@ -43,24 +55,24 @@ export async function POST(request: NextRequest) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    // สร้างผู้ใช้ใหม่
-    const newUser = new User({
+    // สร้างผู้ใช้ admin ใหม่
+    const newAdmin = new User({
       username,
       email,
       password: hashedPassword,
-      role: "user", // สร้างเป็น user ปกติเสมอ
+      role: "admin",
     });
     
-    await newUser.save();
+    await newAdmin.save();
     
     return NextResponse.json(
-      { message: "สมัครสมาชิกสำเร็จ" },
+      { message: "สร้างแอดมินสำเร็จ" },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("การลงทะเบียนล้มเหลว:", error);
+    console.error("การสร้างแอดมินล้มเหลว:", error);
     return NextResponse.json(
-      { message: "เกิดข้อผิดพลาดในการลงทะเบียน" },
+      { message: "เกิดข้อผิดพลาดในการสร้างแอดมิน" },
       { status: 500 }
     );
   }

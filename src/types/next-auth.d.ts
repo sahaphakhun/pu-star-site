@@ -1,15 +1,22 @@
-import { DefaultSession, DefaultUser } from "next-auth";
-// นำเข้า JWT อยู่ในโมดูล declare แล้ว ไม่จำเป็นต้องนำเข้าที่นี่
+import NextAuth from "next-auth";
+import { JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      username: string;
       role: string;
-    } & DefaultSession["user"];
+    };
   }
 
-  interface User extends DefaultUser {
+  interface User {
+    id: string;
+    username: string;
+    email: string;
     role: string;
   }
 }
@@ -17,6 +24,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
+    username: string;
     role: string;
   }
 } 

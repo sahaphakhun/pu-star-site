@@ -1,50 +1,28 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
+let isConnected = false;
 
-if (!MONGODB_URI) {
-  throw new Error('กรุณาระบุ MONGODB_URI ใน .env.local file');
-}
+export const connectToDB = async () => {
+  mongoose.set("strictQuery", true);
 
-// โครงสร้างสำหรับ cached connection
-interface MongooseConnection {
-  conn: mongoose.Connection | null;
-  promise: Promise<mongoose.Connection> | null;
-}
-
-// ตัวแปร global สำหรับเก็บการเชื่อมต่อ
-const globalWithMongoose = global as typeof globalThis & {
-  mongoose: MongooseConnection;
-};
-
-// ใช้ cached connection หรือสร้างใหม่
-const cached: MongooseConnection = globalWithMongoose.mongoose || {
-  conn: null,
-  promise: null,
-};
-
-// สร้าง cache บน global object ถ้ายังไม่มี
-if (!globalWithMongoose.mongoose) {
-  globalWithMongoose.mongoose = cached;
-}
-
-async function connectDB(): Promise<mongoose.Connection> {
-  if (cached.conn) {
-    return cached.conn;
+  if (isConnected) {
+    console.log("MongoDB is already connected");
+    return;
   }
 
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
+  try {
+    const MONGODB_URI = process.env.MONGODB_URI;
+    
+    if (!MONGODB_URI) {
+      throw new Error("MONGODB_URI is not defined in environment variables");
+    }
+    
+    await mongoose.connect(MONGODB_URI);
 
-    cached.promise = mongoose
-      .connect(MONGODB_URI, opts)
-      .then((mongoose) => mongoose.connection);
+    isConnected = true;
+    console.log("MongoDB connected");
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    throw error;
   }
-
-  cached.conn = await cached.promise;
-  return cached.conn;
-}
-
-export default connectDB; 
+}; 

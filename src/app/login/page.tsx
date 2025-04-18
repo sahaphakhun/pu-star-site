@@ -1,105 +1,103 @@
 "use client";
-
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
+export default function Login() {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+    if (!username || !password) {
+      setError("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
       return;
     }
-
+    
     try {
       setLoading(true);
       setError("");
       
-      const res = await signIn("credentials", {
-        email,
+      const result = await signIn("credentials", {
+        username,
         password,
         redirect: false,
       });
-
-      if (res?.error) {
-        setError(res.error);
+      
+      if (result?.error) {
+        setError(result.error);
         return;
       }
-
+      
       router.push("/");
       router.refresh();
     } catch (error) {
-      console.error("Login error:", error);
-      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง");
+      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center mb-6">เข้าสู่ระบบ</h1>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-700 mb-2">
-            อีเมล
-          </label>
-          <input
-            type="email"
-            id="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+    <div className="flex min-h-screen items-center justify-center p-6 bg-gray-50 font-prompt">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h1 className="mb-6 text-center text-2xl font-bold text-primary">เข้าสู่ระบบ</h1>
         
-        <div className="mb-6">
-          <label htmlFor="password" className="block text-gray-700 mb-2">
-            รหัสผ่าน
-          </label>
-          <input
-            type="password"
-            id="password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-500">
+            {error}
+          </div>
+        )}
         
-        <button
-          type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          disabled={loading}
-        >
-          {loading ? "กำลังดำเนินการ..." : "เข้าสู่ระบบ"}
-        </button>
-      </form>
-      
-      <div className="mt-4 text-center">
-        <p>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="username" className="mb-1 block text-sm font-medium text-gray-700">
+              ชื่อผู้ใช้
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกชื่อผู้ใช้"
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
+              รหัสผ่าน
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="กรอกรหัสผ่าน"
+            />
+          </div>
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-primary py-2 text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-primary/70"
+          >
+            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+          </button>
+        </form>
+        
+        <div className="mt-4 text-center text-sm text-gray-600">
           ยังไม่มีบัญชี?{" "}
-          <Link href="/register" className="text-blue-500 hover:text-blue-600">
+          <Link href="/register" className="text-primary hover:underline">
             สมัครสมาชิก
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );
