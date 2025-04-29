@@ -11,7 +11,7 @@ const products = [
   { id: 4, name: "Acrylic Sealant 280ml", price: 90, image: "/blog-sealant.jpg", category: "Sealant" },
 ];
 
-export default async function ProductDetail({ params }: { params: { id: string } }) {
+export default function ProductDetail({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const product = products.find((p) => p.id === Number(params.id));
