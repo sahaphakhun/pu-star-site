@@ -6,13 +6,7 @@ import Image from "next/image";
 const menu = [
   {
     label: "สินค้า",
-    href: "/products",
-    sub: [
-      { label: "ซีลแลนท์ (Sealant)", href: "/products/sealant" },
-      { label: "กาว (Adhesive)", href: "/products/adhesive" },
-      { label: "อุปกรณ์เสริม", href: "/products/accessories" },
-      { label: "สินค้าทั้งหมด", href: "/products/all" },
-    ],
+    href: "/",
   },
   {
     label: "บทความ",
