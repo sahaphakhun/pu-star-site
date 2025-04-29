@@ -7,7 +7,7 @@ export default function CareersPage() {
       <section className="text-center mb-4">
         <h1 className="text-3xl md:text-4xl font-bold text-primary">ร่วมงานกับเรา</h1>
         <p className="text-gray-600 mt-2">
-          เติบโตไปด้วยกันกับ PU STAR ผู้นำด้านผลิตภัณฑ์ซีลแลนท์และกาว
+          เติบโตไปด้วยกันกับ Next Star Innovation ผู้นำด้านผลิตภัณฑ์ซีลแลนท์และกาว
         </p>
       </section>
 
@@ -21,13 +21,13 @@ export default function CareersPage() {
           เรากำลังมองหาบุคลากรที่มีความสามารถและมีใจรักในการพัฒนา มาร่วมเป็นส่วนหนึ่งของทีมที่มุ่งมั่นสร้างสรรค์ผลิตภัณฑ์คุณภาพสูงเพื่อตอบสนองความต้องการของลูกค้าทั่วโลก
         </p>
         <p className="text-gray-700">
-          หากคุณกำลังมองหาโอกาสในการเติบโตทางอาชีพ ในสภาพแวดล้อมการทำงานที่ส่งเสริมนวัตกรรมและความคิดสร้างสรรค์ PU STAR คือคำตอบสำหรับคุณ
+          หากคุณกำลังมองหาโอกาสในการเติบโตทางอาชีพ ในสภาพแวดล้อมการทำงานที่ส่งเสริมนวัตกรรมและความคิดสร้างสรรค์ Next Star Innovation คือคำตอบสำหรับคุณ
         </p>
       </section>
 
       {/* สวัสดิการ */}
       <section className="bg-white rounded-lg shadow-md p-6 border border-primary/10">
-        <h2 className="text-2xl font-semibold text-primary mb-6">ทำไมต้องร่วมงานกับ PU STAR</h2>
+        <h2 className="text-2xl font-semibold text-primary mb-6">ทำไมต้องร่วมงานกับ Next Star Innovation</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-primary/5 p-4 rounded-md flex">

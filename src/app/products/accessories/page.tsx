@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export const metadata = {
-  title: 'อุปกรณ์เสริม | PU STAR THAILAND',
-  description: 'อุปกรณ์เสริมคุณภาพสูงสำหรับงานซีลแลนท์และกาว เพื่อการใช้งานที่สะดวกและมีประสิทธิภาพ',
+  title: 'อุปกรณ์เสริม | Next Star Innovation THAILAND',
+  description: 'อุปกรณ์เสริมคุณภาพสูงสำหรับงานซีลแลนท์และกาวจาก Next Star Innovation เพื่อการใช้งานที่สะดวกและมีประสิทธิภาพ',
 }
 
 export default function AccessoriesPage() {

@@ -257,7 +257,7 @@ export default function GlobalContactsPage() {
 
       {/* CTA */}
       <section className="bg-primary/10 rounded-lg p-6 text-center">
-        <h2 className="text-xl font-semibold text-primary mb-3">สนใจเป็นพันธมิตรทางธุรกิจกับ PU STAR?</h2>
+        <h2 className="text-xl font-semibold text-primary mb-3">สนใจเป็นพันธมิตรทางธุรกิจกับ Next Star Innovation?</h2>
         <p className="text-gray-700 mb-4">เรายินดีต้อนรับพันธมิตรทางธุรกิจจากทั่วโลก หากคุณสนใจเป็นตัวแทนจำหน่ายในพื้นที่ที่เรายังไม่มีสาขา</p>
         <a 
           href="/contact/distributors" 

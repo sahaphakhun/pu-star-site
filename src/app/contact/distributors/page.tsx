@@ -6,12 +6,12 @@ export default function DistributorsPage() {
       {/* หัวข้อหน้า */}
       <section className="text-center mb-4">
         <h1 className="text-3xl md:text-4xl font-bold text-primary">ติดต่อตัวแทนจำหน่าย</h1>
-        <p className="text-gray-600 mt-2">เป็นพันธมิตรทางธุรกิจกับ PU STAR และเติบโตไปด้วยกัน</p>
+        <p className="text-gray-600 mt-2">เป็นพันธมิตรทางธุรกิจกับ Next Star Innovation และเติบโตไปด้วยกัน</p>
       </section>
 
       {/* ข้อมูลโปรแกรมตัวแทนจำหน่าย */}
       <section className="bg-white rounded-lg shadow-md p-6 border border-primary/10">
-        <h2 className="text-2xl font-semibold text-primary mb-4">โปรแกรมตัวแทนจำหน่าย PU STAR</h2>
+        <h2 className="text-2xl font-semibold text-primary mb-4">โปรแกรมตัวแทนจำหน่าย Next Star Innovation</h2>
         <p className="text-gray-700 mb-3">
           บริษัท พูสตาร์ (ประเทศไทย) จำกัด กำลังขยายเครือข่ายตัวแทนจำหน่ายทั่วประเทศไทยและภูมิภาคเอเชียตะวันออกเฉียงใต้ เพื่อนำเสนอผลิตภัณฑ์ซีลแลนท์และกาวคุณภาพสูงให้ถึงมือลูกค้าทุกกลุ่ม
         </p>
@@ -38,7 +38,7 @@ export default function DistributorsPage() {
               <li>มีประสบการณ์ในธุรกิจวัสดุก่อสร้าง หรืออุตสาหกรรมที่เกี่ยวข้อง</li>
               <li>มีเครือข่ายลูกค้าและช่องทางการจัดจำหน่ายที่แข็งแกร่ง</li>
               <li>มีความสามารถในการลงทุนและพัฒนาตลาด</li>
-              <li>มีทีมงานขายและการตลาดที่พร้อมผลักดันแบรนด์ PU STAR</li>
+              <li>มีทีมงานขายและการตลาดที่พร้อมผลักดันแบรนด์ Next Star Innovation</li>
             </ul>
           </div>
         </div>

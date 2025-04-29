@@ -234,12 +234,12 @@ export default function ContactPage() {
           
           <div className="border-b pb-4">
             <h3 className="font-bold text-primary mb-2">ฉันจะสมัครเป็นตัวแทนจำหน่ายได้อย่างไร?</h3>
-            <p className="text-gray-700">หากคุณสนใจเป็นตัวแทนจำหน่ายผลิตภัณฑ์ PU STAR ในประเทศไทย โปรดส่งอีเมลมาที่ partnership@pustar-thailand.com พร้อมแนบประวัติบริษัท และแผนธุรกิจ ทีมงานของเราจะติดต่อกลับภายใน 3 วันทำการ</p>
+            <p className="text-gray-700">หากคุณสนใจเป็นตัวแทนจำหน่ายผลิตภัณฑ์ Next Star Innovation ในประเทศไทย โปรดส่งอีเมลมาที่ partnership@pustar-thailand.com พร้อมแนบประวัติบริษัท และแผนธุรกิจ ทีมงานของเราจะติดต่อกลับภายใน 3 วันทำการ</p>
           </div>
           
           <div>
-            <h3 className="font-bold text-primary mb-2">ผลิตภัณฑ์ PU STAR มีการรับประกันหรือไม่?</h3>
-            <p className="text-gray-700">ผลิตภัณฑ์ทุกชิ้นของ PU STAR ได้รับการรับประกันคุณภาพตามที่ระบุไว้ในเอกสารผลิตภัณฑ์ หากพบปัญหาใดๆ กรุณาติดต่อฝ่ายบริการลูกค้าของเราทันทีที่ support@pustar-thailand.com</p>
+            <h3 className="font-bold text-primary mb-2">ผลิตภัณฑ์ Next Star Innovation มีการรับประกันหรือไม่?</h3>
+            <p className="text-gray-700">ผลิตภัณฑ์ทุกชิ้นของ Next Star Innovation ได้รับการรับประกันคุณภาพตามที่ระบุไว้ในเอกสารผลิตภัณฑ์ หากพบปัญหาใดๆ กรุณาติดต่อฝ่ายบริการลูกค้าของเราทันทีที่ support@pustar-thailand.com</p>
           </div>
         </div>
         

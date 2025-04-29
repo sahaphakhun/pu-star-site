@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export const metadata = {
-  title: 'กาว | PU STAR THAILAND',
-  description: 'ผลิตภัณฑ์กาวคุณภาพสูงจาก PU STAR สำหรับงานก่อสร้างและตกแต่งภายใน',
+  title: 'กาว | Next Star Innovation THAILAND',
+  description: 'ผลิตภัณฑ์กาวคุณภาพสูงจาก Next Star Innovation สำหรับงานก่อสร้างและตกแต่งภายใน',
 }
 
 export default function AdhesivePage() {
