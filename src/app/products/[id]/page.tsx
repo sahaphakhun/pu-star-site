@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 // mock ข้อมูลสินค้า (ควรย้ายไป global หรือ context จริงจัง)
 const products = [
