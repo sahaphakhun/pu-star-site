@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export const metadata = {
-  title: 'สินค้า | PU STAR THAILAND',
-  description: 'ผลิตภัณฑ์ซีลแลนท์และกาวคุณภาพสูงจาก PU STAR สำหรับงานก่อสร้างและตกแต่งภายใน',
+  title: 'สินค้า | Next Star Innovation THAILAND',
+  description: 'ผลิตภัณฑ์ซีลแลนท์และกาวคุณภาพสูงจาก Next Star Innovation สำหรับงานก่อสร้างและตกแต่งภายใน',
 }
 
 export default function ProductsPage() {
@@ -70,7 +70,7 @@ export default function ProductsPage() {
       {/* ส่วนหัว */}
       <section className="max-w-6xl mx-auto mb-10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">ผลิตภัณฑ์คุณภาพจาก PU STAR</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">ผลิตภัณฑ์คุณภาพจาก Next Star Innovation</h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
             ผลิตภัณฑ์คุณภาพสูงสำหรับงานก่อสร้างและตกแต่ง ด้วยเทคโนโลยีที่ทันสมัยและมาตรฐานระดับสากล
           </p>
@@ -192,7 +192,7 @@ export default function ProductsPage() {
 
       {/* สิทธิประโยชน์ */}
       <section className="max-w-6xl mx-auto">
-        <h2 className="text-2xl font-semibold text-primary mb-6 text-center">ทำไมต้องเลือกสินค้าจาก PU STAR</h2>
+        <h2 className="text-2xl font-semibold text-primary mb-6 text-center">ทำไมต้องเลือกสินค้าจาก Next Star Innovation</h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-4 rounded-lg shadow border border-primary/10">

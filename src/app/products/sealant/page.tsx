@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export const metadata = {
-  title: 'ซีลแลนท์ | PU STAR THAILAND',
-  description: 'ผลิตภัณฑ์ซีลแลนท์คุณภาพสูงจาก PU STAR สำหรับงานก่อสร้างและตกแต่งภายใน',
+  title: 'ซีลแลนท์ | Next Star Innovation THAILAND',
+  description: 'ผลิตภัณฑ์ซีลแลนท์คุณภาพสูงจาก Next Star Innovation สำหรับงานก่อสร้างและตกแต่งภายใน',
 }
 
 export default function SealantPage() {
@@ -274,11 +274,11 @@ export default function SealantPage() {
       {/* ข้อมูลเกี่ยวกับซีลแลนท์ */}
       <div className="max-w-6xl mx-auto mt-16">
         <div className="bg-primary/5 rounded-lg p-6 border border-primary/20">
-          <h2 className="text-2xl font-semibold text-primary mb-4">ทำไมต้องเลือกซีลแลนท์จาก PU STAR</h2>
+          <h2 className="text-2xl font-semibold text-primary mb-4">ทำไมต้องเลือกซีลแลนท์จาก Next Star Innovation</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <p className="text-gray-700 mb-4">
-                ซีลแลนท์จาก PU STAR ถูกพัฒนาด้วยเทคโนโลยีล่าสุดจากทีมวิจัยและพัฒนาที่มีประสบการณ์สูง ทำให้ได้ผลิตภัณฑ์ที่มีคุณภาพเหนือชั้น
+                ซีลแลนท์จาก Next Star Innovation ถูกพัฒนาด้วยเทคโนโลยีล่าสุดจากทีมวิจัยและพัฒนาที่มีประสบการณ์สูง ทำให้ได้ผลิตภัณฑ์ที่มีคุณภาพเหนือชั้น
                 ตอบโจทย์ทุกความต้องการในงานก่อสร้างและตกแต่ง
               </p>
               <p className="text-gray-700">

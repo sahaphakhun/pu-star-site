@@ -104,7 +104,7 @@ export default function Sidebar() {
 
         <div className="mb-10">
           <Link href="/" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-            <Image src="/logo.jpg" alt="PU STAR Logo" width={isMobile ? 80 : 120} height={isMobile ? 80 : 120} priority />
+            <Image src="/logo.jpg" alt="Next Star Innovation Logo" width={isMobile ? 80 : 120} height={isMobile ? 80 : 120} priority />
           </Link>
         </div>
         

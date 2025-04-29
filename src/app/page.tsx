@@ -7,7 +7,7 @@ export default function Home() {
       {/* แถวที่ 1: แบนเนอร์สโลแกน */}
       <section className="flex flex-col items-center justify-center text-center gap-4">
         <h1 className="text-3xl sm:text-4xl font-bold">
-          <span className="text-accent">PU STAR</span> <span className="text-primary">THAILAND</span>
+          <span className="text-accent">Next Star Innovation</span> <span className="text-primary">THAILAND</span>
         </h1>
         <p className="text-lg text-gray-700 max-w-xl">ผู้นำด้านผลิตภัณฑ์ซีลแลนท์และกาวสำหรับงานก่อสร้างและตกแต่งภายใน</p>
       </section>
