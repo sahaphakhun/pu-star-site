@@ -130,11 +130,10 @@ const AdminProductsPage = () => {
     const file = files[0];
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'products_uploads');
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
 
     try {
       setIsUploading(true);
-      
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
@@ -142,9 +141,7 @@ const AdminProductsPage = () => {
           body: formData,
         }
       );
-
       const data = await response.json();
-      
       if (data.secure_url) {
         setImageUrl(data.secure_url);
       }
