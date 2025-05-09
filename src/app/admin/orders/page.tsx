@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { IOrder } from '@/models/Order';
 
 interface OrderWithId extends IOrder {
@@ -25,11 +25,7 @@ const AdminOrdersPage = () => {
     endDate: new Date().toISOString().split('T')[0],
   });
 
-  useEffect(() => {
-    fetchOrders();
-  }, [dateRange]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const query = new URLSearchParams({
         startDate: dateRange.startDate,
@@ -39,42 +35,44 @@ const AdminOrdersPage = () => {
       const response = await fetch(`/api/orders?${query}`);
       const data = await response.json();
       setOrders(data);
-      generateDailySummaries(data);
+      
+      // ย้ายการจัดกลุ่มข้อมูลมาไว้ในนี้
+      const dailyData: { [key: string]: DailySummary } = {};
+
+      // จัดกลุ่มออเดอร์ตามวัน
+      data.forEach((order: OrderWithId) => {
+        const date = new Date(order.orderDate).toISOString().split('T')[0];
+        
+        if (!dailyData[date]) {
+          dailyData[date] = {
+            date,
+            totalOrders: 0,
+            totalAmount: 0,
+            orders: []
+          };
+        }
+        
+        dailyData[date].totalOrders += 1;
+        dailyData[date].totalAmount += order.totalAmount;
+        dailyData[date].orders.push(order);
+      });
+
+      // แปลงเป็น array และเรียงตามวันที่ล่าสุด
+      const summaries = Object.values(dailyData).sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      setDailySummaries(summaries);
       setLoading(false);
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลออเดอร์ได้:', error);
       setLoading(false);
     }
-  };
+  }, [dateRange]);
 
-  const generateDailySummaries = (orders: OrderWithId[]) => {
-    const dailyData: { [key: string]: DailySummary } = {};
-
-    // จัดกลุ่มออเดอร์ตามวัน
-    orders.forEach(order => {
-      const date = new Date(order.orderDate).toISOString().split('T')[0];
-      
-      if (!dailyData[date]) {
-        dailyData[date] = {
-          date,
-          totalOrders: 0,
-          totalAmount: 0,
-          orders: []
-        };
-      }
-      
-      dailyData[date].totalOrders += 1;
-      dailyData[date].totalAmount += order.totalAmount;
-      dailyData[date].orders.push(order);
-    });
-
-    // แปลงเป็น array และเรียงตามวันที่ล่าสุด
-    const summaries = Object.values(dailyData).sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    setDailySummaries(summaries);
-  };
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const toggleDateExpand = (date: string) => {
     if (expandedDate === date) {
