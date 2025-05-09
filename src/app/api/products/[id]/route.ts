@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 
+// กำหนด interface สำหรับพารามิเตอร์จาก dynamic route
+export interface ProductParams {
+  params: {
+    id: string;
+  };
+}
+
 // ดึงข้อมูลสินค้าตาม ID
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: ProductParams
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     await connectDB();
     const product = await Product.findById(id);
 
@@ -32,10 +39,10 @@ export async function GET(
 // อัพเดทสินค้าตาม ID
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: ProductParams
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const body = await request.json();
     const { name, price, description, imageUrl } = body;
 
@@ -80,10 +87,10 @@ export async function PUT(
 // ลบสินค้าตาม ID
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: ProductParams
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     await connectDB();
     const deletedProduct = await Product.findByIdAndDelete(id);
 

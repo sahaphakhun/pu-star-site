@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 
@@ -17,21 +17,21 @@ const ShopPage = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [showOrderForm, setShowOrderForm] = useState(false);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        setProducts(data);
-        setLoading(false);
-      } catch (error) {
-        console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+  const fetchProducts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      setProducts(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const addToCart = (product: ProductWithId) => {
     setCart(prev => {

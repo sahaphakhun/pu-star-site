@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 
@@ -19,11 +19,7 @@ const AdminProductsPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch('/api/products');
       const data = await response.json();
@@ -33,7 +29,11 @@ const AdminProductsPage = () => {
       console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const resetForm = () => {
     setName('');
