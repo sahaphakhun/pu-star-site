@@ -15,6 +15,9 @@ export interface IOrder extends Document {
   orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
+  customerAddress?: string;
+  paymentMethod?: 'cod' | 'transfer';
+  slipUrl?: string;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -58,6 +61,19 @@ const orderSchema = new Schema<IOrder>(
     orderDate: {
       type: Date,
       default: Date.now
+    },
+    customerAddress: {
+      type: String,
+      default: ''
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['cod', 'transfer'],
+      default: 'cod'
+    },
+    slipUrl: {
+      type: String,
+      default: ''
     }
   },
   { 

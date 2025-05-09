@@ -15,6 +15,10 @@ const ShopPage = () => {
   const [cart, setCart] = useState<{[key: string]: {product: ProductWithId, quantity: number}}>({});
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer'>('cod');
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipPreview, setSlipPreview] = useState<string | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
 
   const fetchProducts = useCallback(async () => {
@@ -63,23 +67,50 @@ const ShopPage = () => {
     });
   };
 
+  const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSlipFile(file);
+    if (file) {
+      setSlipPreview(URL.createObjectURL(file));
+    } else {
+      setSlipPreview(null);
+    }
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!customerName || !customerPhone) {
-      alert('กรุณากรอกชื่อและเบอร์โทรศัพท์');
+    if (!customerName || !customerPhone || !customerAddress) {
+      alert('กรุณากรอกชื่อ เบอร์โทรศัพท์ และที่อยู่');
       return;
     }
-    
+    if (paymentMethod === 'transfer' && !slipFile) {
+      alert('กรุณาแนบสลิปการโอนเงิน');
+      return;
+    }
     const cartItems = Object.values(cart);
     if (cartItems.length === 0) {
       alert('กรุณาเลือกสินค้าก่อนสั่งซื้อ');
       return;
     }
-
+    let slipUrl = '';
+    if (paymentMethod === 'transfer' && slipFile) {
+      // อัพโหลดสลิปไป cloudinary (หรือ server)
+      const formData = new FormData();
+      formData.append('file', slipFile);
+      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      slipUrl = data.secure_url;
+    }
     const orderData = {
       customerName,
       customerPhone,
+      customerAddress,
+      paymentMethod,
+      slipUrl,
       items: cartItems.map(item => ({
         productId: item.product._id,
         name: item.product.name,
@@ -103,6 +134,10 @@ const ShopPage = () => {
         setCart({});
         setCustomerName('');
         setCustomerPhone('');
+        setCustomerAddress('');
+        setPaymentMethod('cod');
+        setSlipFile(null);
+        setSlipPreview(null);
         setShowOrderForm(false);
       } else {
         alert('เกิดข้อผิดพลาดในการสั่งซื้อ');
@@ -202,7 +237,7 @@ const ShopPage = () => {
                       required
                     />
                   </div>
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <label className="block text-sm mb-1">เบอร์โทรศัพท์</label>
                     <input
                       type="tel"
@@ -212,7 +247,55 @@ const ShopPage = () => {
                       required
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="mb-3">
+                    <label className="block text-sm mb-1">ที่อยู่สำหรับจัดส่ง</label>
+                    <textarea
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      rows={2}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-sm mb-1">ช่องทางการชำระเงิน</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="cod"
+                          checked={paymentMethod === 'cod'}
+                          onChange={() => setPaymentMethod('cod')}
+                        /> เก็บเงินปลายทาง
+                      </label>
+                      <label className="flex items-center gap-1">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="transfer"
+                          checked={paymentMethod === 'transfer'}
+                          onChange={() => setPaymentMethod('transfer')}
+                        /> โอนเงิน
+                      </label>
+                    </div>
+                  </div>
+                  {paymentMethod === 'transfer' && (
+                    <div className="mb-3 border rounded p-3 bg-blue-50">
+                      <div className="mb-2">
+                        <span className="font-semibold">เลขบัญชีสำหรับโอนเงิน:</span>
+                        <span className="ml-2 select-all">123-4-56789-0 ธนาคารกรุงเทพ</span>
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">แนบสลิปการโอนเงิน</label>
+                        <input type="file" accept="image/*" onChange={handleSlipChange} required />
+                        {slipPreview && (
+                          <img src={slipPreview} alt="slip preview" className="mt-2 h-32 object-contain border rounded" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-4">
                     <button
                       type="submit"
                       className="bg-green-500 text-white px-4 py-2 rounded-lg w-full"

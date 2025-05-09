@@ -214,19 +214,24 @@ const AdminOrdersPage = () => {
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เวลา</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลูกค้า</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ที่อยู่</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชำระเงิน</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รายการ</th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ยอดรวม</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สลิป</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {summary.orders.map((order) => (
                               <tr key={order._id} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                  {formatDateTime(order.orderDate)}
-                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap">{formatDateTime(order.orderDate)}</td>
                                 <td className="px-4 py-2 whitespace-nowrap">
                                   <p className="font-medium">{order.customerName}</p>
                                   <p className="text-sm text-gray-500">{order.customerPhone}</p>
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm">{order.customerAddress || '-'}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  {order.paymentMethod === 'transfer' ? 'โอนเงิน' : 'เก็บเงินปลายทาง'}
                                 </td>
                                 <td className="px-4 py-2">
                                   <ul className="list-disc list-inside text-sm">
@@ -237,8 +242,13 @@ const AdminOrdersPage = () => {
                                     ))}
                                   </ul>
                                 </td>
-                                <td className="px-4 py-2 text-right whitespace-nowrap font-medium">
-                                  ฿{order.totalAmount.toLocaleString()}
+                                <td className="px-4 py-2 text-right whitespace-nowrap font-medium">฿{order.totalAmount.toLocaleString()}</td>
+                                <td className="px-4 py-2 whitespace-nowrap">
+                                  {order.paymentMethod === 'transfer' && order.slipUrl ? (
+                                    <a href={order.slipUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">ดูสลิป</a>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -262,20 +272,25 @@ const AdminOrdersPage = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่/เวลา</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลูกค้า</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ที่อยู่</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชำระเงิน</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รายการ</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ยอดรวม</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สลิป</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {orders.length > 0 ? (
                   orders.map((order) => (
                     <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {formatDateTime(order.orderDate)}
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{formatDateTime(order.orderDate)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="font-medium">{order.customerName}</p>
                         <p className="text-sm text-gray-500">{order.customerPhone}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerAddress || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {order.paymentMethod === 'transfer' ? 'โอนเงิน' : 'เก็บเงินปลายทาง'}
                       </td>
                       <td className="px-6 py-4">
                         <ul className="list-disc list-inside">
@@ -286,14 +301,19 @@ const AdminOrdersPage = () => {
                           ))}
                         </ul>
                       </td>
-                      <td className="px-6 py-4 text-right whitespace-nowrap font-medium">
-                        ฿{order.totalAmount.toLocaleString()}
+                      <td className="px-6 py-4 text-right whitespace-nowrap font-medium">฿{order.totalAmount.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {order.paymentMethod === 'transfer' && order.slipUrl ? (
+                          <a href={order.slipUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">ดูสลิป</a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                       ไม่พบรายการสั่งซื้อในช่วงเวลาที่เลือก
                     </td>
                   </tr>

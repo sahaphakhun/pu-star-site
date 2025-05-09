@@ -168,46 +168,49 @@ const AdminProductsPage = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">จัดการสินค้า</h1>
 
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold mb-4">{editMode ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
+      <div className="bg-white p-8 rounded-2xl shadow-lg mb-10 max-w-3xl mx-auto">
+        <h2 className="text-2xl font-bold mb-6 text-blue-700">{editMode ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">ชื่อสินค้า</label>
+              <div className="mb-5">
+                <label className="block text-sm font-semibold mb-2 text-gray-700">ชื่อสินค้า</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition"
+                  placeholder="เช่น เสื้อยืดลายแมว"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">ราคา (บาท)</label>
+              <div className="mb-5">
+                <label className="block text-sm font-semibold mb-2 text-gray-700">ราคา (บาท)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition"
+                  placeholder="เช่น 199"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">รายละเอียดสินค้า</label>
+              <div className="mb-5">
+                <label className="block text-sm font-semibold mb-2 text-gray-700">รายละเอียดสินค้า</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition"
                   rows={4}
+                  placeholder="รายละเอียดสินค้าโดยย่อ"
                   required
                 />
               </div>
             </div>
             <div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">รูปภาพสินค้า</label>
+              <div className="mb-5">
+                <label className="block text-sm font-semibold mb-2 text-gray-700">รูปภาพสินค้า</label>
                 <div className="flex items-center mb-2">
                   <input
                     type="file"
@@ -233,11 +236,11 @@ const AdminProductsPage = () => {
               )}
             </div>
           </div>
-          <div className="flex gap-2 mt-6">
+          <div className="flex gap-3 mt-8">
             <button
               type="submit"
               disabled={isUploading}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition w-full md:w-auto"
             >
               {editMode ? 'อัพเดทสินค้า' : 'เพิ่มสินค้า'}
             </button>
@@ -245,7 +248,7 @@ const AdminProductsPage = () => {
               <button
                 type="button"
                 onClick={resetForm}
-                className="bg-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition w-full md:w-auto"
               >
                 ยกเลิก
               </button>
@@ -254,31 +257,26 @@ const AdminProductsPage = () => {
         </form>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">รายการสินค้าทั้งหมด ({products.length})</h2>
+      <div className="bg-white p-8 rounded-2xl shadow-lg">
+        <h2 className="text-xl font-bold mb-6 text-blue-700">รายการสินค้าทั้งหมด ({products.length})</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  รูปภาพ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ชื่อสินค้า
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ราคา
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  จัดการ
-                </th>
+                <th className="px-6 py-3 text-left font-semibold text-gray-600">รูปภาพ</th>
+                <th className="px-6 py-3 text-left font-semibold text-gray-600">ชื่อสินค้า</th>
+                <th className="px-6 py-3 text-left font-semibold text-gray-600">ราคา</th>
+                <th className="px-6 py-3 text-left font-semibold text-gray-600">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {products.length > 0 ? (
-                products.map((product) => (
-                  <tr key={product._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                products.map((product, idx) => (
+                  <tr
+                    key={product._id}
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                  >
+                    <td className="px-6 py-3">
                       <div className="relative h-12 w-12">
                         <Image
                           src={product.imageUrl}
@@ -289,23 +287,23 @@ const AdminProductsPage = () => {
                         />
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-500 line-clamp-1">{product.description}</div>
+                    <td className="px-6 py-3">
+                      <div className="font-medium text-gray-900">{product.name}</div>
+                      <div className="text-gray-500 line-clamp-1">{product.description}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">฿{product.price.toLocaleString()}</div>
+                    <td className="px-6 py-3">
+                      <div className="text-gray-900">฿{product.price.toLocaleString()}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-3">
                       <button
                         onClick={() => handleEditProduct(product)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        className="text-blue-600 hover:text-blue-800 font-semibold mr-4"
                       >
                         แก้ไข
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-800 font-semibold"
                       >
                         ลบ
                       </button>
@@ -314,7 +312,7 @@ const AdminProductsPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-400 font-semibold bg-gray-50">
                     ไม่มีสินค้า
                   </td>
                 </tr>
