@@ -5,10 +5,10 @@ import Product from '@/models/Product';
 // ดึงข้อมูลสินค้าตาม ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     await connectDB();
     const product = await Product.findById(id);
 
@@ -32,10 +32,10 @@ export async function GET(
 // อัพเดทสินค้าตาม ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const body = await request.json();
     const { name, price, description, imageUrl } = body;
 
@@ -80,10 +80,10 @@ export async function PUT(
 // ลบสินค้าตาม ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     await connectDB();
     const deletedProduct = await Product.findByIdAndDelete(id);
 
