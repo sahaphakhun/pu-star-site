@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { IProduct } from '@/models/Product';
 
 // เพิ่ม interface เพื่อระบุ _id
