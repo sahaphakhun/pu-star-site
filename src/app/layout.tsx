@@ -22,44 +22,47 @@ export default function RootLayout({
     { href: '/admin/orders', label: 'รายการสั่งซื้อ' },
   ];
 
+  // ซ่อน header เฉพาะหน้า /shop และ /shop/*
+  const hideHeader = pathname === '/shop' || pathname.startsWith('/shop/');
+
   return (
     <html lang="th">
       <body className={inter.className}>
-        <header className="bg-blue-600 text-white shadow-md">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex justify-between items-center">
-              <Link href="/" className="text-2xl font-bold">
-                ร้านค้าออนไลน์
-              </Link>
-              <nav>
-                <ul className="flex space-x-1 md:space-x-4">
-                  {menuItems.map(({ href, label }) => (
-                    <li key={href}>
-                      <Link
-                        href={href}
-                        className={`px-3 py-2 rounded-lg text-sm md:text-base ${
-                          isActive(href)
-                            ? 'bg-white text-blue-600 font-medium'
-                            : 'text-white hover:bg-blue-500'
-                        }`}
-                      >
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+        {!hideHeader && (
+          <header className="bg-blue-600 text-white shadow-md">
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex justify-between items-center">
+                <Link href="/" className="text-2xl font-bold">
+                  ร้านค้าออนไลน์
+                </Link>
+                <nav>
+                  <ul className="flex space-x-1 md:space-x-4">
+                    {menuItems.map(({ href, label }) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          className={`px-3 py-2 rounded-lg text-sm md:text-base ${
+                            isActive(href)
+                              ? 'bg-white text-blue-600 font-medium'
+                              : 'text-white hover:bg-blue-500'
+                          }`}
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
         <main className="min-h-screen bg-gray-100">{children}</main>
-        <footer className="bg-gray-800 text-white py-6">
-          <div className="container mx-auto px-4">
-            <div className="text-center">
-              <p className="text-sm">&copy; {new Date().getFullYear()} ร้านค้าออนไลน์ - สงวนลิขสิทธิ์</p>
-            </div>
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p className="text-sm">&copy; {new Date().getFullYear()} ร้านค้าออนไลน์ - สงวนลิขสิทธิ์</p>
           </div>
-        </footer>
+        </div>
       </body>
     </html>
   );
