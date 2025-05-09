@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 // ดึงข้อมูลสินค้าตาม ID
-export async function GET(_: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
     await connectDB();
@@ -33,7 +30,10 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 }
 
 // อัพเดทสินค้าตาม ID
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
     const body = await request.json();
@@ -78,7 +78,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // ลบสินค้าตาม ID
-export async function DELETE(_: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
     await connectDB();
