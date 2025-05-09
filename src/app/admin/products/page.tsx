@@ -217,19 +217,12 @@ const AdminProductsPage = () => {
                     accept="image/*"
                     onChange={handleUploadImage}
                     className="flex-1"
+                    required
                   />
                   {isUploading && (
                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500 ml-2"></div>
                   )}
                 </div>
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="หรือใส่ URL รูปภาพโดยตรง"
-                  required
-                />
               </div>
               {imageUrl && (
                 <div className="mt-2 relative h-48 w-full">
