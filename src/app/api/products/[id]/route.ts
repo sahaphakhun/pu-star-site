@@ -2,114 +2,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 
-// กำหนด interface สำหรับพารามิเตอร์จาก dynamic route
-export interface ProductParams {
-  params: {
-    id: string;
-  };
+// GET: ดึงข้อมูลสินค้าเฉพาะ id
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
+  await connectDB();
+  const product = await Product.findById(context.params.id);
+  if (!product) {
+    return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
+  }
+  return NextResponse.json(product);
 }
 
-// ดึงข้อมูลสินค้าตาม ID
-export async function GET(
-  request: NextRequest,
-  { params }: ProductParams
-) {
-  try {
-    const { id } = params;
-    await connectDB();
-    const product = await Product.findById(id);
-
-    if (!product) {
-      return NextResponse.json(
-        { error: 'ไม่พบสินค้า' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(product);
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า' },
-      { status: 500 }
-    );
+// PUT: อัปเดตสินค้า
+export async function PUT(request: NextRequest, context: { params: { id: string } }) {
+  const { name, price, description, imageUrl } = await request.json();
+  if (!name || !price || !description || !imageUrl) {
+    return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
   }
+  await connectDB();
+  const updated = await Product.findByIdAndUpdate(
+    context.params.id,
+    { name, price, description, imageUrl },
+    { new: true, runValidators: true }
+  );
+  if (!updated) {
+    return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
+  }
+  return NextResponse.json(updated);
 }
 
-// อัพเดทสินค้าตาม ID
-export async function PUT(
-  request: NextRequest,
-  { params }: ProductParams
-) {
-  try {
-    const { id } = params;
-    const body = await request.json();
-    const { name, price, description, imageUrl } = body;
-
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!name || !price || !description || !imageUrl) {
-      return NextResponse.json(
-        { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
-        { status: 400 }
-      );
-    }
-
-    await connectDB();
-    
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      {
-        name,
-        price,
-        description,
-        imageUrl
-      },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedProduct) {
-      return NextResponse.json(
-        { error: 'ไม่พบสินค้า' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(updatedProduct);
-  } catch (error) {
-    console.error('Error updating product:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการอัพเดทสินค้า' },
-      { status: 500 }
-    );
+// DELETE: ลบสินค้า
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+  await connectDB();
+  const deleted = await Product.findByIdAndDelete(context.params.id);
+  if (!deleted) {
+    return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
   }
-}
-
-// ลบสินค้าตาม ID
-export async function DELETE(
-  request: NextRequest,
-  { params }: ProductParams
-) {
-  try {
-    const { id } = params;
-    await connectDB();
-    const deletedProduct = await Product.findByIdAndDelete(id);
-
-    if (!deletedProduct) {
-      return NextResponse.json(
-        { error: 'ไม่พบสินค้า' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: 'ลบสินค้าสำเร็จ' },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Error deleting product:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการลบสินค้า' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ message: 'ลบสินค้าสำเร็จ' });
 } 

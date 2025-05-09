@@ -291,9 +291,10 @@ const AdminProductsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="relative h-12 w-12">
                         <Image
-                          src={product.imageUrl || '/placeholder.jpg'}
+                          src={product.imageUrl}
                           alt={product.name}
-                          fill
+                          width={48}
+                          height={48}
                           className="object-cover rounded"
                         />
                       </div>
