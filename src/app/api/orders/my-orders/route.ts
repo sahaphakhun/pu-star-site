@@ -9,7 +9,7 @@ interface DecodedToken {
   [key: string]: unknown;
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     // ดึงค่า token จาก cookie
     const cookieStore = cookies();
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
         .lean();
 
       return NextResponse.json(orders);
-    } catch (_) {
+    } catch (_error) {
       // ถ้ามีข้อผิดพลาดในการถอดรหัส token
       return NextResponse.json(
         { success: false, message: 'ข้อมูลการเข้าสู่ระบบไม่ถูกต้องหรือหมดอายุ' },

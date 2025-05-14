@@ -52,7 +52,7 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
-    } catch (_) {
+    } catch (_error) {
       // Ignore specific error as we just need to know if verification failed
       return NextResponse.json(
         { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },

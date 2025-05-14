@@ -5,13 +5,6 @@ import User from '@/models/User';
 import OTPVerification from '@/models/OTPVerification';
 import { verifyOTP } from '@/utils/deesmsx';
 
-interface DecodedToken {
-  userId: string;
-  phoneNumber: string;
-  role: string;
-  [key: string]: unknown;
-}
-
 export async function POST(req: Request) {
   try {
     const { phoneNumber, otp, name } = await req.json();
