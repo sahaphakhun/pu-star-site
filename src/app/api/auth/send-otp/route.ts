@@ -7,7 +7,7 @@ import { requestOTP } from '@/utils/deesmsx';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // ใช้ sender ที่ได้รับอนุมัติ
-const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMSX';
+const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMS.OTP';
 
 // API Handler สำหรับส่ง OTP
 export async function POST(req: Request) {

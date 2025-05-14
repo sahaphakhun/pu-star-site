@@ -13,12 +13,16 @@
     "@types/mongoose": "^5.11.97",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.5.0",
+    "framer-motion": "^12.11.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "next": "15.3.1",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2",
+    "react-places-autocomplete": "^7.3.0",
+    "sweetalert2": "^11.21.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -27,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@types/react-places-autocomplete": "^7.2.14",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "tailwindcss": "^4",

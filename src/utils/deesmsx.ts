@@ -6,7 +6,7 @@
 // API Keys (ควรเก็บไว้ใน .env file ในการใช้งานจริง)
 const API_KEY = process.env.DEESMSX_API_KEY || '092cdf3c-25a2c466-040abba8-5ff5cb9a';
 const SECRET_KEY = process.env.DEESMSX_SECRET_KEY || '87fb840d-1dfdd8fe-77402037-e52a9135';
-const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMSX'; // ชื่อ sender ที่ได้รับอนุมัติ
+const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMS.OTP'; // ใช้ค่า default ของ DeeSMSx
 
 // Base URL
 const BASE_URL = 'https://apicall.deesmsx.com';
