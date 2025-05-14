@@ -1,4 +1,15 @@
-import { deeSMSxConfig } from '@/config/deesmsx';
+/**
+ * ไฟล์สำหรับเชื่อมต่อกับ deeSMSx API
+ * ใช้สำหรับส่ง SMS และจัดการการยืนยันตัวตนด้วย OTP
+ */
+
+// API Keys (ควรเก็บไว้ใน .env file ในการใช้งานจริง)
+const API_KEY = process.env.DEESMSX_API_KEY || '092cdf3c-25a2c466-040abba8-5ff5cb9a';
+const SECRET_KEY = process.env.DEESMSX_SECRET_KEY || '87fb840d-1dfdd8fe-77402037-e52a9135';
+const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMSX'; // หรือชื่อ sender ที่ได้รับอนุมัติ
+
+// Base URL
+const BASE_URL = 'https://apicall.deesmsx.com';
 
 // interface สำหรับ response ของ DeeSMSx API
 interface APIResponse {
@@ -35,34 +46,84 @@ interface SMSResponse {
 }
 
 /**
- * ส่งคำขอ OTP ไปยัง DeeSMSx API
- * @param phoneNumber เบอร์โทรศัพท์ที่ต้องการส่ง OTP (รูปแบบ 66xxxxxxxxx)
- * @returns ข้อมูลการตอบกลับจาก API
+ * ส่งข้อความ SMS ไปยังเบอร์โทรศัพท์
+ * @param to เบอร์โทรศัพท์ปลายทางในรูปแบบ 66xxxxxxxxx
+ * @param message ข้อความที่ต้องการส่ง
+ * @param sender ชื่อผู้ส่ง (Sender Name) ที่ได้รับอนุมัติ
+ * @returns ผลลัพธ์จาก API
  */
-export async function requestOTP(phoneNumber: string): Promise<OTPRequestResponse> {
+export async function sendSMS(to: string, message: string, sender: string = SENDER_NAME) {
   try {
-    const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.requestOtp}`, {
+    // เตรียมข้อมูลสำหรับส่ง
+    const data = {
+      secretKey: SECRET_KEY,
+      apiKey: API_KEY,
+      to: formatPhoneNumber(to),
+      sender,
+      msg: message
+    };
+
+    // ส่งคำขอไปยัง API
+    const response = await fetch(`${BASE_URL}/v1/SMSWebService`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        secretKey: deeSMSxConfig.secretKey,
-        apiKey: deeSMSxConfig.apiKey,
-        to: phoneNumber,
-        sender: deeSMSxConfig.sender,
-        lang: 'th',
-        isShowRef: '1'
-      }),
+      body: JSON.stringify(data),
     });
 
-    const data = await response.json() as OTPRequestResponse;
-    
-    if (data.error !== '0') {
-      throw new Error(`DeeSMSx API Error: ${data.msg}`);
+    // ตรวจสอบสถานะการตอบกลับ
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
     }
-    
-    return data;
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    throw error;
+  }
+}
+
+/**
+ * ส่งคำขอรหัส OTP ไปยังเบอร์โทรศัพท์
+ * @param to เบอร์โทรศัพท์ปลายทางในรูปแบบ 66xxxxxxxxx หรือ 0xxxxxxxxx
+ * @param sender ชื่อผู้ส่ง (Sender Name) ที่ได้รับอนุมัติ
+ * @param lang ภาษาของข้อความ (th หรือ en)
+ * @param isShowRef แสดงรหัสอ้างอิงในข้อความ SMS (0 หรือ 1)
+ * @returns ผลลัพธ์จาก API รวมถึง token และ ref
+ */
+export async function requestOTP(
+  to: string,
+  sender: string = SENDER_NAME,
+  lang: 'th' | 'en' = 'th',
+  isShowRef: '0' | '1' = '1'
+) {
+  try {
+    // เตรียมข้อมูลสำหรับส่ง
+    const data = {
+      secretKey: SECRET_KEY,
+      apiKey: API_KEY,
+      to: formatPhoneNumber(to),
+      sender,
+      lang,
+      isShowRef
+    };
+
+    // ส่งคำขอไปยัง API
+    const response = await fetch(`${BASE_URL}/v1/otp/request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    // ตรวจสอบสถานะการตอบกลับ
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('Error requesting OTP:', error);
     throw error;
@@ -70,33 +131,42 @@ export async function requestOTP(phoneNumber: string): Promise<OTPRequestRespons
 }
 
 /**
- * ตรวจสอบ OTP กับ DeeSMSx API
- * @param token token ที่ได้จากการขอ OTP
+ * ยืนยันรหัส OTP
+ * @param token token ที่ได้รับจากการขอ OTP
  * @param pin รหัส OTP ที่ผู้ใช้กรอก
- * @returns ข้อมูลการตอบกลับจาก API
+ * @returns ผลลัพธ์จาก API
  */
-export async function verifyOTP(token: string, pin: string): Promise<OTPVerifyResponse> {
+export async function verifyOTP(token: string, pin: string) {
   try {
-    const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.verifyOtp}`, {
+    // เตรียมข้อมูลสำหรับส่ง
+    const data = {
+      secretKey: SECRET_KEY,
+      apiKey: API_KEY,
+      token,
+      pin
+    };
+
+    // ส่งคำขอไปยัง API
+    const response = await fetch(`${BASE_URL}/v1/otp/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        secretKey: deeSMSxConfig.secretKey,
-        apiKey: deeSMSxConfig.apiKey,
-        token,
-        pin
-      }),
+      body: JSON.stringify(data),
     });
 
-    const data = await response.json() as OTPVerifyResponse;
+    // ตรวจสอบสถานะการตอบกลับ
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const result = await response.json();
     
-    if (data.status !== '0') {
-      throw new Error(`DeeSMSx API Error: ${data.msg}`);
+    if (result.status !== "0" || result.error !== "0") {
+      throw new Error(result.msg || "การยืนยัน OTP ล้มเหลว");
     }
     
-    return data;
+    return result;
   } catch (error) {
     console.error('Error verifying OTP:', error);
     throw error;
@@ -104,36 +174,26 @@ export async function verifyOTP(token: string, pin: string): Promise<OTPVerifyRe
 }
 
 /**
- * ส่ง SMS ทั่วไปผ่าน DeeSMSx API
- * @param phoneNumber เบอร์โทรศัพท์ที่ต้องการส่ง SMS (รูปแบบ 66xxxxxxxxx)
- * @param message ข้อความที่ต้องการส่ง
- * @returns ข้อมูลการตอบกลับจาก API
+ * แปลงรูปแบบเบอร์โทรศัพท์ให้เป็นรูปแบบ E.164 (66xxxxxxxxx)
+ * @param phoneNumber เบอร์โทรศัพท์ที่ต้องการแปลง
+ * @returns เบอร์โทรศัพท์ในรูปแบบ E.164
  */
-export async function sendSMS(phoneNumber: string, message: string): Promise<SMSResponse> {
-  try {
-    const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.sms}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        secretKey: deeSMSxConfig.secretKey,
-        apiKey: deeSMSxConfig.apiKey,
-        to: phoneNumber,
-        sender: deeSMSxConfig.sender,
-        msg: message
-      }),
-    });
+function formatPhoneNumber(phoneNumber: string): string {
+  // ลบช่องว่างและอักขระพิเศษ
+  let cleaned = phoneNumber.replace(/\D/g, '');
 
-    const data = await response.json() as SMSResponse;
-    
-    if (data.code !== '0') {
-      throw new Error(`DeeSMSx API Error: ${data.msg}`);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Error sending SMS:', error);
-    throw error;
+  // ตรวจสอบรูปแบบและแปลง
+  if (cleaned.startsWith('0')) {
+    // แปลงจาก 08xxxxxxxx เป็น 668xxxxxxxx
+    return '66' + cleaned.substring(1);
+  } else if (cleaned.startsWith('66')) {
+    // เป็นรูปแบบที่ถูกต้องแล้ว
+    return cleaned;
+  } else if (cleaned.length >= 9 && cleaned.length <= 10) {
+    // สันนิษฐานว่าเป็นเบอร์ไทยที่ไม่มีรหัสประเทศนำหน้า
+    return '66' + cleaned;
   }
+
+  // คืนค่าเดิมหากไม่สามารถแปลงได้
+  return phoneNumber;
 } 

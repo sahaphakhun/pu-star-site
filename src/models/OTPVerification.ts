@@ -1,7 +1,6 @@
-import mongoose from 'mongoose';
-import { Schema, model, models } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IOTPVerification {
+export interface IOTPVerification extends Document {
   phoneNumber: string;
   token: string;      // token จาก DeeSMSx
   ref: string;        // ref จาก DeeSMSx
@@ -10,10 +9,11 @@ export interface IOTPVerification {
   expiresAt: Date;
 }
 
-const otpVerificationSchema = new Schema<IOTPVerification>({
+const OTPVerificationSchema: Schema = new Schema({
   phoneNumber: {
     type: String,
     required: true,
+    index: true,
     trim: true,
     match: [
       /^(\+\d{1,3}[- ]?)?\d{9,10}$/,
@@ -35,7 +35,6 @@ const otpVerificationSchema = new Schema<IOTPVerification>({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 300, // จะถูกลบอัตโนมัติหลังจาก 5 นาที (300 วินาที)
   },
   expiresAt: {
     type: Date,
@@ -43,12 +42,12 @@ const otpVerificationSchema = new Schema<IOTPVerification>({
   },
 });
 
-// สร้างดัชนีเพื่อเพิ่มประสิทธิภาพในการค้นหา
-otpVerificationSchema.index({ phoneNumber: 1 });
-otpVerificationSchema.index({ token: 1 });
+// ลบ indexes เก่าและสร้างใหม่
+OTPVerificationSchema.index({ phoneNumber: 1 });
+OTPVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // จะลบอัตโนมัติเมื่อถึงเวลา expiresAt
 
 // เพิ่มรูทีนทำความสะอาด OTP ที่หมดอายุแล้ว
-otpVerificationSchema.pre('save', function (next) {
+OTPVerificationSchema.pre('save', function (next) {
   // ตั้งเวลาหมดอายุเป็น 5 นาทีจากเวลาปัจจุบัน
   if (!this.expiresAt) {
     this.expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 นาที
@@ -56,6 +55,5 @@ otpVerificationSchema.pre('save', function (next) {
   next();
 });
 
-const OTPVerification = models.OTPVerification || model<IOTPVerification>('OTPVerification', otpVerificationSchema);
-
-export default OTPVerification as mongoose.Model<IOTPVerification>; 
+// ป้องกัน Error: OverwriteModelError
+export default mongoose.models.OTPVerification || mongoose.model<IOTPVerification>('OTPVerification', OTPVerificationSchema); 
