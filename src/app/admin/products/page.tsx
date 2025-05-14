@@ -168,10 +168,10 @@ const AdminProductsPage = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">จัดการสินค้า</h1>
 
-      <div className="bg-white p-8 rounded-2xl shadow-lg mb-10 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6 text-blue-700">{editMode ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-lg mb-8 sm:mb-10 max-w-3xl mx-auto">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-blue-700">{editMode ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
             <div>
               <div className="mb-5">
                 <label className="block text-sm font-semibold mb-2 text-gray-700">ชื่อสินค้า</label>
@@ -236,11 +236,11 @@ const AdminProductsPage = () => {
               )}
             </div>
           </div>
-          <div className="flex gap-3 mt-8">
+          <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
             <button
               type="submit"
               disabled={isUploading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition w-full md:w-auto"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition w-full"
             >
               {editMode ? 'อัพเดทสินค้า' : 'เพิ่มสินค้า'}
             </button>
@@ -248,7 +248,7 @@ const AdminProductsPage = () => {
               <button
                 type="button"
                 onClick={resetForm}
-                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition w-full md:w-auto"
+                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition w-full mt-2 sm:mt-0"
               >
                 ยกเลิก
               </button>
@@ -257,68 +257,72 @@ const AdminProductsPage = () => {
         </form>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl shadow-lg">
-        <h2 className="text-xl font-bold mb-6 text-blue-700">รายการสินค้าทั้งหมด ({products.length})</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold text-gray-600">รูปภาพ</th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-600">ชื่อสินค้า</th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-600">ราคา</th>
-                <th className="px-6 py-3 text-left font-semibold text-gray-600">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length > 0 ? (
-                products.map((product, idx) => (
-                  <tr
-                    key={product._id}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                  >
-                    <td className="px-6 py-3">
-                      <div className="relative h-12 w-12">
-                        <Image
-                          src={product.imageUrl}
-                          alt={product.name}
-                          width={48}
-                          height={48}
-                          className="object-cover rounded"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="font-medium text-gray-900">{product.name}</div>
-                      <div className="text-gray-500 line-clamp-1">{product.description}</div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="text-gray-900">฿{product.price.toLocaleString()}</div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="text-blue-600 hover:text-blue-800 font-semibold mr-4"
-                      >
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-800 font-semibold"
-                      >
-                        ลบ
-                      </button>
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-lg">
+        <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-blue-700">รายการสินค้าทั้งหมด ({products.length})</h2>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-blue-50">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-600 w-16 sm:w-24">รูปภาพ</th>
+                  <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-600">ชื่อสินค้า</th>
+                  <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-600 w-20 sm:w-28">ราคา</th>
+                  <th className="px-3 sm:px-6 py-3 text-left font-semibold text-gray-600 w-20 sm:w-28">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.length > 0 ? (
+                  products.map((product, idx) => (
+                    <tr
+                      key={product._id}
+                      className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                    >
+                      <td className="px-3 sm:px-6 py-3">
+                        <div className="relative h-12 w-12">
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            width={48}
+                            height={48}
+                            className="object-cover rounded"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3">
+                        <div className="font-medium text-gray-900">{product.name}</div>
+                        <div className="text-gray-500 line-clamp-1">{product.description}</div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3">
+                        <div className="text-gray-900">฿{product.price.toLocaleString()}</div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 px-2 py-1 rounded-md text-sm"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product._id)}
+                            className="text-red-600 hover:text-red-800 font-semibold bg-red-50 px-2 py-1 rounded-md text-sm"
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-gray-400 font-semibold bg-gray-50">
+                      ไม่มีสินค้า
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-400 font-semibold bg-gray-50">
-                    ไม่มีสินค้า
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

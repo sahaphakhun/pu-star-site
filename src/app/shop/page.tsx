@@ -187,8 +187,8 @@ const ShopPage = () => {
       </div>
 
       {showOrderForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">สรุปรายการสั่งซื้อ</h2>
             
             {Object.keys(cart).length > 0 ? (
@@ -220,7 +220,7 @@ const ShopPage = () => {
                 </div>
                 
                 <div className="border-t pt-2 mb-4">
-                  <div className="flex justify-between font-bold">
+                  <div className="flex justify-between font-bold bg-blue-50 p-2 rounded">
                     <span>รวมทั้งสิ้น:</span>
                     <span>฿{calculateTotal().toLocaleString()}</span>
                   </div>
@@ -295,17 +295,17 @@ const ShopPage = () => {
                       </div>
                     </div>
                   )}
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
                     <button
                       type="submit"
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg w-full"
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg w-full order-2 sm:order-1"
                     >
                       ยืนยันการสั่งซื้อ
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowOrderForm(false)}
-                      className="bg-gray-300 px-4 py-2 rounded-lg"
+                      className="bg-gray-300 px-4 py-2 rounded-lg w-full order-1 sm:order-2"
                     >
                       ปิด
                     </button>
@@ -327,7 +327,7 @@ const ShopPage = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {products.length > 0 ? (
           products.map((product) => (
             <div
