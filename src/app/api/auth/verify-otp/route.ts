@@ -5,6 +5,13 @@ import User from '@/models/User';
 import OTPVerification from '@/models/OTPVerification';
 import { verifyOTP } from '@/utils/deesmsx';
 
+interface DecodedToken {
+  userId: string;
+  phoneNumber: string;
+  role: string;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
   try {
     const { phoneNumber, otp, name } = await req.json();
@@ -120,10 +127,11 @@ export async function POST(req: Request) {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('เกิดข้อผิดพลาดในการตรวจสอบ OTP:', error);
+      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
       return NextResponse.json(
-        { success: false, message: `รหัส OTP ไม่ถูกต้อง: ${error.message}` },
+        { success: false, message: `รหัส OTP ไม่ถูกต้อง: ${errorMessage}` },
         { status: 400 }
       );
     }

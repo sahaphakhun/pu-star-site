@@ -58,7 +58,7 @@ const LoginPage = () => {
       } else {
         setError(data.message || 'เกิดข้อผิดพลาดในการส่ง OTP');
       }
-    } catch (error) {
+    } catch (_) {
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ const LoginPage = () => {
       } else {
         setError(data.message || 'เกิดข้อผิดพลาดในการยืนยัน OTP');
       }
-    } catch (error) {
+    } catch (_) {
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
     } finally {
       setLoading(false);

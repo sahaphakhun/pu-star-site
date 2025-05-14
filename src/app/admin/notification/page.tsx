@@ -2,15 +2,26 @@
 
 import { useState, FormEvent } from 'react';
 
+interface SMSResponseData {
+  code: string;
+  status: string;
+  msg: string;
+  creditUsed: string;
+  requestNo: string;
+  credit_balance: number;
+}
+
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  data?: SMSResponseData;
+}
+
 const AdminNotificationPage = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    message: string;
-    data?: any;
-  } | null>(null);
+  const [result, setResult] = useState<ApiResponse | null>(null);
 
   // ตรวจสอบจำนวนเครดิตที่จะใช้
   const calculateCredits = (msg: string): number => {

@@ -5,6 +5,13 @@ import { cookies } from "next/headers";
 import jwt from 'jsonwebtoken';
 import User from '@/models/User';
 
+interface DecodedToken {
+  userId: string;
+  phoneNumber?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
 // API สำหรับส่ง SMS
 export async function POST(req: Request) {
   try {
@@ -24,7 +31,7 @@ export async function POST(req: Request) {
       const decoded = jwt.verify(
         tokenCookie.value, 
         process.env.JWT_SECRET || 'default_secret_replace_in_production'
-      ) as any;
+      ) as DecodedToken;
       
       if (!decoded || !decoded.userId) {
         return NextResponse.json(
@@ -45,7 +52,8 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
-    } catch (error) {
+    } catch (_) {
+      // Ignore specific error as we just need to know if verification failed
       return NextResponse.json(
         { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
         { status: 403 }
@@ -71,10 +79,11 @@ export async function POST(req: Request) {
         message: 'ส่ง SMS สำเร็จ',
         data: response
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('เกิดข้อผิดพลาดในการส่ง SMS:', error);
+      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
       return NextResponse.json(
-        { success: false, message: `เกิดข้อผิดพลาดในการส่ง SMS: ${error.message}` },
+        { success: false, message: `เกิดข้อผิดพลาดในการส่ง SMS: ${errorMessage}` },
         { status: 500 }
       );
     }

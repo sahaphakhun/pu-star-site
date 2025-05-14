@@ -46,6 +46,14 @@ interface AuthResult {
   };
 }
 
+// สำหรับถอดรหัส JWT token
+interface DecodedToken {
+  userId: string;
+  phoneNumber?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
 // ตรวจสอบการยืนยันตัวตนจาก JWT ในคำขอ API
 export async function verifyAuth(req: Request): Promise<AuthResult> {
   try {
@@ -67,7 +75,10 @@ export async function verifyAuth(req: Request): Promise<AuthResult> {
     }
     
     // ตรวจสอบและถอดรหัส token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
+    const decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'default_secret_replace_in_production'
+    ) as DecodedToken;
     
     if (!decoded || !decoded.userId) {
       return { success: false, message: 'Token ไม่ถูกต้อง' };

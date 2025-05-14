@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import User from '@/models/User';
 import OTPVerification from '@/models/OTPVerification';
 import { requestOTP } from '@/utils/deesmsx';
-
-// ฟังก์ชันสำหรับสร้าง OTP
-function generateOTP(length = 6) {
-  const digits = '0123456789';
-  let OTP = '';
-  for (let i = 0; i < length; i++) {
-    OTP += digits[Math.floor(Math.random() * 10)];
-  }
-  return OTP;
-}
 
 // API Handler สำหรับส่ง OTP
 export async function POST(req: Request) {
@@ -74,10 +63,11 @@ export async function POST(req: Request) {
         message: 'ส่งรหัส OTP สำเร็จแล้ว กรุณาตรวจสอบข้อความ SMS',
         ref: otpResponse.result.ref  // ส่ง ref กลับไปให้แสดงบนหน้าเว็บ
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('เกิดข้อผิดพลาดในการส่ง OTP:', error);
+      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
       return NextResponse.json(
-        { success: false, message: `เกิดข้อผิดพลาดในการส่ง OTP: ${error.message}` },
+        { success: false, message: `เกิดข้อผิดพลาดในการส่ง OTP: ${errorMessage}` },
         { status: 500 }
       );
     }

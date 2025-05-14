@@ -316,7 +316,13 @@ const ShopPage = () => {
                         <label className="block text-sm mb-1">แนบสลิปการโอนเงิน</label>
                         <input type="file" accept="image/*" onChange={handleSlipChange} required />
                         {slipPreview && (
-                          <img src={slipPreview} alt="slip preview" className="mt-2 h-32 object-contain border rounded" />
+                          <Image 
+                            src={slipPreview} 
+                            alt="slip preview" 
+                            className="mt-2 h-32 object-contain border rounded" 
+                            width={128} 
+                            height={128}
+                          />
                         )}
                       </div>
                     </div>

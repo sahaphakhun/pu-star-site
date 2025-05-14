@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 // จัดเก็บการเชื่อมต่อเพื่อไม่ให้ต้องเชื่อมต่อใหม่ทุกครั้ง
-let globalWithMongoose = global as typeof globalThis & {
+const globalWithMongoose = global as typeof globalThis & {
   mongoose?: {
     conn: typeof mongoose | null;
     promise: Promise<typeof mongoose> | null;

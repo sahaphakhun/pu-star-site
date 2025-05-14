@@ -1,10 +1,15 @@
 import { deeSMSxConfig } from '@/config/deesmsx';
 
-// interface สำหรับ response ของ DeeSMSx OTP Request
-interface OTPRequestResponse {
+// interface สำหรับ response ของ DeeSMSx API
+interface APIResponse {
   error: string;
   msg: string;
   status: string;
+  [key: string]: unknown;
+}
+
+// interface สำหรับ response ของ DeeSMSx OTP Request
+interface OTPRequestResponse extends APIResponse {
   credit_balance: number;
   result: {
     requestNo: string;
@@ -14,11 +19,19 @@ interface OTPRequestResponse {
 }
 
 // interface สำหรับ response ของ DeeSMSx OTP Verify
-interface OTPVerifyResponse {
+interface OTPVerifyResponse extends APIResponse {
+  result: Record<string, unknown>;
+}
+
+// interface สำหรับ response ของ DeeSMSx SMS
+interface SMSResponse {
+  code: string;
   status: string;
-  error: string;
   msg: string;
-  result: Record<string, any>;
+  creditUsed: string;
+  requestNo: string;
+  credit_balance: number;
+  [key: string]: unknown;
 }
 
 /**
@@ -43,7 +56,7 @@ export async function requestOTP(phoneNumber: string): Promise<OTPRequestRespons
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as OTPRequestResponse;
     
     if (data.error !== '0') {
       throw new Error(`DeeSMSx API Error: ${data.msg}`);
@@ -77,7 +90,7 @@ export async function verifyOTP(token: string, pin: string): Promise<OTPVerifyRe
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as OTPVerifyResponse;
     
     if (data.status !== '0') {
       throw new Error(`DeeSMSx API Error: ${data.msg}`);
@@ -96,7 +109,7 @@ export async function verifyOTP(token: string, pin: string): Promise<OTPVerifyRe
  * @param message ข้อความที่ต้องการส่ง
  * @returns ข้อมูลการตอบกลับจาก API
  */
-export async function sendSMS(phoneNumber: string, message: string): Promise<any> {
+export async function sendSMS(phoneNumber: string, message: string): Promise<SMSResponse> {
   try {
     const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.sms}`, {
       method: 'POST',
@@ -112,7 +125,7 @@ export async function sendSMS(phoneNumber: string, message: string): Promise<any
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as SMSResponse;
     
     if (data.code !== '0') {
       throw new Error(`DeeSMSx API Error: ${data.msg}`);
