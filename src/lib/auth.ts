@@ -1,8 +1,10 @@
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import connectDB from "../lib/mongodb";
 import User from "../models/User";
+import { cookies } from "next/headers";
 
 // เพิ่ม type สำหรับ session แบบกำหนดเอง
 declare module "next-auth" {
@@ -29,6 +31,69 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: 'user' | 'admin';
+  }
+}
+
+// ผลลัพธ์จากการตรวจสอบการยืนยันตัวตน
+interface AuthResult {
+  success: boolean;
+  message?: string;
+  user?: {
+    _id: string;
+    phoneNumber?: string;
+    name?: string;
+    role: 'user' | 'admin';
+  };
+}
+
+// ตรวจสอบการยืนยันตัวตนจาก JWT ในคำขอ API
+export async function verifyAuth(req: Request): Promise<AuthResult> {
+  try {
+    // ดึง token จาก cookies หรือ Authorization header
+    const cookieStore = cookies();
+    const tokenFromCookie = cookieStore.get('token');
+    const authHeader = req.headers.get('authorization');
+    
+    let token: string | undefined;
+    
+    if (tokenFromCookie) {
+      token = tokenFromCookie.value;
+    } else if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    
+    if (!token) {
+      return { success: false, message: 'ไม่พบ token สำหรับการยืนยันตัวตน' };
+    }
+    
+    // ตรวจสอบและถอดรหัส token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
+    
+    if (!decoded || !decoded.userId) {
+      return { success: false, message: 'Token ไม่ถูกต้อง' };
+    }
+    
+    // ค้นหาข้อมูลผู้ใช้จากฐานข้อมูล
+    await connectDB();
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      return { success: false, message: 'ไม่พบข้อมูลผู้ใช้' };
+    }
+    
+    // ส่งข้อมูลผู้ใช้กลับไป
+    return { 
+      success: true, 
+      user: {
+        _id: user._id.toString(),
+        phoneNumber: user.phoneNumber,
+        name: user.name,
+        role: user.role || 'user',
+      } 
+    };
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการตรวจสอบการยืนยันตัวตน:', error);
+    return { success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบการยืนยันตัวตน' };
   }
 }
 

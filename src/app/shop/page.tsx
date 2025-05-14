@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 // เพิ่ม interface เพื่อระบุ _id
 interface ProductWithId extends IProduct {
@@ -10,6 +12,8 @@ interface ProductWithId extends IProduct {
 }
 
 const ShopPage = () => {
+  const router = useRouter();
+  const { isLoggedIn, user } = useAuth();
   const [products, setProducts] = useState<ProductWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<{[key: string]: {product: ProductWithId, quantity: number}}>({});
@@ -20,6 +24,14 @@ const ShopPage = () => {
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreview, setSlipPreview] = useState<string | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
+
+  // ใช้ข้อมูลผู้ใช้จาก Auth Context ถ้ามีการล็อกอิน
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      setCustomerName(user.name);
+      setCustomerPhone(user.phoneNumber);
+    }
+  }, [isLoggedIn, user]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -77,8 +89,22 @@ const ShopPage = () => {
     }
   };
 
+  const handleShowOrderForm = () => {
+    if (!isLoggedIn) {
+      // ถ้ายังไม่ได้ล็อกอิน ให้ redirect ไปหน้าล็อกอิน
+      router.push(`/login?returnUrl=${encodeURIComponent('/shop')}`);
+    } else {
+      setShowOrderForm(true);
+    }
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoggedIn) {
+      router.push(`/login?returnUrl=${encodeURIComponent('/shop')}`);
+      return;
+    }
+    
     if (!customerName || !customerPhone || !customerAddress) {
       alert('กรุณากรอกชื่อ เบอร์โทรศัพท์ และที่อยู่');
       return;
@@ -132,8 +158,6 @@ const ShopPage = () => {
       if (response.ok) {
         alert('สั่งซื้อสำเร็จ!');
         setCart({});
-        setCustomerName('');
-        setCustomerPhone('');
         setCustomerAddress('');
         setPaymentMethod('cod');
         setSlipFile(null);
@@ -176,7 +200,7 @@ const ShopPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">รายการสินค้า</h1>
         <button 
-          onClick={() => setShowOrderForm(!showOrderForm)}
+          onClick={handleShowOrderForm}
           className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg"
         >
           <span className="mr-2">ตะกร้า</span>
@@ -235,6 +259,7 @@ const ShopPage = () => {
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
+                      disabled={isLoggedIn}
                     />
                   </div>
                   <div className="mb-3">
@@ -245,6 +270,7 @@ const ShopPage = () => {
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
+                      disabled={isLoggedIn}
                     />
                   </div>
                   <div className="mb-3">

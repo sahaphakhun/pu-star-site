@@ -3,9 +3,11 @@ import { Schema, model, models } from 'mongoose';
 
 export interface IUser {
   name: string;
-  email: string;
-  password: string;
+  phoneNumber: string;
+  email?: string; // อีเมลเป็นตัวเลือก
+  password?: string; // รหัสผ่านเป็นตัวเลือก (กรณีใช้ OTP อย่างเดียว)
   role: 'user' | 'admin';
+  isVerified: boolean; // เพิ่มสถานะการยืนยันตัวตน
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,13 +18,24 @@ const userSchema = new Schema<IUser>(
     name: {
       type: String,
       required: [true, 'ต้องระบุชื่อผู้ใช้'],
-      minlength: [3, 'ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร'],
+      minlength: [2, 'ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 2 ตัวอักษร'],
       maxlength: [50, 'ชื่อผู้ใช้ต้องมีความยาวไม่เกิน 50 ตัวอักษร'],
+    },
+    phoneNumber: {
+      type: String,
+      required: [true, 'ต้องระบุเบอร์โทรศัพท์'],
+      unique: true,
+      trim: true,
+      match: [
+        /^(\+\d{1,3}[- ]?)?\d{9,10}$/,
+        'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง',
+      ],
     },
     email: {
       type: String,
-      required: [true, 'ต้องระบุอีเมล'],
+      required: false,
       unique: true,
+      sparse: true, // ให้ unique เฉพาะเมื่อมีค่า
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
         'รูปแบบอีเมลไม่ถูกต้อง',
@@ -30,7 +43,7 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'ต้องระบุรหัสผ่าน'],
+      required: false,
       minlength: [6, 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร'],
       select: false,
     },
@@ -38,6 +51,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   {

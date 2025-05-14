@@ -1,0 +1,137 @@
+import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+import connectDB from '@/lib/db';
+import User from '@/models/User';
+import OTPVerification from '@/models/OTPVerification';
+import { verifyOTP } from '@/utils/deesmsx';
+
+export async function POST(req: Request) {
+  try {
+    const { phoneNumber, otp, name } = await req.json();
+
+    if (!phoneNumber || !otp) {
+      return NextResponse.json(
+        { success: false, message: 'กรุณาระบุเบอร์โทรศัพท์และรหัส OTP' },
+        { status: 400 }
+      );
+    }
+
+    // ตรวจสอบรูปแบบเบอร์โทรศัพท์
+    const thaiPhoneRegex = /^0\d{9}$/;  // เบอร์ไทยที่ขึ้นต้นด้วย 0 เช่น 0812345678
+    const e164PhoneRegex = /^66\d{9}$/; // เบอร์ในรูปแบบ E.164 เช่น 66812345678
+
+    // ตรวจสอบรูปแบบเบอร์โทรศัพท์และแปลงให้เป็นรูปแบบที่ DeeSMSx ต้องการ
+    let formattedPhoneNumber = '';
+    if (thaiPhoneRegex.test(phoneNumber)) {
+      // แปลงเบอร์ไทย 08xxxxxxxx เป็น 668xxxxxxxx
+      formattedPhoneNumber = '66' + phoneNumber.substring(1);
+    } else if (e164PhoneRegex.test(phoneNumber)) {
+      // เบอร์อยู่ในรูปแบบที่ถูกต้องแล้ว
+      formattedPhoneNumber = phoneNumber;
+    } else {
+      return NextResponse.json(
+        { success: false, message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง' },
+        { status: 400 }
+      );
+    }
+
+    // เชื่อมต่อกับฐานข้อมูล
+    await connectDB();
+
+    // ค้นหาข้อมูล OTP
+    const otpRecord = await OTPVerification.findOne({ phoneNumber: formattedPhoneNumber });
+
+    // ตรวจสอบว่า OTP record มีอยู่จริงหรือไม่
+    if (!otpRecord) {
+      return NextResponse.json(
+        { success: false, message: 'ไม่พบข้อมูล OTP สำหรับเบอร์โทรศัพท์นี้ กรุณาขอรหัส OTP ใหม่' },
+        { status: 400 }
+      );
+    }
+
+    // ตรวจสอบว่า OTP หมดอายุหรือไม่
+    if (otpRecord.expiresAt < new Date()) {
+      await OTPVerification.deleteOne({ _id: otpRecord._id });
+      return NextResponse.json(
+        { success: false, message: 'รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่' },
+        { status: 400 }
+      );
+    }
+
+    try {
+      // ตรวจสอบ OTP กับ DeeSMSx API
+      await verifyOTP(otpRecord.token, otp);
+
+      // หาหรือสร้างผู้ใช้ใหม่
+      let user = await User.findOne({ phoneNumber: formattedPhoneNumber });
+      
+      if (!user) {
+        // ถ้าไม่มีชื่อผู้ใช้ในการลงทะเบียนใหม่
+        if (!name) {
+          return NextResponse.json(
+            { success: false, message: 'กรุณาระบุชื่อผู้ใช้' },
+            { status: 400 }
+          );
+        }
+        
+        // สร้างผู้ใช้ใหม่
+        user = await User.create({
+          name,
+          phoneNumber: formattedPhoneNumber,
+          isVerified: true,
+        });
+      } else {
+        // อัปเดตสถานะการยืนยันของผู้ใช้ที่มีอยู่
+        user.isVerified = true;
+        await user.save();
+      }
+
+      // ลบ OTP record เมื่อยืนยันเสร็จสิ้น
+      await OTPVerification.deleteOne({ _id: otpRecord._id });
+
+      // สร้าง JWT token เพื่อใช้ในการล็อกอิน
+      const token = jwt.sign(
+        { userId: user._id, phoneNumber: user.phoneNumber, role: user.role },
+        process.env.JWT_SECRET || 'default_secret_replace_in_production',
+        { expiresIn: '7d' }
+      );
+
+      // ตั้งค่า cookie สำหรับเซสชัน
+      const response = NextResponse.json({
+        success: true,
+        message: 'ยืนยันตัวตนสำเร็จ',
+        user: {
+          _id: user._id,
+          name: user.name,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+        },
+      });
+
+      // ตั้งค่า token ใน cookie
+      response.cookies.set({
+        name: 'token',
+        value: token,
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 7, // 7 วัน
+        path: '/',
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+      });
+
+      return response;
+    } catch (error: any) {
+      console.error('เกิดข้อผิดพลาดในการตรวจสอบ OTP:', error);
+      return NextResponse.json(
+        { success: false, message: `รหัส OTP ไม่ถูกต้อง: ${error.message}` },
+        { status: 400 }
+      );
+    }
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการตรวจสอบ OTP:', error);
+    return NextResponse.json(
+      { success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบ OTP' },
+      { status: 500 }
+    );
+  }
+} 
