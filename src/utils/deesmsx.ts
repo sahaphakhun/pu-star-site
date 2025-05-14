@@ -6,7 +6,7 @@
 // API Keys (ควรเก็บไว้ใน .env file ในการใช้งานจริง)
 const API_KEY = process.env.DEESMSX_API_KEY || '092cdf3c-25a2c466-040abba8-5ff5cb9a';
 const SECRET_KEY = process.env.DEESMSX_SECRET_KEY || '87fb840d-1dfdd8fe-77402037-e52a9135';
-const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMSX'; // หรือชื่อ sender ที่ได้รับอนุมัติ
+const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMSX'; // ชื่อ sender ที่ได้รับอนุมัติ
 
 // Base URL
 const BASE_URL = 'https://apicall.deesmsx.com';
@@ -54,6 +54,8 @@ interface SMSResponse {
  */
 export async function sendSMS(to: string, message: string, sender: string = SENDER_NAME) {
   try {
+    console.log(`[DeeSMSx] กำลังส่ง SMS ไปที่: ${to}, sender: ${sender}, ข้อความ: ${message}`);
+    
     // เตรียมข้อมูลสำหรับส่ง
     const data = {
       secretKey: SECRET_KEY,
@@ -62,6 +64,8 @@ export async function sendSMS(to: string, message: string, sender: string = SEND
       sender,
       msg: message
     };
+
+    console.log('[DeeSMSx] ข้อมูลที่ส่งไป:', JSON.stringify(data, null, 2));
 
     // ส่งคำขอไปยัง API
     const response = await fetch(`${BASE_URL}/v1/SMSWebService`, {
@@ -74,12 +78,21 @@ export async function sendSMS(to: string, message: string, sender: string = SEND
 
     // ตรวจสอบสถานะการตอบกลับ
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[DeeSMSx] HTTP error: ${response.status}, ${errorText}`);
+      throw new Error(`HTTP error: ${response.status}, ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('[DeeSMSx] ผลลัพธ์:', result);
+
+    return result;
   } catch (error) {
-    console.error('Error sending SMS:', error);
+    console.error('[DeeSMSx] Error sending SMS:', error);
+    if (error instanceof Error) {
+      console.error('[DeeSMSx] Error message:', error.message);
+      console.error('[DeeSMSx] Error stack:', error.stack);
+    }
     throw error;
   }
 }
@@ -99,15 +112,22 @@ export async function requestOTP(
   isShowRef: '0' | '1' = '1'
 ) {
   try {
+    console.log(`[DeeSMSx] กำลังขอ OTP ไปที่: ${to}, sender: ${sender}, lang: ${lang}, isShowRef: ${isShowRef}`);
+    
     // เตรียมข้อมูลสำหรับส่ง
+    const formattedPhoneNumber = formatPhoneNumber(to);
+    console.log(`[DeeSMSx] เบอร์โทรศัพท์หลังจากแปลง: ${formattedPhoneNumber}`);
+    
     const data = {
       secretKey: SECRET_KEY,
       apiKey: API_KEY,
-      to: formatPhoneNumber(to),
+      to: formattedPhoneNumber,
       sender,
       lang,
       isShowRef
     };
+
+    console.log('[DeeSMSx] ข้อมูลที่ส่งไป:', JSON.stringify(data, null, 2));
 
     // ส่งคำขอไปยัง API
     const response = await fetch(`${BASE_URL}/v1/otp/request`, {
@@ -120,12 +140,27 @@ export async function requestOTP(
 
     // ตรวจสอบสถานะการตอบกลับ
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[DeeSMSx] HTTP error: ${response.status}, ${errorText}`);
+      throw new Error(`HTTP error: ${response.status}, ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('[DeeSMSx] ผลลัพธ์:', result);
+
+    // ตรวจสอบว่ามี error หรือไม่
+    if (result.error !== '0') {
+      console.error(`[DeeSMSx] API error: ${result.error}, ${result.msg}`);
+      throw new Error(`DeeSMSx API Error: ${result.msg}`);
+    }
+
+    return result;
   } catch (error) {
-    console.error('Error requesting OTP:', error);
+    console.error('[DeeSMSx] Error requesting OTP:', error);
+    if (error instanceof Error) {
+      console.error('[DeeSMSx] Error message:', error.message);
+      console.error('[DeeSMSx] Error stack:', error.stack);
+    }
     throw error;
   }
 }
@@ -138,6 +173,8 @@ export async function requestOTP(
  */
 export async function verifyOTP(token: string, pin: string) {
   try {
+    console.log(`[DeeSMSx] กำลังยืนยัน OTP token: ${token}, pin: ${pin}`);
+    
     // เตรียมข้อมูลสำหรับส่ง
     const data = {
       secretKey: SECRET_KEY,
@@ -145,6 +182,8 @@ export async function verifyOTP(token: string, pin: string) {
       token,
       pin
     };
+
+    console.log('[DeeSMSx] ข้อมูลที่ส่งไป:', JSON.stringify(data, null, 2));
 
     // ส่งคำขอไปยัง API
     const response = await fetch(`${BASE_URL}/v1/otp/verify`, {
@@ -157,18 +196,26 @@ export async function verifyOTP(token: string, pin: string) {
 
     // ตรวจสอบสถานะการตอบกลับ
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[DeeSMSx] HTTP error: ${response.status}, ${errorText}`);
+      throw new Error(`HTTP error: ${response.status}, ${errorText}`);
     }
 
     const result = await response.json();
+    console.log('[DeeSMSx] ผลลัพธ์:', result);
     
     if (result.status !== "0" || result.error !== "0") {
+      console.error(`[DeeSMSx] API error: ${result.error || result.status}, ${result.msg}`);
       throw new Error(result.msg || "การยืนยัน OTP ล้มเหลว");
     }
     
     return result;
   } catch (error) {
-    console.error('Error verifying OTP:', error);
+    console.error('[DeeSMSx] Error verifying OTP:', error);
+    if (error instanceof Error) {
+      console.error('[DeeSMSx] Error message:', error.message);
+      console.error('[DeeSMSx] Error stack:', error.stack);
+    }
     throw error;
   }
 }

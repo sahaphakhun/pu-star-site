@@ -11,14 +11,23 @@ import { sendSMS as deeSMSxSendSMS } from '@/utils/deesmsx';
  */
 export async function sendSMS(phoneNumber: string, message: string) {
   try {
+    console.log(`กำลังส่ง SMS ไปที่: ${phoneNumber}, ข้อความ: ${message}`);
+    
     // เรียกใช้ฟังก์ชัน sendSMS จาก deesmsx.ts เพื่อส่ง SMS
     const result = await deeSMSxSendSMS(phoneNumber, message);
+    
+    console.log('ผลลัพธ์การส่ง SMS:', result);
     
     // บันทึกประวัติการส่ง SMS ลงในฐานข้อมูลหรือทำอย่างอื่นตามต้องการ (อาจเพิ่มโค้ดส่วนนี้ในอนาคต)
     
     return result;
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการส่ง SMS:', error);
+    // แสดงข้อมูล error ที่ละเอียดขึ้น
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     throw error;
   }
 }

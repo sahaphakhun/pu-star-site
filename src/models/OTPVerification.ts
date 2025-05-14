@@ -13,7 +13,6 @@ const OTPVerificationSchema: Schema = new Schema({
   phoneNumber: {
     type: String,
     required: true,
-    index: true,
     trim: true,
     match: [
       /^(\+\d{1,3}[- ]?)?\d{9,10}$/,
