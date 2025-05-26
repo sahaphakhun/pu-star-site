@@ -205,22 +205,29 @@ export async function verifyOTP(token: string, pin: string) {
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
     
-    // ตรวจสอบสถานะสำเร็จ
-    // DeeSMSx อาจส่ง status เป็น '200' และ msg เป็น 'Verify Success' เมื่อสำเร็จ
-    // หรือ code เป็น '0' และ error เป็น '0'
-    const statusCode = String(result.status || result.code || '');
-    const errorCode = String(result.error || '');
-    const message = String(result.msg || '');
+    // -----------------------------
+    // ปรับปรุงเงื่อนไขตรวจสอบความสำเร็จ
+    // DeeSMSx อาจส่งกลับ field ต่างกันไปตาม endpoint เช่น
+    //   { code: '0', status: '200', msg: 'Verify Success', ... }
+    //   { error: '0', status: '0', msg: 'Success', ... }
+    //   { status: '0', msg: 'Success', ... }
+    // โดยทั่วไป "0" หมายถึงสำเร็จ
+    // -----------------------------
+    const statusCode = String(result.status);
+    const codeField   = result.code   !== undefined ? String(result.code)   : undefined;
+    const errorField  = result.error  !== undefined ? String(result.error)  : undefined;
 
-    // กรณีที่สำเร็จ: status=200 และ msg=Verify Success
-    // หรือ code=0 และ error=0
-    const isSuccess = 
-      (statusCode === '200' && message === 'Verify Success') ||
-      (statusCode === '0' && errorCode === '0') ||
-      (result.code === '0' && (result.error === '0' || result.error === undefined));
+    const isSuccess = (
+      // กรณีมี code และเท่ากับ 0
+      (codeField === '0') ||
+      // หรือ error (ในบาง endpointใช้ field error แทน code)
+      (errorField === '0') ||
+      // หรือ status เป็น 0 หรือ 200 (API บางตัว)
+      statusCode === '0' || statusCode === '200'
+    );
 
     if (!isSuccess) {
-      console.error(`[DeeSMSx] API error: ${result.error || result.status}, ${result.msg}`);
+      console.error(`[DeeSMSx] API error: ${errorField ?? codeField ?? statusCode}, ${result.msg}`);
       throw new Error(result.msg || 'การยืนยัน OTP ล้มเหลว');
     }
     

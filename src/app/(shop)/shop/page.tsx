@@ -287,13 +287,6 @@ const ShopPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Toaster />
       
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-12">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4">ยินดีต้อนรับสู่ร้านค้าออนไลน์</h1>
-          <p className="text-xl opacity-90">สินค้าคุณภาพดี ราคาดี ส่งฟรีทั่วประเทศ</p>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 py-8">
         {/* Products Grid */}
