@@ -9,9 +9,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 
-// เพิ่ม interface เพื่อระบุ _id
 interface ProductWithId extends IProduct {
   _id: string;
+}
+
+interface CartItem {
+  product: ProductWithId;
+  quantity: number;
+  selectedOptions?: { [optionName: string]: string };
 }
 
 const ShopPage = () => {
@@ -19,7 +24,7 @@ const ShopPage = () => {
   const { isLoggedIn, user } = useAuth();
   const [products, setProducts] = useState<ProductWithId[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<{[key: string]: {product: ProductWithId, quantity: number}}>({});
+  const [cart, setCart] = useState<{[key: string]: CartItem}>({});
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -27,10 +32,10 @@ const ShopPage = () => {
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreview, setSlipPreview] = useState<string | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); // ใช้สำหรับแบ่ง step ในฟอร์มการสั่งซื้อ
-  const [showCart, setShowCart] = useState(false); // แสดงตะกร้าแบบ Bottom Sheet
+  const [showCart, setShowCart] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
 
-  // ใช้ข้อมูลผู้ใช้จาก Auth Context ถ้ามีการล็อกอิน
   useEffect(() => {
     if (isLoggedIn && user) {
       setCustomerName(user.name);
@@ -54,43 +59,76 @@ const ShopPage = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  const addToCart = (product: ProductWithId) => {
+  const generateCartKey = (productId: string, selectedOptions?: {[key: string]: string}) => {
+    if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+      return productId;
+    }
+    return `${productId}-${JSON.stringify(selectedOptions)}`;
+  };
+
+  const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}) => {
+    const cartKey = generateCartKey(product._id, options);
     setCart(prev => {
       const newCart = { ...prev };
-      if (newCart[product._id]) {
-        newCart[product._id] = {
-          product,
-          quantity: newCart[product._id].quantity + 1
+      if (newCart[cartKey]) {
+        newCart[cartKey] = {
+          ...newCart[cartKey],
+          quantity: newCart[cartKey].quantity + 1
         };
       } else {
-        newCart[product._id] = { product, quantity: 1 };
+        newCart[cartKey] = { 
+          product, 
+          quantity: 1,
+          selectedOptions: options
+        };
       }
       return newCart;
     });
     
-    // แสดงการตอบสนองเมื่อเพิ่มสินค้า
     toast.success(`เพิ่ม ${product.name} ลงตะกร้าแล้ว`, {
       position: 'bottom-right',
       duration: 2000,
     });
   };
 
-  const removeFromCart = (productId: string) => {
+  const openProductModal = (product: ProductWithId) => {
+    setSelectedProduct(product);
+    setSelectedOptions({});
+  };
+
+  const addToCartWithOptions = () => {
+    if (!selectedProduct) return;
+    
+    // ตรวจสอบว่าเลือกตัวเลือกครบหรือไม่
+    if (selectedProduct.options && selectedProduct.options.length > 0) {
+      const missingOptions = selectedProduct.options.filter(option => !selectedOptions[option.name]);
+      if (missingOptions.length > 0) {
+        toast.error(`กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')}`);
+        return;
+      }
+    }
+
+    handleAddToCart(selectedProduct, selectedOptions);
+    setSelectedProduct(null);
+    setSelectedOptions({});
+  };
+
+  const removeFromCart = (cartKey: string) => {
     setCart(prev => {
       const newCart = { ...prev };
-      if (newCart[productId] && newCart[productId].quantity > 1) {
-        newCart[productId] = {
-          ...newCart[productId],
-          quantity: newCart[productId].quantity - 1
+      if (newCart[cartKey] && newCart[cartKey].quantity > 1) {
+        newCart[cartKey] = {
+          ...newCart[cartKey],
+          quantity: newCart[cartKey].quantity - 1
         };
       } else {
-        delete newCart[productId];
+        delete newCart[cartKey];
       }
       return newCart;
     });
   };
   
-  const deleteFromCart = (productId: string) => {
+  const deleteFromCart = (cartKey: string) => {
     Swal.fire({
       title: 'ยืนยันการลบ',
       text: 'คุณต้องการลบสินค้านี้ออกจากตะกร้าใช่หรือไม่?',
@@ -104,12 +142,10 @@ const ShopPage = () => {
       if (result.isConfirmed) {
         setCart(prev => {
           const newCart = { ...prev };
-          delete newCart[productId];
+          delete newCart[cartKey];
           return newCart;
         });
-        toast.success('ลบสินค้าออกจากตะกร้าแล้ว', {
-          position: 'bottom-right',
-        });
+        toast.success('ลบสินค้าออกจากตะกร้าแล้ว');
       }
     });
   };
@@ -126,7 +162,6 @@ const ShopPage = () => {
 
   const handleShowOrderForm = () => {
     if (!isLoggedIn) {
-      // ถ้ายังไม่ได้ล็อกอิน ให้ redirect ไปหน้าล็อกอิน
       router.push(`/login?returnUrl=${encodeURIComponent('/shop')}`);
     } else {
       setShowOrderForm(true);
@@ -154,7 +189,6 @@ const ShopPage = () => {
       return;
     }
     
-    // แสดง Loading
     Swal.fire({
       title: 'กำลังดำเนินการ',
       html: 'กรุณารอสักครู่...',
@@ -167,7 +201,6 @@ const ShopPage = () => {
     let slipUrl = '';
     try {
       if (paymentMethod === 'transfer' && slipFile) {
-        // อัพโหลดสลิปไป cloudinary (หรือ server)
         const formData = new FormData();
         formData.append('file', slipFile);
         formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
@@ -189,7 +222,8 @@ const ShopPage = () => {
           productId: item.product._id,
           name: item.product.name,
           price: item.product.price,
-          quantity: item.quantity
+          quantity: item.quantity,
+          selectedOptions: item.selectedOptions || {}
         })),
         totalAmount: calculateTotal()
       };
@@ -205,25 +239,23 @@ const ShopPage = () => {
       if (response.ok) {
         Swal.fire({
           title: 'สำเร็จ!',
-          text: 'ขอบคุณสำหรับการสั่งซื้อ เราจะจัดส่งสินค้าให้เร็วที่สุด',
+          text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว',
           icon: 'success',
           confirmButtonText: 'ตกลง'
         });
         setCart({});
+        setShowOrderForm(false);
         setCustomerAddress('');
-        setPaymentMethod('cod');
         setSlipFile(null);
         setSlipPreview(null);
-        setShowOrderForm(false);
-        setCurrentStep(1);
       } else {
-        throw new Error('เกิดข้อผิดพลาดในการสั่งซื้อ');
+        throw new Error('Failed to submit order');
       }
     } catch (error) {
-      console.error('เกิดข้อผิดพลาดในการส่งคำสั่งซื้อ:', error);
+      console.error('เกิดข้อผิดพลาด:', error);
       Swal.fire({
         title: 'เกิดข้อผิดพลาด',
-        text: 'ไม่สามารถส่งคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง',
+        text: 'ไม่สามารถส่งคำสั่งซื้อได้ กรุณาลองอีกครั้ง',
         icon: 'error',
         confirmButtonText: 'ตกลง'
       });
@@ -231,160 +263,280 @@ const ShopPage = () => {
   };
 
   const calculateTotal = () => {
-    return Object.values(cart).reduce(
-      (total, item) => total + item.product.price * item.quantity,
-      0
-    );
+    return Object.values(cart).reduce((total, item) => {
+      return total + (item.product.price * item.quantity);
+    }, 0);
   };
 
-  const totalItems = Object.values(cart).reduce(
-    (count, item) => count + item.quantity,
-    0
-  );
+  const getTotalItems = () => {
+    return Object.values(cart).reduce((total, item) => total + item.quantity, 0);
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-lg">กำลังโหลด...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-600">กำลังโหลดสินค้า...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Toaster สำหรับการแสดงการแจ้งเตือน */}
+    <div className="min-h-screen bg-gray-50">
       <Toaster />
       
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">รายการสินค้า</h1>
-        <motion.button 
-          onClick={() => setShowCart(true)}
-          className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg"
-          whileTap={{ scale: 0.95 }}
-        >
-          <span className="mr-2">ตะกร้า</span>
-          <span className="bg-white text-blue-500 rounded-full h-6 w-6 flex items-center justify-center text-sm">
-            {totalItems}
-          </span>
-        </motion.button>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-12">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4">ยินดีต้อนรับสู่ร้านค้าออนไลน์</h1>
+          <p className="text-xl opacity-90">สินค้าคุณภาพดี ราคาดี ส่งฟรีทั่วประเทศ</p>
+        </div>
       </div>
 
-      {/* ตะกร้าสินค้าแบบ Bottom Sheet สำหรับมือถือ */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Products Grid */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">สินค้าทั้งหมด</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            {products.map((product) => (
+              <motion.div
+                key={product._id}
+                whileHover={{ y: -5 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl"
+              >
+                <div className="relative aspect-square">
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm md:text-base">
+                    {product.name}
+                  </h3>
+                  <p className="text-blue-600 font-bold text-lg mb-3">
+                    ฿{product.price.toLocaleString()}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (product.options && product.options.length > 0) {
+                        openProductModal(product);
+                      } else {
+                        handleAddToCart(product);
+                      }
+                    }}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    {product.options && product.options.length > 0 ? 'เลือกตัวเลือก' : 'เพิ่มลงตะกร้า'}
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Floating Cart Button */}
+        {getTotalItems() > 0 && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            onClick={() => setShowCart(true)}
+            className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+          >
+            <div className="relative">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6.5-5v5a2 2 0 01-2 2H9a2 2 0 01-2-2v-5m6.5-5H9" />
+              </svg>
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {getTotalItems()}
+              </span>
+            </div>
+          </motion.button>
+        )}
+      </div>
+
+      {/* Product Modal */}
       <AnimatePresence>
-        {showCart && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex sm:items-center justify-center"
+        {selectedProduct && (
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowCart(false)}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedProduct(null)}
           >
-            <motion.div 
-              className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl mt-auto sm:mt-0 max-h-[85vh] overflow-y-auto"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', bounce: 0.25 }}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-                <h2 className="text-xl font-bold">ตะกร้าสินค้า ({totalItems})</h2>
-                <button 
-                  onClick={() => setShowCart(false)}
-                  className="p-2 rounded-full hover:bg-gray-100"
+              <div className="relative aspect-square">
+                <Image
+                  src={selectedProduct.imageUrl}
+                  alt={selectedProduct.name}
+                  fill
+                  className="object-cover rounded-t-xl"
+                />
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              {Object.keys(cart).length > 0 ? (
-                <div className="p-4">
-                  {Object.values(cart).map((item) => (
-                    <motion.div 
-                      key={item.product._id} 
-                      className="flex justify-between items-center mb-3 border-b pb-3"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex items-center">
-                        <div className="relative h-16 w-16 rounded-md overflow-hidden mr-3">
-                          <Image
-                            src={item.product.imageUrl || '/placeholder.jpg'}
-                            alt={item.product.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.product.name}</p>
-                          <p className="text-sm text-gray-600">฿{item.product.price.toLocaleString()} x {item.quantity}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="flex items-center border rounded-lg overflow-hidden">
-                          <motion.button 
-                            onClick={() => removeFromCart(item.product._id)} 
-                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200"
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            -
-                          </motion.button>
-                          <span className="px-3">{item.quantity}</span>
-                          <motion.button 
-                            onClick={() => addToCart(item.product)} 
-                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200"
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            +
-                          </motion.button>
-                        </div>
-                        <motion.button 
-                          onClick={() => deleteFromCart(item.product._id)}
-                          className="ml-2 text-red-500 p-1"
-                          whileTap={{ scale: 0.95 }}
+              <div className="p-6">
+                <h3 className="text-xl font-bold mb-2">{selectedProduct.name}</h3>
+                <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
+                <p className="text-2xl font-bold text-blue-600 mb-6">
+                  ฿{selectedProduct.price.toLocaleString()}
+                </p>
+
+                {/* Options */}
+                {selectedProduct.options && selectedProduct.options.map((option) => (
+                  <div key={option.name} className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {option.name}
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {option.values.map((value) => (
+                        <button
+                          key={value.label}
+                          onClick={() => setSelectedOptions(prev => ({ ...prev, [option.name]: value.label }))}
+                          className={`p-3 border rounded-lg text-center transition-colors ${
+                            selectedOptions[option.name] === value.label
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  <div className="border-t pt-3 mb-4 mt-2">
-                    <div className="flex justify-between font-bold bg-blue-50 p-3 rounded-lg">
-                      <span>รวมทั้งสิ้น:</span>
-                      <span>฿{calculateTotal().toLocaleString()}</span>
+                          {value.imageUrl && (
+                            <div className="relative w-8 h-8 mx-auto mb-1">
+                              <Image
+                                src={value.imageUrl}
+                                alt={value.label}
+                                fill
+                                className="object-cover rounded"
+                              />
+                            </div>
+                          )}
+                          <span className="text-sm">{value.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleShowOrderForm}
-                    className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition"
-                  >
-                    ดำเนินการสั่งซื้อ
-                  </motion.button>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                ))}
+
+                <button
+                  onClick={addToCartWithOptions}
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  เพิ่มลงตะกร้า
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cart Modal */}
+      <AnimatePresence>
+        {showCart && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center"
+            onClick={() => setShowCart(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="bg-white w-full max-w-md h-3/4 md:h-auto md:max-h-[80vh] rounded-t-xl md:rounded-xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-semibold">ตะกร้าสินค้า ({getTotalItems()})</h3>
+                <button onClick={() => setShowCart(false)} className="p-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <p className="text-gray-500">ยังไม่มีสินค้าในตะกร้า</p>
-                  <motion.button 
-                    whileTap={{ scale: 0.95 }}
-                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg" 
-                    onClick={() => setShowCart(false)}
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {Object.entries(cart).map(([cartKey, item]) => (
+                  <div key={cartKey} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
+                    <div className="relative w-16 h-16 flex-shrink-0">
+                      <Image
+                        src={item.product.imageUrl}
+                        alt={item.product.name}
+                        fill
+                        className="object-cover rounded"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-2">{item.product.name}</h4>
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                        </p>
+                      )}
+                      <p className="text-blue-600 font-semibold">฿{item.product.price.toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => removeFromCart(cartKey)}
+                        className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => handleAddToCart(item.product, item.selectedOptions)}
+                        className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={() => deleteFromCart(cartKey)}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {Object.keys(cart).length > 0 && (
+                <div className="p-4 border-t border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-lg font-semibold">รวม:</span>
+                    <span className="text-xl font-bold text-blue-600">
+                      ฿{calculateTotal().toLocaleString()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowCart(false);
+                      handleShowOrderForm();
+                    }}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
-                    เลือกสินค้า
-                  </motion.button>
+                    สั่งซื้อ
+                  </button>
                 </div>
               )}
             </motion.div>
@@ -392,339 +544,146 @@ const ShopPage = () => {
         )}
       </AnimatePresence>
 
-      {/* ฟอร์มการสั่งซื้อแบบ steps */}
+      {/* Order Form Modal */}
       <AnimatePresence>
         {showOrderForm && (
-          <motion.div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowOrderForm(false)}
           >
-            <motion.div 
-              className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto"
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">สั่งซื้อสินค้า</h2>
-                <button 
-                  onClick={() => setShowOrderForm(false)}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Stepper */}
-              <div className="flex mb-6">
-                <div className={`flex-1 text-center ${currentStep >= 1 ? 'text-blue-500' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>1</div>
-                  <span className="text-xs">ตรวจสอบสินค้า</span>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold">ข้อมูลการสั่งซื้อ</h3>
+                  <button onClick={() => setShowOrderForm(false)} className="p-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div className={`h-0.5 w-full self-center max-w-10 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-                <div className={`flex-1 text-center ${currentStep >= 2 ? 'text-blue-500' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>2</div>
-                  <span className="text-xs">ข้อมูลจัดส่ง</span>
-                </div>
-                <div className={`h-0.5 w-full self-center max-w-10 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-                <div className={`flex-1 text-center ${currentStep >= 3 ? 'text-blue-500' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-1 ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>3</div>
-                  <span className="text-xs">ชำระเงิน</span>
-                </div>
-              </div>
-              
-              {/* Step 1: แสดงรายการสินค้า */}
-              {currentStep === 1 && (
-                <div>
-                  <div className="max-h-60 overflow-y-auto mb-4">
-                    {Object.values(cart).map((item) => (
-                      <div key={item.product._id} className="flex justify-between items-center mb-3 border-b pb-3">
-                        <div className="flex items-center">
-                          <div className="relative h-16 w-16 rounded-md overflow-hidden mr-3">
-                            <Image
-                              src={item.product.imageUrl || '/placeholder.jpg'}
-                              alt={item.product.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div>
-                            <p className="font-medium">{item.product.name}</p>
-                            <p className="text-sm text-gray-600">฿{item.product.price.toLocaleString()} x {item.quantity}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="flex items-center border rounded-lg overflow-hidden">
-                            <motion.button 
-                              onClick={() => removeFromCart(item.product._id)} 
-                              className="px-3 py-1 bg-gray-100 hover:bg-gray-200"
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              -
-                            </motion.button>
-                            <span className="px-3">{item.quantity}</span>
-                            <motion.button 
-                              onClick={() => addToCart(item.product)} 
-                              className="px-3 py-1 bg-gray-100 hover:bg-gray-200"
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              +
-                            </motion.button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="border-t pt-2 mb-4">
-                    <div className="flex justify-between font-bold bg-blue-50 p-3 rounded-lg">
-                      <span>รวมทั้งสิ้น:</span>
-                      <span>฿{calculateTotal().toLocaleString()}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end mt-6">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentStep(2)}
-                      className="bg-blue-500 text-white px-6 py-2 rounded-lg"
-                    >
-                      ถัดไป
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Step 2: ข้อมูลการจัดส่ง */}
-              {currentStep === 2 && (
-                <div>
-                  <div className="mb-4">
-                    <label className="block text-sm mb-1">ชื่อลูกค้า</label>
+
+                <form onSubmit={handleSubmitOrder} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
                     <input
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
-                      disabled={isLoggedIn}
                     />
                   </div>
-                  <div className="mb-4">
-                    <label className="block text-sm mb-1">เบอร์โทรศัพท์</label>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
                     <input
                       type="tel"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
-                      disabled={isLoggedIn}
                     />
                   </div>
-                  <div className="mb-4">
-                    <label className="block text-sm mb-1">ที่อยู่สำหรับจัดส่ง</label>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่จัดส่ง</label>
                     <textarea
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
                       rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
-                  
-                  <div className="flex justify-between mt-6">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentStep(1)}
-                      className="bg-gray-300 px-6 py-2 rounded-lg"
-                    >
-                      ย้อนกลับ
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentStep(3)}
-                      className="bg-blue-500 text-white px-6 py-2 rounded-lg"
-                    >
-                      ถัดไป
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Step 3: ชำระเงิน */}
-              {currentStep === 3 && (
-                <form onSubmit={handleSubmitOrder}>
-                  <div className="mb-4">
-                    <label className="block text-sm mb-2">เลือกวิธีชำระเงิน</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <label className={`flex items-center gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === 'cod' ? 'border-blue-500 bg-blue-50' : ''}`}>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">วิธีการชำระเงิน</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
                         <input
                           type="radio"
-                          name="paymentMethod"
                           value="cod"
                           checked={paymentMethod === 'cod'}
-                          onChange={() => setPaymentMethod('cod')}
-                          className="h-4 w-4"
+                          onChange={(e) => setPaymentMethod(e.target.value as 'cod' | 'transfer')}
+                          className="mr-2"
                         />
-                        <div>
-                          <p className="font-medium">เก็บเงินปลายทาง</p>
-                          <p className="text-xs text-gray-500">ชำระเงินเมื่อได้รับสินค้า</p>
-                        </div>
+                        เก็บเงินปลายทาง
                       </label>
-                      <label className={`flex items-center gap-2 border rounded-lg p-3 cursor-pointer ${paymentMethod === 'transfer' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                      <label className="flex items-center">
                         <input
                           type="radio"
-                          name="paymentMethod"
                           value="transfer"
                           checked={paymentMethod === 'transfer'}
-                          onChange={() => setPaymentMethod('transfer')}
-                          className="h-4 w-4"
+                          onChange={(e) => setPaymentMethod(e.target.value as 'cod' | 'transfer')}
+                          className="mr-2"
                         />
-                        <div>
-                          <p className="font-medium">โอนเงิน</p>
-                          <p className="text-xs text-gray-500">โอนเงินผ่านธนาคาร</p>
-                        </div>
+                        โอนเงินผ่านธนาคาร
                       </label>
                     </div>
                   </div>
-                  
+
                   {paymentMethod === 'transfer' && (
-                    <div className="mb-4 border rounded-lg p-4 bg-blue-50">
-                      <div className="mb-3">
-                        <span className="font-semibold block mb-1">เลขบัญชีสำหรับโอนเงิน:</span>
-                        <div className="bg-white p-3 rounded-lg border flex justify-between items-center">
-                          <span className="select-all">123-4-56789-0 ธนาคารกรุงเทพ</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText('123-4-56789-0');
-                              toast.success('คัดลอกเลขบัญชีแล้ว', { duration: 2000 });
-                            }}
-                            className="text-blue-500"
-                          >
-                            คัดลอก
-                          </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">อัพโหลดสลิปการโอนเงิน</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSlipChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        required
+                      />
+                      {slipPreview && (
+                        <div className="mt-2 relative w-full h-48">
+                          <Image
+                            src={slipPreview}
+                            alt="ตัวอย่างสลิป"
+                            fill
+                            className="object-contain border rounded-lg"
+                          />
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-2">แนบสลิปการโอนเงิน</label>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleSlipChange} 
-                          className="w-full mb-2"
-                          required 
-                        />
-                        {slipPreview && (
-                          <div className="mt-2 relative h-40 w-full">
-                            <Image 
-                              src={slipPreview} 
-                              alt="slip preview" 
-                              className="object-contain rounded-lg border" 
-                              fill
-                            />
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   )}
-                  
-                  <div className="border-t pt-4 mb-4 mt-2">
-                    <div className="font-bold mb-2">ตรวจสอบข้อมูล</div>
-                    <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ชื่อผู้สั่งซื้อ:</span>
-                        <span>{customerName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">เบอร์โทรศัพท์:</span>
-                        <span>{customerPhone}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ที่อยู่จัดส่ง:</span>
-                        <span className="text-right max-w-[220px]">{customerAddress}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ชำระเงินโดย:</span>
-                        <span>{paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}</span>
-                      </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">สรุปคำสั่งซื้อ</h4>
+                    <div className="space-y-1 text-sm">
+                      {Object.values(cart).map((item, index) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{item.product.name} x{item.quantity}</span>
+                          <span>฿{(item.product.price * item.quantity).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between font-bold">
                         <span>ยอดรวม:</span>
-                        <span>฿{calculateTotal().toLocaleString()}</span>
+                        <span className="text-blue-600">฿{calculateTotal().toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-between mt-6">
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentStep(2)}
-                      className="bg-gray-300 px-6 py-2 rounded-lg"
-                    >
-                      ย้อนกลับ
-                    </motion.button>
-                    <motion.button
-                      type="submit"
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-green-500 text-white px-6 py-2 rounded-lg"
-                    >
-                      ยืนยันการสั่งซื้อ
-                    </motion.button>
-                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    ยืนยันการสั่งซื้อ
+                  </button>
                 </form>
-              )}
+              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* รายการสินค้า */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <motion.div
-              key={product._id}
-              className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
-            >
-              <div className="relative h-48 w-full">
-                <Image
-                  src={product.imageUrl || '/placeholder.jpg'}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="p-3 sm:p-4">
-                <h2 className="text-lg font-semibold mb-1 line-clamp-1">{product.name}</h2>
-                <p className="text-xl font-bold text-blue-600 mb-2">฿{product.price.toLocaleString()}</p>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => addToCart(product)}
-                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  เพิ่มลงตะกร้า
-                </motion.button>
-              </div>
-            </motion.div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-10">
-            <p className="text-gray-500">ไม่พบสินค้า</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
