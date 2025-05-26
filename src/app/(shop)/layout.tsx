@@ -1,234 +1,144 @@
 'use client';
 
-import { Inter } from 'next/font/google';
-import '../globals.css';
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
-const inter = Inter({ subsets: ['latin'] });
+interface LayoutProps {
+  children: React.ReactNode;
+}
 
-function ShopNavBar() {
+export default function ShopLayout({ children }: LayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { isLoggedIn, user, logout, loading } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const isActive = (path: string) => pathname === path || pathname.startsWith(path);
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + '/');
 
-  const shopMenuItems = [
-    { href: '/shop', label: '🛍️ ร้านค้า', icon: '🛍️' },
+  const navItems = [
+    { href: '/shop', label: 'หน้าร้าน' },
+    ...(isLoggedIn && user?.role === 'admin'
+      ? [
+          { href: '/admin/products', label: 'สินค้า' },
+          { href: '/admin/orders', label: 'คำสั่งซื้อ' },
+        ]
+      : []),
   ];
-
-  const adminMenuItems = [
-    { href: '/admin/products', label: '📦 จัดการสินค้า', icon: '📦' },
-    { href: '/admin/orders', label: '📋 จัดการคำสั่งซื้อ', icon: '📋' },
-  ];
-
-  const handleBackToMain = () => {
-    router.push('/');
-  };
 
   return (
-    <header className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex justify-between items-center">
-          {/* Logo และปุ่มกลับ */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleBackToMain}
-              className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all transform hover:scale-105"
-            >
-              <span>←</span>
-              <span className="hidden sm:inline">กลับหน้าหลัก</span>
-            </button>
-            <Link href="/shop" className="text-xl font-bold hover:text-pink-200 transition-colors">
-              PU STAR SHOP
-            </Link>
-          </div>
+    <div className="flex flex-col min-h-screen">
+      {/* Header */}
+      <header className="bg-white shadow sticky top-0 z-20">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          {/* Logo / Brand */}
+          <Link href="/shop" className="text-xl font-semibold text-blue-600">
+            ร้านค้าออนไลน์
+          </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-6">
-            {shopMenuItems.map(({ href, label, icon }) => (
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex space-x-6 items-center">
+            {navItems.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                  isActive(href)
-                    ? 'bg-white text-indigo-600 font-medium shadow-lg'
-                    : 'text-white hover:bg-white/20 hover:shadow-md'
+                className={`hover:text-blue-600 transition-colors ${
+                  isActive(href) ? 'text-blue-600 font-medium' : 'text-gray-700'
                 }`}
               >
-                <span>{icon}</span>
-                <span>{label.replace(/🛍️\s/, '')}</span>
+                {label}
               </Link>
             ))}
-
-            {/* Admin Menu (เฉพาะ Admin) */}
-            {isLoggedIn && user?.role === 'admin' && (
-              <>
-                <div className="h-6 border-l border-white/30"></div>
-                {adminMenuItems.map(({ href, label, icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                      isActive(href)
-                        ? 'bg-white text-indigo-600 font-medium shadow-lg'
-                        : 'text-white hover:bg-white/20 hover:shadow-md'
-                    }`}
-                  >
-                    <span>{icon}</span>
-                    <span>{label.replace(/📦\s|📋\s/, '')}</span>
-                  </Link>
-                ))}
-              </>
-            )}
-
-            {/* User Section */}
             {!loading && (
-              <div className="flex items-center space-x-3">
-                {isLoggedIn ? (
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2 bg-white/20 px-3 py-2 rounded-lg">
-                      <span className="text-sm">👋 {user?.name}</span>
-                      {user?.role === 'admin' && (
-                        <span className="bg-yellow-500 text-xs px-2 py-1 rounded-full font-bold">
-                          ADMIN
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={logout}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors shadow-md"
-                    >
-                      ออกจากระบบ
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="bg-white hover:bg-gray-100 text-indigo-600 px-4 py-2 rounded-lg font-medium transition-colors shadow-md"
-                  >
-                    เข้าสู่ระบบ
-                  </Link>
-                )}
-              </div>
+              isLoggedIn ? (
+                <button
+                  onClick={logout}
+                  className="text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  ออกจากระบบ
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  เข้าสู่ระบบ
+                </Link>
+              )
             )}
           </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile hamburger */}
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden flex items-center p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="md:hidden text-gray-700 focus:outline-none"
+            aria-label="เปิดเมนู"
           >
-            <div className="w-6 h-6 flex flex-col justify-center items-center">
-              <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${isMobileMenuOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'}`}></span>
-              <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${isMobileMenuOpen ? 'opacity-0' : 'opacity-100'}`}></span>
-              <span className={`bg-white block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${isMobileMenuOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'}`}></span>
-            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3.75 5.25h16.5m-16.5 6h16.5m-16.5 6h16.5"
+              />
+            </svg>
           </button>
         </div>
 
-        {/* Mobile Navigation */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.nav
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden mt-4 pt-4 border-t border-white/30"
-            >
-              <div className="flex flex-col space-y-2">
-                {shopMenuItems.map(({ href, label, icon }) => (
+        {/* Mobile navigation */}
+        {isOpen && (
+          <nav className="md:hidden bg-white border-t border-gray-100">
+            <ul className="flex flex-col py-2">
+              {navItems.map(({ href, label }) => (
+                <li key={href}>
                   <Link
-                    key={href}
                     href={href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                      isActive(href)
-                        ? 'bg-white text-indigo-600 font-medium'
-                        : 'text-white hover:bg-white/20'
+                    onClick={() => setIsOpen(false)}
+                    className={`block px-4 py-2 transition-colors ${
+                      isActive(href) ? 'text-blue-600 font-medium' : 'text-gray-700'
                     }`}
                   >
-                    <span>{icon}</span>
-                    <span>{label.replace(/🛍️\s/, '')}</span>
+                    {label}
                   </Link>
-                ))}
-
-                {isLoggedIn && user?.role === 'admin' && (
-                  <>
-                    <div className="border-t border-white/30 my-2"></div>
-                    {adminMenuItems.map(({ href, label, icon }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                          isActive(href)
-                            ? 'bg-white text-indigo-600 font-medium'
-                            : 'text-white hover:bg-white/20'
-                        }`}
-                      >
-                        <span>{icon}</span>
-                        <span>{label.replace(/📦\s|📋\s/, '')}</span>
-                      </Link>
-                    ))}
-                  </>
-                )}
-
-                <div className="border-t border-white/30 my-2"></div>
-                {!loading && (
-                  isLoggedIn ? (
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center space-x-2 px-3 py-2 bg-white/20 rounded-lg">
-                        <span className="text-sm">👋 {user?.name}</span>
-                        {user?.role === 'admin' && (
-                          <span className="bg-yellow-500 text-xs px-2 py-1 rounded-full font-bold">
-                            ADMIN
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          logout();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        ออกจากระบบ
-                      </button>
-                    </div>
+                </li>
+              ))}
+              {!loading && (
+                <li>
+                  {isLoggedIn ? (
+                    <button
+                      onClick={() => {
+                        logout();
+                        setIsOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-600 hover:text-red-600"
+                    >
+                      ออกจากระบบ
+                    </button>
                   ) : (
                     <Link
                       href="/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="bg-white hover:bg-gray-100 text-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-4 py-2 text-blue-600 hover:text-blue-800"
                     >
                       เข้าสู่ระบบ
                     </Link>
-                  )
-                )}
-              </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
-      </div>
-    </header>
-  );
-}
+                  )}
+                </li>
+              )}
+            </ul>
+          </nav>
+        )}
+      </header>
 
-export default function ShopLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <ShopNavBar />
-      <main className="container mx-auto p-4">{children}</main>
+      {/* Main content */}
+      <main className="flex-1 bg-gray-100">{children}</main>
     </div>
   );
 } 
