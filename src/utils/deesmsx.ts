@@ -205,11 +205,19 @@ export async function verifyOTP(token: string, pin: string) {
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
     
-    // DeeSMSx อาจส่ง status เป็น '0' หรือ '200' เมื่อสำเร็จ
-    const statusCode = String(result.status);
-    const errorCodeVerify = result.error !== undefined ? String(result.error) : statusCode;
+    // ตรวจสอบสถานะสำเร็จ
+    // DeeSMSx อาจส่ง status เป็น '200' และ msg เป็น 'Verify Success' เมื่อสำเร็จ
+    // หรือ code เป็น '0' และ error เป็น '0'
+    const statusCode = String(result.status || result.code || '');
+    const errorCode = String(result.error || '');
+    const message = String(result.msg || '');
 
-    const isSuccess = (statusCode === '0' || statusCode === '200') && errorCodeVerify === '0';
+    // กรณีที่สำเร็จ: status=200 และ msg=Verify Success
+    // หรือ code=0 และ error=0
+    const isSuccess = 
+      (statusCode === '200' && message === 'Verify Success') ||
+      (statusCode === '0' && errorCode === '0') ||
+      (result.code === '0' && (result.error === '0' || result.error === undefined));
 
     if (!isSuccess) {
       console.error(`[DeeSMSx] API error: ${result.error || result.status}, ${result.msg}`);
