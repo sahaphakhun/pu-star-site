@@ -126,6 +126,17 @@ export async function POST(req: Request) {
       
       const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
       
+      // หากข้อความแสดงว่าเพิ่งส่งไปแล้ว ให้แจ้งให้รอ 30 วินาที
+      if (errorMessage.includes('Unable to update information')) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'กรุณารอ 30 วินาทีก่อนส่งรหัส OTP ใหม่',
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         { success: false, message: `เกิดข้อผิดพลาดในการส่ง OTP: ${errorMessage}` },
         { status: 500 }

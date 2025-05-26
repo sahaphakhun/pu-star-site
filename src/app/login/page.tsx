@@ -3,12 +3,15 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 // สร้าง Component แยกที่ใช้ useSearchParams
 const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || '/';
+
+  const { isLoggedIn } = useAuth();
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -46,7 +49,9 @@ const LoginForm = () => {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.status === 429) {
+        setError(data.message || 'กรุณารอสักครู่ก่อนส่งรหัสใหม่');
+      } else if (data.success) {
         setIsOtpSent(true);
         setCountdown(60); // ตั้งเวลานับถอยหลัง 60 วินาที
         
@@ -101,6 +106,24 @@ const LoginForm = () => {
       setLoading(false);
     }
   };
+
+  // หากล็อกอินแล้ว แสดงข้อความและปุ่มกลับทันที
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">คุณได้เข้าสู่ระบบแล้ว</h1>
+          <p className="text-gray-600">ไม่จำเป็นต้องยืนยัน OTP อีกครั้ง</p>
+          <button
+            onClick={() => router.push(returnUrl)}
+            className="mt-4 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            ไปยังหน้าหลัก
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
