@@ -148,8 +148,8 @@ export async function requestOTP(
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
 
-    // ตรวจสอบว่ามี error หรือไม่
-    if (result.error !== '0') {
+    // ตรวจสอบว่ามี error หรือไม่ (รองรับทั้งกรณีที่ API ส่งมาเป็น '0' หรือ 0)
+    if (String(result.error) !== '0') {
       console.error(`[DeeSMSx] API error: ${result.error}, ${result.msg}`);
       throw new Error(`DeeSMSx API Error: ${result.msg}`);
     }
@@ -204,9 +204,10 @@ export async function verifyOTP(token: string, pin: string) {
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
     
-    if (result.status !== "0" || result.error !== "0") {
+    // DeeSMSx จะส่ง status และ error เป็น '0' (string) หรือ 0 (number) เมื่อสำเร็จ
+    if (String(result.status) !== '0' || String(result.error) !== '0') {
       console.error(`[DeeSMSx] API error: ${result.error || result.status}, ${result.msg}`);
-      throw new Error(result.msg || "การยืนยัน OTP ล้มเหลว");
+      throw new Error(result.msg || 'การยืนยัน OTP ล้มเหลว');
     }
     
     return result;
