@@ -93,6 +93,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // ตรวจสอบสถานะการล็อกอินเมื่อโหลดแอปครั้งแรก
     checkAuth();
+
+    // ตั้ง interval เพื่อตรวจ auth ทุก 5 นาที ป้องกัน token หมดอายุแล้ว UI ไม่อัปเดต
+    const interval = setInterval(() => {
+      checkAuth();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const value = {

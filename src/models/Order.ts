@@ -5,6 +5,7 @@ export interface IOrderItem {
   name: string;
   price: number;
   quantity: number;
+  selectedOptions?: Record<string, string>;
 }
 
 export interface IOrder extends Document {
@@ -12,12 +13,14 @@ export interface IOrder extends Document {
   customerPhone: string;
   items: IOrderItem[];
   totalAmount: number;
+  shippingFee: number;
   orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
   customerAddress?: string;
   paymentMethod?: 'cod' | 'transfer';
   slipUrl?: string;
+  userId?: Schema.Types.ObjectId;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -38,6 +41,10 @@ const orderItemSchema = new Schema<IOrderItem>({
     type: Number,
     required: true,
     min: 1
+  },
+  selectedOptions: {
+    type: Schema.Types.Mixed,
+    default: {}
   }
 });
 
@@ -58,6 +65,11 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       required: true
     },
+    shippingFee: {
+      type: Number,
+      required: true,
+      default: 0
+    },
     orderDate: {
       type: Date,
       default: Date.now
@@ -74,6 +86,11 @@ const orderSchema = new Schema<IOrder>(
     slipUrl: {
       type: String,
       default: ''
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
     }
   },
   { 

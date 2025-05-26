@@ -12,8 +12,8 @@ interface DecodedToken {
 export async function GET() {
   try {
     // ดึงค่า token จาก cookie
-    const cookieStore = cookies();
-    const token = cookieStore.get('token');
+    const cookieStore = (await cookies()) as any;
+    const token = cookieStore.get?.('token') || cookieStore.get('token');
 
     if (!token) {
       return NextResponse.json(
@@ -39,10 +39,15 @@ export async function GET() {
       // เชื่อมต่อกับฐานข้อมูล
       await connectDB();
 
-      // ดึงข้อมูลออเดอร์
-      const orders = await Order.find({ userId: decoded.userId })
-        .sort({ orderDate: -1 })
-        .lean();
+      // ดึงข้อมูลออเดอร์: ถ้ามี userId ให้ใช้, else fallback ด้วยเบอร์โทร
+      const orders = await Order.find({ 
+        $or: [
+          { userId: decoded.userId },
+          { customerPhone: decoded.phoneNumber }
+        ]
+      })
+      .sort({ orderDate: -1 })
+      .lean();
 
       return NextResponse.json(orders);
     } catch (_error) {

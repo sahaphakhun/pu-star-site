@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
+import { sendSMS } from '@/utils/deesmsx';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,10 +40,25 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerName, customerPhone, items, totalAmount } = body;
+    const { customerName, customerPhone, customerAddress = '', paymentMethod = 'cod', slipUrl = '', shippingFee = 0, items, totalAmount } = body;
+
+    // กำหนด phone เบื้องต้นจาก payload
+    let phone = customerPhone;
+    let userId: string | undefined;
+
+    // ดึง token เพื่อหา userId และเบอร์โทร (กรณีไม่ส่งมา)
+    const cookieStore = (await cookies()) as any;
+    const tokenCookie = cookieStore.get?.('token') || cookieStore.get('token');
+    if (tokenCookie) {
+      try {
+        const decoded = jwt.verify(tokenCookie.value, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
+        userId = decoded.userId;
+        if (!phone) phone = decoded.phoneNumber;
+      } catch {}
+    }
 
     // ตรวจสอบข้อมูลที่จำเป็น
-    if (!customerName || !customerPhone || !items || items.length === 0 || !totalAmount) {
+    if (!customerName || !phone || !items || items.length === 0 || !totalAmount) {
       return NextResponse.json(
         { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
@@ -51,11 +69,26 @@ export async function POST(request: NextRequest) {
     
     const order = await Order.create({
       customerName,
-      customerPhone,
+      customerPhone: phone,
+      customerAddress,
+      paymentMethod,
+      slipUrl,
       items,
+      shippingFee,
       totalAmount,
-      orderDate: new Date()
+      orderDate: new Date(),
+      ...(userId && { userId })
     });
+
+    // ส่ง SMS แจ้งเตือนลูกค้า
+    try {
+      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
+      const orderUrl = `${origin}/my-orders`;
+      const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
+      await sendSMS(phone, smsMessage);
+    } catch (smsErr) {
+      console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
+    }
 
     return NextResponse.json(order, { status: 201 });
   } catch (error) {

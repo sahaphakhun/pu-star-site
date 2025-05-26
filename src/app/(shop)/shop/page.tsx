@@ -254,7 +254,8 @@ const ShopPage = () => {
           quantity: item.quantity,
           selectedOptions: item.selectedOptions || {}
         })),
-        totalAmount: calculateTotal()
+        shippingFee: calculateShippingFee(),
+        totalAmount: calculateGrandTotal()
       };
 
       const response = await fetch('/api/orders', {
@@ -295,6 +296,15 @@ const ShopPage = () => {
     return Object.values(cart).reduce((total, item) => {
       return total + (item.product.price * item.quantity);
     }, 0);
+  };
+
+  const calculateShippingFee = () => {
+    const subTotal = calculateTotal();
+    return subTotal >= 500 ? 0 : 50;
+  };
+
+  const calculateGrandTotal = () => {
+    return calculateTotal() + calculateShippingFee();
   };
 
   const getTotalItems = () => {
@@ -547,7 +557,7 @@ const ShopPage = () => {
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-lg font-semibold">รวม:</span>
                     <span className="text-xl font-bold text-blue-600">
-                      ฿{calculateTotal().toLocaleString()}
+                      ฿{calculateGrandTotal().toLocaleString()}
                     </span>
                   </div>
                   <button
@@ -686,10 +696,18 @@ const ShopPage = () => {
                         </div>
                       ))}
                     </div>
-                    <div className="border-t pt-2 mt-2">
-                      <div className="flex justify-between font-bold">
+                    <div className="border-t pt-2 mt-2 space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>ยอดสินค้า:</span>
+                        <span>฿{calculateTotal().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>ค่าจัดส่ง:</span>
+                        <span>{calculateShippingFee() === 0 ? 'ฟรี' : `฿${calculateShippingFee().toLocaleString()}`}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-base pt-1 border-t">
                         <span>ยอดรวม:</span>
-                        <span className="text-blue-600">฿{calculateTotal().toLocaleString()}</span>
+                        <span className="text-blue-600">฿{calculateGrandTotal().toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
