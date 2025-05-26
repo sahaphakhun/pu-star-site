@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import AdminPhone from '@/models/AdminPhone';
 
 interface DecodedToken {
   userId: string;
@@ -14,7 +15,7 @@ interface DecodedToken {
 export async function GET() {
   try {
     // ดึงค่า token จาก cookie
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('token');
 
     if (!token) {
@@ -52,6 +53,13 @@ export async function GET() {
           message: 'ไม่พบข้อมูลผู้ใช้',
           isLoggedIn: false,
         });
+      }
+
+      // ตรวจสอบว่าเบอร์อยู่ใน admin phone หรือไม่
+      const adminPhone = await AdminPhone.findOne({ phoneNumber: user?.phoneNumber });
+      if (adminPhone && user && user.role !== 'admin') {
+        user.role = 'admin';
+        await user.save();
       }
 
       return NextResponse.json({
