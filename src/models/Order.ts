@@ -14,6 +14,7 @@ export interface IOrder extends Document {
   items: IOrderItem[];
   totalAmount: number;
   shippingFee: number;
+  discount?: number;
   orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +69,10 @@ const orderSchema = new Schema<IOrder>(
     shippingFee: {
       type: Number,
       required: true,
+      default: 0
+    },
+    discount: {
+      type: Number,
       default: 0
     },
     orderDate: {

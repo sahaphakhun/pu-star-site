@@ -4,6 +4,7 @@ import connectDB from '@/lib/db';
 import { cookies } from "next/headers";
 import jwt from 'jsonwebtoken';
 import User from '@/models/User';
+import AdminPhone from '@/models/AdminPhone';
 
 interface DecodedToken {
   userId: string;
@@ -16,7 +17,7 @@ interface DecodedToken {
 export async function POST(req: Request) {
   try {
     // ตรวจสอบการยืนยันตัวตน (เฉพาะ Admin เท่านั้นที่ส่ง SMS ได้)
-    const cookieStore = cookies();
+    const cookieStore = cookies() as any;
     const tokenCookie = cookieStore.get('token');
     
     if (!tokenCookie) {
@@ -61,32 +62,44 @@ export async function POST(req: Request) {
     }
 
     // รับข้อมูลจาก request
-    const { phoneNumber, message } = await req.json();
+    const { targetType = 'all', phoneNumbers = [], message } = await req.json();
 
-    if (!phoneNumber || !message) {
-      return NextResponse.json(
-        { success: false, message: 'กรุณาระบุเบอร์โทรศัพท์และข้อความ' },
-        { status: 400 }
-      );
+    if (!message) {
+      return NextResponse.json({ success: false, message: 'กรุณาระบุข้อความ' }, { status: 400 });
     }
 
-    try {
-      // ส่ง SMS
-      const response = await sendSMS(phoneNumber, message);
+    let recipients: string[] = [];
 
-      return NextResponse.json({
-        success: true,
-        message: 'ส่ง SMS สำเร็จ',
-        data: response
-      });
-    } catch (error: Error | unknown) {
-      console.error('เกิดข้อผิดพลาดในการส่ง SMS:', error);
-      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
-      return NextResponse.json(
-        { success: false, message: `เกิดข้อผิดพลาดในการส่ง SMS: ${errorMessage}` },
-        { status: 500 }
-      );
+    if (targetType === 'all') {
+      const users = await User.find({}, 'phoneNumber');
+      recipients = users.map((u: any) => u.phoneNumber);
+      const adminPhones = await AdminPhone.find({}, 'phoneNumber');
+      recipients = [...recipients, ...adminPhones.map((a:any)=>a.phoneNumber)];
+    } else if (targetType === 'admin') {
+      const adminPhones = await AdminPhone.find({}, 'phoneNumber');
+      recipients = adminPhones.map((a:any)=>a.phoneNumber);
+    } else if (targetType === 'custom') {
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return NextResponse.json({ success: false, message: 'กรุณาระบุเบอร์โทรศัพท์' }, { status: 400 });
+      }
+      recipients = phoneNumbers;
     }
+
+    // กำจัดเบอร์ซ้ำ
+    recipients = [...new Set(recipients)];
+
+    if (recipients.length === 0) {
+      return NextResponse.json({ success: false, message: 'ไม่พบเบอร์โทรศัพท์ผู้รับ' }, { status: 400 });
+    }
+
+    const results = await Promise.allSettled(
+      recipients.map((phone: string) => sendSMS(phone, message))
+    );
+
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = recipients.length - successCount;
+
+    return NextResponse.json({ success: true, message: `ส่งสำเร็จ ${successCount} เบอร์, ล้มเหลว ${failCount} เบอร์`, sent: successCount, failed: failCount });
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการส่ง SMS:', error);
     return NextResponse.json(

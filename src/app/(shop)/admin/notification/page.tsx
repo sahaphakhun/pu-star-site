@@ -18,7 +18,8 @@ interface ApiResponse {
 }
 
 const AdminNotificationPage = () => {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [targetType, setTargetType] = useState<'all'|'admin'|'custom'>('all');
+  const [phoneNumbers, setPhoneNumbers] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<ApiResponse | null>(null);
@@ -41,23 +42,25 @@ const AdminNotificationPage = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!phoneNumber || !message) {
-      alert('กรุณากรอกเบอร์โทรศัพท์และข้อความให้ครบถ้วน');
+    if (!message) {
+      alert('กรุณากรอกข้อความ');
       return;
     }
 
-    // ตรวจสอบรูปแบบเบอร์โทรศัพท์
-    const thaiPhoneRegex = /^0\d{9}$/;  // เบอร์ไทยที่ขึ้นต้นด้วย 0 เช่น 0812345678
-    const e164PhoneRegex = /^66\d{9}$/; // เบอร์ในรูปแบบ E.164 เช่น 66812345678
-    
-    if (!thaiPhoneRegex.test(phoneNumber) && !e164PhoneRegex.test(phoneNumber)) {
-      alert('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาระบุในรูปแบบ 0xxxxxxxxx หรือ 66xxxxxxxxx');
-      return;
+    let recipientsCount = 1;
+    let numbers: string[] = [];
+    if(targetType==='custom'){
+      numbers = phoneNumbers.split(/\n|,|;/).map(s=>s.trim()).filter(Boolean);
+      if(numbers.length===0){
+        alert('กรุณาระบุเบอร์โทรศัพท์อย่างน้อย 1 หมายเลข');
+        return;
+      }
+      recipientsCount = numbers.length;
     }
 
-    // ถามยืนยันก่อนส่ง
-    const credits = calculateCredits(message);
-    if (!confirm(`ยืนยันการส่ง SMS ไปยังหมายเลข ${phoneNumber} (คาดว่าจะใช้ ${credits} เครดิต)?`)) {
+    const creditsPerMsg = calculateCredits(message);
+    const totalCredits = creditsPerMsg * recipientsCount;
+    if (!confirm(`ยืนยันการส่ง SMS แบบ ${targetType==='custom' ? 'กำหนดเอง' : targetType==='admin' ? 'แอดมิน' : 'ทุกคน'} (คาดว่าจะใช้ประมาณ ${totalCredits} เครดิต)?`)) {
       return;
     }
 
@@ -70,14 +73,14 @@ const AdminNotificationPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phoneNumber, message }),
+        body: JSON.stringify({ targetType, phoneNumbers: numbers, message }),
       });
 
       const data = await response.json();
       setResult(data);
       
       if (data.success) {
-        setPhoneNumber('');
+        setPhoneNumbers('');
         setMessage('');
       }
     } catch (error) {
@@ -93,25 +96,25 @@ const AdminNotificationPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">ระบบส่ง SMS</h1>
+      <h1 className="text-2xl font-bold mb-6">บอร์ดแคสต์ข้อความ (SMS)</h1>
 
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              เบอร์โทรศัพท์
-            </label>
-            <input
-              type="text"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="0812345678 หรือ 66812345678"
-            />
-            <p className="text-gray-500 text-xs mt-1">
-              รูปแบบ: 0xxxxxxxxx หรือ 66xxxxxxxxx
-            </p>
+            <label className="block text-gray-700 text-sm font-bold mb-2">กลุ่มผู้รับ</label>
+            <select value={targetType} onChange={e=>setTargetType(e.target.value as any)} className="shadow border rounded w-full py-2 px-3 text-gray-700">
+              <option value="all">ส่งหาทุกคน</option>
+              <option value="admin">ส่งหาแอดมิน</option>
+              <option value="custom">ส่งตามเบอร์ที่กำหนด</option>
+            </select>
           </div>
+
+          {targetType==='custom' && (
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">เบอร์โทรศัพท์ (1 เบอร์ต่อบรรทัด)</label>
+              <textarea value={phoneNumbers} onChange={e=>setPhoneNumbers(e.target.value)} rows={4} className="shadow border rounded w-full py-2 px-3 text-gray-700" placeholder="0812345678"></textarea>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">

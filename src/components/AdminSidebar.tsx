@@ -7,7 +7,7 @@ const adminLinks = [
   { href: '/admin/orders', label: 'คำสั่งซื้อ' },
   { href: '/admin/products', label: 'สินค้า' },
   { href: '/admin/admins', label: 'ผู้ดูแล' },
-  { href: '/admin/notification', label: 'แจ้งเตือน' },
+  { href: '/admin/notification', label: 'บอร์ดแคสต์' },
   // สามารถเพิ่มเมนูเพิ่มเติมได้ในอนาคต
 ];
 

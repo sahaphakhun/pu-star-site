@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerName, customerPhone, customerAddress = '', paymentMethod = 'cod', slipUrl = '', shippingFee = 0, items, totalAmount } = body;
+    const { customerName, customerPhone, customerAddress = '', paymentMethod = 'cod', slipUrl = '', shippingFee = 0, discount = 0, items, totalAmount } = body;
 
     // กำหนด phone เบื้องต้นจาก payload
     let phone = customerPhone;
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบข้อมูลที่จำเป็น
-    if (!customerName || !phone || !items || items.length === 0 || !totalAmount) {
+    if (!customerName || !phone || !totalAmount) {
       return NextResponse.json(
         { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       slipUrl,
       items,
       shippingFee,
+      discount,
       totalAmount,
       orderDate: new Date(),
       ...(userId && { userId })

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast, Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 interface OrderItem {
   productId: string;
@@ -22,6 +22,8 @@ interface Order {
   slipUrl?: string;
   items: OrderItem[];
   totalAmount: number;
+  shippingFee: number;
+  discount?: number;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
   updatedAt: string;
@@ -34,6 +36,11 @@ const AdminOrdersPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount-high' | 'amount-low'>('newest');
+  const [dateFilter, setDateFilter] = useState<'all'|'today'|'week'|'month'|'custom'>('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [formData,setFormData]=useState({customerName:'',customerPhone:'',totalAmount:'',shippingFee:'0',discount:'0'});
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -157,7 +164,22 @@ const AdminOrdersPage = () => {
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerPhone.includes(searchTerm) ||
         order._id.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesStatus && matchesSearch;
+      const dateObj=new Date(order.createdAt);
+      let datePass=true;
+      if(dateFilter==='today'){
+        const now=new Date();
+        datePass=dateObj.toDateString()===now.toDateString();
+      }else if(dateFilter==='week'){
+        const now=new Date();
+        const weekAgo=new Date();weekAgo.setDate(now.getDate()-7);
+        datePass=dateObj>=weekAgo && dateObj<=now;
+      }else if(dateFilter==='month'){
+        const now=new Date();
+        datePass=dateObj.getMonth()===now.getMonth() && dateObj.getFullYear()===now.getFullYear();
+      }else if(dateFilter==='custom' && customStart&&customEnd){
+        datePass=dateObj>=new Date(customStart) && dateObj<=new Date(customEnd);
+      }
+      return matchesStatus && matchesSearch && datePass;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -282,6 +304,26 @@ const AdminOrdersPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Date filter */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select value={dateFilter} onChange={e=>setDateFilter(e.target.value as any)} className="border p-2 rounded">
+            <option value="all">ทุกเวลา</option>
+            <option value="today">วันนี้</option>
+            <option value="week">7 วัน</option>
+            <option value="month">เดือนนี้</option>
+            <option value="custom">กำหนดเอง</option>
+          </select>
+          {dateFilter==='custom' && (
+            <>
+              <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="border p-2 rounded"/>
+              <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="border p-2 rounded"/>
+            </>
+          )}
+        </div>
+
+        {/* create order button */}
+        <button onClick={()=>setShowCreate(true)} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">สร้างออเดอร์ใหม่</button>
 
         {/* Orders Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -501,6 +543,34 @@ const AdminOrdersPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* create order modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowCreate(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <h2 className="text-xl font-bold mb-4">สร้างออเดอร์</h2>
+            <div className="space-y-3">
+              <input value={formData.customerName} onChange={e=>setFormData({...formData,customerName:e.target.value})} placeholder="ชื่อลูกค้า" className="w-full border p-2 rounded"/>
+              <input value={formData.customerPhone} onChange={e=>setFormData({...formData,customerPhone:e.target.value})} placeholder="เบอร์โทร" className="w-full border p-2 rounded"/>
+              <input type="number" value={formData.totalAmount} onChange={e=>setFormData({...formData,totalAmount:e.target.value})} placeholder="ยอดสินค้า (บาท)" className="w-full border p-2 rounded"/>
+              <input type="number" value={formData.shippingFee} onChange={e=>setFormData({...formData,shippingFee:e.target.value})} placeholder="ค่าจัดส่ง" className="w-full border p-2 rounded"/>
+              <input type="number" value={formData.discount} onChange={e=>setFormData({...formData,discount:e.target.value})} placeholder="ส่วนลด" className="w-full border p-2 rounded"/>
+            </div>
+            <div className="flex justify-end mt-4 gap-2">
+              <button onClick={()=>setShowCreate(false)} className="px-4 py-2 bg-gray-200 rounded">ยกเลิก</button>
+              <button onClick={async()=>{
+                const sub=parseFloat(formData.totalAmount||'0');
+                const shipping=parseFloat(formData.shippingFee||'0');
+                const disc=parseFloat(formData.discount||'0');
+                const total=sub+shipping-disc;
+                const res=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerName:formData.customerName,customerPhone:formData.customerPhone,items:[],shippingFee:shipping,discount:disc,totalAmount:total})});
+                if(res.ok){toast.success('สร้างออเดอร์แล้ว');setShowCreate(false);fetchOrders();}
+                else {const d=await res.json();toast.error(d.error||'ผิดพลาด');}
+              }} className="px-4 py-2 bg-blue-600 text-white rounded">บันทึก</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
