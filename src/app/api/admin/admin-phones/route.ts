@@ -25,4 +25,18 @@ export async function POST(request: NextRequest) {
     { upsert: true, new: true }
   );
   return NextResponse.json(doc);
+}
+
+export async function DELETE(request: NextRequest) {
+  const { id, phoneNumber } = await request.json();
+  if (!id && !phoneNumber) {
+    return NextResponse.json({ message: 'id or phoneNumber required' }, { status: 400 });
+  }
+  await connectDB();
+  const query = id ? { _id: id } : { phoneNumber: formatPhoneNumber(phoneNumber) };
+  const result = await AdminPhone.findOneAndDelete(query);
+  if (!result) {
+    return NextResponse.json({ message: 'not found' }, { status: 404 });
+  }
+  return NextResponse.json({ success: true });
 } 

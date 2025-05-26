@@ -76,8 +76,20 @@ const AdminsPage = () => {
       ) : (
         <ul className="space-y-2">
           {phones.map((p) => (
-            <li key={p._id} className="bg-white p-3 rounded-lg border">
-              {p.phoneNumber}
+            <li key={p._id} className="bg-white p-3 rounded-lg border flex justify-between items-center">
+              <span>{p.phoneNumber}</span>
+              <button
+                onClick={async ()=>{
+                  const ok = confirm('ยืนยันลบเบอร์นี้?');
+                  if(!ok) return;
+                  try{
+                    const res = await fetch('/api/admin/admin-phones',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:p._id})});
+                    if(res.ok){toast.success('ลบแล้ว');fetchPhones();}
+                    else {const d=await res.json();toast.error(d.message||'ผิดพลาด');}
+                  }catch{toast.error('ผิดพลาด');}
+                }}
+                className="text-red-600 hover:text-red-800 text-sm"
+              >ลบ</button>
             </li>
           ))}
         </ul>
