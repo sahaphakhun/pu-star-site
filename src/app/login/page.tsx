@@ -11,10 +11,8 @@ const LoginForm = () => {
   const returnUrl = searchParams.get('returnUrl') || '/';
 
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
@@ -75,11 +73,6 @@ const LoginForm = () => {
       return;
     }
 
-    if (isNewUser && !name) {
-      setError('กรุณากรอกชื่อของคุณ');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -89,9 +82,8 @@ const LoginForm = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          phoneNumber, 
-          otp,
-          ...(isNewUser && { name })
+          phoneNumber,
+          otp
         }),
       });
 
@@ -100,10 +92,6 @@ const LoginForm = () => {
       if (data.success) {
         // ล็อกอินสำเร็จ นำผู้ใช้กลับไปยังหน้าที่เคยอยู่หรือหน้าหลัก
         router.push(returnUrl);
-      } else if (data.message === 'กรุณาระบุชื่อผู้ใช้') {
-        // ผู้ใช้ใหม่ ต้องการชื่อเพิ่มเติม
-        setIsNewUser(true);
-        setError('กรุณากรอกชื่อของคุณเพื่อลงทะเบียน');
       } else {
         setError(data.message || 'เกิดข้อผิดพลาดในการยืนยัน OTP');
       }
@@ -164,24 +152,6 @@ const LoginForm = () => {
           </form>
         ) : (
           <form className="mt-8 space-y-6" onSubmit={handleVerifyOTP}>
-            {isNewUser && (
-              <div className="rounded-md shadow-sm">
-                <label htmlFor="name" className="sr-only">
-                  ชื่อ-นามสกุล
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4"
-                  placeholder="ชื่อ-นามสกุล"
-                />
-              </div>
-            )}
-
             <div className="rounded-md shadow-sm">
               <label htmlFor="otp" className="sr-only">
                 รหัส OTP

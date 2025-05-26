@@ -57,17 +57,9 @@ export async function POST(req: Request) {
       let user = await User.findOne({ phoneNumber: formattedPhoneNumber });
       
       if (!user) {
-        // ถ้าไม่มีชื่อผู้ใช้ในการลงทะเบียนใหม่
-        if (!name) {
-          return NextResponse.json(
-            { success: false, message: 'กรุณาระบุชื่อผู้ใช้' },
-            { status: 400 }
-          );
-        }
-        
-        // สร้างผู้ใช้ใหม่
+        // หากไม่มีข้อมูลชื่อ ให้ใช้ค่าว่างหรือเบอร์โทรแทน
         user = await User.create({
-          name,
+          name: name || formattedPhoneNumber, // เก็บชื่อเป็นเบอร์หรือค่าว่างได้ตามต้องการ
           phoneNumber: formattedPhoneNumber,
           isVerified: true,
         });

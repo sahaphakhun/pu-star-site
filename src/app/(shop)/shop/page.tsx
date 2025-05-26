@@ -56,8 +56,34 @@ const ShopPage = () => {
   }, []);
 
   useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        setCart(JSON.parse(savedCart));
+      }
+    } catch (err) {
+      console.error('โหลดข้อมูลตะกร้าจาก localStorage ไม่สำเร็จ', err);
+    }
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    } catch (err) {
+      console.error('บันทึกตะกร้าลง localStorage ไม่สำเร็จ', err);
+    }
+  }, [cart]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const pending = localStorage.getItem('pendingCheckout');
+      if (pending === '1') {
+        setShowOrderForm(true);
+        localStorage.removeItem('pendingCheckout');
+      }
+    }
+  }, [isLoggedIn]);
 
   const generateCartKey = (productId: string, selectedOptions?: {[key: string]: string}) => {
     if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
@@ -162,6 +188,9 @@ const ShopPage = () => {
 
   const handleShowOrderForm = () => {
     if (!isLoggedIn) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingCheckout', '1');
+      }
       router.push(`/login?returnUrl=${encodeURIComponent('/shop')}`);
     } else {
       setShowOrderForm(true);
