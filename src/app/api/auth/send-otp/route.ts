@@ -80,8 +80,9 @@ export async function POST(req: Request) {
       const otpResponse = await requestOTP(formattedPhoneNumber, SENDER_NAME);
       console.log('ได้รับการตอบกลับจาก DeeSMSx API:', otpResponse);
 
-      if (String(otpResponse.error) !== '0') {
-        console.error('DeeSMSx API ส่งค่า error กลับมา:', otpResponse.error, otpResponse.msg);
+      const errorCode = otpResponse.error !== undefined ? otpResponse.error : otpResponse.code;
+      if (String(errorCode) !== '0') {
+        console.error('DeeSMSx API ส่งค่า error กลับมา:', errorCode, otpResponse.msg);
         return NextResponse.json(
           { success: false, message: otpResponse.msg || 'เกิดข้อผิดพลาดในการส่ง OTP' },
           { status: 500 }

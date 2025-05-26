@@ -148,9 +148,10 @@ export async function requestOTP(
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
 
-    // ตรวจสอบว่ามี error หรือไม่ (รองรับทั้งกรณีที่ API ส่งมาเป็น '0' หรือ 0)
-    if (String(result.error) !== '0') {
-      console.error(`[DeeSMSx] API error: ${result.error}, ${result.msg}`);
+    // DeeSMSx บาง endpoint ส่ง field เป็น error, บาง endpoint ใช้ code
+    const errorCode = result.error !== undefined ? result.error : result.code;
+    if (String(errorCode) !== '0') {
+      console.error(`[DeeSMSx] API error: ${errorCode}, ${result.msg}`);
       throw new Error(`DeeSMSx API Error: ${result.msg}`);
     }
 
