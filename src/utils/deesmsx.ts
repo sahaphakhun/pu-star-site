@@ -205,8 +205,13 @@ export async function verifyOTP(token: string, pin: string) {
     const result = await response.json();
     console.log('[DeeSMSx] ผลลัพธ์:', result);
     
-    // DeeSMSx จะส่ง status และ error เป็น '0' (string) หรือ 0 (number) เมื่อสำเร็จ
-    if (String(result.status) !== '0' || String(result.error) !== '0') {
+    // DeeSMSx อาจส่ง status เป็น '0' หรือ '200' เมื่อสำเร็จ
+    const statusCode = String(result.status);
+    const errorCodeVerify = result.error !== undefined ? String(result.error) : statusCode;
+
+    const isSuccess = (statusCode === '0' || statusCode === '200') && errorCodeVerify === '0';
+
+    if (!isSuccess) {
       console.error(`[DeeSMSx] API error: ${result.error || result.status}, ${result.msg}`);
       throw new Error(result.msg || 'การยืนยัน OTP ล้มเหลว');
     }

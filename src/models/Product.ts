@@ -5,6 +5,13 @@ export interface IProduct extends Document {
   price: number;
   description: string;
   imageUrl: string;
+  options?: {
+    name: string;
+    values: {
+      label: string;
+      imageUrl?: string;
+    }[];
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +36,20 @@ const productSchema = new Schema<IProduct>(
     imageUrl: {
       type: String,
       required: [true, 'กรุณาระบุรูปภาพสินค้า'],
+    },
+    options: {
+      type: [
+        {
+          name: { type: String, required: true },
+          values: [
+            {
+              label: { type: String, required: true },
+              imageUrl: { type: String, required: false },
+            },
+          ],
+        },
+      ],
+      required: false,
     },
   },
   { 

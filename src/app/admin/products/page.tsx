@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useCallback } from 'react';
+import React, { useState, useEffect, FormEvent, useCallback, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 
 interface ProductWithId extends IProduct {
   _id: string;
 }
+
+interface OptionValue { label: string; imageUrl?: string }
+interface ProductOption { name: string; values: OptionValue[] }
 
 const AdminProductsPage = () => {
   const [products, setProducts] = useState<ProductWithId[]>([]);
@@ -18,6 +21,7 @@ const AdminProductsPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
+  const [options, setOptions] = useState<ProductOption[]>([]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -40,6 +44,7 @@ const AdminProductsPage = () => {
     setPrice('');
     setDescription('');
     setImageUrl('');
+    setOptions([]);
     setEditMode(false);
     setCurrentProductId(null);
   };
@@ -52,12 +57,22 @@ const AdminProductsPage = () => {
       return;
     }
 
-    const productData = {
+    const productData: any = {
       name,
       price: parseFloat(price),
       description,
       imageUrl,
     };
+
+    if (options.length > 0) {
+      productData.options = options.map((option) => ({
+        name: option.name,
+        values: option.values.map((value) => ({
+          label: value.label,
+          imageUrl: value.imageUrl,
+        })),
+      }));
+    }
 
     try {
       setIsUploading(true);
@@ -99,6 +114,18 @@ const AdminProductsPage = () => {
     setEditMode(true);
     setCurrentProductId(product._id);
     window.scrollTo(0, 0);
+
+    if (product.options && product.options.length > 0) {
+      setOptions(product.options.map((option) => ({
+        name: option.name,
+        values: option.values.map((value) => ({
+          label: value.label,
+          imageUrl: value.imageUrl,
+        })),
+      })));
+    } else {
+      setOptions([]);
+    }
   };
 
   const handleDeleteProduct = async (productId: string) => {
@@ -150,6 +177,80 @@ const AdminProductsPage = () => {
       alert('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  /* ---------- helper for Options ---------- */
+  const addOption = () => {
+    setOptions((prev) => [...prev, { name: '', values: [] }]);
+  };
+
+  const removeOption = (idx: number) => {
+    setOptions((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateOptionName = (idx: number, name: string) => {
+    setOptions((prev) => prev.map((opt, i) => (i === idx ? { ...opt, name } : opt)));
+  };
+
+  const addOptionValue = (optIdx: number) => {
+    setOptions((prev) =>
+      prev.map((opt, i) =>
+        i === optIdx ? { ...opt, values: [...opt.values, { label: '', imageUrl: '' }] } : opt
+      )
+    );
+  };
+
+  const removeOptionValue = (optIdx: number, valIdx: number) => {
+    setOptions((prev) =>
+      prev.map((opt, i) =>
+        i === optIdx ? { ...opt, values: opt.values.filter((_, vi) => vi !== valIdx) } : opt
+      )
+    );
+  };
+
+  const updateOptionValueLabel = (optIdx: number, valIdx: number, label: string) => {
+    setOptions((prev) =>
+      prev.map((opt, i) =>
+        i === optIdx
+          ? {
+              ...opt,
+              values: opt.values.map((v, vi) => (vi === valIdx ? { ...v, label } : v)),
+            }
+          : opt
+      )
+    );
+  };
+
+  const updateOptionValueImage = async (optIdx: number, valIdx: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    try {
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        setOptions((prev) =>
+          prev.map((opt, i) =>
+            i === optIdx
+              ? {
+                  ...opt,
+                  values: opt.values.map((v, vi) =>
+                    vi === valIdx ? { ...v, imageUrl: data.secure_url as string } : v
+                  ),
+                }
+              : opt
+          )
+        );
+      }
+    } catch (err) {
+      console.error('upload option image error', err);
     }
   };
 
