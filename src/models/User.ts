@@ -27,7 +27,7 @@ const userSchema = new Schema<IUser>(
       unique: true,
       trim: true,
       match: [
-        /^(\+\d{1,3}[- ]?)?\d{9,10}$/,
+        /^\+?66\d{9}$/,
         'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง',
       ],
     },
