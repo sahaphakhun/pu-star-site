@@ -35,6 +35,7 @@ const ShopPage = () => {
   const [showCart, setShowCart] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
+  const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0});
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -64,6 +65,12 @@ const ShopPage = () => {
     } catch (err) {
       console.error('โหลดข้อมูลตะกร้าจาก localStorage ไม่สำเร็จ', err);
     }
+    // ดึง setting ค่าจัดส่ง
+    fetch('/api/settings/shipping')
+      .then(res=>res.json())
+      .then(data=>{
+        if(data) setShippingSetting(data);
+      }).catch(()=>{});
     fetchProducts();
   }, [fetchProducts]);
 
@@ -300,7 +307,12 @@ const ShopPage = () => {
 
   const calculateShippingFee = () => {
     const subTotal = calculateTotal();
-    return subTotal >= 500 ? 0 : 50;
+    const totalQty = getTotalItems();
+    const { freeThreshold, fee, freeQuantityThreshold } = shippingSetting;
+    if ((freeThreshold && subTotal >= freeThreshold) || (freeQuantityThreshold && totalQty >= freeQuantityThreshold)) {
+      return 0;
+    }
+    return fee;
   };
 
   const calculateGrandTotal = () => {

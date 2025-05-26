@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest) {
   if (!auth || auth.role !== 'admin') {
     return NextResponse.json({ message: 'unauthorized' }, { status: 401 });
   }
-  const { freeThreshold, fee } = await req.json();
+  const { freeThreshold, fee, freeQuantityThreshold } = await req.json();
   await connectDB();
   let doc = await ShippingSetting.findOne();
   if (!doc) {
@@ -38,6 +38,7 @@ export async function PUT(req: NextRequest) {
   } else {
     if (freeThreshold !== undefined) doc.freeThreshold = freeThreshold;
     if (fee !== undefined) doc.fee = fee;
+    if (freeQuantityThreshold !== undefined) doc.freeQuantityThreshold = freeQuantityThreshold;
   }
   await doc.save();
   return NextResponse.json(doc);
