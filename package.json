@@ -9,11 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/mongoose": "^5.11.97",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.5.0",
-    "framer-motion": "^12.11.3",
+    "framer-motion": "^12.14.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "next": "15.3.1",
