@@ -227,7 +227,7 @@ export async function verifyOTP(token: string, pin: string) {
  * @param phoneNumber เบอร์โทรศัพท์ที่ต้องการแปลง
  * @returns เบอร์โทรศัพท์ในรูปแบบ E.164
  */
-function formatPhoneNumber(phoneNumber: string): string {
+export function formatPhoneNumber(phoneNumber: string): string {
   // ลบช่องว่างและอักขระพิเศษ
   let cleaned = phoneNumber.replace(/\D/g, '');
 

@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import OTPVerification from '@/models/OTPVerification';
-import { verifyOTP } from '@/utils/deesmsx';
+import { verifyOTP, formatPhoneNumber } from '@/utils/deesmsx';
 
 export async function POST(req: Request) {
   try {
@@ -16,19 +16,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // ตรวจสอบรูปแบบเบอร์โทรศัพท์
-    const thaiPhoneRegex = /^0\d{9}$/;  // เบอร์ไทยที่ขึ้นต้นด้วย 0 เช่น 0812345678
-    const e164PhoneRegex = /^66\d{9}$/; // เบอร์ในรูปแบบ E.164 เช่น 66812345678
+    // แปลงและตรวจสอบเบอร์โทรศัพท์ให้เป็นรูปแบบ E.164 (66xxxxxxxxx)
+    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
 
-    // ตรวจสอบรูปแบบเบอร์โทรศัพท์และแปลงให้เป็นรูปแบบที่ DeeSMSx ต้องการ
-    let formattedPhoneNumber = '';
-    if (thaiPhoneRegex.test(phoneNumber)) {
-      // แปลงเบอร์ไทย 08xxxxxxxx เป็น 668xxxxxxxx
-      formattedPhoneNumber = '66' + phoneNumber.substring(1);
-    } else if (e164PhoneRegex.test(phoneNumber)) {
-      // เบอร์อยู่ในรูปแบบที่ถูกต้องแล้ว
-      formattedPhoneNumber = phoneNumber;
-    } else {
+    if (!/^66\d{9}$/.test(formattedPhoneNumber)) {
       return NextResponse.json(
         { success: false, message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง' },
         { status: 400 }
