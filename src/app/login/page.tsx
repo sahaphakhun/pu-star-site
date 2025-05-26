@@ -11,7 +11,7 @@ const LoginForm = () => {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || '/';
 
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, login: setAuthUser } = useAuth();
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -95,7 +95,10 @@ const LoginForm = () => {
       const data = await response.json();
 
       if (data.success) {
-        // ล็อกอินสำเร็จ นำผู้ใช้กลับไปยังหน้าที่เคยอยู่หรือหน้าหลัก
+        // อัปเดต AuthContext ทันที
+        if (data.user) {
+          setAuthUser(data.user);
+        }
         router.push(returnUrl);
       } else {
         setError(data.message || 'เกิดข้อผิดพลาดในการยืนยัน OTP');
