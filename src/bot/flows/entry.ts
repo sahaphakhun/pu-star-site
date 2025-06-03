@@ -1,6 +1,7 @@
 import { showProducts, handleOrderPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession, clearSession } from '../state';
+import { getSession, clearSession, updateSession } from '../state';
+import { startAuth, handlePhone, handleOtp } from './auth.flow';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -36,6 +37,8 @@ export async function handleEvent(event: MessagingEvent) {
 
   console.log('[Flow] handleEvent for', psid, JSON.stringify(event));
 
+  const session = getSession(psid);
+
   if (event.postback) {
     const payload = event.postback.payload || '';
     if (payload === 'GET_STARTED' || payload === 'SHOW_PRODUCTS') {
@@ -53,9 +56,13 @@ export async function handleEvent(event: MessagingEvent) {
   if (event.message && event.message.quick_reply) {
     const payload = event.message.quick_reply.payload;
     if (payload === 'CONFIRM_CART') {
-      const session = getSession(psid);
-      const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
-      return callSendAPI(psid, { text: `ยังไม่ implement การสั่งซื้ออัตโนมัติ (ยอด ${total.toLocaleString()} บาท)` });
+      if (session.step !== 'browse') return; // avoid when in auth flow
+      return callSendAPI(psid, { text: 'ฟีเจอร์สั่งซื้อกำลังพัฒนา' });
+    }
+
+    if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
+      const phone = (event.message.quick_reply as any).phone_number;
+      return handlePhone(psid, phone);
     }
   }
 
@@ -66,6 +73,12 @@ export async function handleEvent(event: MessagingEvent) {
     if (txt.includes('#delete')) {
       clearSession(psid);
       return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
+    }
+
+    if (session.step === 'await_otp') {
+      if (/^\d{4,6}$/.test(txt)) {
+        return handleOtp(psid, txt.trim());
+      }
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
