@@ -53,7 +53,7 @@ export async function showCategories(psid: string) {
       buttons: [
         {
           type: 'postback',
-          title: 'ดูสินค้า',
+          title: `ดูสินค้า ${cat.length > 13 ? cat.slice(0, 13) + '…' : cat}`,
           payload: `CATEGORY_${slug(cat)}`,
         },
       ],
