@@ -9,24 +9,24 @@ interface ShippingInfo {
 }
 
 export async function startCheckout(psid: string) {
-  const session = getSession(psid);
+  const session = await getSession(psid);
   if (session.cart.length === 0) {
     callSendAPIAsync(psid, { text: 'ตะกร้าสินค้าว่างอยู่ค่ะ' });
     return;
   }
   await sendTypingOn(psid);
   callSendAPIAsync(psid, { text: 'กรุณาพิมพ์ชื่อผู้รับสินค้า' });
-  updateSession(psid, { step: 'ask_name', tempData: {} });
+  await updateSession(psid, { step: 'ask_name', tempData: {} });
 }
 
 export async function handleName(psid: string, name: string) {
-  const sess = getSession(psid);
-  updateSession(psid, { step: 'ask_address', tempData: { ...(sess.tempData || {}), name } });
+  const sess = await getSession(psid);
+  await updateSession(psid, { step: 'ask_address', tempData: { ...(sess.tempData || {}), name } });
   callSendAPIAsync(psid, { text: 'กรุณาพิมพ์ที่อยู่จัดส่งค่ะ' });
 }
 
 export async function handleAddress(psid: string, address: string) {
-  const session = getSession(psid);
+  const session = await getSession(psid);
   const name = (session.tempData as any)?.name || '';
   const shipping: ShippingInfo = { name, address };
 
@@ -54,12 +54,12 @@ export async function handleAddress(psid: string, address: string) {
     ],
   });
 
-  updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
+  await updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
 }
 
 export async function finalizeOrder(psid: string) {
   await connectDB();
-  const session = getSession(psid);
+  const session = await getSession(psid);
   const shipping = session.tempData as any as ShippingInfo & { paymentMethod?: string; slipUrl?: string };
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const items = session.cart.map((c) => ({
@@ -99,7 +99,7 @@ export async function finalizeOrder(psid: string) {
   }
 
   // clear cart & reset step
-  updateSession(psid, { cart: [], step: 'browse', tempData: {} });
+  await updateSession(psid, { cart: [], step: 'browse', tempData: {} });
 }
 
 export async function askPayment(psid: string) {
@@ -110,11 +110,11 @@ export async function askPayment(psid: string) {
       { content_type: 'text', title: 'ปลายทาง', payload: 'PAY_COD' },
     ],
   });
-  updateSession(psid, { step: 'await_payment_method' });
+  await updateSession(psid, { step: 'await_payment_method' });
 }
 
 export async function sendBankInfo(psid: string) {
   callSendAPIAsync(psid, { text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS' });
   callSendAPIAsync(psid, { text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ' });
-  updateSession(psid, { step: 'await_slip' });
+  await updateSession(psid, { step: 'await_slip' });
 } 

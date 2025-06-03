@@ -1,6 +1,9 @@
-/* REVERT to simple in-memory session (sync) to avoid async mismatch */
+/* ใช้ MongoDB เก็บ session เพื่อให้คงอยู่ข้าม cold-start */
 
-interface CartItem {
+import connectDB from '@/lib/mongodb';
+import SessionModel, { ISession } from '@/models/Session';
+
+export interface CartItem {
   productId: string;
   name: string;
   price: number;
@@ -10,28 +13,42 @@ interface CartItem {
   unitPrice?: number;
 }
 
-interface Session {
+export interface Session {
   step: string;
   cart: CartItem[];
   tempData?: Record<string, unknown>;
 }
 
-const sessions = new Map<string, Session>();
+// Utility: แปลงจากเอกสาร Mongoose เป็น Session plain object
+function docToSession(doc: ISession): Session {
+  return {
+    step: doc.step,
+    cart: (doc.cart as unknown as CartItem[]) || [],
+    tempData: doc.tempData || {},
+  };
+}
 
-export function getSession(psid: string): Session {
-  if (!sessions.has(psid)) {
-    sessions.set(psid, { step: 'browse', cart: [] });
+export async function getSession(psid: string): Promise<Session> {
+  await connectDB();
+  let doc = await SessionModel.findOne({ psid }).lean<ISession>();
+  if (!doc) {
+    // create default session lazily (do not wait for write)
+    doc = await SessionModel.create({ psid, step: 'browse', cart: [] }) as unknown as ISession;
   }
-  return sessions.get(psid)!;
+  return docToSession(doc);
 }
 
-export function updateSession(psid: string, partial: Partial<Session>) {
-  const current = getSession(psid);
-  sessions.set(psid, { ...current, ...partial });
+export async function updateSession(psid: string, partial: Partial<Session>): Promise<void> {
+  await connectDB();
+  await SessionModel.findOneAndUpdate(
+    { psid },
+    { ...partial, updatedAt: new Date() },
+    { upsert: true }
+  );
 }
 
-export function addToCart(psid: string, item: CartItem) {
-  const session = getSession(psid);
+export async function addToCart(psid: string, item: CartItem): Promise<void> {
+  const session = await getSession(psid);
   const itemKey = `${item.productId}-${item.unitLabel || 'default'}-${JSON.stringify(item.selectedOptions || {})}`;
   const existing = session.cart.find((c) => {
     const existingKey = `${c.productId}-${c.unitLabel || 'default'}-${JSON.stringify(c.selectedOptions || {})}`;
@@ -42,9 +59,10 @@ export function addToCart(psid: string, item: CartItem) {
   } else {
     session.cart.push(item);
   }
-  updateSession(psid, { cart: session.cart });
+  await updateSession(psid, { cart: session.cart });
 }
 
-export function clearSession(psid: string) {
-  sessions.delete(psid);
+export async function clearSession(psid: string): Promise<void> {
+  await connectDB();
+  await SessionModel.deleteOne({ psid });
 } 

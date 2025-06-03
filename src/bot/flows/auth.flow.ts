@@ -13,7 +13,7 @@ export async function startAuth(psid: string) {
       { content_type: 'user_phone_number' },
     ],
   });
-  updateSession(psid, { step: 'await_phone' });
+  await updateSession(psid, { step: 'await_phone' });
 }
 
 export async function handlePhone(psid: string, phone: string) {
@@ -30,7 +30,7 @@ export async function handlePhone(psid: string, phone: string) {
     { upsert: true }
   );
   await callSendAPI(psid, { text: 'กรุณากรอก OTP 6 หลักที่ได้รับค่ะ' });
-  updateSession(psid, { step: 'await_otp' });
+  await updateSession(psid, { step: 'await_otp' });
 }
 
 export async function handleOtp(psid: string, otp: string) {
@@ -54,5 +54,5 @@ export async function handleOtp(psid: string, otp: string) {
   mu.otpExpire = undefined;
   await mu.save();
   await callSendAPI(psid, { text: 'ยืนยันตัวตนสำเร็จค่ะ สามารถดำเนินการสั่งซื้อได้เลย' });
-  updateSession(psid, { step: 'browse' });
+  await updateSession(psid, { step: 'browse' });
 } 

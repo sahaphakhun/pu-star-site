@@ -40,7 +40,7 @@ export async function handleEvent(event: MessagingEvent) {
 
   console.log('[Flow] handleEvent for', psid, JSON.stringify(event));
 
-  const session = getSession(psid);
+  const session = await getSession(psid);
 
   if (event.postback) {
     const payload = event.postback.payload || '';
@@ -77,20 +77,20 @@ export async function handleEvent(event: MessagingEvent) {
     }
 
     if (payload === 'ORDER_CANCEL') {
-      clearSession(psid);
+      await clearSession(psid);
       return callSendAPI(psid, { text: 'ยกเลิกคำสั่งซื้อแล้วค่ะ' });
     }
 
     if (payload === 'PAY_TRANSFER') {
       if (session.step === 'await_payment_method') {
-        updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'TRANSFER' } });
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'TRANSFER' } });
         return sendBankInfo(psid);
       }
     }
 
     if (payload === 'PAY_COD') {
       if (session.step === 'await_payment_method') {
-        updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'COD' } });
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'COD' } });
         return finalizeOrder(psid);
       }
     }
@@ -110,7 +110,7 @@ export async function handleEvent(event: MessagingEvent) {
       const option = product.options[idx];
       temp.selections = { ...(temp.selections || {}), [option.name]: valueLabel };
       temp.optIdx = idx + 1;
-      updateSession(psid, { tempData: temp });
+      await updateSession(psid, { tempData: temp });
 
       if (temp.optIdx < product.options.length) {
         return askNextOption(psid);
@@ -122,13 +122,13 @@ export async function handleEvent(event: MessagingEvent) {
     // เลือกจำนวน
     if (payload.startsWith('QTY_') && session.step === 'ask_quantity') {
       const qty = parseInt(payload.replace('QTY_', ''), 10) || 1;
-      addProductWithOptions(psid, qty);
+      await addProductWithOptions(psid, qty);
       return;
     }
 
     // เลือกหน่วยสินค้า
     if (payload.startsWith('UNIT_') && session.step === 'select_unit') {
-      return handleUnitPostback(psid, payload);
+      return await handleUnitPostback(psid, payload);
     }
   }
 
@@ -137,7 +137,7 @@ export async function handleEvent(event: MessagingEvent) {
     const img = event.message.attachments[0];
     if (img.type === 'image' && img.payload && (img.payload as any).url) {
       const slipUrl = (img.payload as any).url as string;
-      updateSession(psid, { tempData: { ...(session.tempData || {}), slipUrl } });
+      await updateSession(psid, { tempData: { ...(session.tempData || {}), slipUrl } });
       return finalizeOrder(psid);
     }
   }
@@ -147,7 +147,7 @@ export async function handleEvent(event: MessagingEvent) {
     const txt = event.message.text.toLowerCase();
 
     if (txt.includes('#delete')) {
-      clearSession(psid);
+      await clearSession(psid);
       await sendTypingOn(psid);
       return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
     }

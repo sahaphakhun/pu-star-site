@@ -71,7 +71,7 @@ export async function showCategories(psid: string) {
     },
   });
 
-  updateSession(psid, { step: 'browse_category' });
+  await updateSession(psid, { step: 'browse_category' });
 }
 
 // ส่งรายการสินค้าล่าสุดในรูปแบบ carousel (เลือกตามหมวด)
@@ -140,7 +140,7 @@ export async function showProducts(psid: string, categorySlug?: string) {
     },
   });
 
-  updateSession(psid, { step: 'browse_product' });
+  await updateSession(psid, { step: 'browse_product' });
 }
 
 // จัดการ postback CATEGORY_<slug>
@@ -161,7 +161,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
 
   // ถ้ามีหน่วย ให้ถามหน่วยก่อน
   if (product.units && product.units.length > 0) {
-    updateSession(psid, {
+    await updateSession(psid, {
       step: 'select_unit',
       tempData: {
         product: {
@@ -179,7 +179,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
   // ถ้าสินค้ามีตัวเลือก ให้ถามตัวเลือกต่อ
   if (product.options && product.options.length > 0) {
     // เก็บข้อมูลสินค้าไว้ใน session ชั่วคราว
-    updateSession(psid, {
+    await updateSession(psid, {
       step: 'select_option',
       tempData: {
         product: {
@@ -196,7 +196,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
   }
 
   // ไม่มีตัวเลือก จึงเพิ่มตรง ๆ
-  addToCart(psid, {
+  await addToCart(psid, {
     productId: idStr,
     name: product.name,
     price: product.price || (product.units && product.units[0]?.price) || 0,
@@ -206,7 +206,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
     unitPrice: product.units && product.units[0]?.price,
   });
 
-  const session = getSession(psid);
+  const session = await getSession(psid);
   const total = session.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   
   let unitText = '';
@@ -222,12 +222,12 @@ export async function handleOrderPostback(psid: string, payload: string) {
     ],
   });
 
-  updateSession(psid, { step: 'summary' });
+  await updateSession(psid, { step: 'summary' });
 }
 
 // ถามตัวเลือกตามลำดับ
 export async function askNextOption(psid: string) {
-  const sess = getSession(psid);
+  const sess = await getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
   const idx: number = temp.optIdx || 0;
@@ -256,12 +256,12 @@ export async function askQuantity(psid: string) {
       payload: `QTY_${n}`,
     })),
   });
-  updateSession(psid, { step: 'ask_quantity' });
+  await updateSession(psid, { step: 'ask_quantity' });
 }
 
 // ถามหน่วย
 export async function askUnit(psid: string) {
-  const sess = getSession(psid);
+  const sess = await getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
   if (!product || !product.units) return;
@@ -276,29 +276,29 @@ export async function askUnit(psid: string) {
     })),
   });
 
-  updateSession(psid, { step: 'select_unit' });
+  await updateSession(psid, { step: 'select_unit' });
 }
 
 // จัดการ postback UNIT_<idx>
-export function handleUnitPostback(psid: string, payload: string) {
+export async function handleUnitPostback(psid: string, payload: string) {
   const idxStr = payload.replace('UNIT_', '');
   const idx = parseInt(idxStr, 10);
   if (isNaN(idx)) return;
 
-  const sess = getSession(psid);
+  const sess = await getSession(psid);
   const temp: any = sess.tempData || {};
   const product = temp.product;
   if (!product || !product.units || !product.units[idx]) return;
 
   const selectedUnit = product.units[idx];
 
-  updateSession(psid, {
+  await updateSession(psid, {
     tempData: { ...temp, selectedUnit },
   });
 
   // ถ้ามีตัวเลือก ให้ถามตัวเลือกต่อ
   if (product.options && product.options.length > 0) {
-    updateSession(psid, { step: 'select_option', tempData: { ...temp, selectedUnit, selections: {}, optIdx: 0 } });
+    await updateSession(psid, { step: 'select_option', tempData: { ...temp, selectedUnit, selections: {}, optIdx: 0 } });
     return askNextOption(psid);
   }
 
@@ -307,14 +307,14 @@ export function handleUnitPostback(psid: string, payload: string) {
 }
 
 // เพิ่มสินค้าพร้อมตัวเลือกและจำนวนลงตะกร้า
-export function addProductWithOptions(psid: string, quantity: number) {
-  const sess = getSession(psid);
+export async function addProductWithOptions(psid: string, quantity: number) {
+  const sess = await getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
   const selections = temp.selections || {};
   const selectedUnit = temp.selectedUnit as { label?: string; price?: number } | undefined;
 
-  addToCart(psid, {
+  await addToCart(psid, {
     productId: product.id,
     name: product.name,
     price: selectedUnit?.price ?? product.price,
@@ -324,7 +324,8 @@ export function addProductWithOptions(psid: string, quantity: number) {
     unitPrice: selectedUnit?.price,
   });
 
-  const total = sess.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const updated = await getSession(psid);
+  const total = updated.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   
   let unitText = '';
   if (selectedUnit?.label) {
@@ -339,7 +340,7 @@ export function addProductWithOptions(psid: string, quantity: number) {
     ],
   });
 
-  updateSession(psid, { step: 'summary', tempData: {} });
+  await updateSession(psid, { step: 'summary', tempData: {} });
 }
 
 // Pre-warm product cache ระหว่าง cold-start
