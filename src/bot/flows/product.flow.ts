@@ -1,10 +1,11 @@
 import { callSendAPI } from '@/utils/messenger';
 import Product, { IProduct } from '@/models/Product';
 import { addToCart, updateSession, getSession } from '../state';
-import '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 
 // ส่งรายการสินค้าล่าสุดในรูปแบบ carousel
 export async function showProducts(psid: string) {
+  await connectDB();
   // ดึงสินค้าล่าสุด 10 ชิ้น
   const products = (await Product.find().sort({ createdAt: -1 }).limit(10).lean()) as unknown as IProduct[];
 
@@ -49,6 +50,7 @@ export async function showProducts(psid: string) {
 // จัดการ postback ORDER_<id>
 export async function handleOrderPostback(psid: string, payload: string) {
   const productId = payload.replace('ORDER_', '');
+  await connectDB();
   const product = await Product.findById(productId).lean<IProduct | null>();
   if (!product) {
     await callSendAPI(psid, { text: 'ไม่พบสินค้านี้แล้วครับ' });
