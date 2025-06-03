@@ -2,6 +2,7 @@ import { showProducts, handleOrderPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
+import { sendTypingOn } from '@/utils/messenger';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -72,6 +73,7 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (txt.includes('#delete')) {
       clearSession(psid);
+      await sendTypingOn(psid);
       return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
     }
 
