@@ -1,4 +1,4 @@
-import { callSendAPI } from '@/utils/messenger';
+import { callSendAPIAsync } from '@/utils/messenger';
 import Product, { IProduct } from '@/models/Product';
 import { addToCart, updateSession, getSession } from '../state';
 import connectDB from '@/lib/mongodb';
@@ -21,7 +21,7 @@ export async function showProducts(psid: string) {
   console.log('[ProductFlow] products length', products.length);
 
   if (products.length === 0) {
-    await callSendAPI(psid, { text: 'ขออภัย ขณะนี้ยังไม่มีสินค้าที่จะแสดง' });
+    callSendAPIAsync(psid, { text: 'ขออภัย ขณะนี้ยังไม่มีสินค้าที่จะแสดง' });
     return;
   }
 
@@ -49,7 +49,7 @@ export async function showProducts(psid: string) {
     ],
   }));
 
-  await callSendAPI(psid, {
+  callSendAPIAsync(psid, {
     attachment: {
       type: 'template',
       payload: {
@@ -69,7 +69,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
   await connectDB();
   const product = await Product.findById(productId).lean<IProduct | null>();
   if (!product) {
-    await callSendAPI(psid, { text: 'ไม่พบสินค้านี้แล้วครับ' });
+    callSendAPIAsync(psid, { text: 'ไม่พบสินค้านี้แล้วครับ' });
     return;
   }
   const idStr = (product._id as any).toString();
@@ -84,7 +84,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
   const session = getSession(psid);
   const total = session.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  await callSendAPI(psid, {
+  callSendAPIAsync(psid, {
     text: `เพิ่ม ${product.name} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
@@ -93,4 +93,4 @@ export async function handleOrderPostback(psid: string, payload: string) {
   });
 
   updateSession(psid, { step: 'summary' });
-} 
+}

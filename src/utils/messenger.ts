@@ -102,4 +102,10 @@ export function verifyRequestSignature(rawBody: string, signatureHeader?: string
 // ส่ง typing indicator ให้ผู้ใช้รับรู้การประมวลผล
 export async function sendTypingOn(recipientId: string) {
   await callSendAPI(recipientId, { sender_action: 'typing_on' }, 0);
+}
+
+// Helper ยิงข้อความโดยไม่รอผล ป้องกันการบล็อก event loop
+export function callSendAPIAsync(recipientId: string, message: FBMessagePayload) {
+  // fire-and-forget
+  callSendAPI(recipientId, message).catch((err) => console.error('[Messenger] async error', err));
 } 
