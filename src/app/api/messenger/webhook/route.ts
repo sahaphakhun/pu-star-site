@@ -8,6 +8,14 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
+  // Debug log ตรวจสอบค่า verify
+  console.log('[Webhook Verify] params', {
+    mode,
+    token,
+    envToken: process.env.FB_VERIFY_TOKEN,
+    challenge,
+  });
+
   if (mode === 'subscribe' && token === process.env.FB_VERIFY_TOKEN) {
     return new NextResponse(challenge || '', { status: 200 });
   }
