@@ -9,6 +9,13 @@ export async function showProducts(psid: string) {
   // ดึงสินค้าล่าสุด 10 ชิ้น
   const products = (await Product.find().sort({ createdAt: -1 }).limit(10).lean()) as unknown as IProduct[];
 
+  console.log('[ProductFlow] products length', products.length);
+
+  if (products.length === 0) {
+    await callSendAPI(psid, { text: 'ขออภัย ขณะนี้ยังไม่มีสินค้าที่จะแสดง' });
+    return;
+  }
+
   const elements = products.map((p: IProduct) => ({
     title: p.name,
     subtitle: `${p.price.toLocaleString()} บาท`,
@@ -22,7 +29,7 @@ export async function showProducts(psid: string) {
       {
         type: 'web_url',
         title: 'ดูรายละเอียด',
-        url: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/product/${p._id}`,
+        url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.nextstarinnovations.com').replace(/\/$/, '')}/product/${p._id}`,
         webview_height_ratio: 'tall',
       },
       {
