@@ -18,6 +18,8 @@ interface MessagingEvent {
 export async function handleEvent(event: MessagingEvent) {
   const psid = event.sender.id;
 
+  console.log('[Flow] handleEvent for', psid, JSON.stringify(event));
+
   if (event.postback) {
     const payload = event.postback.payload || '';
     if (payload === 'GET_STARTED' || payload === 'SHOW_PRODUCTS') {

@@ -37,6 +37,9 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
     message,
   };
 
+  // Log request ที่จะส่งไปยัง Facebook
+  console.log('[SendAPI] ->', JSON.stringify(body));
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -44,9 +47,11 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
       body: JSON.stringify(body),
     });
 
+    const text = await res.text();
+    console.log('[SendAPI] <-', res.status, text);
+
     if (!res.ok) {
-      const errText = await res.text();
-      console.error('[Messenger] ส่งข้อความล้มเหลว', errText);
+      console.error('[Messenger] ส่งข้อความล้มเหลว', text);
     }
   } catch (err) {
     console.error('[Messenger] เกิดข้อผิดพลาดในการเรียก Send API', err);

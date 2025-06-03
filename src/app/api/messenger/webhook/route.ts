@@ -33,11 +33,16 @@ export async function POST(request: NextRequest) {
 
   const body = JSON.parse(rawBody);
 
+  console.log('[Webhook] body object', body.object);
+
   if (body.object !== 'page') {
     return NextResponse.json({ status: 'ignored' });
   }
 
   const events = body.entry?.flatMap((e: any) => e.messaging) || [];
+
+  console.log('[Webhook] events recv =', events.length);
+  events.forEach((e: any) => console.log('[Webhook] event', JSON.stringify(e)));
 
   // ประมวลผลแบบ async ไม่รอผล เพื่อให้ตอบกลับ Facebook เร็วที่สุด
   events.forEach((ev: any) => {
