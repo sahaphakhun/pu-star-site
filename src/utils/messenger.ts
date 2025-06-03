@@ -9,7 +9,8 @@ const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 const APP_SECRET = process.env.FB_APP_SECRET || '';
 
 const httpsAgent = new https.Agent({ keepAlive: true });
-const INITIAL_TIMEOUT_MS = 10_000; // 10 วินาที รอบแรก ลดเวลา timeout
+// ลด timeout รอบแรกเหลือ 10 วินาที (handshake ปกติใช้ไม่เกิน 1 วิ)
+const INITIAL_TIMEOUT_MS = 10_000;
 
 interface Recipient {
   id: string;
@@ -23,6 +24,13 @@ export interface FBMessagePayload {
   };
   quick_replies?: Array<Record<string, unknown>>;
   [key: string]: unknown;
+}
+
+// Helper log สำหรับ production/off
+function devLog(...args: any[]) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(...args);
+  }
 }
 
 /**
@@ -46,8 +54,8 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
         message,
       };
 
-  // Log request ที่จะส่งไปยัง Facebook
-  console.log('[SendAPI] ->', JSON.stringify(body));
+  // Log request เฉพาะ dev เพื่อลด I/O ใน production
+  devLog('[SendAPI] ->', JSON.stringify(body));
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -65,7 +73,7 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
       clearTimeout(timeout);
 
       const text = await res.text();
-      console.log('[SendAPI] <-', res.status, text);
+      devLog('[SendAPI] <-', res.status, text);
 
       if (!res.ok && attempt < retries) {
         console.warn('[Messenger] ส่งข้อความล้มเหลว retry', attempt + 1);
@@ -118,4 +126,58 @@ export function sendTypingOn(recipientId: string) {
 export function callSendAPIAsync(recipientId: string, message: FBMessagePayload) {
   // fire-and-forget
   callSendAPI(recipientId, message).catch((err) => console.error('[Messenger] async error', err));
-} 
+}
+
+// ยิง batch หลาย action ใน HTTP เดียว (typing_on + ข้อความหลัก ฯลฯ)
+export async function callSendAPIBatch(recipientId: string, messages: FBMessagePayload[]) {
+  if (!PAGE_ACCESS_TOKEN) {
+    console.error('[Messenger] PAGE_ACCESS_TOKEN ไม่ถูกตั้งค่า');
+    return;
+  }
+  const url = 'https://graph.facebook.com/v19.0';
+  const batch = messages.map((msg) => {
+    const isSenderAction = 'sender_action' in msg && Object.keys(msg).length === 1;
+    const body = isSenderAction
+      ? { recipient: { id: recipientId }, sender_action: (msg as any).sender_action }
+      : { recipient: { id: recipientId }, message: msg };
+    return {
+      method: 'POST',
+      relative_url: `me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+      body: JSON.stringify(body),
+    };
+  });
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch }),
+      // @ts-ignore
+      agent: httpsAgent as any,
+    });
+    devLog('[BatchAPI] status', res.status);
+    if (!res.ok) {
+      console.error('[Messenger] Batch API error', await res.text());
+    }
+  } catch (err) {
+    console.error('[Messenger] Batch API fetch error', err);
+  }
+}
+
+// Helper รวม typing indicator + ข้อความ (ใช้งานง่ายใน flows)
+export function sendTypingAndMessages(recipientId: string, ...messages: FBMessagePayload[]) {
+  const list: FBMessagePayload[] = [{ sender_action: 'typing_on' }, ...messages];
+  callSendAPIBatch(recipientId, list).catch((err) => console.error('Batch error', err));
+}
+
+// ยิง HEAD request ทุก 5 นาทีเพื่อให้ TLS connection ไม่ถูกปิดจากฝั่ง Facebook (ลด latency รอบแรก)
+setInterval(() => {
+  fetch('https://graph.facebook.com', {
+    method: 'HEAD',
+    // @ts-ignore Node fetch accepts agent
+    agent: httpsAgent as any,
+  }).catch(() => {});
+}, 300_000);
+
+// ยิงหนึ่งครั้งทันทีตอนเริ่มเพื่อ pre-warm (cold-start)
+fetch('https://graph.facebook.com', { method: 'HEAD' }).catch(() => {}); 

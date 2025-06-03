@@ -1,10 +1,11 @@
 import { callSendAPIAsync } from '@/utils/messenger';
 import Product, { IProduct } from '@/models/Product';
 import { addToCart, updateSession, getSession } from '../state';
-import connectDB from '@/lib/mongodb';
+import { getProductById } from '@/utils/productCache';
 import { getCache, setCache } from '@cache/simpleCache';
-import { sendTypingOn } from '@/utils/messenger';
+import { sendTypingAndMessages, sendTypingOn } from '@/utils/messenger';
 import { transformImage } from '@utils/image';
+import connectDB from '@/lib/mongodb';
 
 function slug(text: string): string {
   // แปลงเป็น lower-case + trim แล้ว encodeURIComponent เพื่อให้รองรับอักขระไทย/พิเศษ
@@ -24,8 +25,7 @@ async function getAllProducts(): Promise<IProduct[]> {
 
 // ส่งข้อความแนะนำตัวครั้งแรก
 export async function sendWelcome(psid: string) {
-  await sendTypingOn(psid);
-  callSendAPIAsync(psid, {
+  sendTypingAndMessages(psid, {
     text: 'สวัสดีค่ะ ฉันคือ Next Star Bot 🤖\nเลือกสินค้า สั่งซื้อ และติดตามสถานะได้ง่าย ๆ ผ่านแชทนี้\nเริ่มต้นด้วยการเลือกหมวดหมู่สินค้าด้านล่างเลยค่ะ',
   });
 }
@@ -152,8 +152,7 @@ export async function handleCategoryPostback(psid: string, payload: string) {
 // จัดการ postback ORDER_<id>
 export async function handleOrderPostback(psid: string, payload: string) {
   const productId = payload.replace('ORDER_', '');
-  await connectDB();
-  const product = await Product.findById(productId).lean<IProduct | null>();
+  const product = await getProductById(productId);
   if (!product) {
     callSendAPIAsync(psid, { text: 'ไม่พบสินค้านี้แล้วครับ' });
     return;
@@ -342,3 +341,6 @@ export function addProductWithOptions(psid: string, quantity: number) {
 
   updateSession(psid, { step: 'summary', tempData: {} });
 }
+
+// Pre-warm product cache ระหว่าง cold-start
+getAllProducts().catch(() => {});

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleEvent } from '@/bot/flows/entry';
-import { verifyRequestSignature } from '@/utils/messenger';
+
+export const runtime = 'edge';
+
+// Edge Webhook: ตอบ Facebook เร็วที่สุด แล้ว forward ไปยัง worker (Node)
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -23,32 +25,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const signature = request.headers.get('x-hub-signature-256') || undefined;
   const rawBody = await request.text();
 
-  // ตรวจสอบ signature (ข้ามถ้า APP_SECRET ไม่ตั้ง)
-  if (!verifyRequestSignature(rawBody, signature)) {
-    console.warn('[Messenger] ลายเซ็นไม่ผ่าน หรือ APP_SECRET ว่าง');
-  }
+  // ส่งไปยัง worker แบบ fire-and-forget
+  const workerUrl = `${request.nextUrl.origin}/api/worker/messenger`;
+  const signature = request.headers.get('x-hub-signature-256') || '';
 
-  const body = JSON.parse(rawBody);
+  fetch(workerUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hub-signature-256': signature,
+    },
+    body: rawBody,
+  }).catch(() => {});
 
-  console.log('[Webhook] body object', body.object);
-
-  if (body.object !== 'page') {
-    return NextResponse.json({ status: 'ignored' });
-  }
-
-  const events = body.entry?.flatMap((e: any) => e.messaging) || [];
-
-  console.log('[Webhook] events recv =', events.length);
-  events.forEach((e: any) => console.log('[Webhook] event', JSON.stringify(e)));
-
-  // ประมวลผลแบบ async ไม่รอผล เพื่อให้ตอบกลับ Facebook เร็วที่สุด
-  events.forEach((ev: any) => {
-    handleEvent(ev).catch((err) => console.error('Handle event error', err));
-  });
-
-  // ส่ง response ทันทีเพื่อหลีกเลี่ยง timeout (10s limit)
-  return NextResponse.json({ status: 'received' });
+  // ตอบทันทีให้ FB ไม่ timeout (10 s limit)
+  return NextResponse.json({ status: 'accepted' });
 } 

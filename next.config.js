@@ -11,6 +11,8 @@ const nextConfig = {
   images: {
     domains: ['res.cloudinary.com'],
   },
+  // เปิด gzip/brotli compression เพื่อลด payload
+  compress: true,
   env: {
     DEESMSX_API_KEY: process.env.DEESMSX_API_KEY,
     DEESMSX_SECRET_KEY: process.env.DEESMSX_SECRET_KEY,
