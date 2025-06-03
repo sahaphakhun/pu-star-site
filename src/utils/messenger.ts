@@ -9,7 +9,7 @@ const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 const APP_SECRET = process.env.FB_APP_SECRET || '';
 
 const httpsAgent = new https.Agent({ keepAlive: true });
-const INITIAL_TIMEOUT_MS = 25_000; // 25 วินาที รอบแรก (เผื่อ cold-start TLS)
+const INITIAL_TIMEOUT_MS = 10_000; // 10 วินาที รอบแรก ลดเวลา timeout
 
 interface Recipient {
   id: string;
@@ -110,8 +110,8 @@ export function verifyRequestSignature(rawBody: string, signatureHeader?: string
 }
 
 // ส่ง typing indicator ให้ผู้ใช้รับรู้การประมวลผล
-export async function sendTypingOn(recipientId: string) {
-  await callSendAPI(recipientId, { sender_action: 'typing_on' }, 0);
+export function sendTypingOn(recipientId: string) {
+  callSendAPIAsync(recipientId, { sender_action: 'typing_on' });
 }
 
 // Helper ยิงข้อความโดยไม่รอผล ป้องกันการบล็อก event loop
