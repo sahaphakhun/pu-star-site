@@ -38,13 +38,12 @@ export async function POST(request: NextRequest) {
   }
 
   const events = body.entry?.flatMap((e: any) => e.messaging) || [];
-  for (const ev of events) {
-    try {
-      await handleEvent(ev);
-    } catch (err) {
-      console.error('Handle event error', err);
-    }
-  }
 
-  return NextResponse.json({ status: 'ok' });
+  // ประมวลผลแบบ async ไม่รอผล เพื่อให้ตอบกลับ Facebook เร็วที่สุด
+  events.forEach((ev: any) => {
+    handleEvent(ev).catch((err) => console.error('Handle event error', err));
+  });
+
+  // ส่ง response ทันทีเพื่อหลีกเลี่ยง timeout (10s limit)
+  return NextResponse.json({ status: 'received' });
 } 
