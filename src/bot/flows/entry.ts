@@ -18,6 +18,15 @@ interface MessagingEvent {
 export async function handleEvent(event: MessagingEvent) {
   const psid = event.sender.id;
 
+  // ข้าม event ที่เป็น echo (บอทส่งเอง) หรือ delivery/read
+  if (event.message && ((event as any).message.is_echo || (event as any).message.app_id)) {
+    console.log('[Flow] skip echo');
+    return;
+  }
+  if ((event as any).delivery || (event as any).read) {
+    return;
+  }
+
   console.log('[Flow] handleEvent for', psid, JSON.stringify(event));
 
   if (event.postback) {
