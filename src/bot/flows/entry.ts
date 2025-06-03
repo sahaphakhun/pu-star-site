@@ -65,7 +65,7 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (txt.includes('#delete')) {
       clearSession(psid);
-      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว คุณสามารถเริ่มต้นใหม่ได้เลยค่ะ' });
+      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
