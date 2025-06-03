@@ -82,7 +82,7 @@ export async function handleEvent(event: MessagingEvent) {
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
-      return callSendAPI(psid, { text: 'สวัสดีค่ะ เลือกดูสินค้าได้เลยนะคะ' });
+      return showProducts(psid);
     }
   }
 

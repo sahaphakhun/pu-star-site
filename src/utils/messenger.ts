@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import https from 'https';
 
 /**
  * Utility สำหรับเรียก Facebook Send API และตรวจสอบลายเซ็นของ Webhook
@@ -6,6 +7,9 @@ import crypto from 'crypto';
 
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 const APP_SECRET = process.env.FB_APP_SECRET || '';
+
+const httpsAgent = new https.Agent({ keepAlive: true });
+const INITIAL_TIMEOUT_MS = 15_000; // 15 วินาที รอบแรก
 
 interface Recipient {
   id: string;
@@ -43,12 +47,14 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
+      const timeout = setTimeout(() => controller.abort(), attempt === 0 ? INITIAL_TIMEOUT_MS : 8000);
 
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        // @ts-ignore Node fetch accepts agent in runtime
+        agent: httpsAgent as any,
         signal: controller.signal,
       });
       clearTimeout(timeout);
