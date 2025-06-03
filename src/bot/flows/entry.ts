@@ -3,6 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
+import { startCheckout, handleName, handleAddress, finalizeOrder } from './order.flow';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -57,8 +58,16 @@ export async function handleEvent(event: MessagingEvent) {
   if (event.message && event.message.quick_reply) {
     const payload = event.message.quick_reply.payload;
     if (payload === 'CONFIRM_CART') {
-      if (session.step !== 'browse') return; // avoid when in auth flow
-      return callSendAPI(psid, { text: 'ฟีเจอร์สั่งซื้อกำลังพัฒนา' });
+      return startCheckout(psid);
+    }
+
+    if (payload === 'ORDER_CONFIRM') {
+      if (session.step === 'confirm_order') return finalizeOrder(psid);
+    }
+
+    if (payload === 'ORDER_CANCEL') {
+      clearSession(psid);
+      return callSendAPI(psid, { text: 'ยกเลิกคำสั่งซื้อแล้วค่ะ' });
     }
 
     if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
@@ -81,6 +90,14 @@ export async function handleEvent(event: MessagingEvent) {
       if (/^\d{4,6}$/.test(txt)) {
         return handleOtp(psid, txt.trim());
       }
+    }
+
+    if (session.step === 'ask_name') {
+      return handleName(psid, txt);
+    }
+
+    if (session.step === 'ask_address') {
+      return handleAddress(psid, txt);
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
