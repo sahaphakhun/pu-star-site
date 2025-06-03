@@ -36,10 +36,15 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
 
   const url = `https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
 
-  const body = {
-    recipient: { id: recipientId },
-    message,
-  };
+  const body = 'sender_action' in message && Object.keys(message).length === 1
+    ? {
+        recipient: { id: recipientId },
+        sender_action: (message as any).sender_action,
+      }
+    : {
+        recipient: { id: recipientId },
+        message,
+      };
 
   // Log request ที่จะส่งไปยัง Facebook
   console.log('[SendAPI] ->', JSON.stringify(body));
