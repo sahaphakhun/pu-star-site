@@ -9,7 +9,7 @@ const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 const APP_SECRET = process.env.FB_APP_SECRET || '';
 
 const httpsAgent = new https.Agent({ keepAlive: true });
-const INITIAL_TIMEOUT_MS = 15_000; // 15 วินาที รอบแรก
+const INITIAL_TIMEOUT_MS = 25_000; // 25 วินาที รอบแรก (เผื่อ cold-start TLS)
 
 interface Recipient {
   id: string;
@@ -70,7 +70,12 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
         console.error('[Messenger] ส่งข้อความล้มเหลว', text);
       }
       break; // success or last attempt
-    } catch (err) {
+    } catch (err: any) {
+      // รอบแรกเวลาเกิน timeout → AbortError ถือว่าปกติเมื่อ cold-start
+      if (err?.name === 'AbortError' && attempt === 0) {
+        console.warn('[Messenger] first attempt timeout, retrying');
+        continue;
+      }
       if (attempt < retries) {
         console.warn('[Messenger] fetch error retry', attempt + 1, err);
         continue;
