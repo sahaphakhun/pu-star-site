@@ -1,15 +1,16 @@
-import { showProducts, handleOrderPostback } from './product.flow';
+import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, finalizeOrder } from './order.flow';
+import { startCheckout, handleName, handleAddress, finalizeOrder, askPayment, sendBankInfo } from './order.flow';
 
 interface MessagingEvent {
   sender: { id: string };
   message?: {
     text?: string;
     quick_reply?: { payload: string };
+    attachments?: { type: string; payload: any }[];
   };
   postback?: {
     title?: string;
@@ -43,8 +44,15 @@ export async function handleEvent(event: MessagingEvent) {
 
   if (event.postback) {
     const payload = event.postback.payload || '';
-    if (payload === 'GET_STARTED' || payload === 'SHOW_PRODUCTS') {
-      return showProducts(psid);
+    if (payload === 'GET_STARTED') {
+      await sendWelcome(psid);
+      return showCategories(psid);
+    }
+    if (payload === 'SHOW_PRODUCTS') {
+      return showCategories(psid);
+    }
+    if (payload.startsWith('CATEGORY_')) {
+      return handleCategoryPostback(psid, payload);
     }
     if (payload.startsWith('ORDER_')) {
       return handleOrderPostback(psid, payload);
@@ -62,7 +70,10 @@ export async function handleEvent(event: MessagingEvent) {
     }
 
     if (payload === 'ORDER_CONFIRM') {
-      if (session.step === 'confirm_order') return finalizeOrder(psid);
+      if (session.step === 'ask_payment') {
+        // ถัดไปเลือกวิธีชำระเงิน
+        return askPayment(psid);
+      }
     }
 
     if (payload === 'ORDER_CANCEL') {
@@ -70,9 +81,33 @@ export async function handleEvent(event: MessagingEvent) {
       return callSendAPI(psid, { text: 'ยกเลิกคำสั่งซื้อแล้วค่ะ' });
     }
 
+    if (payload === 'PAY_TRANSFER') {
+      if (session.step === 'await_payment_method') {
+        updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'TRANSFER' } });
+        return sendBankInfo(psid);
+      }
+    }
+
+    if (payload === 'PAY_COD') {
+      if (session.step === 'await_payment_method') {
+        updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'COD' } });
+        return finalizeOrder(psid);
+      }
+    }
+
     if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
       const phone = (event.message.quick_reply as any).phone_number;
       return handlePhone(psid, phone);
+    }
+  }
+
+  // รับสลิปเป็นรูปภาพ
+  if (event.message && session.step === 'await_slip' && event.message.attachments && event.message.attachments.length > 0) {
+    const img = event.message.attachments[0];
+    if (img.type === 'image' && img.payload && (img.payload as any).url) {
+      const slipUrl = (img.payload as any).url as string;
+      updateSession(psid, { tempData: { ...(session.tempData || {}), slipUrl } });
+      return finalizeOrder(psid);
     }
   }
 
@@ -101,10 +136,11 @@ export async function handleEvent(event: MessagingEvent) {
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
-      return showProducts(psid);
+      await sendWelcome(psid);
+      return showCategories(psid);
     }
   }
 
   // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
-  return showProducts(psid);
+  return showCategories(psid);
 } 

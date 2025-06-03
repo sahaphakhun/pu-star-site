@@ -27,6 +27,7 @@ const AdminProductsPage = () => {
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [category, setCategory] = useState('ทั่วไป');
   const [isUploading, setIsUploading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
@@ -56,6 +57,7 @@ const AdminProductsPage = () => {
     setPrice('');
     setDescription('');
     setImageUrl('');
+    setCategory('ทั่วไป');
     setOptions([]);
     setEditMode(false);
     setCurrentProductId(null);
@@ -75,6 +77,7 @@ const AdminProductsPage = () => {
       price: parseFloat(price),
       description,
       imageUrl,
+      category,
     };
 
     if (options.length > 0) {
@@ -124,6 +127,7 @@ const AdminProductsPage = () => {
     setPrice(product.price.toString());
     setDescription(product.description);
     setImageUrl(product.imageUrl);
+    setCategory(product.category || 'ทั่วไป');
     setEditMode(true);
     setCurrentProductId(product._id);
     setShowForm(true);
@@ -480,6 +484,18 @@ const AdminProductsPage = () => {
                           onChange={(e) => setPrice(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="เช่น 199"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
+                        <input
+                          type="text"
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="เช่น ฟีล์ม, กาว"
                           required
                         />
                       </div>

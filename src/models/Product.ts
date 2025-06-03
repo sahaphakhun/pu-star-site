@@ -5,6 +5,7 @@ export interface IProduct extends Document {
   price: number;
   description: string;
   imageUrl: string;
+  category?: string;
   options?: {
     name: string;
     values: {
@@ -36,6 +37,12 @@ const productSchema = new Schema<IProduct>(
     imageUrl: {
       type: String,
       required: [true, 'กรุณาระบุรูปภาพสินค้า'],
+    },
+    category: {
+      type: String,
+      required: false,
+      trim: true,
+      default: 'ทั่วไป',
     },
     options: {
       type: [

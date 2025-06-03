@@ -12,12 +12,12 @@ export async function GET() {
 
 // POST: สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
-  const { name, price, description, imageUrl, options } = await request.json();
+  const { name, price, description, imageUrl, options, category } = await request.json();
   if (!name || !price || !description || !imageUrl) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
   }
   await connectDB();
-  const product = await Product.create({ name, price, description, imageUrl, options });
+  const product = await Product.create({ name, price, description, imageUrl, options, category });
   clearCache('products');
   return NextResponse.json(product, { status: 201 });
 } 

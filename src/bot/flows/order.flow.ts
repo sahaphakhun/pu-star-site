@@ -44,13 +44,13 @@ export async function handleAddress(psid: string, address: string) {
     ],
   });
 
-  updateSession(psid, { step: 'confirm_order', tempData: { ...shipping } });
+  updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
 }
 
 export async function finalizeOrder(psid: string) {
   await connectDB();
   const session = getSession(psid);
-  const shipping = session.tempData as unknown as ShippingInfo;
+  const shipping = session.tempData as any as ShippingInfo & { paymentMethod?: string; slipUrl?: string };
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const items = session.cart.map((c) => ({
     productId: c.productId,
@@ -71,6 +71,8 @@ export async function finalizeOrder(psid: string) {
     totalAmount: total,
   };
   if (mu?.userId) payload.userId = mu.userId;
+  if (shipping.paymentMethod) payload.paymentMethod = shipping.paymentMethod;
+  if (shipping.slipUrl) payload.slipUrl = shipping.slipUrl;
 
   try {
     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/orders`, {
@@ -85,4 +87,21 @@ export async function finalizeOrder(psid: string) {
 
   // clear cart & reset step
   updateSession(psid, { cart: [], step: 'browse', tempData: {} });
+}
+
+export async function askPayment(psid: string) {
+  callSendAPIAsync(psid, {
+    text: 'เลือกวิธีชำระเงินค่ะ',
+    quick_replies: [
+      { content_type: 'text', title: 'โอนเงิน', payload: 'PAY_TRANSFER' },
+      { content_type: 'text', title: 'ปลายทาง', payload: 'PAY_COD' },
+    ],
+  });
+  updateSession(psid, { step: 'await_payment_method' });
+}
+
+export async function sendBankInfo(psid: string) {
+  callSendAPIAsync(psid, { text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS' });
+  callSendAPIAsync(psid, { text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ' });
+  updateSession(psid, { step: 'await_slip' });
 } 

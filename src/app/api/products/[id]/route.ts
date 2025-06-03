@@ -17,14 +17,14 @@ export async function GET(request: NextRequest, context: unknown) {
 // PUT: อัปเดตสินค้า
 export async function PUT(request: NextRequest, context: unknown) {
   const { id } = (context as { params: { id: string } }).params;
-  const { name, price, description, imageUrl, options } = await request.json();
+  const { name, price, description, imageUrl, options, category } = await request.json();
   if (!name || !price || !description || !imageUrl) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
   }
   await connectDB();
   const updated = await Product.findByIdAndUpdate(
     id,
-    { name, price, description, imageUrl, options },
+    { name, price, description, imageUrl, options, category },
     { new: true, runValidators: true }
   );
   if (!updated) {

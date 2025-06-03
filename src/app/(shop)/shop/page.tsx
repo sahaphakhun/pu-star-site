@@ -36,6 +36,8 @@ const ShopPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
   const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0});
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -47,8 +49,10 @@ const ShopPage = () => {
   const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch('/api/products');
-      const data = await response.json();
+      const data: ProductWithId[] = await response.json();
       setProducts(data);
+      const cats = Array.from(new Set(data.map((p: any) => p.category || 'ทั่วไป')));
+      setCategories(['ทั้งหมด', ...cats]);
       setLoading(false);
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
@@ -342,9 +346,28 @@ const ShopPage = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Products Grid */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">สินค้าทั้งหมด</h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">สินค้าทั้งหมด</h2>
+            <div className="flex overflow-x-auto space-x-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full border text-sm whitespace-nowrap transition-colors ${
+                    selectedCategory === cat ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {products.map((product) => (
+            {(
+              selectedCategory === 'ทั้งหมด'
+                ? products
+                : products.filter((p) => (p.category || 'ทั่วไป') === selectedCategory)
+            ).map((product) => (
               <motion.div
                 key={product._id}
                 whileHover={{ y: -5 }}
