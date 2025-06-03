@@ -7,13 +7,8 @@ import { sendTypingOn } from '@/utils/messenger';
 import { transformImage } from '@utils/image';
 
 function slug(text: string): string {
-  return encodeURIComponent(
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '')
-  );
+  // แปลงเป็น lower-case + trim แล้ว encodeURIComponent เพื่อให้รองรับอักขระไทย/พิเศษ
+  return encodeURIComponent(text.toLowerCase().trim().replace(/\s+/g, '-'));
 }
 
 // ดึงสินค้าทั้งหมดจาก cache/DB
