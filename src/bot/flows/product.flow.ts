@@ -2,12 +2,21 @@ import { callSendAPI } from '@/utils/messenger';
 import Product, { IProduct } from '@/models/Product';
 import { addToCart, updateSession, getSession } from '../state';
 import connectDB from '@/lib/mongodb';
+import { getCache, setCache } from '@cache/simpleCache';
+import { sendTypingOn } from '@/utils/messenger';
+import { transformImage } from '@utils/image';
 
 // ส่งรายการสินค้าล่าสุดในรูปแบบ carousel
 export async function showProducts(psid: string) {
-  await connectDB();
-  // ดึงสินค้าล่าสุด 10 ชิ้น
-  const products = (await Product.find().sort({ createdAt: -1 }).limit(10).lean()) as unknown as IProduct[];
+  // แจ้งกำลังพิมพ์ให้ผู้ใช้เห็นเร็วขึ้น
+  await sendTypingOn(psid);
+
+  let products = getCache<IProduct[]>('products');
+  if (!products) {
+    await connectDB();
+    products = (await Product.find().sort({ createdAt: -1 }).limit(10).lean()) as unknown as IProduct[];
+    setCache('products', products, 60_000); // cache 60s
+  }
 
   console.log('[ProductFlow] products length', products.length);
 
@@ -19,7 +28,7 @@ export async function showProducts(psid: string) {
   const elements = products.map((p: IProduct) => ({
     title: p.name,
     subtitle: `${p.price.toLocaleString()} บาท`,
-    image_url: p.imageUrl,
+    image_url: transformImage(p.imageUrl),
     buttons: [
       {
         type: 'postback',
