@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import { clearCache } from '@cache/simpleCache';
 
 // GET: ดึงข้อมูลสินค้าเฉพาะ id
 export async function GET(request: NextRequest, context: unknown) {
@@ -29,6 +30,7 @@ export async function PUT(request: NextRequest, context: unknown) {
   if (!updated) {
     return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
   }
+  clearCache('products');
   return NextResponse.json(updated);
 }
 
@@ -40,5 +42,6 @@ export async function DELETE(request: NextRequest, context: unknown) {
   if (!deleted) {
     return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
   }
+  clearCache('products');
   return NextResponse.json({ message: 'ลบสินค้าสำเร็จ' });
 } 

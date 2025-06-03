@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import { clearCache } from '@cache/simpleCache';
 
 // GET: ดึงสินค้าทั้งหมด
 export async function GET() {
@@ -17,5 +18,6 @@ export async function POST(request: NextRequest) {
   }
   await connectDB();
   const product = await Product.create({ name, price, description, imageUrl, options });
+  clearCache('products');
   return NextResponse.json(product, { status: 201 });
 } 

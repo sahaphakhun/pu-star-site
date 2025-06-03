@@ -15,7 +15,7 @@ export async function showProducts(psid: string) {
   if (!products) {
     await connectDB();
     products = (await Product.find().sort({ createdAt: -1 }).limit(10).lean()) as unknown as IProduct[];
-    setCache('products', products, 60_000); // cache 60s
+    setCache('products', products, 86_400_000); // cache 1 วัน
   }
 
   console.log('[ProductFlow] products length', products.length);

@@ -1,6 +1,6 @@
 import { showProducts, handleOrderPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession } from '../state';
+import { getSession, clearSession } from '../state';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -62,6 +62,12 @@ export async function handleEvent(event: MessagingEvent) {
   // fallback
   if (event.message && event.message.text) {
     const txt = event.message.text.toLowerCase();
+
+    if (txt.includes('#delete')) {
+      clearSession(psid);
+      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว คุณสามารถเริ่มต้นใหม่ได้เลยค่ะ' });
+    }
+
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
       return callSendAPI(psid, { text: 'สวัสดีค่ะ เลือกดูสินค้าได้เลยนะคะ' });
     }
