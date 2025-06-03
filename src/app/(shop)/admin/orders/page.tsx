@@ -11,6 +11,7 @@ interface OrderItem {
   price: number;
   quantity: number;
   selectedOptions?: { [key: string]: string };
+  unitLabel?: string;
 }
 
 interface Order {
@@ -211,6 +212,35 @@ const AdminOrdersPage = () => {
 
   const stats = getOrderStats();
 
+  const exportToCSV = (data: Order[]) => {
+    const header = ['OrderID','Customer','Phone','Date','Item','Unit','Qty','Price'];
+    const rows: string[] = [];
+    data.forEach(order=>{
+      order.items.forEach(item=>{
+        rows.push([
+          order._id.slice(-8).toUpperCase(),
+          order.customerName,
+          order.customerPhone,
+          new Date(order.createdAt).toLocaleDateString('th-TH'),
+          item.name,
+          item.unitLabel||'',
+          item.quantity,
+          item.price
+        ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+      });
+    });
+    const csvContent = [header.join(','),...rows].join('\n');
+    const blob = new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href=url;
+    link.download=`orders_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -228,9 +258,14 @@ const AdminOrdersPage = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการคำสั่งซื้อ</h1>
-          <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อทั้งหมด</p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการคำสั่งซื้อ</h1>
+            <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อทั้งหมด</p>
+          </div>
+          <button onClick={()=>exportToCSV(filteredAndSortedOrders)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+            Export CSV
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -480,7 +515,7 @@ const AdminOrdersPage = () => {
                     {selectedOrder.items.map((item, index) => (
                       <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                         <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
+                          <p className="font-medium">{item.name}{item.unitLabel ? ` (${item.unitLabel})` : ''}</p>
                           {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
                             <p className="text-sm text-gray-600">
                               {Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(', ')}

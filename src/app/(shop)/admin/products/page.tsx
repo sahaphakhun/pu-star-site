@@ -25,6 +25,7 @@ const AdminProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [units, setUnits] = useState<{ label: string; price: string }[]>([]);
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('ทั่วไป');
@@ -55,6 +56,7 @@ const AdminProductsPage = () => {
   const resetForm = () => {
     setName('');
     setPrice('');
+    setUnits([]);
     setDescription('');
     setImageUrl('');
     setCategory('ทั่วไป');
@@ -67,18 +69,30 @@ const AdminProductsPage = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!name || !price || !description || !imageUrl) {
+    if (!name || !description || !imageUrl) {
       toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+      return;
+    }
+
+    if (price.trim() === '' && units.length === 0) {
+      toast.error('กรุณาระบุราคาเดี่ยว หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย');
       return;
     }
 
     const productData: any = {
       name,
-      price: parseFloat(price),
       description,
       imageUrl,
       category,
     };
+
+    if (price.trim() !== '') {
+      productData.price = parseFloat(price);
+    }
+
+    if (units.length > 0) {
+      productData.units = units.map((u) => ({ label: u.label, price: parseFloat(u.price) }));
+    }
 
     if (options.length > 0) {
       productData.options = options.map((option) => ({
@@ -124,7 +138,7 @@ const AdminProductsPage = () => {
 
   const handleEditProduct = (product: ProductWithId) => {
     setName(product.name);
-    setPrice(product.price.toString());
+    setPrice(product.price !== undefined ? product.price.toString() : '');
     setDescription(product.description);
     setImageUrl(product.imageUrl);
     setCategory(product.category || 'ทั่วไป');
@@ -142,6 +156,12 @@ const AdminProductsPage = () => {
       })));
     } else {
       setOptions([]);
+    }
+
+    if (product.units && product.units.length > 0) {
+      setUnits(product.units.map((u) => ({ label: u.label, price: u.price.toString() })));
+    } else {
+      setUnits([]);
     }
   };
 
@@ -309,6 +329,22 @@ const AdminProductsPage = () => {
     }
   };
 
+  const addUnit = () => {
+    setUnits((prev) => [...prev, { label: '', price: '' }]);
+  };
+
+  const removeUnit = (idx: number) => {
+    setUnits((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateUnitLabel = (idx: number, label: string) => {
+    setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, label } : u)));
+  };
+
+  const updateUnitPrice = (idx: number, priceValue: string) => {
+    setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, price: priceValue } : u)));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -371,7 +407,13 @@ const AdminProductsPage = () => {
               <div className="p-4">
                 <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
                 <p className="text-blue-600 font-bold text-lg mb-3">
-                  ฿{product.price.toLocaleString()}
+                  ฿{
+                    product.price !== undefined
+                      ? product.price.toLocaleString()
+                      : product.units && product.units.length > 0
+                        ? product.units[0].price.toLocaleString()
+                        : '-'
+                  }
                 </p>
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                 
@@ -476,7 +518,7 @@ const AdminProductsPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">ราคา (บาท)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">ราคาเริ่มต้น (บาท) *(ไม่ใส่ได้ถ้ามีหน่วย)*</label>
                         <input
                           type="number"
                           step="0.01"
@@ -484,8 +526,56 @@ const AdminProductsPage = () => {
                           onChange={(e) => setPrice(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="เช่น 199"
-                          required
                         />
+                      </div>
+
+                      {/* Units Section */}
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-medium text-gray-700">หน่วยสินค้า</span>
+                          <button
+                            type="button"
+                            onClick={addUnit}
+                            className="bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 transition-colors"
+                          >
+                            + เพิ่มหน่วย
+                          </button>
+                        </div>
+
+                        {units.length === 0 && (
+                          <p className="text-xs text-gray-500">ยังไม่มีหน่วย เพิ่มใหม่ได้ตามต้องการ</p>
+                        )}
+
+                        <div className="space-y-3">
+                          {units.map((u, idx) => (
+                            <div key={idx} className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                value={u.label}
+                                onChange={(e) => updateUnitLabel(idx, e.target.value)}
+                                placeholder="เช่น หลอด, ลัง"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              />
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={u.price}
+                                onChange={(e) => updateUnitPrice(idx, e.target.value)}
+                                placeholder="ราคา"
+                                className="w-32 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeUnit(idx)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
                       <div>

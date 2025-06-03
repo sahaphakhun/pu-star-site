@@ -4,6 +4,8 @@ interface CartItem {
   price: number;
   quantity: number;
   selectedOptions?: Record<string, string>;
+  unitLabel?: string;
+  unitPrice?: number;
 }
 
 interface Session {
@@ -29,7 +31,14 @@ export function updateSession(psid: string, partial: Partial<Session>) {
 
 export function addToCart(psid: string, item: CartItem) {
   const session = getSession(psid);
-  const existing = session.cart.find((c) => c.productId === item.productId);
+  // สร้าง key สำหรับการเปรียบเทียบ item ที่เหมือนกัน
+  const itemKey = `${item.productId}-${item.unitLabel || 'default'}-${JSON.stringify(item.selectedOptions || {})}`;
+  
+  const existing = session.cart.find((c) => {
+    const existingKey = `${c.productId}-${c.unitLabel || 'default'}-${JSON.stringify(c.selectedOptions || {})}`;
+    return existingKey === itemKey;
+  });
+  
   if (existing) {
     existing.quantity += item.quantity;
   } else {

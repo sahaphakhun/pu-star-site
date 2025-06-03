@@ -1,4 +1,4 @@
-import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions } from './product.flow';
+import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
@@ -124,6 +124,11 @@ export async function handleEvent(event: MessagingEvent) {
       const qty = parseInt(payload.replace('QTY_', ''), 10) || 1;
       addProductWithOptions(psid, qty);
       return;
+    }
+
+    // เลือกหน่วยสินค้า
+    if (payload.startsWith('UNIT_') && session.step === 'select_unit') {
+      return handleUnitPostback(psid, payload);
     }
   }
 

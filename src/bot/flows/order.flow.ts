@@ -32,8 +32,18 @@ export async function handleAddress(psid: string, address: string) {
 
   await sendTypingOn(psid);
 
-  // สรุปออเดอร์
-  const itemsText = session.cart.map((c) => `• ${c.name} x${c.quantity}`).join('\n');
+  // สรุปออเดอร์ พร้อมแสดงหน่วย
+  const itemsText = session.cart.map((c) => {
+    let itemText = `• ${c.name} x${c.quantity}`;
+    if (c.unitLabel) {
+      itemText += ` (${c.unitLabel})`;
+    }
+    if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
+      const optionsText = Object.entries(c.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ');
+      itemText += ` [${optionsText}]`;
+    }
+    return itemText;
+  }).join('\n');
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
   callSendAPIAsync(psid, {
@@ -57,6 +67,9 @@ export async function finalizeOrder(psid: string) {
     name: c.name,
     price: c.price,
     quantity: c.quantity,
+    selectedOptions: c.selectedOptions || {},
+    unitLabel: c.unitLabel,
+    unitPrice: c.unitPrice,
   }));
 
   // หา userId & phone จาก MessengerUser

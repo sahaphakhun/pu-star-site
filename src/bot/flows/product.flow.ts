@@ -92,29 +92,42 @@ export async function showProducts(psid: string, categorySlug?: string) {
     return;
   }
 
-  const elements = filtered.slice(0, 10).map((p: IProduct) => ({
-    title: p.name,
-    subtitle: `${p.price.toLocaleString()} บาท`,
-    image_url: transformImage(p.imageUrl),
-    buttons: [
-      {
-        type: 'postback',
-        title: 'สั่งซื้อ 🛒',
-        payload: `ORDER_${p._id}`,
-      },
-      {
-        type: 'web_url',
-        title: 'ดูรายละเอียด',
-        url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.nextstarinnovations.com').replace(/\/$/, '')}/product/${p._id}`,
-        webview_height_ratio: 'tall',
-      },
-      {
-        type: 'postback',
-        title: 'ติดต่อแอดมิน',
-        payload: 'CONTACT_ADMIN',
-      },
-    ],
-  }));
+  const elements = filtered.slice(0, 10).map((p: IProduct) => {
+    let subtitle = `${(p.price || (p.units && p.units[0]?.price) || 0).toLocaleString()} บาท`;
+    
+    // เพิ่มข้อมูลหน่วยถ้ามี
+    if (p.units && p.units.length > 0) {
+      if (p.units.length === 1) {
+        subtitle += ` / ${p.units[0].label}`;
+      } else {
+        subtitle += ` (${p.units.length} หน่วย)`;
+      }
+    }
+    
+    return {
+      title: p.name,
+      subtitle,
+      image_url: transformImage(p.imageUrl),
+      buttons: [
+        {
+          type: 'postback',
+          title: 'สั่งซื้อ 🛒',
+          payload: `ORDER_${p._id}`,
+        },
+        {
+          type: 'web_url',
+          title: 'ดูรายละเอียด',
+          url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.nextstarinnovations.com').replace(/\/$/, '')}/product/${p._id}`,
+          webview_height_ratio: 'tall',
+        },
+        {
+          type: 'postback',
+          title: 'ติดต่อแอดมิน',
+          payload: 'CONTACT_ADMIN',
+        },
+      ],
+    };
+  });
 
   callSendAPIAsync(psid, {
     attachment: {
@@ -147,14 +160,24 @@ export async function handleOrderPostback(psid: string, payload: string) {
   }
   const idStr = (product._id as any).toString();
 
-  addToCart(psid, {
-    productId: idStr,
-    name: product.name,
-    price: product.price,
-    quantity: 1,
-  });
+  // ถ้ามีหน่วย ให้ถามหน่วยก่อน
+  if (product.units && product.units.length > 0) {
+    updateSession(psid, {
+      step: 'select_unit',
+      tempData: {
+        product: {
+          id: idStr,
+          name: product.name,
+          price: product.price, // default
+          options: product.options ?? [],
+          units: product.units,
+        },
+      },
+    });
+    return askUnit(psid);
+  }
 
-  // ถ้าสินค้ามีตัวเลือก ให้ถามตัวเลือกก่อนเพิ่ม
+  // ถ้าสินค้ามีตัวเลือก ให้ถามตัวเลือกต่อ
   if (product.options && product.options.length > 0) {
     // เก็บข้อมูลสินค้าไว้ใน session ชั่วคราว
     updateSession(psid, {
@@ -173,11 +196,27 @@ export async function handleOrderPostback(psid: string, payload: string) {
     return askNextOption(psid);
   }
 
+  // ไม่มีตัวเลือก จึงเพิ่มตรง ๆ
+  addToCart(psid, {
+    productId: idStr,
+    name: product.name,
+    price: product.price || (product.units && product.units[0]?.price) || 0,
+    quantity: 1,
+    selectedOptions: {},
+    unitLabel: product.units && product.units[0]?.label,
+    unitPrice: product.units && product.units[0]?.price,
+  });
+
   const session = getSession(psid);
   const total = session.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
+  
+  let unitText = '';
+  if (product.units && product.units[0]?.label) {
+    unitText = ` (${product.units[0].label})`;
+  }
+  
   callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
+    text: `เพิ่ม ${product.name}${unitText} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
@@ -221,24 +260,80 @@ export async function askQuantity(psid: string) {
   updateSession(psid, { step: 'ask_quantity' });
 }
 
+// ถามหน่วย
+export async function askUnit(psid: string) {
+  const sess = getSession(psid);
+  const temp: any = sess.tempData;
+  const product = temp.product;
+  if (!product || !product.units) return;
+
+  await sendTypingOn(psid);
+  callSendAPIAsync(psid, {
+    text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}`,
+    quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => ({
+      content_type: 'text',
+      title: `${u.label} (${u.price.toLocaleString()}฿)`.substring(0, 20),
+      payload: `UNIT_${idx}`,
+    })),
+  });
+
+  updateSession(psid, { step: 'select_unit' });
+}
+
+// จัดการ postback UNIT_<idx>
+export function handleUnitPostback(psid: string, payload: string) {
+  const idxStr = payload.replace('UNIT_', '');
+  const idx = parseInt(idxStr, 10);
+  if (isNaN(idx)) return;
+
+  const sess = getSession(psid);
+  const temp: any = sess.tempData || {};
+  const product = temp.product;
+  if (!product || !product.units || !product.units[idx]) return;
+
+  const selectedUnit = product.units[idx];
+
+  updateSession(psid, {
+    tempData: { ...temp, selectedUnit },
+  });
+
+  // ถ้ามีตัวเลือก ให้ถามตัวเลือกต่อ
+  if (product.options && product.options.length > 0) {
+    updateSession(psid, { step: 'select_option', tempData: { ...temp, selectedUnit, selections: {}, optIdx: 0 } });
+    return askNextOption(psid);
+  }
+
+  // ไม่มีก็ถามจำนวนเลย
+  return askQuantity(psid);
+}
+
 // เพิ่มสินค้าพร้อมตัวเลือกและจำนวนลงตะกร้า
 export function addProductWithOptions(psid: string, quantity: number) {
   const sess = getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
   const selections = temp.selections || {};
+  const selectedUnit = temp.selectedUnit as { label?: string; price?: number } | undefined;
 
   addToCart(psid, {
     productId: product.id,
     name: product.name,
-    price: product.price,
+    price: selectedUnit?.price ?? product.price,
     quantity,
     selectedOptions: selections,
+    unitLabel: selectedUnit?.label,
+    unitPrice: selectedUnit?.price,
   });
 
   const total = sess.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  
+  let unitText = '';
+  if (selectedUnit?.label) {
+    unitText = ` (${selectedUnit.label})`;
+  }
+  
   callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
+    text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },

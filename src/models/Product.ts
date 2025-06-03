@@ -5,6 +5,11 @@ export interface IProduct extends Document {
   price: number;
   description: string;
   imageUrl: string;
+  units?: {
+    label: string;
+    price: number;
+    multiplier?: number;
+  }[];
   category?: string;
   options?: {
     name: string;
@@ -26,7 +31,7 @@ const productSchema = new Schema<IProduct>(
     },
     price: {
       type: Number,
-      required: [true, 'กรุณาระบุราคาสินค้า'],
+      required: true,
       min: [0, 'ราคาต้องไม่ต่ำกว่า 0'],
     },
     description: {
@@ -37,6 +42,16 @@ const productSchema = new Schema<IProduct>(
     imageUrl: {
       type: String,
       required: [true, 'กรุณาระบุรูปภาพสินค้า'],
+    },
+    units: {
+      type: [
+        {
+          label: { type: String, required: true },
+          price: { type: Number, required: true, min: [0, 'ราคาต้องไม่ต่ำกว่า 0'] },
+          multiplier: { type: Number, required: false, min: 1, default: 1 },
+        },
+      ],
+      required: false,
     },
     category: {
       type: String,

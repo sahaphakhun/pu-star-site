@@ -12,6 +12,7 @@ interface OrderItem {
   price: number;
   quantity: number;
   selectedOptions?: Record<string, string>;
+  unitLabel?: string;
 }
 
 interface Order {
@@ -129,7 +130,7 @@ const MyOrdersPage = () => {
                   {selectedOrder.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-start bg-gray-50 p-3 rounded-lg">
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">{item.name}{item.unitLabel ? ` (${item.unitLabel})` : ''}</p>
                         {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
                           <p className="text-sm text-gray-600">
                             {Object.entries(item.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ')}

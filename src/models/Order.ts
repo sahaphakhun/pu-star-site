@@ -6,6 +6,8 @@ export interface IOrderItem {
   price: number;
   quantity: number;
   selectedOptions?: Record<string, string>;
+  unitLabel?: string;
+  unitPrice?: number;
 }
 
 export interface IOrder extends Document {
@@ -46,6 +48,12 @@ const orderItemSchema = new Schema<IOrderItem>({
   selectedOptions: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+  unitLabel: {
+    type: String
+  },
+  unitPrice: {
+    type: Number
   }
 });
 

@@ -17,14 +17,28 @@ export async function GET(request: NextRequest, context: unknown) {
 // PUT: อัปเดตสินค้า
 export async function PUT(request: NextRequest, context: unknown) {
   const { id } = (context as { params: { id: string } }).params;
-  const { name, price, description, imageUrl, options, category } = await request.json();
-  if (!name || !price || !description || !imageUrl) {
+  const { name, price, description, imageUrl, options, category, units } = await request.json();
+
+  if (!name || !description || !imageUrl) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
   }
+
+  if ((!price && (!units || units.length === 0))) {
+    return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
+  }
+
   await connectDB();
   const updated = await Product.findByIdAndUpdate(
     id,
-    { name, price, description, imageUrl, options, category },
+    {
+      name,
+      price: price ?? (units && units.length > 0 ? units[0].price : undefined),
+      description,
+      imageUrl,
+      options,
+      category,
+      units,
+    },
     { new: true, runValidators: true }
   );
   if (!updated) {

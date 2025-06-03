@@ -17,6 +17,8 @@ interface CartItem {
   product: ProductWithId;
   quantity: number;
   selectedOptions?: { [optionName: string]: string };
+  unitLabel?: string;
+  unitPrice?: number;
 }
 
 const ShopPage = () => {
@@ -35,6 +37,7 @@ const ShopPage = () => {
   const [showCart, setShowCart] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
+  const [selectedUnit, setSelectedUnit] = useState<{ label: string; price: number } | null>(null);
   const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0});
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
@@ -96,15 +99,17 @@ const ShopPage = () => {
     }
   }, [isLoggedIn]);
 
-  const generateCartKey = (productId: string, selectedOptions?: {[key: string]: string}) => {
-    if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
-      return productId;
+  const generateCartKey = (productId: string, selectedOptions?: {[key: string]: string}, unitLabel?: string) => {
+    const parts = [productId];
+    if (unitLabel) parts.push(unitLabel);
+    if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+      parts.push(JSON.stringify(selectedOptions));
     }
-    return `${productId}-${JSON.stringify(selectedOptions)}`;
+    return parts.join('-');
   };
 
-  const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}) => {
-    const cartKey = generateCartKey(product._id, options);
+  const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}, unit?: {label:string; price:number}) => {
+    const cartKey = generateCartKey(product._id, options, unit?.label);
     setCart(prev => {
       const newCart = { ...prev };
       if (newCart[cartKey]) {
@@ -116,7 +121,9 @@ const ShopPage = () => {
         newCart[cartKey] = { 
           product, 
           quantity: 1,
-          selectedOptions: options
+          selectedOptions: options,
+          unitLabel: unit?.label,
+          unitPrice: unit?.price,
         };
       }
       return newCart;
@@ -131,10 +138,16 @@ const ShopPage = () => {
   const openProductModal = (product: ProductWithId) => {
     setSelectedProduct(product);
     setSelectedOptions({});
+    if (product.units && product.units.length > 0) {
+      setSelectedUnit(product.units[0]);
+    } else {
+      setSelectedUnit(null);
+    }
   };
 
   const addToCartWithOptions = () => {
     if (!selectedProduct) return;
+    const unitToUse = selectedUnit ?? (selectedProduct.units && selectedProduct.units[0]);
     
     // ตรวจสอบว่าเลือกตัวเลือกครบหรือไม่
     if (selectedProduct.options && selectedProduct.options.length > 0) {
@@ -145,9 +158,10 @@ const ShopPage = () => {
       }
     }
 
-    handleAddToCart(selectedProduct, selectedOptions);
+    handleAddToCart(selectedProduct, selectedOptions, unitToUse || undefined);
     setSelectedProduct(null);
     setSelectedOptions({});
+    setSelectedUnit(null);
   };
 
   const removeFromCart = (cartKey: string) => {
@@ -261,7 +275,7 @@ const ShopPage = () => {
         items: cartItems.map(item => ({
           productId: item.product._id,
           name: item.product.name,
-          price: item.product.price,
+          price: item.unitPrice !== undefined ? item.unitPrice : item.product.price,
           quantity: item.quantity,
           selectedOptions: item.selectedOptions || {}
         })),
@@ -305,7 +319,8 @@ const ShopPage = () => {
 
   const calculateTotal = () => {
     return Object.values(cart).reduce((total, item) => {
-      return total + (item.product.price * item.quantity);
+      const priceEach = item.unitPrice !== undefined ? item.unitPrice : item.product.price;
+      return total + (priceEach * item.quantity);
     }, 0);
   };
 
@@ -387,11 +402,11 @@ const ShopPage = () => {
                     {product.name}
                   </h3>
                   <p className="text-blue-600 font-bold text-lg mb-3">
-                    ฿{product.price.toLocaleString()}
+                    ฿{(product.price || (product.units && product.units[0]?.price) || 0).toLocaleString()}
                   </p>
                   <button
                     onClick={() => {
-                      if (product.options && product.options.length > 0) {
+                      if ((product.options && product.options.length > 0) || (product.units && product.units.length > 0)) {
                         openProductModal(product);
                       } else {
                         handleAddToCart(product);
@@ -399,7 +414,7 @@ const ShopPage = () => {
                     }}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
-                    {product.options && product.options.length > 0 ? 'เลือกตัวเลือก' : 'เพิ่มลงตะกร้า'}
+                    {(product.options && product.options.length > 0) || (product.units && product.units.length > 0) ? 'เลือกตัวเลือก' : 'เพิ่มลงตะกร้า'}
                   </button>
                 </div>
               </motion.div>
@@ -465,8 +480,33 @@ const ShopPage = () => {
                 <h3 className="text-xl font-bold mb-2">{selectedProduct.name}</h3>
                 <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
                 <p className="text-2xl font-bold text-blue-600 mb-6">
-                  ฿{selectedProduct.price.toLocaleString()}
+                  ฿{(selectedUnit ? selectedUnit.price : selectedProduct.price).toLocaleString()}
                 </p>
+
+                {/* Units */}
+                {selectedProduct.units && selectedProduct.units.length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      เลือกหน่วย
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProduct.units.map((unit) => (
+                        <button
+                          key={unit.label}
+                          type="button"
+                          onClick={() => setSelectedUnit(unit)}
+                          className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                            selectedUnit?.label === unit.label
+                              ? 'border-blue-600 bg-blue-50 text-blue-700'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {unit.label} ({unit.price.toLocaleString()} ฿)
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Options */}
                 {selectedProduct.options && selectedProduct.options.map((option) => (
@@ -558,7 +598,12 @@ const ShopPage = () => {
                           {Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(', ')}
                         </p>
                       )}
-                      <p className="text-blue-600 font-semibold">฿{item.product.price.toLocaleString()}</p>
+                      <p className="text-blue-600 font-semibold">
+                        ฿{(item.unitPrice !== undefined ? item.unitPrice : item.product.price).toLocaleString()}
+                        {item.unitLabel && (
+                          <span className="text-xs text-gray-500 ml-1">/ {item.unitLabel}</span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
@@ -569,7 +614,11 @@ const ShopPage = () => {
                       </button>
                       <span className="w-8 text-center">{item.quantity}</span>
                       <button
-                        onClick={() => handleAddToCart(item.product, item.selectedOptions)}
+                        onClick={() => handleAddToCart(
+                          item.product,
+                          item.selectedOptions,
+                          item.unitLabel && item.unitPrice !== undefined ? { label: item.unitLabel, price: item.unitPrice } : undefined
+                        )}
                         className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700"
                       >
                         +
@@ -727,7 +776,7 @@ const ShopPage = () => {
                       {Object.values(cart).map((item, index) => (
                         <div key={index} className="flex justify-between">
                           <span>{item.product.name} x{item.quantity}</span>
-                          <span>฿{(item.product.price * item.quantity).toLocaleString()}</span>
+                          <span>฿{((item.unitPrice !== undefined ? item.unitPrice : item.product.price) * item.quantity).toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
