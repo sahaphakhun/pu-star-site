@@ -154,6 +154,25 @@ export async function handleOrderPostback(psid: string, payload: string) {
     quantity: 1,
   });
 
+  // ถ้าสินค้ามีตัวเลือก ให้ถามตัวเลือกก่อนเพิ่ม
+  if (product.options && product.options.length > 0) {
+    // เก็บข้อมูลสินค้าไว้ใน session ชั่วคราว
+    updateSession(psid, {
+      step: 'select_option',
+      tempData: {
+        product: {
+          id: idStr,
+          name: product.name,
+          price: product.price,
+          options: product.options,
+        },
+        selections: {},
+        optIdx: 0,
+      },
+    });
+    return askNextOption(psid);
+  }
+
   const session = getSession(psid);
   const total = session.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
@@ -166,4 +185,65 @@ export async function handleOrderPostback(psid: string, payload: string) {
   });
 
   updateSession(psid, { step: 'summary' });
+}
+
+// ถามตัวเลือกตามลำดับ
+export async function askNextOption(psid: string) {
+  const sess = getSession(psid);
+  const temp: any = sess.tempData;
+  const product = temp.product;
+  const idx: number = temp.optIdx || 0;
+  const option = product.options[idx];
+  if (!option) return; // safety
+
+  await sendTypingOn(psid);
+  callSendAPIAsync(psid, {
+    text: `เลือก ${option.name}`,
+    quick_replies: option.values.slice(0, 11).map((v: any) => ({
+      content_type: 'text',
+      title: v.label.substring(0, 20),
+      payload: `OPT_${idx}_${encodeURIComponent(v.label)}`,
+    })),
+  });
+}
+
+// ถามจำนวน
+export async function askQuantity(psid: string) {
+  await sendTypingOn(psid);
+  callSendAPIAsync(psid, {
+    text: 'ต้องการกี่ชิ้นคะ?',
+    quick_replies: [1, 2, 3, 4, 5].map((n) => ({
+      content_type: 'text',
+      title: `${n}`,
+      payload: `QTY_${n}`,
+    })),
+  });
+  updateSession(psid, { step: 'ask_quantity' });
+}
+
+// เพิ่มสินค้าพร้อมตัวเลือกและจำนวนลงตะกร้า
+export function addProductWithOptions(psid: string, quantity: number) {
+  const sess = getSession(psid);
+  const temp: any = sess.tempData;
+  const product = temp.product;
+  const selections = temp.selections || {};
+
+  addToCart(psid, {
+    productId: product.id,
+    name: product.name,
+    price: product.price,
+    quantity,
+    selectedOptions: selections,
+  });
+
+  const total = sess.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  callSendAPIAsync(psid, {
+    text: `เพิ่ม ${product.name} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
+    quick_replies: [
+      { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
+      { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
+    ],
+  });
+
+  updateSession(psid, { step: 'summary', tempData: {} });
 }

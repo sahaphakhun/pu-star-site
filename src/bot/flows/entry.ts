@@ -1,4 +1,4 @@
-import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback } from './product.flow';
+import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
@@ -98,6 +98,32 @@ export async function handleEvent(event: MessagingEvent) {
     if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
       const phone = (event.message.quick_reply as any).phone_number;
       return handlePhone(psid, phone);
+    }
+
+    // เลือกตัวเลือกสินค้า
+    if (payload.startsWith('OPT_') && session.step === 'select_option') {
+      const [, idxStr, encoded] = payload.split('_');
+      const valueLabel = decodeURIComponent(encoded);
+      const idx = parseInt(idxStr, 10);
+      const temp: any = session.tempData || {};
+      const product = temp.product;
+      const option = product.options[idx];
+      temp.selections = { ...(temp.selections || {}), [option.name]: valueLabel };
+      temp.optIdx = idx + 1;
+      updateSession(psid, { tempData: temp });
+
+      if (temp.optIdx < product.options.length) {
+        return askNextOption(psid);
+      }
+      // ถามจำนวนต่อ
+      return askQuantity(psid);
+    }
+
+    // เลือกจำนวน
+    if (payload.startsWith('QTY_') && session.step === 'ask_quantity') {
+      const qty = parseInt(payload.replace('QTY_', ''), 10) || 1;
+      addProductWithOptions(psid, qty);
+      return;
     }
   }
 
