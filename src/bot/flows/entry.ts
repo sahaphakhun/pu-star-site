@@ -15,8 +15,15 @@ interface MessagingEvent {
   [key: string]: unknown;
 }
 
+const PAGE_ID = process.env.FB_PAGE_ID || '';
+
 export async function handleEvent(event: MessagingEvent) {
   const psid = event.sender.id;
+
+  // ถ้าผู้ส่งคือเพจเอง ไม่ต้องประมวลผลใด ๆ
+  if (PAGE_ID && psid === PAGE_ID) {
+    return;
+  }
 
   // ข้าม event ที่เป็น echo (บอทส่งเอง) หรือ delivery/read
   if (event.message && ((event as any).message.is_echo || (event as any).message.app_id)) {
