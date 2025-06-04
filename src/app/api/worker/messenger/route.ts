@@ -21,9 +21,11 @@ export async function POST(request: NextRequest) {
   }
 
   const events = body.entry?.flatMap((e: any) => e.messaging) || [];
-  events.forEach((ev: any) => {
-    handleEvent(ev).catch((err) => console.error('Handle event error', err));
-  });
+  try {
+    await Promise.all(
+      events.map((ev: any) => handleEvent(ev).catch((err) => console.error('Handle event error', err)))
+    );
+  } catch {}
 
   return NextResponse.json({ status: 'processed' });
 } 
