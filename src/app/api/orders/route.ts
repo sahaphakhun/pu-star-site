@@ -53,6 +53,12 @@ export async function GET(request: NextRequest) {
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
+
+    const hasPaginationParam = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || searchParams.has('status');
+    if (!hasPaginationParam && !startDate && !endDate) {
+      return NextResponse.json(orders);
+    }
+
     return NextResponse.json({ data: orders, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Error fetching orders:', error);

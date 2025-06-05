@@ -28,6 +28,12 @@ export async function GET(request: NextRequest) {
     .limit(limit)
     .lean();
 
+  // ถ้าไม่ได้ส่ง query page/limit/q/category ให้คงรูปแบบ array เดิมเพื่อความเข้ากันได้
+  const hasPaginationParam = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || searchParams.has('category');
+  if (!hasPaginationParam) {
+    return NextResponse.json(products);
+  }
+
   return NextResponse.json({ data: products, total, page, limit, totalPages: Math.ceil(total / limit) });
 }
 
