@@ -4,6 +4,9 @@ import { verifyRequestSignature } from '@/utils/messenger';
 
 // Worker route (Node runtime) รับ webhook หลังถูก forward จาก Edge
 
+// ให้ Vercel อนุญาตให้รันได้นานสุด 30 วินาที (Hobby plan สูงสุด 60s)
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('x-hub-signature-256') || undefined;
   const rawBody = await request.text();
