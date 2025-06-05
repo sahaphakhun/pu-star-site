@@ -10,7 +10,7 @@ const APP_SECRET = process.env.FB_APP_SECRET || '';
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 // ลด timeout รอบแรกเหลือ 10 วินาที (handshake ปกติใช้ไม่เกิน 1 วิ)
-const INITIAL_TIMEOUT_MS = 10_000;
+const INITIAL_TIMEOUT_MS = 5_000;
 
 interface Recipient {
   id: string;
@@ -134,16 +134,26 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
     console.error('[Messenger] PAGE_ACCESS_TOKEN ไม่ถูกตั้งค่า');
     return;
   }
-  const url = 'https://graph.facebook.com/v19.0';
+  // ตามสเปก Batch API ให้ส่ง access_token ที่ระดับ request หลัก
+  const url = `https://graph.facebook.com/v19.0?access_token=${PAGE_ACCESS_TOKEN}`;
+
   const batch = messages.map((msg) => {
     const isSenderAction = 'sender_action' in msg && Object.keys(msg).length === 1;
-    const body = isSenderAction
-      ? { recipient: { id: recipientId }, sender_action: (msg as any).sender_action }
-      : { recipient: { id: recipientId }, message: msg };
+
+    // body ของแต่ละรายการต้องเป็น URL-Encoded string (querystring)
+    const params = new URLSearchParams();
+    params.append('recipient', JSON.stringify({ id: recipientId }));
+
+    if (isSenderAction) {
+      params.append('sender_action', (msg as any).sender_action);
+    } else {
+      params.append('message', JSON.stringify(msg));
+    }
+
     return {
       method: 'POST',
-      relative_url: `me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
-      body: JSON.stringify(body),
+      relative_url: 'me/messages',
+      body: params.toString(),
     };
   });
 
