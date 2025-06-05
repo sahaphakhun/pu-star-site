@@ -196,10 +196,13 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
   }
 }
 
-// Helper รวม typing indicator + ข้อความ (ใช้งานง่ายใน flows)
+// ส่ง typing indicator แล้วตามด้วยข้อความต่าง ๆ แบบแยก API (ลดความซับซ้อนจาก Batch เพื่อ debug)
 export function sendTypingAndMessages(recipientId: string, ...messages: FBMessagePayload[]) {
-  const list: FBMessagePayload[] = [{ sender_action: 'typing_on' }, ...messages];
-  callSendAPIBatch(recipientId, list).catch((err) => console.error('Batch error', err));
+  // แสดง typing ทันที
+  callSendAPIAsync(recipientId, { sender_action: 'typing_on' });
+
+  // ส่งข้อความแต่ละรายการแบบ async fire-and-forget
+  messages.forEach((msg) => callSendAPIAsync(recipientId, msg));
 }
 
 // ยิง HEAD request ทุก 5 นาทีเพื่อให้ TLS connection ไม่ถูกปิดจากฝั่ง Facebook (ลด latency รอบแรก)
