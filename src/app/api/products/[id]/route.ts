@@ -17,7 +17,24 @@ export async function GET(request: NextRequest, context: unknown) {
 // PUT: อัปเดตสินค้า
 export async function PUT(request: NextRequest, context: unknown) {
   const { id } = (context as { params: { id: string } }).params;
-  const { name, price, description, imageUrl, options, category, units } = await request.json();
+  const body = await request.json();
+  const {
+    name,
+    price: rawPrice,
+    description,
+    imageUrl,
+    options,
+    category,
+    units: rawUnits,
+  } = body;
+
+  // แปลง price จาก string → number และกรองค่าว่าง
+  const price = rawPrice === '' || rawPrice === undefined || rawPrice === null ? undefined : Number(rawPrice);
+
+  // แปลง units ภายใน ให้ price เป็น number
+  const units = Array.isArray(rawUnits)
+    ? rawUnits.map((u: any) => ({ ...u, price: Number(u.price) }))
+    : undefined;
 
   if (!name || !description || !imageUrl) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
