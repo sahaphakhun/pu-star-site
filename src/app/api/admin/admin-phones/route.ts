@@ -5,7 +5,7 @@ import { formatPhoneNumber } from '@/utils/deesmsx';
 
 export async function GET() {
   await connectDB();
-  const list = await AdminPhone.find().sort({ phoneNumber: 1 });
+  const list = await AdminPhone.find().sort({ phoneNumber: 1 }).lean();
   return NextResponse.json(list);
 }
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     { phoneNumber: formatted },
     { upsert: true, new: true }
   );
-  return NextResponse.json(doc);
+  return NextResponse.json(doc.toObject ? doc.toObject() : doc);
 }
 
 export async function DELETE(request: NextRequest) {

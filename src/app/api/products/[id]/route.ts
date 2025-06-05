@@ -7,7 +7,7 @@ import { clearCache } from '@cache/simpleCache';
 export async function GET(request: NextRequest, context: unknown) {
   const { id } = (context as { params: { id: string } }).params;
   await connectDB();
-  const product = await Product.findById(id);
+  const product = await Product.findById(id).lean();
   if (!product) {
     return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
   }

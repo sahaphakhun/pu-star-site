@@ -12,6 +12,7 @@ interface OrderItem {
   quantity: number;
   selectedOptions?: { [key: string]: string };
   unitLabel?: string;
+  unitPrice?: number;
 }
 
 interface Order {
@@ -225,7 +226,7 @@ const AdminOrdersPage = () => {
           item.name,
           item.unitLabel||'',
           item.quantity,
-          item.price
+          (item.unitPrice !== undefined ? item.unitPrice : item.price)
         ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
       });
     });
@@ -523,8 +524,8 @@ const AdminOrdersPage = () => {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">฿{item.price.toLocaleString()} x {item.quantity}</p>
-                          <p className="text-sm text-gray-600">฿{(item.price * item.quantity).toLocaleString()}</p>
+                          <p className="font-medium">฿{(item.unitPrice !== undefined ? item.unitPrice : item.price).toLocaleString()} x {item.quantity}</p>
+                          <p className="text-sm text-gray-600">฿{((item.unitPrice !== undefined ? item.unitPrice : item.price) * item.quantity).toLocaleString()}</p>
                         </div>
                       </div>
                     ))}

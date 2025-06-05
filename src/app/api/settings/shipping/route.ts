@@ -18,9 +18,10 @@ const getAuth = async () => {
 
 export async function GET() {
   await connectDB();
-  let doc = await ShippingSetting.findOne();
+  let doc = await ShippingSetting.findOne().lean();
   if (!doc) {
-    doc = await ShippingSetting.create({});
+    const created = await ShippingSetting.create({});
+    doc = created.toObject();
   }
   return NextResponse.json(doc);
 }

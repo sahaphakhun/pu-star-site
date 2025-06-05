@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const orders = await Order.find(query).sort({ orderDate: -1 });
+    const orders = await Order.find(query).sort({ orderDate: -1 }).lean();
     return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);

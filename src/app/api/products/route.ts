@@ -6,7 +6,7 @@ import { clearCache } from '@cache/simpleCache';
 // GET: ดึงสินค้าทั้งหมด
 export async function GET() {
   await connectDB();
-  const products = await Product.find().sort({ createdAt: -1 });
+  const products = await Product.find().sort({ createdAt: -1 }).lean();
   return NextResponse.json(products);
 }
 
