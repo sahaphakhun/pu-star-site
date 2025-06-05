@@ -8,7 +8,7 @@ export const unitSchema = z.object({
 
 export const optionValueSchema = z.object({
   label: z.string().min(1),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().min(1).optional(),
 });
 
 export const optionSchema = z.object({
@@ -20,7 +20,7 @@ export const productInputSchema = z.object({
   name: z.string().min(1),
   price: z.number().min(0).optional(),
   description: z.string().min(1),
-  imageUrl: z.string().url(),
+  imageUrl: z.string().min(1),
   units: z.array(unitSchema).optional(),
   category: z.string().optional(),
   options: z.array(optionSchema).optional(),
