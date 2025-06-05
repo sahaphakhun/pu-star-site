@@ -51,6 +51,7 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
       }
     : {
         recipient: { id: recipientId },
+        messaging_type: 'RESPONSE',
         message,
       };
 
@@ -147,6 +148,7 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
     if (isSenderAction) {
       params.append('sender_action', (msg as any).sender_action);
     } else {
+      params.append('messaging_type', 'RESPONSE');
       params.append('message', JSON.stringify(msg));
     }
 
