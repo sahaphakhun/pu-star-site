@@ -88,13 +88,24 @@ export async function finalizeOrder(psid: string) {
   if (shipping.slipUrl) payload.slipUrl = shipping.slipUrl;
 
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/orders`, {
+    // สร้าง absolute URL ให้ถูกต้อง (Node fetch ไม่รองรับ relative path)
+    const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || '';
+    const origin = originEnv.startsWith('http') ? originEnv : `https://${originEnv.replace(/^https?:\/\//, '')}`;
+    const res = await fetch(`${origin.replace(/\/$/, '')}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('[FinalizeOrder] API error', res.status, text);
+      throw new Error(`API ${res.status}`);
+    }
+
     callSendAPIAsync(psid, { text: 'สั่งซื้อสำเร็จ ขอบคุณค่ะ 🎉' });
   } catch (err) {
+    console.error('[FinalizeOrder] fetch error', err);
     callSendAPIAsync(psid, { text: 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ กรุณาลองใหม่' });
   }
 
