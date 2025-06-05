@@ -83,14 +83,14 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (payload === 'PAY_TRANSFER') {
       if (session.step === 'await_payment_method') {
-        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'TRANSFER' } });
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'transfer' } });
         return sendBankInfo(psid);
       }
     }
 
     if (payload === 'PAY_COD') {
       if (session.step === 'await_payment_method') {
-        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'COD' } });
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'cod' } });
         return finalizeOrder(psid);
       }
     }

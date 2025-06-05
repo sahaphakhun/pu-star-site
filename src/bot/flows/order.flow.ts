@@ -58,8 +58,10 @@ export async function handleAddress(psid: string, address: string) {
 }
 
 export async function finalizeOrder(psid: string) {
+  console.log('[FinalizeOrder] start for', psid);
   await connectDB();
   const session = await getSession(psid);
+  console.log('[FinalizeOrder] session', JSON.stringify(session));
   const shipping = session.tempData as any as ShippingInfo & { paymentMethod?: string; slipUrl?: string };
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const items = session.cart.map((c) => ({
@@ -71,6 +73,9 @@ export async function finalizeOrder(psid: string) {
     unitLabel: c.unitLabel,
     unitPrice: c.unitPrice,
   }));
+
+  // Log รายละเอียด payload เพื่อ debug โครงสร้างข้อมูล
+  console.log('[FinalizeOrder] built items', JSON.stringify(items));
 
   // หา userId & phone จาก MessengerUser
   const mu = await MessengerUser.findOne({ psid });
@@ -86,6 +91,8 @@ export async function finalizeOrder(psid: string) {
   if (mu?.userId) payload.userId = mu.userId;
   if (shipping.paymentMethod) payload.paymentMethod = shipping.paymentMethod;
   if (shipping.slipUrl) payload.slipUrl = shipping.slipUrl;
+
+  console.log('[FinalizeOrder] payload', JSON.stringify(payload));
 
   try {
     // สร้าง absolute URL ให้ถูกต้อง (Node fetch ไม่รองรับ relative path)
