@@ -226,7 +226,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
 }
 
 // ถามตัวเลือกตามลำดับ
-export async function askNextOption(psid: string) {
+export async function askNextOption(psid: string): Promise<void> {
   const sess = await getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
@@ -235,7 +235,7 @@ export async function askNextOption(psid: string) {
   if (!option) return; // safety
 
   await sendTypingOn(psid);
-  callSendAPIAsync(psid, {
+  return callSendAPIAsync(psid, {
     text: `เลือก ${option.name}`,
     quick_replies: option.values.slice(0, 11).map((v: any) => ({
       content_type: 'text',
@@ -246,9 +246,9 @@ export async function askNextOption(psid: string) {
 }
 
 // ถามจำนวน
-export async function askQuantity(psid: string) {
+export async function askQuantity(psid: string): Promise<void> {
   await sendTypingOn(psid);
-  callSendAPIAsync(psid, {
+  return callSendAPIAsync(psid, {
     text: 'ต้องการกี่ชิ้นคะ?',
     quick_replies: [1, 2, 3, 4, 5].map((n) => ({
       content_type: 'text',
@@ -260,14 +260,14 @@ export async function askQuantity(psid: string) {
 }
 
 // ถามหน่วย
-export async function askUnit(psid: string) {
+export async function askUnit(psid: string): Promise<void> {
   const sess = await getSession(psid);
   const temp: any = sess.tempData;
   const product = temp.product;
   if (!product || !product.units) return;
 
   await sendTypingOn(psid);
-  callSendAPIAsync(psid, {
+  return callSendAPIAsync(psid, {
     text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}`,
     quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => ({
       content_type: 'text',
