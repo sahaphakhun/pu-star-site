@@ -78,7 +78,7 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
       clearTimeout(timeout);
 
       const text = await res.text();
-      devLog('[SendAPI] <-', res.status, text);
+      console.log('[SendAPI] status', res.status, text);
 
       if (!res.ok && attempt < retries) {
         console.warn('[Messenger] ส่งข้อความล้มเหลว retry', attempt + 1);
