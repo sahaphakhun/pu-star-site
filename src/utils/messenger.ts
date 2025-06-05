@@ -59,8 +59,8 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
         message,
       };
 
-  // Log request เฉพาะ dev เพื่อลด I/O ใน production
-  devLog('[SendAPI] ->', JSON.stringify(body));
+  // Log request
+  console.log('[SendAPI] request', JSON.stringify(body));
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {

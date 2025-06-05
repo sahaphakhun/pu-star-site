@@ -16,11 +16,16 @@ export async function POST(request: NextRequest) {
 
   const body = JSON.parse(rawBody);
 
+  console.log('[Worker] Received body', JSON.stringify(body));
+
   if (body.object !== 'page') {
     return NextResponse.json({ status: 'ignored' });
   }
 
   const events = body.entry?.flatMap((e: any) => e.messaging) || [];
+
+  console.log('[Worker] Total events', events.length);
+
   try {
     await Promise.all(
       events.map((ev: any) => handleEvent(ev).catch((err) => console.error('Handle event error', err)))
