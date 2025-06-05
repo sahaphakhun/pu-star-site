@@ -14,7 +14,7 @@ const GRAPH_API_VERSION = 'v23.0';
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 // ลด timeout รอบแรกเหลือ 10 วินาที (handshake ปกติใช้ไม่เกิน 1 วิ)
-const INITIAL_TIMEOUT_MS = 30_000;
+const INITIAL_TIMEOUT_MS = 45_000;
 
 interface Recipient {
   id: string;
