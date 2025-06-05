@@ -171,9 +171,25 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
       // @ts-ignore
       agent: httpsAgent as any,
     });
-    devLog('[BatchAPI] status', res.status);
+
+    const text = await res.text();
+    devLog('[BatchAPI] status', res.status, text);
+
     if (!res.ok) {
-      console.error('[Messenger] Batch API error', await res.text());
+      console.error('[Messenger] Batch API HTTP error', text);
+      return;
+    }
+
+    // แม้ HTTP 200 แต่แต่ละ sub-request อาจ error ให้ตรวจ code ภายใน
+    try {
+      const results = JSON.parse(text);
+      results.forEach((r: any, idx: number) => {
+        if (!r || r.code !== 200) {
+          console.error('[Messenger] Batch sub-error', idx, r);
+        }
+      });
+    } catch {
+      // ignore parse error
     }
   } catch (err) {
     console.error('[Messenger] Batch API fetch error', err);
