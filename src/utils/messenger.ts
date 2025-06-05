@@ -8,6 +8,9 @@ import https from 'https';
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN || '';
 const APP_SECRET = process.env.FB_APP_SECRET || '';
 
+// เวอร์ชันของ Graph API ปัจจุบัน (อัปเดตตามเอกสารล่าสุด)
+const GRAPH_API_VERSION = 'v23.0';
+
 const httpsAgent = new https.Agent({ keepAlive: true });
 // ลด timeout รอบแรกเหลือ 10 วินาที (handshake ปกติใช้ไม่เกิน 1 วิ)
 const INITIAL_TIMEOUT_MS = 5_000;
@@ -42,7 +45,7 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
     return;
   }
 
-  const url = `https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
 
   const body = 'sender_action' in message && Object.keys(message).length === 1
     ? {
@@ -136,7 +139,7 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
     return;
   }
   // ตามสเปก Batch API ให้ส่ง access_token ที่ระดับ request หลัก
-  const url = `https://graph.facebook.com/v19.0?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}?access_token=${PAGE_ACCESS_TOKEN}`;
 
   const batch = messages.map((msg) => {
     const isSenderAction = 'sender_action' in msg && Object.keys(msg).length === 1;
