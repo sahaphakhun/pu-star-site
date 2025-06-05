@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import ShippingSetting from '@/models/ShippingSetting';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { shippingSettingSchema } from '@schemas/shipping';
 
 const getAuth = async () => {
   const cookieStore = (await cookies()) as any;
@@ -31,7 +32,12 @@ export async function PUT(req: NextRequest) {
   if (!auth || auth.role !== 'admin') {
     return NextResponse.json({ message: 'unauthorized' }, { status: 401 });
   }
-  const { freeThreshold, fee, freeQuantityThreshold } = await req.json();
+  const raw = await req.json();
+  const parsed = shippingSettingSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ message: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
+  }
+  const { freeThreshold, fee, freeQuantityThreshold } = parsed.data;
   await connectDB();
   let doc = await ShippingSetting.findOne();
   if (!doc) {

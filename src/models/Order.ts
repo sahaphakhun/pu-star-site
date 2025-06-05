@@ -111,4 +111,8 @@ const orderSchema = new Schema<IOrder>(
   }
 );
 
+// เพิ่มดัชนีสำหรับการค้นหาและเรียงลำดับ
+orderSchema.index({ orderDate: -1 });
+orderSchema.index({ customerPhone: 1 });
+
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema); 

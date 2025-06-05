@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 import { clearCache } from '@cache/simpleCache';
+import { productInputSchema } from '@schemas/product';
 
 // GET: ดึงข้อมูลสินค้าเฉพาะ id
 export async function GET(request: NextRequest, context: unknown) {
@@ -17,30 +18,22 @@ export async function GET(request: NextRequest, context: unknown) {
 // PUT: อัปเดตสินค้า
 export async function PUT(request: NextRequest, context: unknown) {
   const { id } = (context as { params: { id: string } }).params;
-  const body = await request.json();
-  const {
-    name,
-    price: rawPrice,
-    description,
-    imageUrl,
-    options,
-    category,
-    units: rawUnits,
-  } = body;
+  const rawBody = await request.json();
 
-  // แปลง price จาก string → number และกรองค่าว่าง
-  const price = rawPrice === '' || rawPrice === undefined || rawPrice === null ? undefined : Number(rawPrice);
-
-  // แปลง units ภายใน ให้ price เป็น number
-  const units = Array.isArray(rawUnits)
-    ? rawUnits.map((u: any) => ({ ...u, price: Number(u.price) }))
-    : undefined;
-
-  if (!name || !description || !imageUrl) {
-    return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
+  // แปลงค่าที่อาจเป็น string → number ก่อน validation
+  if (rawBody.price !== undefined && rawBody.price !== '') rawBody.price = Number(rawBody.price);
+  if (Array.isArray(rawBody.units)) {
+    rawBody.units = rawBody.units.map((u: any) => ({ ...u, price: Number(u.price) }));
   }
 
-  if ((!price && (!units || units.length === 0))) {
+  const parsed = productInputSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
+  }
+
+  const { name, price, description, imageUrl, options, category, units } = parsed.data;
+
+  if (price === undefined && (!units || units.length === 0)) {
     return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
   }
 

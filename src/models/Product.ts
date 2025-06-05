@@ -79,4 +79,9 @@ const productSchema = new Schema<IProduct>(
   }
 );
 
+// เพิ่มดัชนีเพื่อเพิ่มประสิทธิภาพการค้นหาและการจัดเรียง
+productSchema.index({ category: 1, createdAt: -1 });
+// ดัชนี full-text สำหรับค้นหาชื่อและรายละเอียดสินค้า
+productSchema.index({ name: 'text', description: 'text' });
+
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', productSchema); 

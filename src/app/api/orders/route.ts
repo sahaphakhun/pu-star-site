@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { sendSMS } from '@/utils/deesmsx';
+import { orderInputSchema } from '@schemas/order';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,8 +27,33 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const orders = await Order.find(query).sort({ orderDate: -1 }).lean();
-    return NextResponse.json(orders);
+    // pagination & search
+    const page = Number(searchParams.get('page') || '1');
+    const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
+    const q = searchParams.get('q') || '';
+    const status = searchParams.get('status');
+
+    if (q) {
+      query = {
+        ...query,
+        $or: [
+          { customerName: { $regex: q, $options: 'i' } },
+          { customerPhone: { $regex: q, $options: 'i' } },
+          { _id: { $regex: q, $options: 'i' } },
+        ],
+      } as any;
+    }
+    if (status) {
+      query = { ...query, status } as any;
+    }
+
+    const total = await Order.countDocuments(query);
+    const orders = await Order.find(query)
+      .sort({ orderDate: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    return NextResponse.json({ data: orders, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(
@@ -39,44 +65,32 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { customerName, customerPhone, customerAddress = '', paymentMethod = 'cod', slipUrl = '', shippingFee = 0, discount = 0, items, totalAmount } = body;
+    const raw = await request.json();
 
-    // กำหนด phone เบื้องต้นจาก payload
-    let phone = customerPhone;
-    let userId: string | undefined;
-
-    // ดึง token เพื่อหา userId และเบอร์โทร (กรณีไม่ส่งมา)
+    // ดึง token เพื่อหา userId และเบอร์โทรหากไม่ส่งมา
     const cookieStore = (await cookies()) as any;
     const tokenCookie = cookieStore.get?.('token') || cookieStore.get('token');
+
+    let userId: string | undefined;
     if (tokenCookie) {
       try {
         const decoded = jwt.verify(tokenCookie.value, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
         userId = decoded.userId;
-        if (!phone) phone = decoded.phoneNumber;
+        if (!raw.customerPhone) raw.customerPhone = decoded.phoneNumber;
       } catch {}
     }
 
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!customerName || !phone || !totalAmount) {
-      return NextResponse.json(
-        { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
-        { status: 400 }
-      );
+    const parsed = orderInputSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
     }
+    const data = parsed.data;
 
     await connectDB();
-    
+
     const order = await Order.create({
-      customerName,
-      customerPhone: phone,
-      customerAddress,
-      paymentMethod,
-      slipUrl,
-      items,
-      shippingFee,
-      discount,
-      totalAmount,
+      ...data,
+      customerPhone: data.customerPhone,
       orderDate: new Date(),
       ...(userId && { userId })
     });
@@ -85,8 +99,8 @@ export async function POST(request: NextRequest) {
     try {
       const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
       const orderUrl = `${origin}/my-orders`;
-      const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
-      await sendSMS(phone, smsMessage);
+      const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${data.totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
+      await sendSMS(data.customerPhone, smsMessage);
     } catch (smsErr) {
       console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
     }

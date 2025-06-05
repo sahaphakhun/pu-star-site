@@ -2,30 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 import { clearCache } from '@cache/simpleCache';
+import { productInputSchema } from '@schemas/product';
 
 // GET: ดึงสินค้าทั้งหมด
-export async function GET() {
+export async function GET(request: NextRequest) {
   await connectDB();
-  const products = await Product.find().sort({ createdAt: -1 }).lean();
-  return NextResponse.json(products);
+  const searchParams = request.nextUrl.searchParams;
+  const page = Number(searchParams.get('page') || '1');
+  const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
+  const q = searchParams.get('q') || '';
+  const category = searchParams.get('category');
+
+  const filter: Record<string, any> = {};
+  if (q) {
+    filter.name = { $regex: q, $options: 'i' };
+  }
+  if (category) {
+    filter.category = category;
+  }
+
+  const total = await Product.countDocuments(filter);
+  const products = await Product.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+
+  return NextResponse.json({ data: products, total, page, limit, totalPages: Math.ceil(total / limit) });
 }
 
 // POST: สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
-  const { name, price, description, imageUrl, options, category, units } = await request.json();
-
-  if (!name || !description || !imageUrl) {
-    return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
+  const raw = await request.json();
+  const parsed = productInputSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
+  const { name, price, description, imageUrl, options, category, units } = parsed.data;
 
   // ต้องมีอย่างน้อย price หรือ units
-  if ((!price && (!units || units.length === 0))) {
+  if (price === undefined && (!units || units.length === 0)) {
     return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
   }
 
   await connectDB();
 
-  // หากไม่ได้ส่ง price มา แต่มี units ให้ตั้ง price เริ่มต้น = ราคาหน่วยแรก
   const initialPrice = price ?? (units && units.length > 0 ? units[0].price : undefined);
 
   const product = await Product.create({
@@ -38,5 +59,5 @@ export async function POST(request: NextRequest) {
     units,
   });
   clearCache('products');
-  return NextResponse.json(product, { status: 201 });
+  return NextResponse.json(product.toObject ? product.toObject() : product, { status: 201 });
 } 
