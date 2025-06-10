@@ -107,7 +107,10 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
  * ตรวจสอบ X-Hub-Signature-256 จาก Facebook
  */
 export function verifyRequestSignature(rawBody: string, signatureHeader?: string) {
-  if (!APP_SECRET) return false; // ถ้าไม่มี secret ก็ข้าม (ไม่แนะนำใน production)
+  if (!APP_SECRET) {
+    console.warn('[Messenger] APP_SECRET not set, skipping signature verify');
+    return true;
+  }
 
   if (!signatureHeader) return false;
 
