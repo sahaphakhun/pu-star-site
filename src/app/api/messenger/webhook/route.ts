@@ -26,20 +26,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-
-  // ส่งไปยัง worker แบบ fire-and-forget
+  // ส่งไปยัง worker และรอผล เพื่อให้แน่ใจว่า request ถูกส่งถึง
   const workerUrl = `${request.nextUrl.origin}/api/worker/messenger`;
   const signature = request.headers.get('x-hub-signature-256') || '';
-
-  fetch(workerUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-hub-signature-256': signature,
-    },
-    body: rawBody,
-  }).catch(() => {});
-
+  try {
+    const res = await fetch(workerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hub-signature-256': signature,
+      },
+      body: rawBody,
+    });
+    console.log('[Edge] forward to worker status', res.status);
+  } catch (err) {
+    console.error('[Edge] forward to worker error', err);
+  }
   // ตอบทันทีให้ FB ไม่ timeout (10 s limit)
   return NextResponse.json({ status: 'accepted' });
 } 
