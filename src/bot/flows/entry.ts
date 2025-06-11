@@ -1,9 +1,9 @@
 import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession, clearSession, updateSession } from '../state';
+import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, finalizeOrder, askPayment, sendBankInfo } from './order.flow';
+import { startCheckout, handleName, handleAddress, finalizeOrder, askPayment, sendBankInfo, showCart } from './order.flow';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -129,6 +129,30 @@ export async function handleEvent(event: MessagingEvent) {
     // เลือกหน่วยสินค้า
     if (payload.startsWith('UNIT_') && session.step === 'select_unit') {
       return await handleUnitPostback(psid, payload);
+    }
+
+    // แสดงตะกร้าสินค้า
+    if (payload === 'SHOW_CART') {
+      return showCart(psid);
+    }
+
+    // ล้างตะกร้าสินค้า
+    if (payload === 'CLEAR_CART') {
+      await updateSession(psid, { cart: [] });
+      return callSendAPI(psid, { text: 'ล้างตะกร้าแล้วค่ะ' });
+    }
+
+    // ลบรายการล่าสุดหรือตาม index
+    if (payload === 'REMOVE_LAST') {
+      await removeFromCart(psid);
+      return showCart(psid);
+    }
+    if (payload.startsWith('REMOVE_')) {
+      const idx = parseInt(payload.replace('REMOVE_', ''), 10);
+      if (!isNaN(idx)) {
+        await removeFromCart(psid, idx);
+        return showCart(psid);
+      }
     }
   }
 

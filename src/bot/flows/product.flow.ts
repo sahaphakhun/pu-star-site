@@ -218,6 +218,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
     text: `เพิ่ม ${product.name}${unitText} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
+      { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },
       { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
     ],
   });
@@ -336,6 +337,7 @@ export async function addProductWithOptions(psid: string, quantity: number) {
     text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
+      { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },
       { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
     ],
   });

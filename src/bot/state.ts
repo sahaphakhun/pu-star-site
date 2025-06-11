@@ -65,4 +65,18 @@ export async function addToCart(psid: string, item: CartItem): Promise<void> {
 export async function clearSession(psid: string): Promise<void> {
   await connectDB();
   await SessionModel.deleteOne({ psid });
+}
+
+export async function removeFromCart(psid: string, idx?: number): Promise<void> {
+  const session = await getSession(psid);
+  if (session.cart.length === 0) return;
+
+  // ถ้าไม่ได้ระบุ index ให้นำออกตัวสุดท้าย
+  if (idx === undefined) {
+    session.cart.pop();
+  } else if (idx >= 0 && idx < session.cart.length) {
+    session.cart.splice(idx, 1);
+  }
+
+  await updateSession(psid, { cart: session.cart });
 } 

@@ -1,5 +1,6 @@
 import { callSendAPIAsync, sendTypingOn } from '@/utils/messenger';
 import { getSession, updateSession } from '../state';
+import { startAuth } from './auth.flow';
 import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 
@@ -20,9 +21,12 @@ export async function startCheckout(psid: string) {
 }
 
 export async function handleName(psid: string, name: string) {
+  // เก็บชื่อผู้รับไว้ แล้วเข้าสู่ขั้นตอนยืนยันเบอร์โทร (OTP)
   const sess = await getSession(psid);
-  await updateSession(psid, { step: 'ask_address', tempData: { ...(sess.tempData || {}), name } });
-  callSendAPIAsync(psid, { text: 'กรุณาพิมพ์ที่อยู่จัดส่งค่ะ' });
+  await updateSession(psid, { tempData: { ...(sess.tempData || {}), name } });
+
+  // ใช้ flow ยืนยันตัวตนเพื่อขอเบอร์โทรและ OTP
+  return startAuth(psid);
 }
 
 export async function handleAddress(psid: string, address: string) {
@@ -135,4 +139,41 @@ export async function sendBankInfo(psid: string) {
   callSendAPIAsync(psid, { text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS' });
   callSendAPIAsync(psid, { text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ' });
   await updateSession(psid, { step: 'await_slip' });
+}
+
+// แสดงตะกร้าสินค้าแบบสรุป พร้อมตัวเลือกจัดการ
+export async function showCart(psid: string) {
+  const session = await getSession(psid);
+  if (session.cart.length === 0) {
+    return callSendAPIAsync(psid, { text: 'ตะกร้าสินค้าว่างอยู่ค่ะ' });
+  }
+
+  // สร้างข้อความสรุปรายการ พร้อมลำดับ
+  const itemsText = session.cart
+    .map((c, idx) => {
+      let t = `${idx + 1}) ${c.name} x${c.quantity}`;
+      if (c.unitLabel) t += ` (${c.unitLabel})`;
+      return t;
+    })
+    .join('\n');
+
+  const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+  // เตรียม quick replies: ลบแต่ละชิ้น (สูงสุด 8), ยืนยัน, ล้างตะกร้า
+  const removeReplies = session.cart.slice(0, 8).map((_, idx) => ({
+    content_type: 'text',
+    title: `ลบ ${idx + 1}`,
+    payload: `REMOVE_${idx}`,
+  }));
+
+  callSendAPIAsync(psid, {
+    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม: ${total.toLocaleString()} บาท`,
+    quick_replies: [
+      { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
+      ...removeReplies,
+      { content_type: 'text', title: 'ล้างตะกร้า', payload: 'CLEAR_CART' },
+    ],
+  });
+
+  await updateSession(psid, { step: 'summary' });
 } 
