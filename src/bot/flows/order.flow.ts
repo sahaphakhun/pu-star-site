@@ -36,7 +36,7 @@ export async function handleNameAddress(psid: string, fullText: string) {
 
   if (!parsed) {
     return callSendAPIAsync(psid, {
-      text: 'ขออภัย ไม่สามารถแยกชื่อและที่อยู่ได้ กรุณาพิมพ์ใหม่ เช่น:\nสมชาย ใจดี 089xxxxxxx\n123/45 หมู่ 5 ต.บางรัก ...',
+      text: 'ขออภัย ไม่สามารถแยกชื่อและที่อยู่ได้ กรุณาพิมพ์ใหม่ เช่น:\nสมชาย ใจดี \n123/45 หมู่ 5 ต.บางรัก ...',
     });
   }
 

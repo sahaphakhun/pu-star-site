@@ -8,7 +8,7 @@ import { updateSession } from '../state';
 export async function startAuth(psid: string) {
   await sendTypingOn(psid);
   await callSendAPI(psid, {
-    text: 'กรุณาแชร์เบอร์โทรศัพท์ของคุณค่ะ',
+    text: 'กรุณากดแชร์หรือส่งเบอร์โทรศัพท์ของคุณค่ะ',
     quick_replies: [
       { content_type: 'user_phone_number' },
     ],
