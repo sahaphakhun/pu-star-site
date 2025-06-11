@@ -342,12 +342,39 @@ const AdminProductsPage = () => {
     setUnits((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const moveUnit = (idx: number, direction: -1 | 1) => {
+    setUnits((prev) => {
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[idx];
+      copy[idx] = copy[newIdx];
+      copy[newIdx] = temp;
+      return copy;
+    });
+  };
+
   const updateUnitLabel = (idx: number, label: string) => {
     setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, label } : u)));
   };
 
   const updateUnitPrice = (idx: number, priceValue: string) => {
     setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, price: priceValue } : u)));
+  };
+
+  const moveOptionValue = (optIdx: number, valIdx: number, direction: -1 | 1) => {
+    setOptions((prev) =>
+      prev.map((opt, i) => {
+        if (i !== optIdx) return opt;
+        const newIdx = valIdx + direction;
+        if (newIdx < 0 || newIdx >= opt.values.length) return opt;
+        const newValues = [...opt.values];
+        const temp = newValues[valIdx];
+        newValues[valIdx] = newValues[newIdx];
+        newValues[newIdx] = temp;
+        return { ...opt, values: newValues };
+      })
+    );
   };
 
   if (loading) {
@@ -569,15 +596,27 @@ const AdminProductsPage = () => {
                                 placeholder="ราคา"
                                 className="w-32 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                               />
-                              <button
-                                type="button"
-                                onClick={() => removeUnit(idx)}
-                                className="text-red-600 hover:text-red-800 p-1"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
+                              <div className="flex items-center space-x-1">
+                                <button type="button" onClick={() => moveUnit(idx, -1)} className="text-gray-500 hover:text-gray-700 p-1">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                  </svg>
+                                </button>
+                                <button type="button" onClick={() => moveUnit(idx, 1)} className="text-gray-500 hover:text-gray-700 p-1">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeUnit(idx)}
+                                  className="text-red-600 hover:text-red-800 p-1"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -730,6 +769,16 @@ const AdminProductsPage = () => {
                                     </span>
                                   </label>
 
+                                  <button type="button" onClick={() => moveOptionValue(optIdx, valIdx, -1)} className="text-gray-500 hover:text-gray-700 p-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                    </svg>
+                                  </button>
+                                  <button type="button" onClick={() => moveOptionValue(optIdx, valIdx, 1)} className="text-gray-500 hover:text-gray-700 p-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => removeOptionValue(optIdx, valIdx)}

@@ -401,8 +401,12 @@ const ShopPage = () => {
                   <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm md:text-base">
                     {product.name}
                   </h3>
-                  <p className="text-blue-600 font-bold text-lg mb-3">
-                    ฿{(product.price || (product.units && product.units[0]?.price) || 0).toLocaleString()}
+                  <p className="text-blue-600 font-bold text-lg mb-3 text-sm md:text-base">
+                    {(() => {
+                      const priceVal = product.price !== undefined ? product.price : (product.units && product.units[0]?.price) || 0;
+                      const label = product.price === undefined && product.units && product.units.length > 0 ? ` / ${product.units[0].label}` : '';
+                      return `฿${priceVal.toLocaleString()}${label}`;
+                    })()}
                   </p>
                   <button
                     onClick={() => {
@@ -480,7 +484,11 @@ const ShopPage = () => {
                 <h3 className="text-xl font-bold mb-2">{selectedProduct.name}</h3>
                 <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
                 <p className="text-2xl font-bold text-blue-600 mb-6">
-                  ฿{(selectedUnit ? selectedUnit.price : selectedProduct.price).toLocaleString()}
+                  {(() => {
+                    const priceVal = selectedUnit ? selectedUnit.price : selectedProduct.price ?? (selectedProduct.units && selectedProduct.units[0]?.price) || 0;
+                    const label = selectedUnit ? ` / ${selectedUnit.label}` : (selectedProduct.price === undefined && selectedProduct.units && selectedProduct.units.length > 0 ? ` / ${selectedProduct.units[0].label}` : '');
+                    return `฿${priceVal.toLocaleString()}${label}`;
+                  })()}
                 </p>
 
                 {/* Units */}

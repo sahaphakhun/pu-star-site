@@ -13,6 +13,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
+      <head>
+        <meta name="theme-color" content="#223f81" />
+        <link rel="icon" href="/favicon.ico" />
+        <title>PU STAR Shop</title>
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <main className="min-h-screen bg-gray-100">{children}</main>
