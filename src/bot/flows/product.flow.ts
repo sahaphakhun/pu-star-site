@@ -249,6 +249,7 @@ export async function askNextOption(psid: string): Promise<void> {
 // ถามจำนวน
 export async function askQuantity(psid: string): Promise<void> {
   await sendTypingOn(psid);
+  await updateSession(psid, { step: 'ask_quantity' });
   return callSendAPIAsync(psid, {
     text: 'ต้องการกี่ชิ้นคะ?',
     quick_replies: [1, 2, 3, 4, 5].map((n) => ({
@@ -257,7 +258,6 @@ export async function askQuantity(psid: string): Promise<void> {
       payload: `QTY_${n}`,
     })),
   });
-  await updateSession(psid, { step: 'ask_quantity' });
 }
 
 // ถามหน่วย
