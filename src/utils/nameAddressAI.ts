@@ -27,11 +27,10 @@ export async function parseNameAddress(input: string): Promise<ParsedResult | nu
           {
             role: 'system',
             content:
-              'คุณคือผู้ช่วยแยกชื่อผู้รับและที่อยู่ภาษาไทย จากข้อความของลูกค้า ตอบกลับเป็น JSON object ที่มี key name และ address เท่านั้น หากไม่สามารถแยกได้ให้ตอบ null',
+              'คุณคือผู้ช่วยแยกชื่อผู้รับและที่อยู่ภาษาไทย จากข้อความของลูกค้า\nตอบกลับเป็น JSON object ที่มี key name และ address เท่านั้น\nหากไม่สามารถแยกได้ให้ตอบ null\n\nตัวอย่างผลลัพธ์:\n{"name":"สมชาย ใจดี","address":"123/45 หมู่ 5 ต.บางรัก ..."}',
           },
           { role: 'user', content: input.substring(0, 2000) },
         ],
-        response_format: { type: 'json_object' },
       }),
     });
 
