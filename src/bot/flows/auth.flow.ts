@@ -55,7 +55,7 @@ export async function handleOtp(psid: string, otp: string) {
   mu.otpExpire = undefined;
   await mu.save();
   await callSendAPI(psid, { text: 'ยืนยันตัวตนสำเร็จค่ะ สามารถดำเนินการสั่งซื้อได้เลย' });
-  // ขอที่อยู่จัดส่งต่อ
-  await callSendAPI(psid, { text: 'กรุณาพิมพ์ที่อยู่จัดส่งค่ะ' });
-  await updateSession(psid, { step: 'ask_address' });
+  // ขอชื่อและที่อยู่จัดส่งในข้อความเดียวกัน
+  await callSendAPI(psid, { text: 'กรุณาพิมพ์ชื่อและที่อยู่จัดส่ง เช่น:\nสมชาย ใจดี\n123/45 หมู่ 5 ต.บางรัก ...' });
+  await updateSession(psid, { step: 'await_name_address' });
 } 

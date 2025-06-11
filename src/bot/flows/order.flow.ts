@@ -3,6 +3,7 @@ import { getSession, updateSession } from '../state';
 import { startAuth } from './auth.flow';
 import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
+import { parseNameAddress } from '@/utils/nameAddressAI';
 
 interface ShippingInfo {
   name: string;
@@ -15,9 +16,8 @@ export async function startCheckout(psid: string) {
     callSendAPIAsync(psid, { text: 'ตะกร้าสินค้าว่างอยู่ค่ะ' });
     return;
   }
-  await sendTypingOn(psid);
-  callSendAPIAsync(psid, { text: 'กรุณาพิมพ์ชื่อผู้รับสินค้า' });
-  await updateSession(psid, { step: 'ask_name', tempData: {} });
+  // ข้ามไปขั้นตอนยืนยันเบอร์โทรทันที
+  await startAuth(psid);
 }
 
 export async function handleName(psid: string, name: string) {
@@ -29,9 +29,24 @@ export async function handleName(psid: string, name: string) {
   return startAuth(psid);
 }
 
-export async function handleAddress(psid: string, address: string) {
+// รับข้อความเดียวที่รวมชื่อและที่อยู่ (แยกด้วยขึ้นบรรทัดใหม่)
+export async function handleNameAddress(psid: string, fullText: string) {
+  // ใช้ OpenAI แยกชื่อและที่อยู่
+  const parsed = await parseNameAddress(fullText);
+
+  if (!parsed) {
+    return callSendAPIAsync(psid, {
+      text: 'ขออภัย ไม่สามารถแยกชื่อและที่อยู่ได้ กรุณาพิมพ์ใหม่ เช่น:\nสมชาย ใจดี 089xxxxxxx\n123/45 หมู่ 5 ต.บางรัก ...',
+    });
+  }
+
+  return handleAddress(psid, parsed.address, parsed.name);
+}
+
+// ปรับ handleAddress ให้รับชื่อ optional (กรณีมาจาก handleNameAddress)
+export async function handleAddress(psid: string, address: string, nameOverride?: string) {
   const session = await getSession(psid);
-  const name = (session.tempData as any)?.name || '';
+  const name = nameOverride || (session.tempData as any)?.name || '';
   const shipping: ShippingInfo = { name, address };
 
   await sendTypingOn(psid);

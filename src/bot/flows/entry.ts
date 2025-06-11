@@ -3,7 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, finalizeOrder, askPayment, sendBankInfo, showCart } from './order.flow';
+import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart } from './order.flow';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -190,12 +190,8 @@ export async function handleEvent(event: MessagingEvent) {
       }
     }
 
-    if (session.step === 'ask_name') {
-      return handleName(psid, txt);
-    }
-
-    if (session.step === 'ask_address') {
-      return handleAddress(psid, txt);
+    if (session.step === 'await_name_address') {
+      return handleNameAddress(psid, event.message.text);
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
