@@ -1,5 +1,5 @@
 import { sendTypingOn, callSendAPI } from '@/utils/messenger';
-import { requestOTP, verifyOTP } from '@/utils/deesmsx';
+import { requestOTP, verifyOTP, formatPhoneNumber } from '@/utils/deesmsx';
 import connectDB from '@/lib/mongodb';
 import MessengerUser from '@/models/MessengerUser';
 import User from '@/models/User';
@@ -18,7 +18,8 @@ export async function startAuth(psid: string) {
 
 export async function handlePhone(psid: string, phone: string) {
   await connectDB();
-  const otpResp = await requestOTP(phone);
+  const normalized = formatPhoneNumber(phone);
+  const otpResp = await requestOTP(normalized);
   const token = otpResp?.result?.token;
   if (!token) {
     await callSendAPI(psid, { text: 'ขอรหัส OTP ไม่สำเร็จ กรุณาลองใหม่' });
@@ -26,7 +27,7 @@ export async function handlePhone(psid: string, phone: string) {
   }
   await MessengerUser.findOneAndUpdate(
     { psid },
-    { psid, phoneNumber: phone, otpToken: token, otpExpire: new Date(Date.now() + 5 * 60 * 1000) },
+    { psid, phoneNumber: normalized, otpToken: token, otpExpire: new Date(Date.now() + 5 * 60 * 1000) },
     { upsert: true }
   );
   await callSendAPI(psid, { text: 'กรุณากรอก OTP 6 หลักที่ได้รับค่ะ' });
