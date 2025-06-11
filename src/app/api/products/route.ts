@@ -40,6 +40,21 @@ export async function GET(request: NextRequest) {
 // POST: สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
   const raw = await request.json();
+
+  // แปลงค่าที่อาจมาจาก client เป็น string → number ก่อน validate
+  if (raw.price === '') {
+    delete raw.price; // ให้ปล่อยให้ units ตัดสิน price แทน
+  } else if (raw.price !== undefined) {
+    raw.price = Number(raw.price);
+  }
+
+  if (Array.isArray(raw.units)) {
+    raw.units = raw.units
+      // กรองหน่วยที่ label หรือ price ว่างออกไป เพื่อป้องกัน NaN
+      .filter((u: any) => u.label && u.price !== '')
+      .map((u: any) => ({ ...u, price: Number(u.price) }));
+  }
+
   const parsed = productInputSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });

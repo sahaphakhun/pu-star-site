@@ -79,6 +79,11 @@ const AdminProductsPage = () => {
       return;
     }
 
+    if (units.some((u) => u.label.trim() === '' || u.price.trim() === '' || isNaN(Number(u.price)))) {
+      toast.error('กรุณากรอกข้อมูลหน่วยสินค้าให้ครบถ้วน และราคาต้องเป็นตัวเลข');
+      return;
+    }
+
     const productData: any = {
       name,
       description,

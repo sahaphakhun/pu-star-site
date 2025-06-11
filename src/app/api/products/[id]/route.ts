@@ -21,9 +21,16 @@ export async function PUT(request: NextRequest, context: unknown) {
   const rawBody = await request.json();
 
   // แปลงค่าที่อาจเป็น string → number ก่อน validation
-  if (rawBody.price !== undefined && rawBody.price !== '') rawBody.price = Number(rawBody.price);
+  if (rawBody.price === '') {
+    delete rawBody.price;
+  } else if (rawBody.price !== undefined) {
+    rawBody.price = Number(rawBody.price);
+  }
+
   if (Array.isArray(rawBody.units)) {
-    rawBody.units = rawBody.units.map((u: any) => ({ ...u, price: Number(u.price) }));
+    rawBody.units = rawBody.units
+      .filter((u: any) => u.label && u.price !== '')
+      .map((u: any) => ({ ...u, price: Number(u.price) }));
   }
 
   const parsed = productInputSchema.safeParse(rawBody);
