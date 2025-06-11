@@ -1,6 +1,16 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
+// รองรับได้หลายชื่อ เพื่อให้ทำงานได้ทั้งใน Railway, Vercel, Docker ฯลฯ
+const MONGODB_URI =
+  (process.env.MONGODB_URI ||
+    process.env.MONGO_URL ||
+    process.env.DATABASE_URL ||
+    process.env.MONGODB_URL) as string;
+
+// log เฉพาะใน dev เพื่อดีบัก
+if (process.env.NODE_ENV !== 'production') {
+  console.log('[DB] using connection string =', MONGODB_URI ? MONGODB_URI.slice(0, 30) + '...' : undefined);
+}
 
 if (!MONGODB_URI) {
   throw new Error(
@@ -34,6 +44,7 @@ async function connectDB(): Promise<mongoose.Connection> {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 30000, // 30 วินาที หากหาเซิร์ฟเวอร์ไม่เจอจะ throw เร็วขึ้น
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
