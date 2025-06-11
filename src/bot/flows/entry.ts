@@ -176,6 +176,14 @@ export async function handleEvent(event: MessagingEvent) {
       return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
     }
 
+    // ผู้ใช้พิมพ์เบอร์โทรด้วยตัวเอง (ไม่ใช้ quick reply)
+    if (session.step === 'await_phone') {
+      const digits = txt.replace(/\D/g, '');
+      if (digits.length >= 8 && digits.length <= 12) {
+        return handlePhone(psid, digits);
+      }
+    }
+
     if (session.step === 'await_otp') {
       if (/^\d{4,6}$/.test(txt)) {
         return handleOtp(psid, txt.trim());
