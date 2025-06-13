@@ -224,6 +224,20 @@ export async function handleEvent(event: MessagingEvent) {
     return;
   }
 
+  // ยืนยันใช้ที่อยู่เดิม
+  if (payload === 'ADDR_USE_OLD' && session.step === 'confirm_old_address') {
+    const { address, name } = (session.tempData || {}) as any;
+    if (address) {
+      return handleAddress(psid, address as string, name as string);
+    }
+  }
+
+  if (payload === 'ADDR_NEW' && session.step === 'confirm_old_address') {
+    await callSendAPI(psid, { text: 'กรุณาพิมพ์ชื่อและที่อยู่จัดส่ง เช่น:\nสมชาย ใจดี\n123/45 หมู่ 5 ต.บางรัก ...' });
+    await updateSession(psid, { step: 'await_name_address' });
+    return;
+  }
+
   // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
   return showCategories(psid);
 } 
