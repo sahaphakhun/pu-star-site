@@ -159,8 +159,31 @@ export async function askPayment(psid: string) {
 
 export async function sendBankInfo(psid: string) {
   callSendAPIAsync(psid, { text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS' });
-  callSendAPIAsync(psid, { text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ' });
+  callSendAPIAsync(psid, { 
+    text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ',
+    quick_replies: [
+      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' },
+      { content_type:'text', title:'ยกเลิก', payload:'ORDER_CANCEL' }
+    ]
+  });
   await updateSession(psid, { step: 'await_slip' });
+}
+
+// ยืนยัน COD ก่อนสร้างออเดอร์ เพื่อให้ผู้ใช้เปลี่ยนใจได้
+export async function confirmCOD(psid:string){
+  const session = await getSession(psid);
+  const total = session.cart.reduce((s,i)=>s+i.price*i.quantity,0);
+  const shippingFee = await computeShippingFee(session.cart);
+  const grand = total + shippingFee;
+  callSendAPIAsync(psid, {
+    text:`ยืนยันการสั่งซื้อ (ชำระเงินปลายทาง)\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท`,
+    quick_replies:[
+      { content_type:'text', title:'ยืนยัน ✔️', payload:'COD_CONFIRM' },
+      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' },
+      { content_type:'text', title:'ยกเลิก', payload:'ORDER_CANCEL' }
+    ]
+  });
+  await updateSession(psid, { step:'await_cod_confirm' });
 }
 
 // แสดงตะกร้าสินค้าแบบสรุป พร้อมตัวเลือกจัดการ

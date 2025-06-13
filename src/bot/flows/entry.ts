@@ -3,7 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart } from './order.flow';
+import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD } from './order.flow';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -91,8 +91,20 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload === 'PAY_COD') {
       if (session.step === 'await_payment_method') {
         await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'cod' } });
+        return confirmCOD(psid);
+      }
+    }
+
+    if (payload === 'COD_CONFIRM') {
+      if (session.step === 'await_cod_confirm') {
         return finalizeOrder(psid);
       }
+    }
+
+    if (payload === 'CHANGE_PAYMENT') {
+      // รีเซ็ต paymentMethod แล้วถามใหม่ ไม่ว่ากำลังอยู่ขั้นไหน
+      await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: undefined } });
+      return askPayment(psid);
     }
 
     if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
