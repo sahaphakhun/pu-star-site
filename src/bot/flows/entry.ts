@@ -212,6 +212,18 @@ export async function handleEvent(event: MessagingEvent) {
     }
   }
 
+  // หากกำลังถามจำนวนและผู้ใช้พิมพ์ตัวเลขเอง
+  if (event.message && session.step === 'ask_quantity' && event.message.text) {
+    const qtyNum = parseInt(event.message.text.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(qtyNum) && qtyNum > 0 && qtyNum <= 1000) {
+      await addProductWithOptions(psid, qtyNum);
+      return;
+    }
+    // แจ้งเตือนหากป้อนผิด
+    await callSendAPI(psid, { text: 'กรุณาพิมพ์ตัวเลขเท่านั้น เช่น 3' });
+    return;
+  }
+
   // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
   return showCategories(psid);
 } 

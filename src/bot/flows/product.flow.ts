@@ -248,10 +248,18 @@ export async function askNextOption(psid: string): Promise<void> {
 
 // ถามจำนวน
 export async function askQuantity(psid: string): Promise<void> {
+  const sess = await getSession(psid);
+  const unitLabel = (sess.tempData as any)?.selectedUnit?.label || '';
+
   await sendTypingOn(psid);
   await updateSession(psid, { step: 'ask_quantity' });
+
+  const prompt = unitLabel
+    ? `ต้องการกี่${unitLabel}คะ? พิมพ์ตัวเลขจำนวนที่ต้องการ เช่น 3`
+    : 'ต้องการกี่ชิ้นคะ? พิมพ์ตัวเลขจำนวนที่ต้องการ เช่น 3';
+
   return callSendAPIAsync(psid, {
-    text: 'ต้องการกี่ชิ้นคะ?',
+    text: prompt,
     quick_replies: [1, 2, 3, 4, 5].map((n) => ({
       content_type: 'text',
       title: `${n}`,
