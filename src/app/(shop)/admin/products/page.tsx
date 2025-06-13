@@ -106,7 +106,13 @@ const AdminProductsPage = () => {
         name: option.name.trim(),
         values: option.values
           .filter((v) => v.label.trim())
-          .map((v) => ({ label: v.label.trim(), imageUrl: v.imageUrl })),
+          .map((v) => {
+            const val: any = { label: v.label.trim() };
+            if (v.imageUrl && v.imageUrl.trim()) {
+              val.imageUrl = v.imageUrl.trim();
+            }
+            return val;
+          }),
       }));
 
     if (options.length > 0 && cleanedOptions.length === 0) {
