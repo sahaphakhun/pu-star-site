@@ -140,7 +140,12 @@ const AdminProductsPage = () => {
         fetchProducts();
         toast.success(editMode ? 'อัพเดทสินค้าสำเร็จ' : 'เพิ่มสินค้าสำเร็จ');
       } else {
-        toast.error('เกิดข้อผิดพลาดในการ' + (editMode ? 'อัพเดทสินค้า' : 'เพิ่มสินค้า'));
+        let msg = 'เกิดข้อผิดพลาดในการ' + (editMode ? 'อัพเดทสินค้า' : 'เพิ่มสินค้า');
+        try {
+          const data = await response.json();
+          if (data?.error) msg = data.error;
+        } catch {}
+        toast.error(msg);
       }
     } catch (error) {
       console.error('เกิดข้อผิดพลาด:', error);
