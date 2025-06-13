@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import { sendShippingNotification } from '@/app/notification/sms';
+import mongoose from 'mongoose';
+
+export const dynamic = 'force-dynamic';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectDB();
     const orderId = params.id;
+    if (!mongoose.isValidObjectId(orderId)) {
+      return NextResponse.json({ error: 'รูปแบบ id ไม่ถูกต้อง' }, { status: 400 });
+    }
+
     const body = await request.json();
 
     const order = await Order.findById(orderId);
@@ -50,11 +57,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectDB();
-    const result = await Order.findByIdAndDelete(params.id);
+    const orderId = params.id;
+    if (!mongoose.isValidObjectId(orderId)) {
+      return NextResponse.json({ error: 'id ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    const result = await Order.findByIdAndDelete(orderId);
     if (!result) {
       return NextResponse.json({ error: 'ไม่พบคำสั่งซื้อ' }, { status: 404 });
     }
-    return NextResponse.json({ success: true });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('เกิดข้อผิดพลาดในการลบคำสั่งซื้อ:', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการลบคำสั่งซื้อ' }, { status: 500 });
