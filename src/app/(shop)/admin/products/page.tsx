@@ -25,7 +25,7 @@ const AdminProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [units, setUnits] = useState<{ label: string; price: string }[]>([]);
+  const [units, setUnits] = useState<{ label: string; price: string; shippingFee: string }[]>([]);
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('ทั่วไป');
@@ -79,7 +79,7 @@ const AdminProductsPage = () => {
       return;
     }
 
-    if (units.some((u) => u.label.trim() === '' || u.price.trim() === '' || isNaN(Number(u.price)))) {
+    if (units.some((u) => u.label.trim() === '' || u.price.trim() === '' || isNaN(Number(u.price)) || (u.shippingFee.trim() !== '' && isNaN(Number(u.shippingFee))))) {
       toast.error('กรุณากรอกข้อมูลหน่วยสินค้าให้ครบถ้วน และราคาต้องเป็นตัวเลข');
       return;
     }
@@ -96,7 +96,11 @@ const AdminProductsPage = () => {
     }
 
     if (units.length > 0) {
-      productData.units = units.map((u) => ({ label: u.label, price: parseFloat(u.price) }));
+      productData.units = units.map((u) => ({ 
+        label: u.label, 
+        price: parseFloat(u.price),
+        shippingFee: u.shippingFee.trim() === '' ? 0 : parseFloat(u.shippingFee)
+      }));
     }
 
     // กรอง option ที่ไม่สมบูรณ์ (ชื่อว่าง หรือไม่มี value ที่ label ไม่ว่าง)
@@ -184,7 +188,7 @@ const AdminProductsPage = () => {
     }
 
     if (product.units && product.units.length > 0) {
-      setUnits(product.units.map((u) => ({ label: u.label, price: u.price.toString() })));
+      setUnits(product.units.map((u) => ({ label: u.label, price: u.price.toString(), shippingFee: (u as any).shippingFee?.toString() || '' })));
     } else {
       setUnits([]);
     }
@@ -355,7 +359,7 @@ const AdminProductsPage = () => {
   };
 
   const addUnit = () => {
-    setUnits((prev) => [...prev, { label: '', price: '' }]);
+    setUnits((prev) => [...prev, { label: '', price: '', shippingFee: '' }]);
   };
 
   const removeUnit = (idx: number) => {
@@ -380,6 +384,10 @@ const AdminProductsPage = () => {
 
   const updateUnitPrice = (idx: number, priceValue: string) => {
     setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, price: priceValue } : u)));
+  };
+
+  const updateUnitShipping = (idx: number, feeValue: string) => {
+    setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, shippingFee: feeValue } : u)));
   };
 
   const moveOptionValue = (optIdx: number, valIdx: number, direction: -1 | 1) => {
@@ -600,42 +608,34 @@ const AdminProductsPage = () => {
 
                         <div className="space-y-3">
                           {units.map((u, idx) => (
-                            <div key={idx} className="flex items-center space-x-2">
+                            <div key={idx} className="mb-2 grid grid-cols-12 gap-2 items-center">
                               <input
                                 type="text"
+                                placeholder="หน่วย เช่น หลอด"
                                 value={u.label}
                                 onChange={(e) => updateUnitLabel(idx, e.target.value)}
-                                placeholder="เช่น หลอด, ลัง"
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                className="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               />
                               <input
                                 type="number"
                                 step="0.01"
+                                placeholder="ราคา"
                                 value={u.price}
                                 onChange={(e) => updateUnitPrice(idx, e.target.value)}
-                                placeholder="ราคา"
-                                className="w-32 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                className="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                               />
-                              <div className="flex items-center space-x-1">
-                                <button type="button" onClick={() => moveUnit(idx, -1)} className="text-gray-500 hover:text-gray-700 p-1">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                  </svg>
-                                </button>
-                                <button type="button" onClick={() => moveUnit(idx, 1)} className="text-gray-500 hover:text-gray-700 p-1">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeUnit(idx)}
-                                  className="text-red-600 hover:text-red-800 p-1"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="ค่าส่ง"
+                                value={u.shippingFee}
+                                onChange={(e) => updateUnitShipping(idx, e.target.value)}
+                                className="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                              <div className="col-span-2 flex gap-1">
+                                <button type="button" onClick={() => moveUnit(idx, -1)} className="text-gray-500 hover:text-gray-700 text-xs">↑</button>
+                                <button type="button" onClick={() => moveUnit(idx, 1)} className="text-gray-500 hover:text-gray-700 text-xs">↓</button>
+                                <button type="button" onClick={() => removeUnit(idx)} className="text-red-500 hover:text-red-700 text-xs">✕</button>
                               </div>
                             </div>
                           ))}
