@@ -99,14 +99,23 @@ const AdminProductsPage = () => {
       productData.units = units.map((u) => ({ label: u.label, price: parseFloat(u.price) }));
     }
 
-    if (options.length > 0) {
-      productData.options = options.map((option) => ({
-        name: option.name,
-        values: option.values.map((value) => ({
-          label: value.label,
-          imageUrl: value.imageUrl,
-        })),
+    // กรอง option ที่ไม่สมบูรณ์ (ชื่อว่าง หรือไม่มี value ที่ label ไม่ว่าง)
+    const cleanedOptions = options
+      .filter((option) => option.name.trim() && option.values.some((v) => v.label.trim()))
+      .map((option) => ({
+        name: option.name.trim(),
+        values: option.values
+          .filter((v) => v.label.trim())
+          .map((v) => ({ label: v.label.trim(), imageUrl: v.imageUrl })),
       }));
+
+    if (options.length > 0 && cleanedOptions.length === 0) {
+      toast.error('กรุณากรอกข้อมูลตัวเลือกสินค้าให้ครบถ้วน');
+      return;
+    }
+
+    if (cleanedOptions.length > 0) {
+      productData.options = cleanedOptions;
     }
 
     try {
