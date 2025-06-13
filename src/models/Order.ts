@@ -24,6 +24,10 @@ export interface IOrder extends Document {
   paymentMethod?: 'cod' | 'transfer';
   slipUrl?: string;
   userId?: Schema.Types.ObjectId;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  trackingNumber?: string;
+  shippingProvider?: string;
+  trackingSent?: boolean;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -100,10 +104,25 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       default: ''
     },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      default: 'pending'
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       index: true,
+    },
+    trackingNumber: {
+      type: String
+    },
+    shippingProvider: {
+      type: String
+    },
+    trackingSent: {
+      type: Boolean,
+      default: false
     }
   },
   { 

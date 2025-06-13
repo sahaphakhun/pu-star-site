@@ -29,6 +29,8 @@ interface Order {
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
   updatedAt: string;
+  trackingNumber?: string;
+  shippingProvider?: string;
 }
 
 const AdminOrdersPage = () => {
@@ -83,20 +85,30 @@ const AdminOrdersPage = () => {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      let payload: Record<string, any> = { status: newStatus };
+
+      // ถ้าปรับสถานะเป็นจัดส่งแล้ว ให้ถามเลขพัสดุและบริษัทขนส่ง
+      if (newStatus === 'shipped') {
+        const trackingNumber = prompt('กรุณาใส่เลขพัสดุ (tracking number)');
+        if (!trackingNumber) {
+          toast.error('กรุณาระบุเลขพัสดุ');
+          return;
+        }
+        const shippingProvider = prompt('ระบุบริษัทขนส่ง (เช่น Kerry, Flash, J&T ฯลฯ)') || 'Unknown';
+        payload = { ...payload, trackingNumber, shippingProvider };
+      }
+
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        setOrders((prev) =>
-          prev.map((order) =>
-            order._id === orderId ? { ...order, status: newStatus as Order['status'] } : order
-          )
-        );
+        const updated = await response.json();
+        setOrders((prev) => prev.map((order) => (order._id === orderId ? { ...order, ...updated } : order)));
         toast.success('อัพเดทสถานะเรียบร้อย');
       } else {
         throw new Error('Failed to update status');
