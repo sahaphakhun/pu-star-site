@@ -18,6 +18,8 @@ export interface IProduct extends Document {
       label: string;
       imageUrl?: string;
     }[];
+    shippingFee?: number;
+    unitPrice?: number;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -74,6 +76,12 @@ const productSchema = new Schema<IProduct>(
         },
       ],
       required: false,
+    },
+    shippingFee: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
     },
   },
   { 

@@ -278,11 +278,15 @@ export async function askUnit(psid: string): Promise<void> {
   await sendTypingOn(psid);
   return callSendAPIAsync(psid, {
     text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}`,
-    quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => ({
-      content_type: 'text',
-      title: `${u.label} (${u.price.toLocaleString()}฿)`.substring(0, 20),
-      payload: `UNIT_${idx}`,
-    })),
+    quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => {
+      const fee = u.shippingFee && u.shippingFee > 0 ? `+${u.shippingFee}` : 'ส่งฟรี';
+      const titleRaw = `${u.label} (${u.price.toLocaleString()}฿ / ${fee})`;
+      return {
+        content_type: 'text',
+        title: titleRaw.substring(0, 20),
+        payload: `UNIT_${idx}`,
+      };
+    }),
   });
 
   await updateSession(psid, { step: 'select_unit' });
@@ -336,13 +340,17 @@ export async function addProductWithOptions(psid: string, quantity: number) {
   const updated = await getSession(psid);
   const total = updated.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   
+  // คำนวณค่าส่งคร่าว ๆ
+  const shippingFee = await computeShippingFee(updated.cart);
+  const grand = total + shippingFee;
+  
   let unitText = '';
   if (selectedUnit?.label) {
     unitText = ` (${selectedUnit.label})`;
   }
   
   callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
+    text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมชั่วคราว ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },
@@ -355,3 +363,26 @@ export async function addProductWithOptions(psid: string, quantity: number) {
 
 // Pre-warm product cache ระหว่าง cold-start
 getAllProducts().catch(() => {});
+
+// duplicate simple computeShippingFee (shared)
+async function computeShippingFee(cart: any[]): Promise<number> {
+  if (cart.length === 0) return 0;
+  await connectDB();
+  const setting = (await (await import('@/models/ShippingSetting')).default.findOne().lean()) as any || { maxFee:50 };
+  const maxFee:number = setting.maxFee ?? 50;
+  const unitFees: number[] = [];
+  for (const c of cart) {
+    if (c.unitLabel) {
+      const prod = await getProductById(c.productId);
+      if (prod?.units) {
+        const u = prod.units.find((un:any)=>un.label===c.unitLabel);
+        if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
+      }
+    } else {
+      const prod = await getProductById(c.productId);
+      if (prod && (prod as any).shippingFee !== undefined) unitFees.push((prod as any).shippingFee);
+    }
+  }
+  if (unitFees.length === 0) return 0;
+  return Math.min(maxFee, Math.max(...unitFees));
+}
