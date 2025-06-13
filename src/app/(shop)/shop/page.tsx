@@ -38,7 +38,7 @@ const ShopPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
   const [selectedUnit, setSelectedUnit] = useState<{ label: string; price: number } | null>(null);
-  const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0});
+  const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number,maxFee:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0,maxFee:50});
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
 
@@ -325,13 +325,22 @@ const ShopPage = () => {
   };
 
   const calculateShippingFee = () => {
-    const subTotal = calculateTotal();
-    const totalQty = getTotalItems();
-    const { freeThreshold, fee, freeQuantityThreshold } = shippingSetting;
-    if ((freeThreshold && subTotal >= freeThreshold) || (freeQuantityThreshold && totalQty >= freeQuantityThreshold)) {
+    const { maxFee } = shippingSetting;
+
+    // หากตะกร้าว่าง
+    if (Object.values(cart).length === 0) return 0;
+
+    // รวบรวมค่าจัดส่งของแต่ละหน่วย
+    const fees: number[] = Object.values(cart).map((item) => {
+      if (item.unitLabel && item.product.units) {
+        const u = item.product.units.find((un) => un.label === item.unitLabel);
+        return u?.shippingFee ?? 0;
+      }
       return 0;
-    }
-    return fee;
+    });
+
+    const maxUnitFee = fees.length ? Math.max(...fees) : 0;
+    return Math.min(maxFee ?? 50, maxUnitFee);
   };
 
   const calculateGrandTotal = () => {
@@ -646,6 +655,10 @@ const ShopPage = () => {
 
               {Object.keys(cart).length > 0 && (
                 <div className="p-4 border-t border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm">ค่าส่ง</span>
+                    <span className="text-sm">฿{calculateShippingFee().toLocaleString()}</span>
+                  </div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-lg font-semibold">รวม:</span>
                     <span className="text-xl font-bold text-blue-600">

@@ -4,6 +4,7 @@ export interface IShippingSetting extends Document {
   freeThreshold: number; // ยอดซื้อขั้นต่ำที่ได้ส่งฟรี
   fee: number; // ค่าจัดส่งปกติ
   freeQuantityThreshold: number; // จำนวนชิ้นรวมขั้นต่ำที่จัดส่งฟรี
+  maxFee: number; // ค่าส่งสูงสุดต่อออเดอร์
 }
 
 const shippingSchema = new Schema<IShippingSetting>({
@@ -21,6 +22,11 @@ const shippingSchema = new Schema<IShippingSetting>({
     type: Number,
     required: true,
     default: 0,
+  },
+  maxFee: {
+    type: Number,
+    required: true,
+    default: 50,
   },
 });
 

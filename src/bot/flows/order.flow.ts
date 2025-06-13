@@ -4,6 +4,8 @@ import { startAuth } from './auth.flow';
 import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 import { parseNameAddress } from '@/utils/nameAddressAI';
+import ShippingSetting from '@/models/ShippingSetting';
+import { getProductById } from '@/utils/productCache';
 
 interface ShippingInfo {
   name: string;
@@ -64,9 +66,11 @@ export async function handleAddress(psid: string, address: string, nameOverride?
     return itemText;
   }).join('\n');
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shippingFee = await computeShippingFee(session.cart);
+  const grand = total + shippingFee;
 
   callSendAPIAsync(psid, {
-    text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดรวม ${total.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}`,
+    text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' },
       { content_type: 'text', title: 'ยกเลิก', payload: 'ORDER_CANCEL' },
@@ -83,6 +87,9 @@ export async function finalizeOrder(psid: string) {
   console.log('[FinalizeOrder] session', JSON.stringify(session));
   const shipping = session.tempData as any as ShippingInfo & { paymentMethod?: string; slipUrl?: string };
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shippingFee = await computeShippingFee(session.cart);
+  const grandTotal = total + shippingFee;
+
   const items = session.cart.map((c) => ({
     productId: c.productId,
     name: c.name,
@@ -103,9 +110,9 @@ export async function finalizeOrder(psid: string) {
     customerPhone: mu?.phoneNumber || '000',
     customerAddress: shipping.address,
     items,
-    shippingFee: 0,
+    shippingFee,
     discount: 0,
-    totalAmount: total,
+    totalAmount: grandTotal,
   };
   if (mu?.userId) payload.userId = mu.userId;
   if (shipping.paymentMethod) payload.paymentMethod = shipping.paymentMethod;
@@ -173,6 +180,8 @@ export async function showCart(psid: string) {
     .join('\n');
 
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shippingFee = await computeShippingFee(session.cart);
+  const grand = total + shippingFee;
 
   // เตรียม quick replies: ลบแต่ละชิ้น (สูงสุด 8), ยืนยัน, ล้างตะกร้า
   const removeReplies = session.cart.slice(0, 8).map((_, idx) => ({
@@ -182,7 +191,7 @@ export async function showCart(psid: string) {
   }));
 
   callSendAPIAsync(psid, {
-    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม: ${total.toLocaleString()} บาท`,
+    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม: ${total.toLocaleString()} บาท\nค่าส่ง: ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด: ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       ...removeReplies,
@@ -191,4 +200,24 @@ export async function showCart(psid: string) {
   });
 
   await updateSession(psid, { step: 'summary' });
+}
+
+// Helper: คำนวณค่าส่งตามหน่วย + maxFee
+async function computeShippingFee(cart: any[]): Promise<number> {
+  if (cart.length === 0) return 0;
+  await connectDB();
+  const setting = (await ShippingSetting.findOne().lean()) as any || { maxFee:50 };
+  const maxFee:number = setting.maxFee ?? 50;
+
+  const unitFees: number[] = [];
+  for (const c of cart) {
+    if (!c.unitLabel) continue;
+    const prod = await getProductById(c.productId);
+    if (prod?.units) {
+      const u = prod.units.find((un:any)=>un.label===c.unitLabel);
+      if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
+    }
+  }
+  const fee = unitFees.length ? Math.max(...unitFees) : 0;
+  return Math.min(maxFee, fee);
 } 

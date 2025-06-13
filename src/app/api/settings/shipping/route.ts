@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ message: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
-  const { freeThreshold, fee, freeQuantityThreshold } = parsed.data;
+  const { freeThreshold, fee, freeQuantityThreshold, maxFee } = parsed.data;
   await connectDB();
   let doc = await ShippingSetting.findOne();
   if (!doc) {
@@ -46,6 +46,7 @@ export async function PUT(req: NextRequest) {
     if (freeThreshold !== undefined) doc.freeThreshold = freeThreshold;
     if (fee !== undefined) doc.fee = fee;
     if (freeQuantityThreshold !== undefined) doc.freeQuantityThreshold = freeQuantityThreshold;
+    if (maxFee !== undefined) doc.maxFee = maxFee;
   }
   await doc.save();
   return NextResponse.json(doc);

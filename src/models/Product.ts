@@ -9,6 +9,7 @@ export interface IProduct extends Document {
     label: string;
     price: number;
     multiplier?: number;
+    shippingFee?: number;
   }[];
   category?: string;
   options?: {
@@ -49,6 +50,7 @@ const productSchema = new Schema<IProduct>(
           label: { type: String, required: true },
           price: { type: Number, required: true, min: [0, 'ราคาต้องไม่ต่ำกว่า 0'] },
           multiplier: { type: Number, required: false, min: 1, default: 1 },
+          shippingFee: { type: Number, required: false, min: 0, default: 0 },
         },
       ],
       required: false,
