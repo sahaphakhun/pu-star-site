@@ -12,7 +12,7 @@ async function getSetting() {
   await connectDB();
   cachedSetting = (await ShippingSetting.findOne().lean()) as any;
   if (!cachedSetting) {
-    cachedSetting = { fee: 50, maxFee: 50, freeThreshold: 0, freeQuantityThreshold: 0 };
+    cachedSetting = { fee: 50, maxFee: 50, freeThreshold: Infinity, freeQuantityThreshold: Infinity };
   }
   cachedAt = now;
   return cachedSetting;
@@ -22,16 +22,16 @@ export async function computeShippingFee(cart: any[]): Promise<number> {
   if (!cart || cart.length === 0) return 0;
 
   const setting = await getSetting();
-  const freeThreshold: number = setting.freeThreshold ?? 0;
   const baseFee: number = setting.fee ?? 50;
-  const freeQtyThreshold: number = setting.freeQuantityThreshold ?? 0;
   const maxFee: number = setting.maxFee ?? 50;
+  const freeThreshold: number = typeof setting.freeThreshold === 'number' ? setting.freeThreshold : Infinity;
+  const freeQtyThreshold: number = typeof setting.freeQuantityThreshold === 'number' ? setting.freeQuantityThreshold : Infinity;
 
   const totalAmount = cart.reduce((sum: number, i: any) => sum + i.price * i.quantity, 0);
   const totalQty = cart.reduce((sum: number, i: any) => sum + i.quantity, 0);
 
-  // เงื่อนไขส่งฟรี
-  if (totalAmount >= freeThreshold || totalQty >= freeQtyThreshold) {
+  // เงื่อนไขส่งฟรี (ใช้เมื่อกำหนดเป็นตัวเลข > 0)
+  if ((freeThreshold > 0 && totalAmount >= freeThreshold) || (freeQtyThreshold > 0 && totalQty >= freeQtyThreshold)) {
     return 0;
   }
 
