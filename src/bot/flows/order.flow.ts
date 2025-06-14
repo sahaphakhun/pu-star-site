@@ -4,8 +4,7 @@ import { startAuth } from './auth.flow';
 import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 import { parseNameAddress } from '@/utils/nameAddressAI';
-import ShippingSetting from '@/models/ShippingSetting';
-import { getProductById } from '@/utils/productCache';
+import { computeShippingFee } from '@/utils/shipping';
 
 interface ShippingInfo {
   name: string;
@@ -223,28 +222,4 @@ export async function showCart(psid: string) {
   });
 
   await updateSession(psid, { step: 'summary' });
-}
-
-// Helper: คำนวณค่าส่งตามหน่วย + maxFee
-async function computeShippingFee(cart: any[]): Promise<number> {
-  if (cart.length === 0) return 0;
-  await connectDB();
-  const setting = (await ShippingSetting.findOne().lean()) as any || { maxFee:50 };
-  const maxFee:number = setting.maxFee ?? 50;
-
-  const unitFees: number[] = [];
-  for (const c of cart) {
-    if (c.unitLabel) {
-      const prod = await getProductById(c.productId);
-      if (prod?.units) {
-        const u = prod.units.find((un:any)=>un.label===c.unitLabel);
-        if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
-      }
-    } else {
-      const prod = await getProductById(c.productId);
-      if (prod && (prod as any).shippingFee !== undefined) unitFees.push((prod as any).shippingFee);
-    }
-  }
-  const fee = unitFees.length ? Math.max(...unitFees) : 0;
-  return Math.min(maxFee, fee);
 } 

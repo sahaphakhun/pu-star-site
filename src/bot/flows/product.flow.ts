@@ -6,6 +6,7 @@ import { getCache, setCache } from '@cache/simpleCache';
 import { sendTypingAndMessages, sendTypingOn } from '@/utils/messenger';
 import { transformImage } from '@utils/image';
 import connectDB from '@/lib/mongodb';
+import { computeShippingFee } from '@/utils/shipping';
 
 function slug(text: string): string {
   // แปลงเป็น lower-case + trim แล้ว encodeURIComponent เพื่อให้รองรับอักขระไทย/พิเศษ
@@ -279,7 +280,12 @@ export async function askUnit(psid: string): Promise<void> {
   return callSendAPIAsync(psid, {
     text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}`,
     quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => {
-      const fee = u.shippingFee && u.shippingFee > 0 ? `+${u.shippingFee}` : 'ส่งฟรี';
+      let fee: string;
+      if (typeof u.shippingFee === 'number') {
+        fee = u.shippingFee === 0 ? 'ส่งฟรี' : `+${u.shippingFee}`;
+      } else {
+        fee = '+ค่าส่ง';
+      }
       const titleRaw = `${u.label} (${u.price.toLocaleString()}฿ / ${fee})`;
       return {
         content_type: 'text',
@@ -364,25 +370,4 @@ export async function addProductWithOptions(psid: string, quantity: number) {
 // Pre-warm product cache ระหว่าง cold-start
 getAllProducts().catch(() => {});
 
-// duplicate simple computeShippingFee (shared)
-async function computeShippingFee(cart: any[]): Promise<number> {
-  if (cart.length === 0) return 0;
-  await connectDB();
-  const setting = (await (await import('@/models/ShippingSetting')).default.findOne().lean()) as any || { maxFee:50 };
-  const maxFee:number = setting.maxFee ?? 50;
-  const unitFees: number[] = [];
-  for (const c of cart) {
-    if (c.unitLabel) {
-      const prod = await getProductById(c.productId);
-      if (prod?.units) {
-        const u = prod.units.find((un:any)=>un.label===c.unitLabel);
-        if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
-      }
-    } else {
-      const prod = await getProductById(c.productId);
-      if (prod && (prod as any).shippingFee !== undefined) unitFees.push((prod as any).shippingFee);
-    }
-  }
-  if (unitFees.length === 0) return 0;
-  return Math.min(maxFee, Math.max(...unitFees));
-}
+// computeShippingFee นำเข้าจาก util แล้ว
