@@ -118,7 +118,7 @@ export async function showProducts(psid: string, categorySlug?: string) {
         {
           type: 'web_url',
           title: 'ดูรายละเอียด',
-          url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.nextstarinnovations.com').replace(/\/$/, '')}/product/${p._id}`,
+          url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.nextstarinnovations.com').replace(/\/$/, '')}/products/${p._id}`,
           webview_height_ratio: 'tall',
         },
         {
