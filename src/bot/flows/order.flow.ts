@@ -197,6 +197,12 @@ export async function showCart(psid: string) {
     .map((c, idx) => {
       let t = `${idx + 1}) ${c.name} x${c.quantity}`;
       if (c.unitLabel) t += ` (${c.unitLabel})`;
+      if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
+        const opts = Object.entries(c.selectedOptions)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+        t += ` [${opts}]`;
+      }
       return t;
     })
     .join('\n');
