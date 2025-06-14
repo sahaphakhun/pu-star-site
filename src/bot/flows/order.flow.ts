@@ -234,11 +234,15 @@ async function computeShippingFee(cart: any[]): Promise<number> {
 
   const unitFees: number[] = [];
   for (const c of cart) {
-    if (!c.unitLabel) continue;
-    const prod = await getProductById(c.productId);
-    if (prod?.units) {
-      const u = prod.units.find((un:any)=>un.label===c.unitLabel);
-      if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
+    if (c.unitLabel) {
+      const prod = await getProductById(c.productId);
+      if (prod?.units) {
+        const u = prod.units.find((un:any)=>un.label===c.unitLabel);
+        if (u && typeof u.shippingFee==='number') unitFees.push(u.shippingFee);
+      }
+    } else {
+      const prod = await getProductById(c.productId);
+      if (prod && (prod as any).shippingFee !== undefined) unitFees.push((prod as any).shippingFee);
     }
   }
   const fee = unitFees.length ? Math.max(...unitFees) : 0;

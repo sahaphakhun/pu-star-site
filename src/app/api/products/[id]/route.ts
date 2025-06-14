@@ -27,10 +27,14 @@ export async function PUT(request: NextRequest, context: unknown) {
     rawBody.price = Number(rawBody.price);
   }
 
+  if (rawBody.shippingFee !== undefined && rawBody.shippingFee !== '') {
+    rawBody.shippingFee = Number(rawBody.shippingFee);
+  }
+
   if (Array.isArray(rawBody.units)) {
     rawBody.units = rawBody.units
       .filter((u: any) => u.label && u.price !== '')
-      .map((u: any) => ({ ...u, price: Number(u.price) }));
+      .map((u: any) => ({ ...u, price: Number(u.price), shippingFee: u.shippingFee !== undefined && u.shippingFee !== '' ? Number(u.shippingFee) : 0 }));
   }
 
   const parsed = productInputSchema.safeParse(rawBody);
@@ -38,7 +42,7 @@ export async function PUT(request: NextRequest, context: unknown) {
     return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
 
-  const { name, price, description, imageUrl, options, category, units } = parsed.data;
+  const { name, price, description, imageUrl, options, category, units, shippingFee } = parsed.data;
 
   if (price === undefined && (!units || units.length === 0)) {
     return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
@@ -55,6 +59,7 @@ export async function PUT(request: NextRequest, context: unknown) {
       options,
       category,
       units,
+      shippingFee,
     },
     { new: true, runValidators: true }
   );

@@ -336,7 +336,8 @@ const ShopPage = () => {
         const u = item.product.units.find((un) => un.label === item.unitLabel);
         return u?.shippingFee ?? 0;
       }
-      return 0;
+      // ไม่มีหน่วย → ใช้ shippingFee ของสินค้า
+      return (item.product as any).shippingFee ?? 0;
     });
 
     const maxUnitFee = fees.length ? Math.max(...fees) : 0;

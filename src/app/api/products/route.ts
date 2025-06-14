@@ -48,18 +48,21 @@ export async function POST(request: NextRequest) {
     raw.price = Number(raw.price);
   }
 
+  if (raw.shippingFee !== undefined && raw.shippingFee !== '') {
+    raw.shippingFee = Number(raw.shippingFee);
+  }
+
   if (Array.isArray(raw.units)) {
     raw.units = raw.units
-      // กรองหน่วยที่ label หรือ price ว่างออกไป เพื่อป้องกัน NaN
       .filter((u: any) => u.label && u.price !== '')
-      .map((u: any) => ({ ...u, price: Number(u.price) }));
+      .map((u: any) => ({ ...u, price: Number(u.price), shippingFee: u.shippingFee !== undefined && u.shippingFee !== '' ? Number(u.shippingFee) : 0 }));
   }
 
   const parsed = productInputSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
-  const { name, price, description, imageUrl, options, category, units } = parsed.data;
+  const { name, price, description, imageUrl, options, category, units, shippingFee } = parsed.data;
 
   // ต้องมีอย่างน้อย price หรือ units
   if (price === undefined && (!units || units.length === 0)) {
@@ -78,6 +81,7 @@ export async function POST(request: NextRequest) {
     options,
     category,
     units,
+    shippingFee,
   });
   clearCache('products');
   return NextResponse.json(product.toObject ? product.toObject() : product, { status: 201 });

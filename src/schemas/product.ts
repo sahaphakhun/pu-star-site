@@ -4,6 +4,7 @@ export const unitSchema = z.object({
   label: z.string().min(1, 'label required'),
   price: z.number().min(0, 'price >= 0'),
   multiplier: z.number().min(1).optional(),
+  shippingFee: z.number().min(0).optional(),
 });
 
 export const optionValueSchema = z.object({
@@ -21,6 +22,7 @@ export const productInputSchema = z.object({
   price: z.number().min(0).optional(),
   description: z.string().min(1),
   imageUrl: z.string().min(1),
+  shippingFee: z.number().min(0).optional(),
   units: z.array(unitSchema).optional(),
   category: z.string().optional(),
   options: z.array(optionSchema).optional(),

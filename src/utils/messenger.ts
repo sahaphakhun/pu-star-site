@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import https from 'https';
 
 
 /**
@@ -12,9 +11,9 @@ const APP_SECRET = process.env.FB_APP_SECRET || '';
 // เวอร์ชันของ Graph API ปัจจุบัน (อัปเดตตามเอกสารล่าสุด)
 const GRAPH_API_VERSION = 'v23.0';
 
-const httpsAgent = new https.Agent({ keepAlive: true });
-// ลด timeout รอบแรกเหลือ 10 วินาที (handshake ปกติใช้ไม่เกิน 1 วิ)
-const INITIAL_TIMEOUT_MS = 45_000;
+// ตัวเลือก keep-alive ทำให้บางครั้ง fetch เกิด ETIMEDOUT (โดยเฉพาะบน Railway / Windows)
+// จึงตัดออกแล้วใช้ตัวจัดการ connection ปกติของ Node แทน
+const INITIAL_TIMEOUT_MS = 45_000; // รอได้สูงสุด 45 วินาทีรอบแรก
 
 interface Recipient {
   id: string;
@@ -71,8 +70,7 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        // @ts-ignore Node fetch accepts agent in runtime
-        agent: httpsAgent as any,
+        // ไม่ส่ง custom agent เพื่อหลีกเลี่ยงบั๊ก keep-alive
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -173,8 +171,7 @@ export async function callSendAPIBatch(recipientId: string, messages: FBMessageP
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ batch }),
-      // @ts-ignore
-      agent: httpsAgent as any,
+      // ไม่ส่ง custom agent เพื่อหลีกเลี่ยงบั๊ก keep-alive
     });
 
     const text = await res.text();
@@ -210,14 +207,16 @@ export function sendTypingAndMessages(recipientId: string, ...messages: FBMessag
   messages.forEach((msg) => callSendAPIAsync(recipientId, msg));
 }
 
+// ปิด pre-warm แบบ keep-alive ชั่วคราว เพื่อลดปัญหา timeout
+
 // ยิง HEAD request ทุก 5 นาทีเพื่อให้ TLS connection ไม่ถูกปิดจากฝั่ง Facebook (ลด latency รอบแรก)
-setInterval(() => {
-  fetch('https://graph.facebook.com', {
-    method: 'HEAD',
-    // @ts-ignore Node fetch accepts agent
-    agent: httpsAgent as any,
-  }).catch(() => {});
-}, 300_000);
+// setInterval(() => {
+//   fetch('https://graph.facebook.com', {
+//     method: 'HEAD',
+//     // @ts-ignore Node fetch accepts agent
+//     agent: httpsAgent as any,
+//   }).catch(() => {});
+// }, 300_000);
 
 // ยิงหนึ่งครั้งทันทีตอนเริ่มเพื่อ pre-warm (cold-start)
-fetch('https://graph.facebook.com', { method: 'HEAD' }).catch(() => {}); 
+// fetch('https://graph.facebook.com', { method: 'HEAD' }).catch(() => {}); 

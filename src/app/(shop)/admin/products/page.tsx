@@ -25,6 +25,7 @@ const AdminProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [rootShippingFee, setRootShippingFee] = useState('');
   const [units, setUnits] = useState<{ label: string; price: string; shippingFee: string }[]>([]);
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -56,6 +57,7 @@ const AdminProductsPage = () => {
   const resetForm = () => {
     setName('');
     setPrice('');
+    setRootShippingFee('');
     setUnits([]);
     setDescription('');
     setImageUrl('');
@@ -79,6 +81,11 @@ const AdminProductsPage = () => {
       return;
     }
 
+    if (price.trim() !== '' && rootShippingFee.trim() !== '' && isNaN(Number(rootShippingFee))) {
+      toast.error('ค่าส่งต้องเป็นตัวเลข');
+      return;
+    }
+
     if (units.some((u) => u.label.trim() === '' || u.price.trim() === '' || isNaN(Number(u.price)) || (u.shippingFee.trim() !== '' && isNaN(Number(u.shippingFee))))) {
       toast.error('กรุณากรอกข้อมูลหน่วยสินค้าให้ครบถ้วน และราคาต้องเป็นตัวเลข');
       return;
@@ -93,6 +100,10 @@ const AdminProductsPage = () => {
 
     if (price.trim() !== '') {
       productData.price = parseFloat(price);
+    }
+
+    if (rootShippingFee.trim() !== '') {
+      productData.shippingFee = parseFloat(rootShippingFee);
     }
 
     if (units.length > 0) {
@@ -168,6 +179,7 @@ const AdminProductsPage = () => {
   const handleEditProduct = (product: ProductWithId) => {
     setName(product.name);
     setPrice(product.price !== undefined ? product.price.toString() : '');
+    setRootShippingFee((product as any).shippingFee?.toString() || '');
     setDescription(product.description);
     setImageUrl(product.imageUrl);
     setCategory(product.category || 'ทั่วไป');
@@ -588,6 +600,20 @@ const AdminProductsPage = () => {
                           placeholder="เช่น 199"
                         />
                       </div>
+
+                      {price.trim() !== '' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">ค่าส่ง (บาท)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={rootShippingFee}
+                            onChange={(e) => setRootShippingFee(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="เช่น 50 (0 = ส่งฟรี)"
+                          />
+                        </div>
+                      )}
 
                       {/* Units Section */}
                       <div className="border-t pt-4">
