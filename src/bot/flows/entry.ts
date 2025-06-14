@@ -112,6 +112,20 @@ export async function handleEvent(event: MessagingEvent) {
       return handlePhone(psid, phone);
     }
 
+    // ยืนยันใช้ที่อยู่เดิม / ขอที่อยู่ใหม่
+    if (payload === 'ADDR_USE_OLD' && session.step === 'confirm_old_address') {
+      const { address, name } = (session.tempData || {}) as any;
+      if (address) {
+        return handleAddress(psid, address as string, name as string);
+      }
+    }
+
+    if (payload === 'ADDR_NEW' && session.step === 'confirm_old_address') {
+      await callSendAPI(psid, { text: 'กรุณาพิมพ์ชื่อและที่อยู่จัดส่ง เช่น:\nสมชาย ใจดี\n123/45 หมู่ 5 ต.บางใหญ่ ...' });
+      await updateSession(psid, { step: 'await_name_address' });
+      return;
+    }
+
     // เลือกตัวเลือกสินค้า
     if (payload.startsWith('OPT_') && session.step === 'select_option') {
       const [, idxStr, encoded] = payload.split('_');
@@ -221,20 +235,6 @@ export async function handleEvent(event: MessagingEvent) {
     }
     // แจ้งเตือนหากป้อนผิด
     await callSendAPI(psid, { text: 'กรุณาพิมพ์ตัวเลขเท่านั้น เช่น 3' });
-    return;
-  }
-
-  // ยืนยันใช้ที่อยู่เดิม
-  if (payload === 'ADDR_USE_OLD' && session.step === 'confirm_old_address') {
-    const { address, name } = (session.tempData || {}) as any;
-    if (address) {
-      return handleAddress(psid, address as string, name as string);
-    }
-  }
-
-  if (payload === 'ADDR_NEW' && session.step === 'confirm_old_address') {
-    await callSendAPI(psid, { text: 'กรุณาพิมพ์ชื่อและที่อยู่จัดส่ง เช่น:\nสมชาย ใจดี\n123/45 หมู่ 5 ต.บางรัก ...' });
-    await updateSession(psid, { step: 'await_name_address' });
     return;
   }
 
