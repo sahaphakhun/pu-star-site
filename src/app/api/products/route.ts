@@ -55,7 +55,13 @@ export async function POST(request: NextRequest) {
   if (Array.isArray(raw.units)) {
     raw.units = raw.units
       .filter((u: any) => u.label && u.price !== '')
-      .map((u: any) => ({ ...u, price: Number(u.price), shippingFee: u.shippingFee !== undefined && u.shippingFee !== '' ? Number(u.shippingFee) : 0 }));
+      .map((u: any) => {
+        const mapped: any = { ...u, price: Number(u.price) };
+        if (u.shippingFee !== undefined && u.shippingFee !== '') {
+          mapped.shippingFee = Number(u.shippingFee);
+        }
+        return mapped;
+      });
   }
 
   const parsed = productInputSchema.safeParse(raw);

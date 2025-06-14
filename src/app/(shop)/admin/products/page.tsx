@@ -107,11 +107,13 @@ const AdminProductsPage = () => {
     }
 
     if (units.length > 0) {
-      productData.units = units.map((u) => ({ 
-        label: u.label, 
-        price: parseFloat(u.price),
-        shippingFee: u.shippingFee.trim() === '' ? 0 : parseFloat(u.shippingFee)
-      }));
+      productData.units = units.map((u) => {
+        const unit: any = { label: u.label, price: parseFloat(u.price) };
+        if (u.shippingFee.trim() !== '') {
+          unit.shippingFee = parseFloat(u.shippingFee);
+        }
+        return unit;
+      });
     }
 
     // กรอง option ที่ไม่สมบูรณ์ (ชื่อว่าง หรือไม่มี value ที่ label ไม่ว่าง)
