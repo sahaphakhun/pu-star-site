@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { sendSMS } from '@/utils/deesmsx';
 import { orderInputSchema } from '@schemas/order';
+import AdminPhone from '@/models/AdminPhone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -109,6 +110,15 @@ export async function POST(request: NextRequest) {
       await sendSMS(data.customerPhone, smsMessage);
     } catch (smsErr) {
       console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
+    }
+
+    // แจ้งเตือนแอดมินทุกคน
+    try {
+      const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
+      const adminMsg = `มีออเดอร์ใหม่ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${data.totalAmount.toLocaleString()} บาท`; 
+      await Promise.allSettled(adminList.map((a:any)=> sendSMS(a.phoneNumber, adminMsg)));
+    } catch (err){
+      console.error('ส่ง SMS แจ้งแอดมินล้มเหลว:', err);
     }
 
     return NextResponse.json(order, { status: 201 });

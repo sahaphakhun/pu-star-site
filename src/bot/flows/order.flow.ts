@@ -69,10 +69,9 @@ export async function handleAddress(psid: string, address: string, nameOverride?
   const grand = total + shippingFee;
 
   callSendAPIAsync(psid, {
-    text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}`,
+    text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}\n🚚จัดส่งสินค้าทุกวันจันทร์-ศุกร์ ตัดรอบ16:00น. หลังตัดรอบจัดส่งวันถัดไป\nอย่าลืมสะสมแต้มและรีวิวให้ด้วยนะคะ`,
     quick_replies: [
-      { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' },
-      { content_type: 'text', title: 'ยกเลิก', payload: 'ORDER_CANCEL' },
+      { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' }
     ],
   });
 
@@ -157,12 +156,13 @@ export async function askPayment(psid: string) {
 }
 
 export async function sendBankInfo(psid: string) {
-  callSendAPIAsync(psid, { text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS' });
+  callSendAPIAsync(psid, {
+    text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS',
+  });
   callSendAPIAsync(psid, { 
     text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ',
     quick_replies: [
-      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' },
-      { content_type:'text', title:'ยกเลิก', payload:'ORDER_CANCEL' }
+      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' }
     ]
   });
   await updateSession(psid, { step: 'await_slip' });
@@ -175,11 +175,10 @@ export async function confirmCOD(psid:string){
   const shippingFee = await computeShippingFee(session.cart);
   const grand = total + shippingFee;
   callSendAPIAsync(psid, {
-    text:`ยืนยันการสั่งซื้อ (ชำระเงินปลายทาง)\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท`,
+    text:`ยืนยันการสั่งซื้อ (ชำระเงินปลายทาง)\nยอดรวม ${grand.toLocaleString()} บาท`,
     quick_replies:[
       { content_type:'text', title:'ยืนยัน ✔️', payload:'COD_CONFIRM' },
-      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' },
-      { content_type:'text', title:'ยกเลิก', payload:'ORDER_CANCEL' }
+      { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' }
     ]
   });
   await updateSession(psid, { step:'await_cod_confirm' });
@@ -211,18 +210,12 @@ export async function showCart(psid: string) {
   const shippingFee = await computeShippingFee(session.cart);
   const grand = total + shippingFee;
 
-  // เตรียม quick replies: ลบแต่ละชิ้น (สูงสุด 8), ยืนยัน, ล้างตะกร้า
-  const removeReplies = session.cart.slice(0, 8).map((_, idx) => ({
-    content_type: 'text',
-    title: `ลบ ${idx + 1}`,
-    payload: `REMOVE_${idx}`,
-  }));
-
+  // เตรียม quick replies: แก้ไขตะกร้า, ยืนยัน, ล้างตะกร้า
   callSendAPIAsync(psid, {
-    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม: ${total.toLocaleString()} บาท\nค่าส่ง: ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด: ${grand.toLocaleString()} บาท`,
+    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
-      ...removeReplies,
+      { content_type: 'text', title: 'แก้ไขตะกร้า', payload: 'EDIT_CART' },
       { content_type: 'text', title: 'ล้างตะกร้า', payload: 'CLEAR_CART' },
     ],
   });

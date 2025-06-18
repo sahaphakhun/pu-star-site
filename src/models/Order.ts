@@ -10,6 +10,12 @@ export interface IOrderItem {
   unitPrice?: number;
 }
 
+export interface IPackingProof {
+  url: string;
+  type: 'image' | 'video';
+  addedAt: Date;
+}
+
 export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
@@ -28,6 +34,7 @@ export interface IOrder extends Document {
   trackingNumber?: string;
   shippingProvider?: string;
   trackingSent?: boolean;
+  packingProofs?: IPackingProof[];
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -123,6 +130,16 @@ const orderSchema = new Schema<IOrder>(
     trackingSent: {
       type: Boolean,
       default: false
+    },
+    packingProofs: {
+      type: [
+        {
+          url: { type: String, required: true },
+          type: { type: String, enum: ['image', 'video'], default: 'image' },
+          addedAt: { type: Date, default: Date.now }
+        }
+      ],
+      default: []
     }
   },
   { 

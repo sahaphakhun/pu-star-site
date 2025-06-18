@@ -26,8 +26,14 @@ async function getAllProducts(): Promise<IProduct[]> {
 
 // ส่งข้อความแนะนำตัวครั้งแรก
 export async function sendWelcome(psid: string) {
+  // เริ่มต้นด้วยข้อความต้อนรับและให้ผู้ใช้เลือกหัวข้อหลัก 3 ข้อ
   sendTypingAndMessages(psid, {
-    text: 'สวัสดีค่ะ ฉันคือ Next Star Bot 🤖\nเลือกสินค้า สั่งซื้อ และติดตามสถานะได้ง่าย ๆ ผ่านแชทนี้\nเริ่มต้นด้วยการเลือกหมวดหมู่สินค้าด้านล่างเลยค่ะ',
+    text: 'สวัสดีค่ะ ฉันคือ Next Star Bot 🤖\nกรุณาเลือกหัวข้อที่ต้องการค่ะ',
+    quick_replies: [
+      { content_type: 'text', title: 'สอบถามรายละเอียด', payload: 'Q_INQUIRY' },
+      { content_type: 'text', title: 'สั่งซื้อ', payload: 'Q_ORDER' },
+      { content_type: 'text', title: 'ติดต่อแอดมิน', payload: 'Q_CONTACT_ADMIN' },
+    ],
   });
 }
 
@@ -216,7 +222,7 @@ export async function handleOrderPostback(psid: string, payload: string) {
   }
   
   callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name}${unitText} ในตะกร้าแล้ว 🎉\nยอดรวมชั่วคราว: ${total.toLocaleString()} บาท`,
+    text: `เพิ่ม ${product.name}${unitText} ในตะกร้าแล้ว 🎉\nยอดรวม ${total.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },
@@ -356,7 +362,7 @@ export async function addProductWithOptions(psid: string, quantity: number) {
   }
   
   callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมชั่วคราว ${grand.toLocaleString()} บาท`,
+    text: `เพิ่ม ${product.name}${unitText} จำนวน ${quantity} ในตะกร้าแล้ว 🎉\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nยอดรวม ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },

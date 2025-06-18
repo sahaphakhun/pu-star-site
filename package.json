@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p $PORT",
     "lint": "next lint",
-    "migrate:units": "node scripts/migrate-products-add-units.js"
+    "migrate:units": "node scripts/migrate-products-add-units.js",
+    "check:orders": "node scripts/check-order-status.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

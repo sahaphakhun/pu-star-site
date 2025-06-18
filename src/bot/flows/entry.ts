@@ -4,6 +4,10 @@ import { getSession, clearSession, updateSession, removeFromCart } from '../stat
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
 import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD } from './order.flow';
+import connectDB from '@/lib/db';
+import AdminPhone from '@/models/AdminPhone';
+import { sendSMS } from '@/app/notification';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled } from '@/utils/openai-utils';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -46,7 +50,7 @@ export async function handleEvent(event: MessagingEvent) {
     const payload = event.postback.payload || '';
     if (payload === 'GET_STARTED') {
       await sendWelcome(psid);
-      return showCategories(psid);
+      return; // รอให้ผู้ใช้เลือกเมนูต่อไปจาก quick reply
     }
     if (payload === 'SHOW_PRODUCTS') {
       return showCategories(psid);
@@ -57,9 +61,9 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload.startsWith('ORDER_')) {
       return handleOrderPostback(psid, payload);
     }
-    // ติดต่แอดมิน (ยังไม่ทำ handover ใน sprint 1)
-    if (payload === 'CONTACT_ADMIN') {
-      return callSendAPI(psid, { text: 'กำลังติดต่อแอดมิน โปรดรอสักครู่...' });
+    if (payload === 'CONTACT_ADMIN' || payload === 'CONTACT_ADMIN_INIT') {
+      notifyAdminsContact(psid);
+      return callSendAPI(psid, { text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ' });
     }
   }
 
@@ -157,6 +161,12 @@ export async function handleEvent(event: MessagingEvent) {
       return await handleUnitPostback(psid, payload);
     }
 
+    // เมนูดูสินค้า
+    if (payload === 'SHOW_PRODUCTS') {
+      await disableAIForUser(psid);
+      return showCategories(psid);
+    }
+
     // แสดงตะกร้าสินค้า
     if (payload === 'SHOW_CART') {
       return showCart(psid);
@@ -165,7 +175,8 @@ export async function handleEvent(event: MessagingEvent) {
     // ล้างตะกร้าสินค้า
     if (payload === 'CLEAR_CART') {
       await updateSession(psid, { cart: [] });
-      return callSendAPI(psid, { text: 'ล้างตะกร้าแล้วค่ะ' });
+      await callSendAPI(psid, { text: 'ล้างตะกร้าแล้วค่ะ' });
+      return showCategories(psid);
     }
 
     // ลบรายการล่าสุดหรือตาม index
@@ -179,6 +190,50 @@ export async function handleEvent(event: MessagingEvent) {
         await removeFromCart(psid, idx);
         return showCart(psid);
       }
+    }
+
+    // เมนูเริ่มต้นจาก quick reply
+    if (payload === 'Q_ORDER') {
+      await disableAIForUser(psid);
+      return showCategories(psid);
+    }
+    if (payload === 'Q_CONTACT_ADMIN' || payload === 'CONTACT_ADMIN_INIT') {
+      notifyAdminsContact(psid);
+      return callSendAPI(psid, { text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ' });
+    }
+    if (payload === 'Q_INQUIRY') {
+      // เปิดโหมด AI ให้ตอบคำถามสินค้า
+      await enableAIForUser(psid);
+      await callSendAPI(psid, { text: 'กรุณาพิมพ์คำถามเกี่ยวกับสินค้า แล้วบอทจะตอบให้อัตโนมัติค่ะ' });
+      return callSendAPI(psid, { text: 'หากต้องการเลือกดูสินค้า สามารถกด "ดูสินค้า" ด้านล่างได้เลยค่ะ', quick_replies:[{content_type:'text', title:'ดูสินค้า', payload:'SHOW_PRODUCTS'}]});
+    }
+
+    if (payload === 'SHOP_ORDER') {
+      return showCategories(psid);
+    }
+
+    if (payload === 'ASK_DETAILS') {
+      return callSendAPI(psid, { text: 'กรุณาพิมพ์คำถามเกี่ยวกับสินค้าที่ต้องการสอบถามได้เลยค่ะ' });
+    }
+
+    // แก้ไขตะกร้า
+    if (payload === 'EDIT_CART') {
+      return callSendAPI(psid, {
+        text: 'ต้องการแก้ไขส่วนใดของตะกร้าคะ?',
+        quick_replies: [
+          { content_type: 'text', title: 'จำนวน', payload: 'EDIT_QTY' },
+          { content_type: 'text', title: 'สี', payload: 'EDIT_COLOR' },
+          { content_type: 'text', title: 'แก้ไขสินค้า', payload: 'SHOW_PRODUCTS' },
+        ],
+      });
+    }
+
+    if (payload === 'EDIT_QTY') {
+      return callSendAPI(psid, { text: 'กรุณาระบุหมายเลขสินค้าและจำนวนใหม่ เช่น 1 3' });
+    }
+
+    if (payload === 'EDIT_COLOR') {
+      return callSendAPI(psid, { text: 'กรุณาระบุหมายเลขสินค้าและสีใหม่ที่ต้องการค่ะ' });
     }
   }
 
@@ -194,6 +249,16 @@ export async function handleEvent(event: MessagingEvent) {
 
   // fallback
   if (event.message && event.message.text) {
+    // check AI mode first
+    if (await isAIEnabled(psid)) {
+      const question = event.message.text.trim();
+      if (question.length > 0) {
+        const answer = await getAssistantResponse(buildSystemInstructions('Basic'), [], question);
+        await callSendAPI(psid, { text: answer });
+        return;
+      }
+    }
+
     const txt = event.message.text.toLowerCase();
 
     if (txt.includes('#delete')) {
@@ -222,7 +287,7 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
       await sendWelcome(psid);
-      return showCategories(psid);
+      return; // รอการเลือกเมนูจากผู้ใช้
     }
   }
 
@@ -240,4 +305,22 @@ export async function handleEvent(event: MessagingEvent) {
 
   // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
   return showCategories(psid);
+}
+
+// ฟังก์ชันแจ้งเตือนแอดมินผ่าน SMS เมื่อผู้ใช้กด "ติดต่อแอดมิน"
+async function notifyAdminsContact(userPsid: string) {
+  try {
+    await connectDB();
+    const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
+    if (!adminList || adminList.length === 0) {
+      console.warn('[notifyAdminsContact] ไม่พบเบอร์โทรแอดมินในระบบ');
+      return;
+    }
+    const msg = `มีลูกค้ากด \"ติดต่อแอดมิน\" (PSID: ${userPsid}) ผ่านเพจ Facebook กรุณาตอบกลับค่ะ`;
+    await Promise.allSettled(
+      adminList.map((a: any) => sendSMS(a.phoneNumber, msg))
+    );
+  } catch (err) {
+    console.error('[notifyAdminsContact] error', err);
+  }
 } 
