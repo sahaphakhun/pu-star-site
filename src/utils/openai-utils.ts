@@ -43,7 +43,7 @@ function normalizeRoleContent(role: string = 'user', content: any = '') {
 
 function _ensure(userId: string): UserState {
   if (!_userState.has(userId)) {
-    _userState.set(userId, { aiEnabled: true, history: [] });
+    _userState.set(userId, { aiEnabled: false, history: [] });
   }
   return _userState.get(userId)!;
 }
