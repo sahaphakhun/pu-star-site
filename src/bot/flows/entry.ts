@@ -63,7 +63,12 @@ export async function handleEvent(event: MessagingEvent) {
     }
     if (payload === 'CONTACT_ADMIN' || payload === 'CONTACT_ADMIN_INIT') {
       notifyAdminsContact(psid);
-      return callSendAPI(psid, { text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ' });
+      return callSendAPI(psid, {
+        text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ',
+        quick_replies: [
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        ],
+      });
     }
   }
 
@@ -197,15 +202,30 @@ export async function handleEvent(event: MessagingEvent) {
       await disableAIForUser(psid);
       return showCategories(psid);
     }
+    if (payload === 'SHOW_MENU') {
+      await disableAIForUser(psid);
+      return sendWelcome(psid);
+    }
     if (payload === 'Q_CONTACT_ADMIN' || payload === 'CONTACT_ADMIN_INIT') {
       notifyAdminsContact(psid);
-      return callSendAPI(psid, { text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ' });
+      return callSendAPI(psid, {
+        text: 'สวัสดีค่ะ แอดมินอ๋อมแอ๋มยินดีให้บริการค่ะ',
+        quick_replies: [
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        ],
+      });
     }
     if (payload === 'Q_INQUIRY') {
       // เปิดโหมด AI ให้ตอบคำถามสินค้า
       await enableAIForUser(psid);
       await callSendAPI(psid, { text: 'กรุณาพิมพ์คำถามเกี่ยวกับสินค้า แล้วบอทจะตอบให้อัตโนมัติค่ะ' });
-      return callSendAPI(psid, { text: 'หากต้องการเลือกดูสินค้า สามารถกด "ดูสินค้า" ด้านล่างได้เลยค่ะ', quick_replies:[{content_type:'text', title:'ดูสินค้า', payload:'SHOW_PRODUCTS'}]});
+      return callSendAPI(psid, {
+        text: 'หากต้องการเลือกดูสินค้า หรือกลับเมนูหลัก สามารถกดปุ่มด้านล่างได้เลยค่ะ',
+        quick_replies: [
+          { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        ],
+      });
     }
 
     if (payload === 'SHOP_ORDER') {
