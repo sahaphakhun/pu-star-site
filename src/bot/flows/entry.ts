@@ -274,7 +274,13 @@ export async function handleEvent(event: MessagingEvent) {
       const question = event.message.text.trim();
       if (question.length > 0) {
         const answer = await getAssistantResponse(buildSystemInstructions('Basic'), [], question);
-        await callSendAPI(psid, { text: answer });
+        await callSendAPI(psid, {
+          text: answer,
+          quick_replies: [
+            { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+            { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+          ],
+        });
         return;
       }
     }
