@@ -232,7 +232,26 @@ export async function showCart(psid: string) {
     };
   }));
 
-  // ส่ง carousel
+  // คำนวณยอดรวม เพื่อใช้ใน element สรุป
+  const totalTmp = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shipTmp = await computeShippingFee(session.cart);
+  const grandTmp = totalTmp + shipTmp;
+
+  // เพิ่มการ์ดสรุปตะกร้าเป็น element ตัวแรก
+  elements.unshift({
+    title: '🛒 สรุปตะกร้า',
+    subtitle: `ยอดรวม ${grandTmp.toLocaleString()} บาท`,
+    image_url: 'https://raw.githubusercontent.com/facebook/instant-articles-builder/master/docs/assets/fb-icon.png',
+    buttons: [
+      { type: 'postback', title: 'ยืนยันสั่งซื้อ ✔️', payload: 'CONFIRM_CART' },
+      { type: 'postback', title: 'ล้างตะกร้า', payload: 'CLEAR_CART' },
+    ],
+  });
+
+  // ส่งข้อความแนะนำการแก้ไขจำนวนก่อน
+  callSendAPIAsync(psid, { text: 'ต้องการแก้ไขจำนวน ให้กดปุ่ม ➕ หรือ ➖ ทางขวาของสินค้าได้เลยค่ะ' });
+
+  // ส่ง carousel (รวมสรุป)
   callSendAPIAsync(psid, {
     attachment: {
       type: 'template',
