@@ -286,16 +286,16 @@ export async function askUnit(psid: string): Promise<void> {
 
   // ตรวจสอบว่ามีหน่วยใดที่มีค่าส่งหรือไม่ เพื่อแสดงบรรทัด "ค่าส่ง+... สินค้าปลีก"
   const unitWithShipping = product.units.find((u: any) => typeof u.shippingFee === 'number' && u.shippingFee > 0);
-  const shippingLine = unitWithShipping ? `/ค่าส่ง+${unitWithShipping.shippingFee ?? 50} สินค้าปลีก` : '';
+  const shippingLine = unitWithShipping ? `ค่าส่ง+${unitWithShipping.shippingFee ?? 50} สำหรับสินค้าปลีก` : '';
 
   return callSendAPIAsync(psid, {
     text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}${shippingLine ? '\n' + shippingLine : ''}`,
     quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => {
       let fee: string;
       if (typeof u.shippingFee === 'number') {
-        fee = u.shippingFee === 0 ? 'ส่งฟรี' : `+${u.shippingFee}`;
+        fee = u.shippingFee === 0 ? 'ส่งฟรี' : `ค่าส่ง ${u.shippingFee}`;
       } else {
-        fee = '+ค่าส่ง';
+        fee = 'ค่าส่ง';
       }
       const titleRaw = `${u.label} (${u.price.toLocaleString()}฿ / ${fee})`;
       return {

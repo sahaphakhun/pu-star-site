@@ -5,6 +5,8 @@ import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 import { parseNameAddress } from '@/utils/nameAddressAI';
 import { computeShippingFee } from '@/utils/shipping';
+import { getProductById } from '@/utils/productCache';
+import { transformImage } from '@utils/image';
 
 interface ShippingInfo {
   name: string;
@@ -192,7 +194,11 @@ export async function showCart(psid: string) {
   }
 
   // --- สร้าง carousel การ์ดสินค้าแต่ละชิ้น ---
-  const elements = session.cart.slice(0, 10).map((c, idx) => {
+  const elements = await Promise.all(session.cart.slice(0, 10).map(async (c, idx) => {
+    const prod = await getProductById(c.productId);
+    const image = prod?.imageUrl ? transformImage(prod.imageUrl) : 'https://raw.githubusercontent.com/facebook/instant-articles-builder/master/docs/assets/fb-icon.png';
+    // ตรวจว่ามี option สีหรือไม่
+    const hasColorOption = !!(prod?.options || []).find((o:any)=> o.name === 'สี' || o.name.toLowerCase() === 'color');
     let subtitle = `จำนวน ${c.quantity}`;
     if (c.unitLabel) subtitle += ` (${c.unitLabel})`;
     if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
@@ -205,9 +211,7 @@ export async function showCart(psid: string) {
     return {
       title: c.name.substring(0, 80), // ความยาวตามข้อจำกัด Facebook
       subtitle: subtitle.substring(0, 80),
-      // หากไม่มีรูป ให้ใช้โลโก้เป็น placeholder
-      image_url:
-        'https://raw.githubusercontent.com/facebook/instant-articles-builder/master/docs/assets/fb-icon.png',
+      image_url: image,
       buttons: [
         {
           type: 'postback',
@@ -219,14 +223,14 @@ export async function showCart(psid: string) {
           title: '➖',
           payload: `DEC_QTY_${idx}`,
         },
-        {
+        ...(hasColorOption ? [{
           type: 'postback',
           title: 'เปลี่ยนสี',
           payload: `EDIT_COL_${idx}`,
-        },
+        }] : []),
       ],
     };
-  });
+  }));
 
   // ส่ง carousel
   callSendAPIAsync(psid, {
@@ -255,4 +259,24 @@ export async function showCart(psid: string) {
   });
 
   await updateSession(psid, { step: 'summary' });
+}
+
+// ส่งตัวเลือกสีใหม่เมื่อกดปุ่มเปลี่ยนสี
+export async function askColorOptions(psid: string, cartIdx: number) {
+  const session = await getSession(psid);
+  const item = session.cart[cartIdx];
+  if (!item) return;
+  const prod = await getProductById(item.productId);
+  const colorOpt = (prod?.options || []).find((o:any)=> o.name === 'สี' || o.name.toLowerCase()==='color');
+  if (!colorOpt) return;
+
+  callSendAPIAsync(psid, {
+    text: 'เลือกสีใหม่',
+    quick_replies: colorOpt.values.slice(0,11).map((v:any)=>({
+      content_type:'text',
+      title: v.label.substring(0,20),
+      payload: `SET_COL_${cartIdx}_${encodeURIComponent(v.label)}`,
+    })),
+  });
+  await updateSession(psid, { step: 'await_color' });
 } 

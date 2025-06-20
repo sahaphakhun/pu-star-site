@@ -3,7 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD } from './order.flow';
+import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions } from './order.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
@@ -97,8 +97,7 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload.startsWith('EDIT_COL_')) {
       const idx = parseInt(payload.replace('EDIT_COL_', ''), 10);
       if (!isNaN(idx)) {
-        await updateSession(psid, { step: 'await_color', tempData: { ...(session.tempData || {}), colorEditIdx: idx } });
-        return callSendAPI(psid, { text: 'กรุณาพิมพ์สีใหม่ที่ต้องการค่ะ' });
+        return askColorOptions(psid, idx);
       }
     }
   }
@@ -285,6 +284,21 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (payload === 'EDIT_COLOR') {
       return callSendAPI(psid, { text: 'กรุณาระบุหมายเลขสินค้าและสีใหม่ที่ต้องการค่ะ' });
+    }
+
+    // ตั้งค่าสีใหม่จาก quick reply
+    if (payload.startsWith('SET_COL_')) {
+      const [, idxStr, encoded] = payload.split('_');
+      const idx = parseInt(idxStr, 10);
+      const colorLabel = decodeURIComponent(encoded);
+      if (!isNaN(idx) && session.cart[idx]) {
+        session.cart[idx].selectedOptions = {
+          ...(session.cart[idx].selectedOptions || {}),
+          'สี': colorLabel,
+        };
+        await updateSession(psid, { cart: session.cart });
+      }
+      return showCart(psid);
     }
   }
 
