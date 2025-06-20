@@ -8,6 +8,7 @@ import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
 import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled } from '@/utils/openai-utils';
+import MessengerUser from '@/models/MessengerUser';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -318,9 +319,21 @@ export async function handleEvent(event: MessagingEvent) {
     const txt = event.message.text.toLowerCase();
 
     if (txt.includes('#delete')) {
-      await clearSession(psid);
+      // รีเซ็ตข้อมูลผู้ใช้ทุกอย่าง (สำหรับการทดสอบใหม่)
+      await clearSession(psid); // ลบ session/cart/temp ทั้งหมด
+      await disableAIForUser(psid); // ปิดโหมด AI หากเปิดอยู่
+
+      // ลบเอกสาร MessengerUser ออกจาก DB เพื่อให้สภาพเหมือนใหม่
+      try {
+        await connectDB();
+        await MessengerUser.deleteOne({ psid });
+      } catch (err) {
+        console.error('[#delete] remove MessengerUser error', err);
+      }
+
       await sendTypingOn(psid);
-      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
+      // ส่งเมนูเริ่มต้นอีกครั้ง
+      return sendWelcome(psid);
     }
 
     // ผู้ใช้พิมพ์เบอร์โทรด้วยตัวเอง (ไม่ใช้ quick reply)
