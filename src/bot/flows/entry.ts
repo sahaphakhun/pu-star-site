@@ -305,8 +305,16 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (txt.includes('#delete')) {
       await clearSession(psid);
+      // ปิดโหมด AI และล้าง history หากมี เพื่อให้เหมือนเพิ่งเริ่มแชทใหม่จริง ๆ
+      await disableAIForUser(psid);
+      try {
+        const { clearChatHistory } = await import('@/utils/openai-utils');
+        await clearChatHistory(psid);
+      } catch {
+        /* ignore */
+      }
       await sendTypingOn(psid);
-      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
+      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว พร้อมเริ่มต้นใหม่ได้เลยค่ะ ✨' });
     }
 
     // ผู้ใช้พิมพ์เบอร์โทรด้วยตัวเอง (ไม่ใช้ quick reply)
