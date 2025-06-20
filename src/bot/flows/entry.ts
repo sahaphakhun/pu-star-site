@@ -1,6 +1,6 @@
 import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession, clearSession, updateSession, removeFromCart } from '../state';
+import { getSession, clearSession, updateSession, removeFromCart, adjustCartQuantity } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
 import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD } from './order.flow';
@@ -197,6 +197,22 @@ export async function handleEvent(event: MessagingEvent) {
       }
     }
 
+    // เพิ่ม/ลดจำนวนสินค้าในตะกร้า
+    if (payload.startsWith('INC_QTY_')) {
+      const idx = parseInt(payload.replace('INC_QTY_', ''), 10);
+      if (!isNaN(idx)) {
+        await adjustCartQuantity(psid, idx, 1);
+      }
+      return showCart(psid);
+    }
+    if (payload.startsWith('DEC_QTY_')) {
+      const idx = parseInt(payload.replace('DEC_QTY_', ''), 10);
+      if (!isNaN(idx)) {
+        await adjustCartQuantity(psid, idx, -1);
+      }
+      return showCart(psid);
+    }
+
     // เมนูเริ่มต้นจาก quick reply
     if (payload === 'Q_ORDER') {
       await disableAIForUser(psid);
@@ -329,7 +345,12 @@ export async function handleEvent(event: MessagingEvent) {
     return;
   }
 
-  // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
+  // ถ้าไม่เข้าเงื่อนไขใด
+  if (session.step === 'browse') {
+    // ถือว่าเป็นการเริ่มต้นสนทนา
+    return sendWelcome(psid);
+  }
+  // ค่าเริ่มต้น แสดงหมวดหมู่สินค้า
   return showCategories(psid);
 }
 

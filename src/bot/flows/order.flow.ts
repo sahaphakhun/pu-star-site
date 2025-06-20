@@ -5,6 +5,7 @@ import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 import { parseNameAddress } from '@/utils/nameAddressAI';
 import { computeShippingFee } from '@/utils/shipping';
+import { getProductById } from '@/utils/productCache';
 
 interface ShippingInfo {
   name: string;
@@ -191,32 +192,75 @@ export async function showCart(psid: string) {
     return callSendAPIAsync(psid, { text: 'ตะกร้าสินค้าว่างอยู่ค่ะ' });
   }
 
-  // สร้างข้อความสรุปรายการ พร้อมลำดับ
-  const itemsText = session.cart
-    .map((c, idx) => {
-      let t = `${idx + 1}) ${c.name} x${c.quantity}`;
-      if (c.unitLabel) t += ` (${c.unitLabel})`;
+  // สร้าง carousel card สำหรับแต่ละสินค้าที่อยู่ในตะกร้า (สูงสุด 10 รายการตามข้อจำกัด Messenger)
+  const elements = await Promise.all(
+    session.cart.slice(0, 10).map(async (c, idx) => {
+      // พยายามดึงรูปจาก DB (ถ้ามี)
+      let image: string | undefined;
+      try {
+        const p = await getProductById(c.productId);
+        image = p?.imageUrl;
+      } catch {
+        /* ignore */
+      }
+
+      let subtitle = `จำนวน ${c.quantity}`;
+      if (c.unitLabel) subtitle += ` (${c.unitLabel})`;
       if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
         const opts = Object.entries(c.selectedOptions)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
-        t += ` [${opts}]`;
+        subtitle += `\n${opts}`;
       }
-      return t;
-    })
-    .join('\n');
 
+      return {
+        title: c.name.substring(0, 63),
+        subtitle,
+        image_url: image,
+        buttons: [
+          {
+            type: 'postback',
+            title: '➖',
+            payload: `DEC_QTY_${idx}`,
+          },
+          {
+            type: 'postback',
+            title: '➕',
+            payload: `INC_QTY_${idx}`,
+          },
+          {
+            type: 'postback',
+            title: 'ลบ',
+            payload: `REMOVE_${idx}`,
+          },
+        ],
+      } as any;
+    })
+  );
+
+  // ส่ง carousel แสดงสินค้า
+  callSendAPIAsync(psid, {
+    attachment: {
+      type: 'template',
+      payload: {
+        template_type: 'generic',
+        image_aspect_ratio: 'square',
+        elements,
+      },
+    },
+  });
+
+  // สรุปยอดรวมหลังการ์ด
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = await computeShippingFee(session.cart);
   const grand = total + shippingFee;
 
-  // เตรียม quick replies: แก้ไขตะกร้า, ยืนยัน, ล้างตะกร้า
   callSendAPIAsync(psid, {
-    text: `ตะกร้าของคุณ\n${itemsText}\nยอดรวม ${grand.toLocaleString()} บาท`,
+    text: `ยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
-      { content_type: 'text', title: 'แก้ไขตะกร้า', payload: 'EDIT_CART' },
       { content_type: 'text', title: 'ล้างตะกร้า', payload: 'CLEAR_CART' },
+      { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
     ],
   });
 
