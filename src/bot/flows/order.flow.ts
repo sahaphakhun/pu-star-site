@@ -5,7 +5,6 @@ import MessengerUser from '@/models/MessengerUser';
 import connectDB from '@/lib/mongodb';
 import { parseNameAddress } from '@/utils/nameAddressAI';
 import { computeShippingFee } from '@/utils/shipping';
-import { getProductById } from '@/utils/productCache';
 
 interface ShippingInfo {
   name: string;
@@ -192,53 +191,44 @@ export async function showCart(psid: string) {
     return callSendAPIAsync(psid, { text: 'ตะกร้าสินค้าว่างอยู่ค่ะ' });
   }
 
-  // สร้าง carousel card สำหรับแต่ละสินค้าที่อยู่ในตะกร้า (สูงสุด 10 รายการตามข้อจำกัด Messenger)
-  const elements = await Promise.all(
-    session.cart.slice(0, 10).map(async (c, idx) => {
-      // พยายามดึงรูปจาก DB (ถ้ามี)
-      let image: string | undefined;
-      try {
-        const p = await getProductById(c.productId);
-        image = p?.imageUrl;
-      } catch {
-        /* ignore */
-      }
+  // --- สร้าง carousel การ์ดสินค้าแต่ละชิ้น ---
+  const elements = session.cart.slice(0, 10).map((c, idx) => {
+    let subtitle = `จำนวน ${c.quantity}`;
+    if (c.unitLabel) subtitle += ` (${c.unitLabel})`;
+    if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
+      const opts = Object.entries(c.selectedOptions)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      subtitle += ` | ${opts}`;
+    }
 
-      let subtitle = `จำนวน ${c.quantity}`;
-      if (c.unitLabel) subtitle += ` (${c.unitLabel})`;
-      if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
-        const opts = Object.entries(c.selectedOptions)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join(', ');
-        subtitle += `\n${opts}`;
-      }
+    return {
+      title: c.name.substring(0, 80), // ความยาวตามข้อจำกัด Facebook
+      subtitle: subtitle.substring(0, 80),
+      // หากไม่มีรูป ให้ใช้โลโก้เป็น placeholder
+      image_url:
+        'https://raw.githubusercontent.com/facebook/instant-articles-builder/master/docs/assets/fb-icon.png',
+      buttons: [
+        {
+          type: 'postback',
+          title: '➕',
+          payload: `INC_QTY_${idx}`,
+        },
+        {
+          type: 'postback',
+          title: '➖',
+          payload: `DEC_QTY_${idx}`,
+        },
+        {
+          type: 'postback',
+          title: 'เปลี่ยนสี',
+          payload: `EDIT_COL_${idx}`,
+        },
+      ],
+    };
+  });
 
-      return {
-        title: c.name.substring(0, 63),
-        subtitle,
-        image_url: image,
-        buttons: [
-          {
-            type: 'postback',
-            title: '➖',
-            payload: `DEC_QTY_${idx}`,
-          },
-          {
-            type: 'postback',
-            title: '➕',
-            payload: `INC_QTY_${idx}`,
-          },
-          {
-            type: 'postback',
-            title: 'ลบ',
-            payload: `REMOVE_${idx}`,
-          },
-        ],
-      } as any;
-    })
-  );
-
-  // ส่ง carousel แสดงสินค้า
+  // ส่ง carousel
   callSendAPIAsync(psid, {
     attachment: {
       type: 'template',
@@ -250,13 +240,13 @@ export async function showCart(psid: string) {
     },
   });
 
-  // สรุปยอดรวมหลังการ์ด
+  // --- ส่งสรุปยอดและ quick replies ---
   const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = await computeShippingFee(session.cart);
   const grand = total + shippingFee;
 
   callSendAPIAsync(psid, {
-    text: `ยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท`,
+    text: `ยอดรวม ${grand.toLocaleString()} บาท`,
     quick_replies: [
       { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
       { content_type: 'text', title: 'ล้างตะกร้า', payload: 'CLEAR_CART' },

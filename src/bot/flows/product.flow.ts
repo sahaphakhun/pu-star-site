@@ -35,9 +35,6 @@ export async function sendWelcome(psid: string) {
       { content_type: 'text', title: 'ติดต่อแอดมิน', payload: 'Q_CONTACT_ADMIN' },
     ],
   });
-
-  // อัปเดตสถานะ session ว่าได้แสดงเมนูต้อนรับแล้ว
-  await updateSession(psid, { step: 'welcome' });
 }
 
 // แสดงหมวดหมู่สินค้าแบบ carousel
@@ -103,48 +100,14 @@ export async function showProducts(psid: string, categorySlug?: string) {
   }
 
   const elements = filtered.slice(0, 10).map((p: IProduct) => {
-    // บรรทัดแรก: ราคา
-    const priceText = `${(p.price || (p.units && p.units[0]?.price) || 0).toLocaleString()} บาท`;
-
-    // บรรทัดสอง: ค่าส่ง (ถ้ามี) และคำว่า "สินค้าปลีก"
-    let shippingText = '';
-    let fee: number | undefined;
-
-    if (p.units && p.units.length === 1) {
-      fee = p.units[0].shippingFee ?? p.shippingFee;
-    } else if (!p.units || p.units.length === 0) {
-      fee = p.shippingFee;
-    }
-
-    if (typeof fee === 'number' && fee > 0) {
-      shippingText = `/ค่าส่ง+${fee}`;
-    } else if (typeof fee === 'number' && fee === 0) {
-      shippingText = '/ส่งฟรี';
-    }
-
-    // กรณีมีหลายหน่วยและมีหน่วยที่มีค่าส่ง ให้แจ้งว่าอาจมีค่าส่งเพิ่มเติม
-    if (p.units && p.units.length > 1) {
-      const hasShipping = p.units.some((u) => typeof u.shippingFee === 'number' && u.shippingFee > 0);
-      if (hasShipping) {
-        shippingText = '/ค่าส่ง+...';
-      }
-    }
-
-    // รวมเป็น subtitle สองบรรทัด
-    let subtitle = priceText;
-    if (shippingText) {
-      subtitle += `\n${shippingText}  สินค้าปลีก`;
-    } else {
-      // ไม่มีข้อมูลค่าส่ง ระบุเป็นสินค้าปลีกเฉย ๆ
-      subtitle += `\nสินค้าปลีก`;
-    }
+    let subtitle = `${(p.price || (p.units && p.units[0]?.price) || 0).toLocaleString()} บาท`;
     
-    // เพิ่มข้อมูลหน่วยถ้ามี (แนบกับบรรทัดราคาให้สั้นเข้า)
+    // เพิ่มข้อมูลหน่วยถ้ามี
     if (p.units && p.units.length > 0) {
       if (p.units.length === 1) {
-        subtitle = subtitle.replace('บาท', `บาท / ${p.units[0].label}`);
+        subtitle += ` / ${p.units[0].label}`;
       } else {
-        subtitle = subtitle.replace('บาท', `บาท (${p.units.length} หน่วย)`);
+        subtitle += ` (${p.units.length} หน่วย)`;
       }
     }
     
@@ -320,8 +283,13 @@ export async function askUnit(psid: string): Promise<void> {
   if (!product || !product.units) return;
 
   await sendTypingOn(psid);
+
+  // ตรวจสอบว่ามีหน่วยใดที่มีค่าส่งหรือไม่ เพื่อแสดงบรรทัด "ค่าส่ง+... สินค้าปลีก"
+  const unitWithShipping = product.units.find((u: any) => typeof u.shippingFee === 'number' && u.shippingFee > 0);
+  const shippingLine = unitWithShipping ? `/ค่าส่ง+${unitWithShipping.shippingFee ?? 50} สินค้าปลีก` : '';
+
   return callSendAPIAsync(psid, {
-    text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}`,
+    text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}${shippingLine ? '\n' + shippingLine : ''}`,
     quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => {
       let fee: string;
       if (typeof u.shippingFee === 'number') {

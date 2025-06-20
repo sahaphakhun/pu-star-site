@@ -79,16 +79,4 @@ export async function removeFromCart(psid: string, idx?: number): Promise<void> 
   }
 
   await updateSession(psid, { cart: session.cart });
-}
-
-export async function adjustCartQuantity(psid: string, idx: number, delta: number): Promise<void> {
-  const session = await getSession(psid);
-  if (idx < 0 || idx >= session.cart.length) return;
-
-  session.cart[idx].quantity += delta;
-  // หากจำนวนเหลือ 0 หรือติดลบ ให้ลบออกจากตะกร้า
-  if (session.cart[idx].quantity <= 0) {
-    session.cart.splice(idx, 1);
-  }
-  await updateSession(psid, { cart: session.cart });
 } 

@@ -1,6 +1,6 @@
 import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession, clearSession, updateSession, removeFromCart, adjustCartQuantity } from '../state';
+import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
 import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD } from './order.flow';
@@ -69,6 +69,36 @@ export async function handleEvent(event: MessagingEvent) {
           { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
         ],
       });
+    }
+
+    // จัดการปุ่มจากการ์ดตะกร้า (+ / - / เปลี่ยนสี)
+    if (payload.startsWith('INC_QTY_')) {
+      const idx = parseInt(payload.replace('INC_QTY_', ''), 10);
+      if (!isNaN(idx) && session.cart[idx]) {
+        session.cart[idx].quantity += 1;
+        await updateSession(psid, { cart: session.cart });
+      }
+      return showCart(psid);
+    }
+
+    if (payload.startsWith('DEC_QTY_')) {
+      const idx = parseInt(payload.replace('DEC_QTY_', ''), 10);
+      if (!isNaN(idx) && session.cart[idx]) {
+        session.cart[idx].quantity -= 1;
+        if (session.cart[idx].quantity <= 0) {
+          session.cart.splice(idx, 1);
+        }
+        await updateSession(psid, { cart: session.cart });
+      }
+      return showCart(psid);
+    }
+
+    if (payload.startsWith('EDIT_COL_')) {
+      const idx = parseInt(payload.replace('EDIT_COL_', ''), 10);
+      if (!isNaN(idx)) {
+        await updateSession(psid, { step: 'await_color', tempData: { ...(session.tempData || {}), colorEditIdx: idx } });
+        return callSendAPI(psid, { text: 'กรุณาพิมพ์สีใหม่ที่ต้องการค่ะ' });
+      }
     }
   }
 
@@ -197,22 +227,6 @@ export async function handleEvent(event: MessagingEvent) {
       }
     }
 
-    // เพิ่ม/ลดจำนวนสินค้าในตะกร้า
-    if (payload.startsWith('INC_QTY_')) {
-      const idx = parseInt(payload.replace('INC_QTY_', ''), 10);
-      if (!isNaN(idx)) {
-        await adjustCartQuantity(psid, idx, 1);
-      }
-      return showCart(psid);
-    }
-    if (payload.startsWith('DEC_QTY_')) {
-      const idx = parseInt(payload.replace('DEC_QTY_', ''), 10);
-      if (!isNaN(idx)) {
-        await adjustCartQuantity(psid, idx, -1);
-      }
-      return showCart(psid);
-    }
-
     // เมนูเริ่มต้นจาก quick reply
     if (payload === 'Q_ORDER') {
       await disableAIForUser(psid);
@@ -305,16 +319,8 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (txt.includes('#delete')) {
       await clearSession(psid);
-      // ปิดโหมด AI และล้าง history หากมี เพื่อให้เหมือนเพิ่งเริ่มแชทใหม่จริง ๆ
-      await disableAIForUser(psid);
-      try {
-        const { clearChatHistory } = await import('@/utils/openai-utils');
-        await clearChatHistory(psid);
-      } catch {
-        /* ignore */
-      }
       await sendTypingOn(psid);
-      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว พร้อมเริ่มต้นใหม่ได้เลยค่ะ ✨' });
+      return callSendAPI(psid, { text: 'ล้างประวัติการสนทนาแล้ว' });
     }
 
     // ผู้ใช้พิมพ์เบอร์โทรด้วยตัวเอง (ไม่ใช้ quick reply)
@@ -353,12 +359,10 @@ export async function handleEvent(event: MessagingEvent) {
     return;
   }
 
-  // ถ้าไม่เข้าเงื่อนไขใด
+  // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
   if (session.step === 'browse') {
-    // ถือว่าเป็นการเริ่มต้นสนทนา
     return sendWelcome(psid);
   }
-  // ค่าเริ่มต้น แสดงหมวดหมู่สินค้า
   return showCategories(psid);
 }
 
