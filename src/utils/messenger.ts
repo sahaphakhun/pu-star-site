@@ -11,9 +11,12 @@ const APP_SECRET = process.env.FB_APP_SECRET || '';
 // เวอร์ชันของ Graph API ปัจจุบัน (อัปเดตตามเอกสารล่าสุด)
 const GRAPH_API_VERSION = 'v23.0';
 
-// ตัวเลือก keep-alive ทำให้บางครั้ง fetch เกิด ETIMEDOUT (โดยเฉพาะบน Railway / Windows)
-// จึงตัดออกแล้วใช้ตัวจัดการ connection ปกติของ Node แทน
-const INITIAL_TIMEOUT_MS = 45_000; // รอได้สูงสุด 45 วินาทีรอบแรก
+// ปรับค่า timeout ให้ยาวขึ้น (บางครั้ง Facebook ใช้เวลาตอบนาน)
+// สามารถ override ได้ด้วย env FB_SEND_TIMEOUT_MS หากต้องการ
+const INITIAL_TIMEOUT_MS = parseInt(process.env.FB_SEND_TIMEOUT_MS || '90000', 10);
+
+// timeout รอบ retry หลังจากรอบแรก (เดิม 8000ms)
+const RETRY_TIMEOUT_MS = parseInt(process.env.FB_SEND_RETRY_TIMEOUT_MS || '15000', 10);
 
 interface Recipient {
   id: string;
@@ -64,7 +67,10 @@ export async function callSendAPI(recipientId: string, message: FBMessagePayload
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), attempt === 0 ? INITIAL_TIMEOUT_MS : 8000);
+      const timeout = setTimeout(
+        () => controller.abort(),
+        attempt === 0 ? INITIAL_TIMEOUT_MS : RETRY_TIMEOUT_MS
+      );
 
       const res = await fetch(url, {
         method: 'POST',
