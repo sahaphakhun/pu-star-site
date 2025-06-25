@@ -100,6 +100,20 @@ export async function handleEvent(event: MessagingEvent) {
         return askColorOptions(psid, idx);
       }
     }
+
+    // จัดการปุ่มเปลี่ยนจำนวน (เวอร์ชันใหม่)
+    if (payload.startsWith('EDIT_QTY_')) {
+      const idx = parseInt(payload.replace('EDIT_QTY_', ''), 10);
+      if (!isNaN(idx) && session.cart[idx]) {
+        const item = session.cart[idx];
+        // บันทึก index ไว้ใน tempData เพื่อใช้ตอนผู้ใช้พิมพ์จำนวนใหม่
+        await updateSession(psid, {
+          step: 'await_new_qty',
+          tempData: { ...(session.tempData || {}), editIdx: idx },
+        });
+        return callSendAPI(psid, { text: `พิมพ์จำนวนใหม่สำหรับ "${item.name}" ได้เลยค่ะ (จำนวนปัจจุบัน ${item.quantity})` });
+      }
+    }
   }
 
   if (event.message && event.message.quick_reply) {
@@ -386,6 +400,24 @@ export async function handleEvent(event: MessagingEvent) {
     return;
   }
 
+  // แก้ไขจำนวนสินค้าในตะกร้า (await_new_qty)
+  if (event.message && session.step === 'await_new_qty' && event.message.text) {
+    const qtyNum = parseInt(event.message.text.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(qtyNum) && qtyNum > 0 && qtyNum <= 1000) {
+      const editIdx = (session.tempData as any)?.editIdx;
+      if (typeof editIdx === 'number' && session.cart[editIdx]) {
+        session.cart[editIdx].quantity = qtyNum;
+        if (session.cart[editIdx].quantity <= 0) {
+          session.cart.splice(editIdx, 1);
+        }
+        await updateSession(psid, { cart: session.cart, step: 'summary', tempData: {} });
+      }
+      return showCart(psid);
+    }
+    await callSendAPI(psid, { text: 'กรุณาพิมพ์ตัวเลขจำนวนเต็ม 1-1000 เท่านั้นค่ะ' });
+    return;
+  }
+
   // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
   if (session.step === 'browse') {
     return sendWelcome(psid);
@@ -402,7 +434,7 @@ async function notifyAdminsContact(userPsid: string) {
       console.warn('[notifyAdminsContact] ไม่พบเบอร์โทรแอดมินในระบบ');
       return;
     }
-    const msg = `มีลูกค้ากด \"ติดต่อแอดมิน\" (PSID: ${userPsid}) ผ่านเพจ Facebook กรุณาตอบกลับค่ะ`;
+    const msg = `มีลูกค้ากด "ติดต่อแอดมิน" (PSID: ${userPsid}) ผ่านเพจ Facebook กรุณาตอบกลับค่ะ`;
     await Promise.allSettled(
       adminList.map((a: any) => sendSMS(a.phoneNumber, msg))
     );

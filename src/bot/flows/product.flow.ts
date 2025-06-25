@@ -291,16 +291,42 @@ export async function askUnit(psid: string): Promise<void> {
   return callSendAPIAsync(psid, {
     text: `เลือกหน่วยที่ต้องการสำหรับ ${product.name}${shippingLine ? '\n' + shippingLine : ''}`,
     quick_replies: product.units.slice(0, 11).map((u: any, idx: number) => {
-      let fee: string;
+      // สร้างข้อความ title ให้สั้นกว่า 20 ตัวอักษรเพื่อไม่ให้ Messenger ตัดทอนกลางข้อความ
+      const priceStr = u.price.toLocaleString();
+      let title: string;
       if (typeof u.shippingFee === 'number') {
-        fee = u.shippingFee === 0 ? 'ส่งฟรี' : `ค่าส่ง ${u.shippingFee}`;
+        if (u.shippingFee === 0) {
+          // ส่งฟรี
+          title = `${u.label} ${priceStr}฿/ฟรี`;
+        } else {
+          title = `${u.label} ${priceStr}฿/+${u.shippingFee}`;
+        }
       } else {
-        fee = 'ค่าส่ง';
+        title = `${u.label} ${priceStr}฿`;
       }
-      const titleRaw = `${u.label} (${u.price.toLocaleString()}฿ / ${fee})`;
+      // หากเกิน 20 ตัวอักษร ให้ตัด label ลงจนกว่าจะพอดี แต่อย่าให้ข้อมูลค่าส่งขาด
+      if (title.length > 20) {
+        // คงส่วนหลัง (หลังช่องว่างแรก) เอาไว้ แล้วตัดเฉพาะ label
+        const parts = title.split(' ');
+        const suffix = parts.slice(1).join(' '); // ส่วนที่เป็นราคา/ค่าส่ง
+        let labelPart = parts[0];
+        const maxLabelLen = 20 - suffix.length - 1; // เว้นช่องว่าง
+        if (maxLabelLen > 0) {
+          labelPart = labelPart.substring(0, maxLabelLen);
+        } else {
+          // ถ้า suffix เองยาวเกิน ให้ตัดจากท้าย (fallback ป้องกัน error)
+          title = title.substring(0, 20);
+          return {
+            content_type: 'text',
+            title,
+            payload: `UNIT_${idx}`,
+          };
+        }
+        title = `${labelPart} ${suffix}`;
+      }
       return {
         content_type: 'text',
-        title: titleRaw.substring(0, 20),
+        title,
         payload: `UNIT_${idx}`,
       };
     }),

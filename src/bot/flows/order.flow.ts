@@ -215,13 +215,8 @@ export async function showCart(psid: string) {
       buttons: [
         {
           type: 'postback',
-          title: '➕',
-          payload: `INC_QTY_${idx}`,
-        },
-        {
-          type: 'postback',
-          title: '➖',
-          payload: `DEC_QTY_${idx}`,
+          title: 'เปลี่ยนจำนวน',
+          payload: `EDIT_QTY_${idx}`,
         },
         ...(hasColorOption ? [{
           type: 'postback',
@@ -249,7 +244,7 @@ export async function showCart(psid: string) {
   });
 
   // ส่งข้อความแนะนำการแก้ไขจำนวนก่อน
-  callSendAPIAsync(psid, { text: 'ต้องการแก้ไขจำนวน ให้กดปุ่ม ➕ หรือ ➖ ทางขวาของสินค้าได้เลยค่ะ' });
+  callSendAPIAsync(psid, { text: 'หากต้องการแก้ไขจำนวน ให้กดปุ่ม "เปลี่ยนจำนวน" ที่รายการสินค้านั้น แล้วพิมพ์ตัวเลขจำนวนที่ต้องการค่ะ' });
 
   // ส่ง carousel (รวมสรุป)
   callSendAPIAsync(psid, {
