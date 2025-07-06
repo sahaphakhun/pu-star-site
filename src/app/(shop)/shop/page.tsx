@@ -38,9 +38,11 @@ const ShopPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithId | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{[optionName: string]: string}>({});
   const [selectedUnit, setSelectedUnit] = useState<{ label: string; price: number } | null>(null);
+  const [modalQuantity, setModalQuantity] = useState<number>(1);
   const [shippingSetting, setShippingSetting] = useState<{freeThreshold:number,fee:number,freeQuantityThreshold:number,maxFee:number}>({freeThreshold:500,fee:50,freeQuantityThreshold:0,maxFee:50});
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
+  const [quantities, setQuantities] = useState<{[productId: string]: number}>({});
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -108,19 +110,19 @@ const ShopPage = () => {
     return parts.join('-');
   };
 
-  const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}, unit?: {label:string; price:number}) => {
+  const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}, unit?: {label:string; price:number}, quantity: number = 1) => {
     const cartKey = generateCartKey(product._id, options, unit?.label);
     setCart(prev => {
       const newCart = { ...prev };
       if (newCart[cartKey]) {
         newCart[cartKey] = {
           ...newCart[cartKey],
-          quantity: newCart[cartKey].quantity + 1
+          quantity: newCart[cartKey].quantity + quantity
         };
       } else {
         newCart[cartKey] = { 
           product, 
-          quantity: 1,
+          quantity: quantity,
           selectedOptions: options,
           unitLabel: unit?.label,
           unitPrice: unit?.price,
@@ -129,15 +131,27 @@ const ShopPage = () => {
       return newCart;
     });
     
-    toast.success(`เพิ่ม ${product.name} ลงตะกร้าแล้ว`, {
+    toast.success(`เพิ่ม ${product.name} ${quantity} ชิ้น ลงตะกร้าแล้ว`, {
       position: 'bottom-right',
       duration: 2000,
     });
   };
 
+  const getQuantityForProduct = (productId: string) => {
+    return quantities[productId] || 1;
+  };
+
+  const setQuantityForProduct = (productId: string, quantity: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(1, quantity)
+    }));
+  };
+
   const openProductModal = (product: ProductWithId) => {
     setSelectedProduct(product);
     setSelectedOptions({});
+    setModalQuantity(getQuantityForProduct(product._id));
     if (product.units && product.units.length > 0) {
       setSelectedUnit(product.units[0]);
     } else {
@@ -158,10 +172,11 @@ const ShopPage = () => {
       }
     }
 
-    handleAddToCart(selectedProduct, selectedOptions, unitToUse || undefined);
+    handleAddToCart(selectedProduct, selectedOptions, unitToUse || undefined, modalQuantity);
     setSelectedProduct(null);
     setSelectedOptions({});
     setSelectedUnit(null);
+    setModalQuantity(1);
   };
 
   const removeFromCart = (cartKey: string) => {
@@ -418,17 +433,47 @@ const ShopPage = () => {
                       return `฿${priceVal.toLocaleString()}${label}`;
                     })()}
                   </p>
+                  
+                  {/* ช่องใส่จำนวนสินค้า */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">จำนวน</label>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) - 1)}
+                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        value={getQuantityForProduct(product._id)}
+                        onChange={(e) => setQuantityForProduct(product._id, parseInt(e.target.value) || 1)}
+                        className="w-16 text-center border border-gray-300 rounded-lg py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="1"
+                      />
+                      <button
+                        onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) + 1)}
+                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  
                   <button
                     onClick={() => {
                       if ((product.options && product.options.length > 0) || (product.units && product.units.length > 0)) {
                         openProductModal(product);
                       } else {
-                        handleAddToCart(product);
+                        handleAddToCart(product, undefined, undefined, getQuantityForProduct(product._id));
                       }
                     }}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
-                    {(product.options && product.options.length > 0) || (product.units && product.units.length > 0) ? 'เลือกตัวเลือก' : 'เพิ่มลงตะกร้า'}
+                    {(product.options && product.options.length > 0) || (product.units && product.units.length > 0) 
+                      ? 'เลือกตัวเลือก' 
+                      : `เพิ่มลงตะกร้า (${getQuantityForProduct(product._id)} ชิ้น)`
+                    }
                   </button>
                 </div>
               </motion.div>
@@ -560,11 +605,37 @@ const ShopPage = () => {
                   </div>
                 ))}
 
+                {/* ช่องใส่จำนวนสินค้าใน modal */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">จำนวน</label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      value={modalQuantity}
+                      onChange={(e) => setModalQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-20 text-center border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="1"
+                    />
+                    <button
+                      onClick={() => setModalQuantity(modalQuantity + 1)}
+                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   onClick={addToCartWithOptions}
                   className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
-                  เพิ่มลงตะกร้า
+                  เพิ่มลงตะกร้า ({modalQuantity} ชิ้น)
                 </button>
               </div>
             </motion.div>
@@ -635,7 +706,8 @@ const ShopPage = () => {
                         onClick={() => handleAddToCart(
                           item.product,
                           item.selectedOptions,
-                          item.unitLabel && item.unitPrice !== undefined ? { label: item.unitLabel, price: item.unitPrice } : undefined
+                          item.unitLabel && item.unitPrice !== undefined ? { label: item.unitLabel, price: item.unitPrice } : undefined,
+                          1
                         )}
                         className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700"
                       >
