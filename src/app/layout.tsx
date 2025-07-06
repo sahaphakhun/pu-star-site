@@ -3,6 +3,8 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
+import { startAutoCartClearScheduler } from '@/utils/scheduler';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -11,6 +13,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    // เริ่มต้น scheduler สำหรับล้างตะกร้าอัตโนมัติ
+    startAutoCartClearScheduler();
+  }, []);
+
   return (
     <html lang="th">
       <head>

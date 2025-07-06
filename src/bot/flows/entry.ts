@@ -223,7 +223,15 @@ export async function handleEvent(event: MessagingEvent) {
 
     // ล้างตะกร้าสินค้า
     if (payload === 'CLEAR_CART') {
+      console.log('[CLEAR_CART] Starting cart clear for psid:', psid);
+      const sessionBefore = await getSession(psid);
+      console.log('[CLEAR_CART] Cart before clearing:', sessionBefore.cart);
+      
       await updateSession(psid, { cart: [] });
+      
+      const sessionAfter = await getSession(psid);
+      console.log('[CLEAR_CART] Cart after clearing:', sessionAfter.cart);
+      
       await callSendAPI(psid, { text: 'ล้างตะกร้าแล้วค่ะ' });
       return showCategories(psid);
     }
