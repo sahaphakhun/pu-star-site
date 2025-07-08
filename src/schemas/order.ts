@@ -10,6 +10,15 @@ export const orderItemSchema = z.object({
   unitPrice: z.number().min(0).optional(),
 });
 
+export const taxInvoiceSchema = z.object({
+  requestTaxInvoice: z.boolean().default(false),
+  companyName: z.string().optional(),
+  taxId: z.string().optional(),
+  companyAddress: z.string().optional(),
+  companyPhone: z.string().optional(),
+  companyEmail: z.string().email().optional(),
+});
+
 export const orderInputSchema = z.object({
   customerName: z.string().min(1),
   customerPhone: z.string().min(9),
@@ -20,6 +29,8 @@ export const orderInputSchema = z.object({
   shippingFee: z.number().min(0).default(0).optional(),
   discount: z.number().min(0).default(0).optional(),
   totalAmount: z.number().min(0),
+  taxInvoice: taxInvoiceSchema.optional(),
 });
 
+export type TaxInvoice = z.infer<typeof taxInvoiceSchema>;
 export type OrderInput = z.infer<typeof orderInputSchema>; 

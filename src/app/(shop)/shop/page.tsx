@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,14 @@ const ShopPage = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
   const [quantities, setQuantities] = useState<{[productId: string]: number}>({});
+  
+  // Tax Invoice states
+  const [requestTaxInvoice, setRequestTaxInvoice] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -252,6 +260,12 @@ const ShopPage = () => {
       toast.error('กรุณาแนบสลิปการโอนเงิน');
       return;
     }
+    if (requestTaxInvoice) {
+      if (!companyName || !taxId) {
+        toast.error('กรุณากรอกชื่อบริษัทและเลขประจำตัวผู้เสียภาษี');
+        return;
+      }
+    }
     const cartItems = Object.values(cart);
     if (cartItems.length === 0) {
       toast.error('กรุณาเลือกสินค้าก่อนสั่งซื้อ');
@@ -295,7 +309,15 @@ const ShopPage = () => {
           selectedOptions: item.selectedOptions || {}
         })),
         shippingFee: calculateShippingFee(),
-        totalAmount: calculateGrandTotal()
+        totalAmount: calculateGrandTotal(),
+        taxInvoice: requestTaxInvoice ? {
+          requestTaxInvoice,
+          companyName,
+          taxId,
+          companyAddress,
+          companyPhone,
+          companyEmail
+        } : undefined
       };
 
       const response = await fetch('/api/orders', {
@@ -318,6 +340,12 @@ const ShopPage = () => {
         setCustomerAddress('');
         setSlipFile(null);
         setSlipPreview(null);
+        setRequestTaxInvoice(false);
+        setCompanyName('');
+        setTaxId('');
+        setCompanyAddress('');
+        setCompanyPhone('');
+        setCompanyEmail('');
       } else {
         throw new Error('Failed to submit order');
       }
@@ -863,6 +891,80 @@ const ShopPage = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Tax Invoice Section */}
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id="requestTaxInvoice"
+                        checked={requestTaxInvoice}
+                        onChange={(e) => setRequestTaxInvoice(e.target.checked)}
+                        className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="requestTaxInvoice" className="text-sm font-medium text-gray-700">
+                        ต้องการใบกำกับภาษี (ไม่บังคับ)
+                      </label>
+                    </div>
+                    
+                    {requestTaxInvoice && (
+                      <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อบริษัท *</label>
+                          <input
+                            type="text"
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required={requestTaxInvoice}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี *</label>
+                          <input
+                            type="text"
+                            value={taxId}
+                            onChange={(e) => setTaxId(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="0000000000000"
+                            maxLength={13}
+                            required={requestTaxInvoice}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่บริษัท</label>
+                          <textarea
+                            value={companyAddress}
+                            onChange={(e) => setCompanyAddress(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์บริษัท</label>
+                          <input
+                            type="tel"
+                            value={companyPhone}
+                            onChange={(e) => setCompanyPhone(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">อีเมลบริษัท</label>
+                          <input
+                            type="email"
+                            value={companyEmail}
+                            onChange={(e) => setCompanyEmail(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">สรุปคำสั่งซื้อ</h4>

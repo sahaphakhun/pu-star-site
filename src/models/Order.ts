@@ -16,6 +16,15 @@ export interface IPackingProof {
   addedAt: Date;
 }
 
+export interface ITaxInvoice {
+  requestTaxInvoice: boolean;
+  companyName?: string;
+  taxId?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+}
+
 export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
@@ -35,6 +44,7 @@ export interface IOrder extends Document {
   shippingProvider?: string;
   trackingSent?: boolean;
   packingProofs?: IPackingProof[];
+  taxInvoice?: ITaxInvoice;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -140,6 +150,14 @@ const orderSchema = new Schema<IOrder>(
         }
       ],
       default: []
+    },
+    taxInvoice: {
+      requestTaxInvoice: { type: Boolean, default: false },
+      companyName: { type: String },
+      taxId: { type: String },
+      companyAddress: { type: String },
+      companyPhone: { type: String },
+      companyEmail: { type: String }
     }
   },
   { 

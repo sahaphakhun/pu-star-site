@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -126,7 +126,7 @@ export default function CartPage() {
 
               <div className="divide-y divide-gray-200">
                 {cart.map((item, index) => (
-                  <div key={index} className="p-4">
+                  <div key={`${item.productId}-${index}-${item.quantity}`} className="p-4">
                     <div className="flex items-start space-x-4">
                       {/* รูปภาพสินค้า (placeholder) */}
                       <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -231,7 +231,7 @@ export default function CartPage() {
       </div>
 
       {/* ปุ่มยืนยันคำสั่งซื้อ - Fixed Bottom Bar สำหรับมือถือ */}
-      {cart.length > 0 && (
+      {!loading && cart && cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4 md:relative md:bg-transparent md:border-0 md:shadow-none md:p-0 md:mt-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex flex-col md:flex-row gap-4">
@@ -253,7 +253,7 @@ export default function CartPage() {
       )}
 
       {/* เพิ่มพื้นที่ด้านล่างสำหรับมือถือ เพื่อให้เนื้อหาไม่ถูกปุ่มบัง */}
-      {cart.length > 0 && (
+      {!loading && cart && cart.length > 0 && (
         <div className="h-20 md:h-0"></div>
       )}
     </div>

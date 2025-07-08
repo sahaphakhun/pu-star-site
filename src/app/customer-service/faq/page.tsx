@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 
 // ข้อมูลคำถามที่พบบ่อย แบ่งตามหมวดหมู่
 const faqData = [

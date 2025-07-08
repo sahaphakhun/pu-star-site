@@ -3,7 +3,7 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { startAutoCartClearScheduler } from '@/utils/scheduler';
 
 const inter = Inter({ subsets: ['latin'] });
