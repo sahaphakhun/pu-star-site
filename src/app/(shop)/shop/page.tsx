@@ -140,7 +140,6 @@ const ShopPage = () => {
     });
     
     toast.success(`เพิ่ม ${product.name} ${quantity} ชิ้น ลงตะกร้าแล้ว`, {
-      position: 'bottom-left',
       duration: 2000,
     });
   };
@@ -410,7 +409,7 @@ const ShopPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toaster />
+      <Toaster position="bottom-left" />
       
 
       <div className="container mx-auto px-4 py-8">
