@@ -391,77 +391,138 @@ const AdminOrdersPage = () => {
         {/* create order button */}
         <button onClick={()=>setShowCreate(true)} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">สร้างออเดอร์ใหม่</button>
 
-        {/* Orders Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredAndSortedOrders.map((order) => (
-            <motion.div
-              key={order._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -5 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer"
-              onClick={() => setSelectedOrder(order)}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">
-                        #{order._id.slice(-8).toUpperCase()}
-                      </h3>
-                      {order.taxInvoice?.requestTaxInvoice && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          ใบกำกับภาษี
+        {/* Orders Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    รหัสคำสั่งซื้อ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ลูกค้า
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    วันที่
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    รายการ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    การชำระ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ยอดรวม
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    สถานะ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จัดการ
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAndSortedOrders.map((order) => (
+                  <motion.tr
+                    key={order._id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">
+                          #{order._id.slice(-8).toUpperCase()}
                         </span>
+                        {order.taxInvoice?.requestTaxInvoice && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            ใบกำกับฯ
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
+                        <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(order.createdAt).toLocaleDateString('th-TH', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{order.items.length} รายการ</div>
+                      <div className="text-xs text-gray-500">
+                        {order.items.slice(0, 2).map(item => item.name).join(', ')}
+                        {order.items.length > 2 && '...'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">
+                        {order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}
+                      </span>
+                      {order.paymentMethod === 'transfer' && order.slipUrl && (
+                        <div className="text-xs text-blue-600 cursor-pointer hover:text-blue-800"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               window.open(order.slipUrl, '_blank');
+                             }}>
+                          ดูสลิป
+                        </div>
                       )}
-                    </div>
-                    <p className="text-sm text-gray-600">{order.customerName}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[order.status]}`}>
-                    {statusLabels[order.status]}
-                  </span>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">วันที่สั่งซื้อ:</span>
-                    <span>{new Date(order.createdAt).toLocaleDateString('th-TH')}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">รายการสินค้า:</span>
-                    <span>{order.items.length} รายการ</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">การชำระเงิน:</span>
-                    <span>{order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                  <span className="text-lg font-bold text-blue-600">
-                    ฿{order.totalAmount.toLocaleString()}
-                  </span>
-                  <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                    ดูรายละเอียด →
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ฿{order.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status]}`}>
+                        {statusLabels[order.status]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        ดู
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteOrder(order._id);
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        ลบ
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {filteredAndSortedOrders.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
+            <div className="text-center">
+              <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบคำสั่งซื้อ</h3>
+              <p className="text-gray-600">ลองเปลี่ยนเงื่อนไขการค้นหาหรือกรองข้อมูล</p>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบคำสั่งซื้อ</h3>
-            <p className="text-gray-600">ลองเปลี่ยนเงื่อนไขการค้นหาหรือกรองข้อมูล</p>
           </div>
         )}
       </div>
