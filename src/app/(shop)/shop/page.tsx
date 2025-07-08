@@ -687,7 +687,7 @@ const ShopPage = () => {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="bg-white w-full max-w-md md:max-w-lg h-4/5 md:h-auto md:max-h-[75vh] rounded-t-xl md:rounded-xl overflow-hidden flex flex-col mb-20 md:mb-0"
+              className="bg-white w-full max-w-md md:max-w-lg h-6/7 md:h-auto md:max-h-[75vh] rounded-t-xl md:rounded-xl overflow-hidden flex flex-col mb-20 md:mb-0"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
