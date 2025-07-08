@@ -306,17 +306,19 @@ const ShopPage = () => {
           name: item.product.name,
           price: item.unitPrice !== undefined ? item.unitPrice : item.product.price,
           quantity: item.quantity,
-          selectedOptions: item.selectedOptions || {}
+          selectedOptions: item.selectedOptions && Object.keys(item.selectedOptions).length > 0 ? item.selectedOptions : undefined,
+          unitLabel: item.unitLabel,
+          unitPrice: item.unitPrice
         })),
         shippingFee: calculateShippingFee(),
         totalAmount: calculateGrandTotal(),
         taxInvoice: requestTaxInvoice ? {
           requestTaxInvoice,
-          companyName,
-          taxId,
-          companyAddress,
-          companyPhone,
-          companyEmail
+          companyName: companyName || undefined,
+          taxId: taxId || undefined,
+          companyAddress: companyAddress || undefined,
+          companyPhone: companyPhone || undefined,
+          companyEmail: companyEmail || undefined
         } : undefined
       };
 
@@ -685,10 +687,11 @@ const ShopPage = () => {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="bg-white w-full max-w-md h-3/4 md:h-auto md:max-h-[80vh] rounded-t-xl md:rounded-xl overflow-hidden"
+              className="bg-white w-full max-w-md md:max-w-lg h-4/5 md:h-auto md:max-h-[85vh] rounded-t-xl md:rounded-xl overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              {/* Header */}
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
                 <h3 className="text-lg font-semibold">ตะกร้าสินค้า ({getTotalItems()})</h3>
                 <button onClick={() => setShowCart(false)} className="p-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -697,7 +700,8 @@ const ShopPage = () => {
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
                 {Object.entries(cart).map(([cartKey, item]) => (
                   <div key={cartKey} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
                     <div className="relative w-16 h-16 flex-shrink-0">
@@ -754,30 +758,46 @@ const ShopPage = () => {
                 ))}
               </div>
 
+              {/* Fixed Footer with Summary and Checkout Button */}
               {Object.keys(cart).length > 0 && (
-                <div className="p-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm">ค่าส่ง</span>
-                    <span className="text-sm">฿{calculateShippingFee().toLocaleString()}</span>
+                <div className="border-t border-gray-200 bg-white flex-shrink-0">
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">ค่าส่ง</span>
+                      <span className="text-sm font-medium">฿{calculateShippingFee().toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                      <span className="text-lg font-semibold">รวมทั้งสิ้น:</span>
+                      <span className="text-xl font-bold text-blue-600">
+                        ฿{calculateGrandTotal().toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-lg font-semibold">รวม:</span>
-                    <span className="text-xl font-bold text-blue-600">
-                      ฿{calculateGrandTotal().toLocaleString()}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowCart(false);
-                      handleShowOrderForm();
-                    }}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    สั่งซื้อ
-                  </button>
                 </div>
               )}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fixed Checkout Button Outside Modal */}
+      <AnimatePresence>
+        {showCart && Object.keys(cart).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 left-4 right-4 z-[60] max-w-md md:max-w-lg mx-auto"
+          >
+            <button
+              onClick={() => {
+                setShowCart(false);
+                handleShowOrderForm();
+              }}
+              className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg shadow-lg"
+            >
+              ดำเนินการสั่งซื้อ
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

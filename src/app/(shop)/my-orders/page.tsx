@@ -15,6 +15,15 @@ interface OrderItem {
   unitLabel?: string;
 }
 
+interface TaxInvoice {
+  requestTaxInvoice: boolean;
+  companyName?: string;
+  taxId?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+}
+
 interface Order {
   _id: string;
   customerName: string;
@@ -23,6 +32,7 @@ interface Order {
   items: OrderItem[];
   paymentMethod?: 'cod' | 'transfer';
   status?: string;
+  taxInvoice?: TaxInvoice;
 }
 
 const MyOrdersPage = () => {
@@ -92,7 +102,17 @@ const MyOrdersPage = () => {
                   <span className="text-sm text-gray-600">{new Date(order.orderDate).toLocaleDateString('th-TH')}</span>
                 </div>
                 <div className="text-blue-600 font-bold text-lg mb-2">฿{order.totalAmount.toLocaleString()}</div>
-                <p className="text-sm text-gray-600 line-clamp-1">{order.items.length} รายการ</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-600 line-clamp-1">{order.items.length} รายการ</p>
+                  {order.taxInvoice?.requestTaxInvoice && (
+                    <div className="flex items-center text-xs text-blue-600">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      ใบกำกับฯ
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -144,6 +164,28 @@ const MyOrdersPage = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Tax Invoice Info */}
+                {selectedOrder.taxInvoice?.requestTaxInvoice && (
+                  <div className="bg-blue-50 p-4 rounded-lg mt-6">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      ขอใบกำกับภาษี
+                    </h3>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600">ชื่อบริษัท</p>
+                        <p className="font-medium">{selectedOrder.taxInvoice.companyName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">เลขประจำตัวผู้เสียภาษี</p>
+                        <p className="font-medium font-mono">{selectedOrder.taxInvoice.taxId}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
                   <span className="text-lg font-semibold">ยอดรวม</span>

@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
 
     const parsed = orderInputSchema.safeParse(raw);
     if (!parsed.success) {
+      console.error('Order validation failed:', parsed.error.errors);
+      console.error('Raw data received:', JSON.stringify(raw, null, 2));
       return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
     }
     const data = parsed.data;

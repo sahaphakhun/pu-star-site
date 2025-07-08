@@ -16,7 +16,7 @@ export const taxInvoiceSchema = z.object({
   taxId: z.string().optional(),
   companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
-  companyEmail: z.string().email().optional(),
+  companyEmail: z.string().email().optional().or(z.literal('')),
 });
 
 export const orderInputSchema = z.object({

@@ -15,6 +15,15 @@ interface OrderItem {
   unitPrice?: number;
 }
 
+interface TaxInvoice {
+  requestTaxInvoice: boolean;
+  companyName?: string;
+  taxId?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+}
+
 interface Order {
   _id: string;
   customerName: string;
@@ -31,6 +40,7 @@ interface Order {
   updatedAt: string;
   trackingNumber?: string;
   shippingProvider?: string;
+  taxInvoice?: TaxInvoice;
 }
 
 const AdminOrdersPage = () => {
@@ -226,7 +236,7 @@ const AdminOrdersPage = () => {
   const stats = getOrderStats();
 
   const exportToCSV = (data: Order[]) => {
-    const header = ['OrderID','Customer','Phone','Date','Item','Unit','Qty','Price'];
+    const header = ['OrderID','Customer','Phone','Date','Item','Unit','Qty','Price','TaxInvoice','CompanyName','TaxID'];
     const rows: string[] = [];
     data.forEach(order=>{
       order.items.forEach(item=>{
@@ -238,7 +248,10 @@ const AdminOrdersPage = () => {
           item.name,
           item.unitLabel||'',
           item.quantity,
-          (item.unitPrice !== undefined ? item.unitPrice : item.price)
+          (item.unitPrice !== undefined ? item.unitPrice : item.price),
+          order.taxInvoice?.requestTaxInvoice ? 'ขอใบกำกับภาษี' : '',
+          order.taxInvoice?.companyName || '',
+          order.taxInvoice?.taxId || ''
         ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
       });
     });
@@ -410,6 +423,14 @@ const AdminOrdersPage = () => {
                     <span className="text-gray-600">การชำระเงิน:</span>
                     <span>{order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}</span>
                   </div>
+                  {order.taxInvoice?.requestTaxInvoice && (
+                    <div className="flex items-center text-sm">
+                      <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-blue-600 font-medium">ขอใบกำกับภาษี</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100">
@@ -520,6 +541,40 @@ const AdminOrdersPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Tax Invoice Info */}
+                {selectedOrder.taxInvoice?.requestTaxInvoice && (
+                  <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      ข้อมูลใบกำกับภาษี
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">ชื่อบริษัท</p>
+                        <p className="font-medium">{selectedOrder.taxInvoice.companyName || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">เลขประจำตัวผู้เสียภาษี</p>
+                        <p className="font-medium font-mono">{selectedOrder.taxInvoice.taxId || '-'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600">ที่อยู่บริษัท</p>
+                        <p className="font-medium">{selectedOrder.taxInvoice.companyAddress || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">เบอร์โทรศัพท์บริษัท</p>
+                        <p className="font-medium">{selectedOrder.taxInvoice.companyPhone || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">อีเมลบริษัท</p>
+                        <p className="font-medium">{selectedOrder.taxInvoice.companyEmail || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Order Items */}
                 <div className="mb-6">
