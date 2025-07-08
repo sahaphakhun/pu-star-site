@@ -226,11 +226,12 @@ const AdminOrdersPage = () => {
     const confirmed = orders.filter(o => o.status === 'confirmed').length;
     const shipped = orders.filter(o => o.status === 'shipped').length;
     const delivered = orders.filter(o => o.status === 'delivered').length;
+    const taxInvoiceRequests = orders.filter(o => o.taxInvoice?.requestTaxInvoice).length;
     const totalRevenue = orders
       .filter(o => o.status !== 'cancelled')
       .reduce((sum, o) => sum + o.totalAmount, 0);
 
-    return { total, pending, confirmed, shipped, delivered, totalRevenue };
+    return { total, pending, confirmed, shipped, delivered, taxInvoiceRequests, totalRevenue };
   };
 
   const stats = getOrderStats();
@@ -295,7 +296,7 @@ const AdminOrdersPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-600">คำสั่งซื้อทั้งหมด</div>
@@ -315,6 +316,10 @@ const AdminOrdersPage = () => {
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
             <div className="text-sm text-gray-600">ส่งสำเร็จ</div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="text-2xl font-bold text-orange-600">{stats.taxInvoiceRequests}</div>
+            <div className="text-sm text-gray-600">ขอใบกำกับภาษี</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-blue-600">฿{stats.totalRevenue.toLocaleString()}</div>
@@ -400,9 +405,19 @@ const AdminOrdersPage = () => {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      #{order._id.slice(-8).toUpperCase()}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900">
+                        #{order._id.slice(-8).toUpperCase()}
+                      </h3>
+                      {order.taxInvoice?.requestTaxInvoice && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          ใบกำกับภาษี
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">{order.customerName}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[order.status]}`}>
@@ -423,14 +438,6 @@ const AdminOrdersPage = () => {
                     <span className="text-gray-600">การชำระเงิน:</span>
                     <span>{order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}</span>
                   </div>
-                  {order.taxInvoice?.requestTaxInvoice && (
-                    <div className="flex items-center text-sm">
-                      <svg className="w-4 h-4 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="text-blue-600 font-medium">ขอใบกำกับภาษี</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100">
