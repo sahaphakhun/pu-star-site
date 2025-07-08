@@ -140,7 +140,7 @@ const ShopPage = () => {
     });
     
     toast.success(`เพิ่ม ${product.name} ${quantity} ชิ้น ลงตะกร้าแล้ว`, {
-      position: 'bottom-right',
+      position: 'bottom-left',
       duration: 2000,
     });
   };
