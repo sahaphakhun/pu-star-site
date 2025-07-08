@@ -24,7 +24,7 @@ export const orderInputSchema = z.object({
   customerPhone: z.string().min(9),
   customerAddress: z.string().optional(),
   paymentMethod: z.enum(['cod', 'transfer']).default('cod').optional(),
-  slipUrl: z.string().url().optional(),
+  slipUrl: z.string().url().optional().or(z.literal('')),
   items: z.array(orderItemSchema).min(1),
   shippingFee: z.number().min(0).default(0).optional(),
   discount: z.number().min(0).default(0).optional(),

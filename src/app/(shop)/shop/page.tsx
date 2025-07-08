@@ -300,7 +300,7 @@ const ShopPage = () => {
         customerPhone,
         customerAddress,
         paymentMethod,
-        slipUrl,
+        ...(paymentMethod === 'transfer' && slipUrl ? { slipUrl } : {}),
         items: cartItems.map(item => ({
           productId: item.product._id,
           name: item.product.name,
