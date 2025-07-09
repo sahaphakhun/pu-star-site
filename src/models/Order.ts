@@ -25,6 +25,14 @@ export interface ITaxInvoice {
   companyEmail?: string;
 }
 
+export interface IClaimInfo {
+  claimDate: Date;
+  claimReason: string;
+  claimImages: string[];
+  claimStatus: 'pending' | 'approved' | 'rejected';
+  adminResponse?: string;
+}
+
 export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
@@ -39,12 +47,13 @@ export interface IOrder extends Document {
   paymentMethod?: 'cod' | 'transfer';
   slipUrl?: string;
   userId?: Schema.Types.ObjectId;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
   trackingNumber?: string;
   shippingProvider?: string;
   trackingSent?: boolean;
   packingProofs?: IPackingProof[];
   taxInvoice?: ITaxInvoice;
+  claimInfo?: IClaimInfo;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -123,7 +132,7 @@ const orderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'confirmed', 'packing', 'shipped', 'delivered', 'cancelled', 'claimed'],
       default: 'pending'
     },
     userId: {
@@ -158,6 +167,13 @@ const orderSchema = new Schema<IOrder>(
       companyAddress: { type: String },
       companyPhone: { type: String },
       companyEmail: { type: String }
+    },
+    claimInfo: {
+      claimDate: { type: Date },
+      claimReason: { type: String },
+      claimImages: { type: [String], default: [] },
+      claimStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      adminResponse: { type: String }
     }
   },
   { 

@@ -24,6 +24,14 @@ interface TaxInvoice {
   companyEmail?: string;
 }
 
+interface ClaimInfo {
+  claimDate: string;
+  claimReason: string;
+  claimImages: string[];
+  claimStatus: 'pending' | 'approved' | 'rejected';
+  adminResponse?: string;
+}
+
 interface Order {
   _id: string;
   customerName: string;
@@ -35,7 +43,7 @@ interface Order {
   totalAmount: number;
   shippingFee: number;
   discount?: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
   createdAt: string;
   updatedAt: string;
   trackingNumber?: string;
@@ -46,6 +54,7 @@ interface Order {
     type: 'image' | 'video';
     addedAt: string;
   }>;
+  claimInfo?: ClaimInfo;
 }
 
 const AdminOrdersPage = () => {
@@ -66,17 +75,21 @@ const AdminOrdersPage = () => {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
+    packing: 'bg-orange-100 text-orange-800 border-orange-200',
     shipped: 'bg-purple-100 text-purple-800 border-purple-200',
     delivered: 'bg-green-100 text-green-800 border-green-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200',
+    claimed: 'bg-pink-100 text-pink-800 border-pink-200',
   };
 
   const statusLabels = {
     pending: 'รอดำเนินการ',
-    confirmed: 'ยืนยันแล้ว',
+    confirmed: 'ยืนยันออเดอร์',
+    packing: 'แพ็คสินค้า',
     shipped: 'จัดส่งแล้ว',
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
+    claimed: 'เคลมสินค้า',
   };
 
   const fetchOrders = useCallback(async () => {
@@ -293,14 +306,16 @@ const AdminOrdersPage = () => {
     const total = orders.length;
     const pending = orders.filter(o => o.status === 'pending').length;
     const confirmed = orders.filter(o => o.status === 'confirmed').length;
+    const packing = orders.filter(o => o.status === 'packing').length;
     const shipped = orders.filter(o => o.status === 'shipped').length;
     const delivered = orders.filter(o => o.status === 'delivered').length;
+    const claimed = orders.filter(o => o.status === 'claimed').length;
     const taxInvoiceRequests = orders.filter(o => o.taxInvoice?.requestTaxInvoice).length;
     const totalRevenue = orders
-      .filter(o => o.status !== 'cancelled')
+      .filter(o => o.status !== 'cancelled' && o.status !== 'claimed')
       .reduce((sum, o) => sum + o.totalAmount, 0);
 
-    return { total, pending, confirmed, shipped, delivered, taxInvoiceRequests, totalRevenue };
+    return { total, pending, confirmed, packing, shipped, delivered, claimed, taxInvoiceRequests, totalRevenue };
   };
 
   const stats = getOrderStats();
@@ -365,7 +380,7 @@ const AdminOrdersPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-600">คำสั่งซื้อทั้งหมด</div>
@@ -376,7 +391,11 @@ const AdminOrdersPage = () => {
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
-            <div className="text-sm text-gray-600">ยืนยันแล้ว</div>
+            <div className="text-sm text-gray-600">ยืนยันออเดอร์</div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="text-2xl font-bold text-orange-600">{stats.packing}</div>
+            <div className="text-sm text-gray-600">แพ็คสินค้า</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-purple-600">{stats.shipped}</div>
@@ -387,7 +406,11 @@ const AdminOrdersPage = () => {
             <div className="text-sm text-gray-600">ส่งสำเร็จ</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-orange-600">{stats.taxInvoiceRequests}</div>
+            <div className="text-2xl font-bold text-pink-600">{stats.claimed}</div>
+            <div className="text-sm text-gray-600">เคลมสินค้า</div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="text-2xl font-bold text-gray-600">{stats.taxInvoiceRequests}</div>
             <div className="text-sm text-gray-600">ขอใบกำกับภาษี</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -418,10 +441,12 @@ const AdminOrdersPage = () => {
               >
                 <option value="all">ทั้งหมด</option>
                 <option value="pending">รอดำเนินการ</option>
-                <option value="confirmed">ยืนยันแล้ว</option>
+                <option value="confirmed">ยืนยันออเดอร์</option>
+                <option value="packing">แพ็คสินค้า</option>
                 <option value="shipped">จัดส่งแล้ว</option>
                 <option value="delivered">ส่งสำเร็จ</option>
                 <option value="cancelled">ยกเลิก</option>
+                <option value="claimed">เคลมสินค้า</option>
               </select>
             </div>
             <div>
@@ -560,18 +585,9 @@ const AdminOrdersPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => setSelectedOrder(order)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        className="text-blue-600 hover:text-blue-900"
                       >
-                        ดู
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteOrder(order._id);
-                        }}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        ลบ
+                        จัดการ
                       </button>
                     </td>
                   </motion.tr>
@@ -855,35 +871,31 @@ const AdminOrdersPage = () => {
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-900 mb-3">อัพเดทสถานะ</h3>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(statusLabels).map(([status, label]) => (
-                      <button
-                        key={status}
-                        onClick={() => updateOrderStatus(selectedOrder._id, status)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          selectedOrder.status === status
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    {Object.entries(statusLabels)
+                      .filter(([status]) => status !== 'cancelled')
+                      .map(([status, label]) => (
+                        <button
+                          key={status}
+                          onClick={() => updateOrderStatus(selectedOrder._id, status)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedOrder.status === status
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex justify-center">
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                    className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                   >
                     ปิด
-                  </button>
-                  <button
-                    onClick={() => deleteOrder(selectedOrder._id)}
-                    className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
-                  >
-                    ลบคำสั่งซื้อ
                   </button>
                 </div>
               </div>

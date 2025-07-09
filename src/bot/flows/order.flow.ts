@@ -159,7 +159,7 @@ export async function askPayment(psid: string) {
 
 export async function sendBankInfo(psid: string) {
   callSendAPIAsync(psid, {
-    text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 123-4-56789-0\nชื่อบัญชี NEXT STAR INNOVATIONS',
+    text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 1943234902\nชื่อบัญชี บริษัท วินริช ไดนามิค จำกัด',
   });
   callSendAPIAsync(psid, { 
     text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ',
