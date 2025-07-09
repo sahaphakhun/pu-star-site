@@ -930,12 +930,13 @@ const ShopPage = () => {
                     {requestTaxInvoice && (
                       <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อบริษัท *</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">นิติบุคคล/บุคคลธรรมดา *</label>
                           <input
                             type="text"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="ชื่อบริษัท หรือ ชื่อ-นามสกุล บุคคลธรรมดา"
                             required={requestTaxInvoice}
                           />
                         </div>
@@ -954,12 +955,13 @@ const ShopPage = () => {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่บริษัท</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่สำหรับออกใบกำกับภาษี</label>
                           <textarea
                             value={companyAddress}
                             onChange={(e) => setCompanyAddress(e.target.value)}
                             rows={3}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="ที่อยู่ตามใบกำกับภาษี"
                           />
                         </div>
 

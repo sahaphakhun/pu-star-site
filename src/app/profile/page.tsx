@@ -206,7 +206,7 @@ const ProfilePage = () => {
                       ใบกำกับภาษี
                     </h3>
                     <div className="text-sm text-gray-700 space-y-1">
-                      <p><span className="font-medium">ชื่อบริษัท:</span> {order.taxInvoice.companyName}</p>
+                      <p><span className="font-medium">นิติบุคคล/บุคคลธรรมดา:</span> {order.taxInvoice.companyName}</p>
                       <p><span className="font-medium">เลขประจำตัวผู้เสียภาษี:</span> <span className="font-mono">{order.taxInvoice.taxId}</span></p>
                     </div>
                   </div>

@@ -176,7 +176,7 @@ const MyOrdersPage = () => {
                     </h3>
                     <div className="space-y-2">
                       <div>
-                        <p className="text-sm text-gray-600">ชื่อบริษัท</p>
+                        <p className="text-sm text-gray-600">นิติบุคคล/บุคคลธรรมดา</p>
                         <p className="font-medium">{selectedOrder.taxInvoice.companyName}</p>
                       </div>
                       <div>
