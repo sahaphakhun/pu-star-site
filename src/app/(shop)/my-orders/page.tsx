@@ -66,7 +66,7 @@ const MyOrdersPage = () => {
   const statusLabels = {
     pending: 'รอดำเนินการ',
     confirmed: 'ยืนยันออเดอร์แล้ว',
-    packing: 'กำลังแพ็คสินค้า',
+    packing: 'ที่ต้องได้รับ',
     shipped: 'จัดส่งแล้ว',
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
