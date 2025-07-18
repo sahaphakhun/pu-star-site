@@ -69,13 +69,13 @@ const ShopPage = () => {
   // ดึง addresses ของ user
   useEffect(() => {
     if (isLoggedIn) {
-      fetch('/api/auth/me')
+      fetch('/api/profile/addresses')
         .then(res => res.json())
         .then(data => {
-          if (data?.user?.addresses) {
-            setAddresses(data.user.addresses);
+          if (data.success && data.data) {
+            setAddresses(data.data);
             // autofill ที่อยู่ default
-            const def = data.user.addresses.find((a:any) => a.isDefault) || data.user.addresses[0];
+            const def = data.data.find((a:any) => a.isDefault) || data.data[0];
             if (def) {
               setSelectedAddressId(def._id || null);
               setCustomerAddress(def.address);
@@ -343,22 +343,26 @@ const ShopPage = () => {
       // เพิ่ม logic บันทึกที่อยู่ใหม่
       if (saveNewAddress && showNewAddress && customerAddress) {
         try {
-          const response = await fetch('/api/auth/me', {
-            method: 'PATCH',
+          const response = await fetch('/api/profile/addresses', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'add', address: { label: addressLabel || 'ที่อยู่ใหม่', address: customerAddress, isDefault: addresses.length === 0 } })
+            body: JSON.stringify({ 
+              label: addressLabel || 'ที่อยู่ใหม่', 
+              address: customerAddress, 
+              isDefault: addresses.length === 0 
+            })
           });
           
           if (!response.ok) {
             const errorData = await response.json();
             console.error('Error saving address:', errorData);
-            toast.error(errorData.message || 'เกิดข้อผิดพลาดในการบันทึกที่อยู่');
+            toast.error(errorData.error || 'เกิดข้อผิดพลาดในการบันทึกที่อยู่');
           } else {
             const data = await response.json();
             if (data.success) {
               toast.success('บันทึกที่อยู่สำเร็จ');
               // อัพเดท addresses state
-              setAddresses(data.addresses || []);
+              setAddresses(data.data || []);
             }
           }
         } catch (error) {

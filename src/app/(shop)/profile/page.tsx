@@ -218,10 +218,10 @@ const ProfilePage = () => {
 
   const fetchAddresses = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await fetch('/api/profile/addresses');
       const data = await res.json();
-      if (data.success && data.user) {
-        setAddresses(data.user.addresses || []);
+      if (data.success) {
+        setAddresses(data.data || []);
       }
     } catch (err) {
       console.error('Error fetching addresses:', err);
@@ -263,30 +263,27 @@ const ProfilePage = () => {
     }
 
     try {
-      const response = await fetch('/api/auth/me', {
-        method: 'PATCH',
+      const response = await fetch('/api/profile/addresses', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'add',
-          address: {
-            label: newAddress.name,
-            address: newAddress.address,
-            isDefault: newAddress.isDefault
-          }
+          label: newAddress.name,
+          address: newAddress.address,
+          isDefault: newAddress.isDefault
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setAddresses(data.addresses || []);
+        setAddresses(data.data || []);
         setNewAddress({ name: '', address: '', isDefault: false });
         setShowAddressModal(false);
         toast.success('เพิ่มที่อยู่สำเร็จ');
       } else {
-        toast.error(data.message || 'เกิดข้อผิดพลาดในการเพิ่มที่อยู่');
+        toast.error(data.error || 'เกิดข้อผิดพลาดในการเพิ่มที่อยู่');
       }
     } catch (error) {
       console.error('Error adding address:', error);
@@ -297,24 +294,17 @@ const ProfilePage = () => {
   const handleDeleteAddress = async (addressId: string) => {
     if (window.confirm('คุณต้องการลบที่อยู่นี้หรือไม่?')) {
       try {
-        const response = await fetch('/api/auth/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'delete',
-            addressId: addressId
-          }),
+        const response = await fetch(`/api/profile/addresses?id=${addressId}`, {
+          method: 'DELETE',
         });
 
         const data = await response.json();
 
         if (data.success) {
-          setAddresses(data.addresses || []);
+          setAddresses(data.data || []);
           toast.success('ลบที่อยู่สำเร็จ');
         } else {
-          toast.error(data.message || 'เกิดข้อผิดพลาดในการลบที่อยู่');
+          toast.error(data.error || 'เกิดข้อผิดพลาดในการลบที่อยู่');
         }
       } catch (error) {
         console.error('Error deleting address:', error);
