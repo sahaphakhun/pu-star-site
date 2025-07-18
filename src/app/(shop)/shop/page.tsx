@@ -43,6 +43,7 @@ const ShopPage = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
   const [quantities, setQuantities] = useState<{[productId: string]: number}>({});
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Tax Invoice states
   const [requestTaxInvoice, setRequestTaxInvoice] = useState(false);
@@ -56,6 +57,7 @@ const ShopPage = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
+  const [addressLabel, setAddressLabel] = useState('');
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -205,6 +207,13 @@ const ShopPage = () => {
 
   const addToCartWithOptions = () => {
     if (!selectedProduct) return;
+    
+    // ตรวจสอบว่าสินค้าพร้อมขายหรือไม่
+    if (selectedProduct.isAvailable === false) {
+      toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
+      return;
+    }
+    
     const unitToUse = selectedUnit ?? (selectedProduct.units && selectedProduct.units[0]);
     
     // ตรวจสอบว่าเลือกตัวเลือกครบหรือไม่
@@ -337,7 +346,7 @@ const ShopPage = () => {
           await fetch('/api/auth/me', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'add', address: { label: customerName, address: customerAddress, isDefault: addresses.length === 0 } })
+            body: JSON.stringify({ action: 'add', address: { label: addressLabel || 'ที่อยู่ใหม่', address: customerAddress, isDefault: addresses.length === 0 } })
           });
         } catch {}
       }
@@ -465,7 +474,37 @@ const ShopPage = () => {
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">สินค้าทั้งหมด</h2>
-            <div className="flex overflow-x-auto space-x-2">
+          </div>
+          
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <input
+                type="text"
+                placeholder="ค้นหาสินค้า..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <svg
+                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+          
+          {/* Sticky Categories */}
+          <div className="sticky top-0 bg-gray-50 z-20 py-4 mb-6 -mx-4 px-4">
+            <div className="flex overflow-x-auto space-x-2 scrollbar-hide">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -479,11 +518,16 @@ const ShopPage = () => {
               ))}
             </div>
           </div>
+          
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {(
               selectedCategory === 'ทั้งหมด'
                 ? products
                 : products.filter((p) => (p.category || 'ทั่วไป') === selectedCategory)
+            ).filter((product) => 
+              searchTerm === '' || 
+              product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
             ).map((product) => (
               <motion.div
                 key={product._id}
@@ -498,6 +542,16 @@ const ShopPage = () => {
                     fill
                     className="object-cover"
                   />
+                  {product.isAvailable === false && (
+                    <>
+                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                        สินค้าหมด
+                      </div>
+                      <div className="absolute inset-0 bg-gray-500 bg-opacity-60 flex items-center justify-center z-10">
+                        <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm md:text-base">
@@ -510,14 +564,26 @@ const ShopPage = () => {
                       return `฿${priceVal.toLocaleString()}${label}`;
                     })()}
                   </p>
-                  
-                  {/* ช่องใส่จำนวนสินค้า */}
+                  <p className="text-gray-600 text-xs md:text-sm mb-3 line-clamp-2">{product.description}</p>
+
+                  {/* Availability Status */}
+                  <div className="mb-3">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      product.isAvailable !== false 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                    </span>
+                  </div>
+
                   <div className="mb-3">
                     <label className="block text-xs font-medium text-gray-700 mb-1">จำนวน</label>
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) - 1)}
-                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm"
+                        disabled={product.isAvailable === false}
+                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         -
                       </button>
@@ -525,12 +591,14 @@ const ShopPage = () => {
                         type="number"
                         value={getQuantityForProduct(product._id)}
                         onChange={(e) => setQuantityForProduct(product._id, parseInt(e.target.value) || 1)}
-                        className="w-16 text-center border border-gray-300 rounded-lg py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={product.isAvailable === false}
+                        className="w-16 text-center border border-gray-300 rounded-lg py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         min="1"
                       />
                       <button
                         onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) + 1)}
-                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm"
+                        disabled={product.isAvailable === false}
+                        className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         +
                       </button>
@@ -539,17 +607,28 @@ const ShopPage = () => {
                   
                   <button
                     onClick={() => {
+                      if (product.isAvailable === false) {
+                        toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
+                        return;
+                      }
                       if ((product.options && product.options.length > 0) || (product.units && product.units.length > 0)) {
                         openProductModal(product);
                       } else {
                         handleAddToCart(product, undefined, undefined, getQuantityForProduct(product._id));
                       }
                     }}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    disabled={product.isAvailable === false}
+                    className={`w-full py-2 px-4 rounded-lg transition-colors text-sm font-medium ${
+                      product.isAvailable === false 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                   >
-                    {(product.options && product.options.length > 0) || (product.units && product.units.length > 0) 
-                      ? 'เลือกตัวเลือก' 
-                      : `เพิ่มลงตะกร้า (${getQuantityForProduct(product._id)} ชิ้น)`
+                    {product.isAvailable === false 
+                      ? 'สินค้าหมด' 
+                      : (product.options && product.options.length > 0) || (product.units && product.units.length > 0) 
+                        ? 'เลือกตัวเลือก' 
+                        : `เพิ่มลงตะกร้า (${getQuantityForProduct(product._id)} ชิ้น)`
                     }
                   </button>
                 </div>
@@ -628,78 +707,101 @@ const ShopPage = () => {
               className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative aspect-square">
-                <Image
-                  src={selectedProduct.imageUrl}
-                  alt={selectedProduct.name}
-                  fill
-                  className="object-cover rounded-t-xl"
-                />
-                <button
-                  onClick={() => setSelectedProduct(null)}
-                  className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-2">{selectedProduct.name}</h3>
-                <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
-                <p className="text-2xl font-bold text-blue-600 mb-6">
-                  {(() => {
-                    const priceVal = selectedUnit ? selectedUnit.price : selectedProduct.price ?? (selectedProduct.units && selectedProduct.units[0]?.price) || 0;
-                    const label = selectedUnit ? ` / ${selectedUnit.label}` : (selectedProduct.price === undefined && selectedProduct.units && selectedProduct.units.length > 0 ? ` / ${selectedProduct.units[0].label}` : '');
-                    return `฿${priceVal.toLocaleString()}${label}`;
-                  })()}
-                </p>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold">{selectedProduct.name}</h3>
+                  <button
+                    onClick={() => setSelectedProduct(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
 
-                {/* Units */}
+                {/* Product Image */}
+                <div className="relative aspect-square mb-4">
+                  <Image
+                    src={selectedProduct.imageUrl}
+                    alt={selectedProduct.name}
+                    fill
+                    className="object-cover rounded-lg"
+                  />
+                  {selectedProduct.isAvailable === false && (
+                    <>
+                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
+                        สินค้าหมด
+                      </div>
+                      <div className="absolute inset-0 bg-gray-500 bg-opacity-60 flex items-center justify-center z-10 rounded-lg">
+                        <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Availability Status */}
+                <div className="mb-4">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    selectedProduct.isAvailable !== false 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedProduct.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                  </span>
+                </div>
+
+                {/* Product Description */}
+                <p className="text-gray-600 text-sm mb-4">{selectedProduct.description}</p>
+
+                {/* Units Selection */}
                 {selectedProduct.units && selectedProduct.units.length > 0 && (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      เลือกหน่วย
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProduct.units.map((unit) => (
-                        <button
-                          key={unit.label}
-                          type="button"
-                          onClick={() => setSelectedUnit(unit)}
-                          className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                            selectedUnit?.label === unit.label
-                              ? 'border-blue-600 bg-blue-50 text-blue-700'
-                              : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          {unit.label} ({unit.price.toLocaleString()} ฿)
-                        </button>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">เลือกหน่วย</label>
+                    <div className="space-y-2">
+                      {selectedProduct.units.map((unit, index) => (
+                        <label key={index} className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            name="unit"
+                            checked={selectedUnit?.label === unit.label}
+                            onChange={() => setSelectedUnit(unit)}
+                            disabled={selectedProduct.isAvailable === false}
+                            className="disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <span className={selectedProduct.isAvailable === false ? 'text-gray-400' : ''}>
+                            {unit.label} - ฿{unit.price.toLocaleString()}
+                          </span>
+                        </label>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Options */}
-                {selectedProduct.options && selectedProduct.options.map((option) => (
-                  <div key={option.name} className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {option.name}
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {option.values.map((value) => (
+                {/* Options Selection */}
+                {selectedProduct.options && selectedProduct.options.map((option, optionIndex) => (
+                  <div key={optionIndex} className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{option.name}</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {option.values.map((value, valueIndex) => (
                         <button
-                          key={value.label}
-                          onClick={() => setSelectedOptions(prev => ({ ...prev, [option.name]: value.label }))}
-                          className={`p-3 border rounded-lg text-center transition-colors ${
+                          key={valueIndex}
+                          onClick={() => {
+                            if (selectedProduct.isAvailable === false) return;
+                            setSelectedOptions(prev => ({
+                              ...prev,
+                              [option.name]: value.label
+                            }));
+                          }}
+                          disabled={selectedProduct.isAvailable === false}
+                          className={`p-2 border rounded-lg text-sm transition-colors ${
                             selectedOptions[option.name] === value.label
                               ? 'border-blue-500 bg-blue-50 text-blue-700'
                               : 'border-gray-300 hover:border-gray-400'
-                          }`}
+                          } ${selectedProduct.isAvailable === false ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {value.imageUrl && (
-                            <div className="relative w-8 h-8 mx-auto mb-1">
+                            <div className="relative w-full h-20 mb-2">
                               <Image
                                 src={value.imageUrl}
                                 alt={value.label}
@@ -708,20 +810,21 @@ const ShopPage = () => {
                               />
                             </div>
                           )}
-                          <span className="text-sm">{value.label}</span>
+                          {value.label}
                         </button>
                       ))}
                     </div>
                   </div>
                 ))}
 
-                {/* ช่องใส่จำนวนสินค้าใน modal */}
+                {/* Quantity */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">จำนวน</label>
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
+                      disabled={selectedProduct.isAvailable === false}
+                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       -
                     </button>
@@ -729,12 +832,14 @@ const ShopPage = () => {
                       type="number"
                       value={modalQuantity}
                       onChange={(e) => setModalQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-20 text-center border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={selectedProduct.isAvailable === false}
+                      className="w-20 text-center border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       min="1"
                     />
                     <button
                       onClick={() => setModalQuantity(modalQuantity + 1)}
-                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
+                      disabled={selectedProduct.isAvailable === false}
+                      className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       +
                     </button>
@@ -743,9 +848,17 @@ const ShopPage = () => {
 
                 <button
                   onClick={addToCartWithOptions}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  disabled={selectedProduct.isAvailable === false}
+                  className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                    selectedProduct.isAvailable === false 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
-                  เพิ่มลงตะกร้า ({modalQuantity} ชิ้น)
+                  {selectedProduct.isAvailable === false 
+                    ? 'สินค้าหมด' 
+                    : `เพิ่มลงตะกร้า (${modalQuantity} ชิ้น)`
+                  }
                 </button>
               </div>
             </motion.div>
@@ -958,8 +1071,8 @@ const ShopPage = () => {
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="เช่น สำนักงาน 1, สำนักงาน 2"
-                          onChange={e => setCustomerName(e.target.value)}
-                          value={customerName}
+                          onChange={e => setAddressLabel(e.target.value)}
+                          value={addressLabel}
                           style={{ marginBottom: 4 }}
                         />
                         <textarea

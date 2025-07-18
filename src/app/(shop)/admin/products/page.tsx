@@ -36,6 +36,7 @@ const AdminProductsPage = () => {
   const [options, setOptions] = useState<ProductOption[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [uploadingOptionImage, setUploadingOptionImage] = useState<{optIdx: number, valIdx: number} | null>(null);
+  const [isAvailable, setIsAvailable] = useState(true);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -66,6 +67,7 @@ const AdminProductsPage = () => {
     setEditMode(false);
     setCurrentProductId(null);
     setShowForm(false);
+    setIsAvailable(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -96,6 +98,7 @@ const AdminProductsPage = () => {
       description,
       imageUrl,
       category,
+      isAvailable,
     };
 
     if (price.trim() !== '') {
@@ -185,6 +188,7 @@ const AdminProductsPage = () => {
     setDescription(product.description);
     setImageUrl(product.imageUrl);
     setCategory(product.category || 'ทั่วไป');
+    setIsAvailable(product.isAvailable !== false);
     setEditMode(true);
     setCurrentProductId(product._id);
     setShowForm(true);
@@ -476,6 +480,16 @@ const AdminProductsPage = () => {
                     มีตัวเลือก
                   </div>
                 )}
+                {product.isAvailable === false && (
+                  <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    สินค้าหมด
+                  </div>
+                )}
+                {product.isAvailable === false && (
+                  <div className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                  </div>
+                )}
               </div>
               
               <div className="p-4">
@@ -491,6 +505,17 @@ const AdminProductsPage = () => {
                 </p>
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                 
+                {/* Availability Status */}
+                <div className="mb-4">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    product.isAvailable !== false 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                  </span>
+                </div>
+
                 {/* Options preview */}
                 {product.options && product.options.length > 0 && (
                   <div className="mb-4">
@@ -672,14 +697,46 @@ const AdminProductsPage = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
-                        <input
-                          type="text"
+                        <select
                           value={category}
                           onChange={(e) => setCategory(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="เช่น ฟีล์ม, กาว"
-                          required
-                        />
+                        >
+                          <option value="ทั่วไป">ทั่วไป</option>
+                          <option value="กาวและซีลแลนท์">กาวและซีลแลนท์</option>
+                          <option value="เครื่องมือ">เครื่องมือ</option>
+                          <option value="อะไหล่">อะไหล่</option>
+                          <option value="วัสดุก่อสร้าง">วัสดุก่อสร้าง</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">สถานะสินค้า</label>
+                        <div className="flex items-center space-x-3">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="availability"
+                              checked={isAvailable}
+                              onChange={() => setIsAvailable(true)}
+                              className="mr-2"
+                            />
+                            <span className="text-green-600">✅ พร้อมขาย</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="availability"
+                              checked={!isAvailable}
+                              onChange={() => setIsAvailable(false)}
+                              className="mr-2"
+                            />
+                            <span className="text-red-600">❌ สินค้าหมด</span>
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          เมื่อเลือก "สินค้าหมด" ลูกค้าจะเห็นสินค้าแต่ไม่สามารถสั่งซื้อได้
+                        </p>
                       </div>
 
                       <div>

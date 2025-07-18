@@ -57,15 +57,19 @@ export async function POST(req: Request) {
       let user = await User.findOne({ phoneNumber: formattedPhoneNumber });
       
       if (!user) {
-        // หากไม่มีข้อมูลชื่อ ให้ใช้ค่าว่างหรือเบอร์โทรแทน
+        // หากไม่มีข้อมูลชื่อ ให้ใช้ชื่อเริ่มต้น
         user = await User.create({
-          name: name || formattedPhoneNumber, // เก็บชื่อเป็นเบอร์หรือค่าว่างได้ตามต้องการ
+          name: name && name.trim() ? name.trim() : 'ลูกค้า',
           phoneNumber: formattedPhoneNumber,
           isVerified: true,
         });
       } else {
         // อัปเดตสถานะการยืนยันของผู้ใช้ที่มีอยู่
         user.isVerified = true;
+        // อัปเดตชื่อถ้ามีการส่งชื่อมาและชื่อเดิมเป็นเบอร์โทรศัพท์
+        if (name && name.trim() && user.name === user.phoneNumber) {
+          user.name = name.trim();
+        }
         await user.save();
       }
 

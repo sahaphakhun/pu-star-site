@@ -10,12 +10,6 @@ export interface IUser {
   isVerified: boolean; // เพิ่มสถานะการยืนยันตัวตน
   createdAt: Date;
   updatedAt: Date;
-  addresses?: Array<{
-    label: string;
-    address: string;
-    isDefault?: boolean;
-    _id?: string;
-  }>;
 }
 
 // กำหนดสคีมาของผู้ใช้
@@ -61,16 +55,6 @@ const userSchema = new Schema<IUser>(
     isVerified: {
       type: Boolean,
       default: false,
-    },
-    addresses: {
-      type: [
-        {
-          label: { type: String, required: true },
-          address: { type: String, required: true },
-          isDefault: { type: Boolean, default: false },
-        }
-      ],
-      default: [],
     },
   },
   {

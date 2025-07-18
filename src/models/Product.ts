@@ -21,6 +21,7 @@ export interface IProduct extends Document {
     shippingFee?: number;
     unitPrice?: number;
   }[];
+  isAvailable?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -81,6 +82,11 @@ const productSchema = new Schema<IProduct>(
       type: Number,
       required: false,
       min: 0,
+    },
+    isAvailable: {
+      type: Boolean,
+      required: false,
+      default: true,
     },
   },
   { 

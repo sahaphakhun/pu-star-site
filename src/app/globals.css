@@ -30,3 +30,13 @@ body {
   color: var(--foreground);
   font-family: 'Prompt', Arial, Helvetica, sans-serif;
 }
+
+/* Hide scrollbar for category buttons */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

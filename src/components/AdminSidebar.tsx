@@ -21,6 +21,7 @@ const AdminSidebar: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showOrdersDropdown, setShowOrdersDropdown] = useState(false);
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -113,7 +114,19 @@ const AdminSidebar: React.FC = () => {
 
   const menuItems = [
     { label: 'ภาพรวม', href: '/admin', icon: '📊' },
-    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦' },
+    { 
+      label: 'จัดการออเดอร์', 
+      href: '/admin/orders', 
+      icon: '📦',
+      hasDropdown: true,
+      subItems: [
+        { label: 'กำลังซื้อ', href: '/admin/orders/processing', icon: '🛒' },
+        { label: 'จัดส่งสำเร็จ', href: '/admin/orders/delivered', icon: '✅' },
+        { label: 'จัดส่งไม่สำเร็จ', href: '/admin/orders/failed', icon: '❌' },
+        { label: 'เคลมสินค้า', href: '/admin/orders/claims', icon: '🔄' },
+        { label: 'ขอใบกำกับภาษี', href: '/admin/orders/tax-invoices', icon: '📄' },
+      ]
+    },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },
     { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥' },
     { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢' },
@@ -231,22 +244,68 @@ const AdminSidebar: React.FC = () => {
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.href}>
-              <a
-                href={item.href}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  pathname === item.href
-                    ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-                {item.href === '/admin/orders' && pendingOrders.length > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {pendingOrders.length}
-                  </span>
-                )}
-              </a>
+              {item.hasDropdown ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowOrdersDropdown(!showOrdersDropdown)}
+                    className={`w-full flex items-center justify-between space-x-3 p-3 rounded-lg transition-colors ${
+                      pathname.startsWith('/admin/orders')
+                        ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">{item.icon}</span>
+                      <span className="font-medium">{item.label}</span>
+                      {pendingOrders.length > 0 && (
+                        <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {pendingOrders.length}
+                        </span>
+                      )}
+                    </div>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showOrdersDropdown ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {showOrdersDropdown && (
+                    <ul className="mt-2 ml-4 space-y-1 border-l-2 border-gray-200 pl-4">
+                      {item.subItems?.map((subItem) => (
+                        <li key={subItem.href}>
+                          <a
+                            href={subItem.href}
+                            className={`flex items-center space-x-3 p-2 rounded-lg transition-colors text-sm ${
+                              pathname === subItem.href
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="text-sm">{subItem.icon}</span>
+                            <span>{subItem.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <a
+                  href={item.href}
+                  className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                    pathname === item.href
+                      ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                </a>
+              )}
             </li>
           ))}
         </ul>
