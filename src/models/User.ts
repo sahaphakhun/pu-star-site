@@ -8,6 +8,20 @@ export interface IUser {
   password?: string; // รหัสผ่านเป็นตัวเลือก (กรณีใช้ OTP อย่างเดียว)
   role: 'user' | 'admin';
   isVerified: boolean; // เพิ่มสถานะการยืนยันตัวตน
+  // เพิ่มฟิลด์สำหรับจัดการลูกค้า
+  customerType?: 'new' | 'regular' | 'target' | 'inactive';
+  assignedTo?: string; // ผู้รับผิดชอบ
+  taxId?: string; // เลขผู้เสียภาษี
+  lastOrderDate?: Date; // วันที่สั่งซื้อล่าสุด
+  totalOrders?: number; // จำนวนออเดอร์ทั้งหมด
+  totalSpent?: number; // ยอดซื้อรวมทั้งหมด
+  averageOrderValue?: number; // ค่าเฉลี่ยต่อออเดอร์
+  addresses?: {
+    _id?: string;
+    label: string;
+    address: string;
+    isDefault: boolean;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,11 +70,56 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    // เพิ่มฟิลด์สำหรับจัดการลูกค้า
+    customerType: {
+      type: String,
+      enum: ['new', 'regular', 'target', 'inactive'],
+      default: 'new',
+    },
+    assignedTo: {
+      type: String,
+      required: false,
+    },
+    taxId: {
+      type: String,
+      required: false,
+    },
+    lastOrderDate: {
+      type: Date,
+      required: false,
+    },
+    totalOrders: {
+      type: Number,
+      default: 0,
+    },
+    totalSpent: {
+      type: Number,
+      default: 0,
+    },
+    averageOrderValue: {
+      type: Number,
+      default: 0,
+    },
+    addresses: {
+      type: [{
+        _id: { type: Schema.Types.ObjectId, auto: true },
+        label: { type: String, required: true },
+        address: { type: String, required: true },
+        isDefault: { type: Boolean, default: false }
+      }],
+      default: []
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// เพิ่มดัชนีสำหรับการค้นหา
+userSchema.index({ customerType: 1 });
+userSchema.index({ lastOrderDate: -1 });
+userSchema.index({ totalSpent: -1 });
+userSchema.index({ assignedTo: 1 });
 
 // ตรวจสอบว่ามีโมเดลแล้วหรือไม่ เพื่อป้องกันการสร้างโมเดลซ้ำในโหมดการพัฒนา
 const User = models.User || model<IUser>('User', userSchema);
