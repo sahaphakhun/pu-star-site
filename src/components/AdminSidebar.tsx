@@ -116,29 +116,17 @@ const AdminSidebar: React.FC = () => {
   const menuItems = [
     { label: 'ภาพรวม', href: '/admin', icon: '📊' },
     { 
-      label: 'จัดการออเดอร์', 
+      label: 'จัดการออเดอร์ & ลูกค้า', 
       href: '/admin/orders', 
       icon: '📦',
       hasDropdown: true,
       subItems: [
-        { label: 'กำลังซื้อ', href: '/admin/orders/processing', icon: '🛒' },
-        { label: 'จัดส่งสำเร็จ', href: '/admin/orders/delivered', icon: '✅' },
-        { label: 'จัดส่งไม่สำเร็จ', href: '/admin/orders/failed', icon: '❌' },
-        { label: 'เคลมสินค้า', href: '/admin/orders/claims', icon: '🔄' },
-        { label: 'ขอใบกำกับภาษี', href: '/admin/orders/tax-invoices', icon: '📄' },
-      ]
-    },
-    { 
-      label: 'จัดการลูกค้า', 
-      href: '/admin/customers', 
-      icon: '👥',
-      hasDropdown: true,
-      subItems: [
-        { label: 'ลูกค้าทั้งหมด', href: '/admin/customers', icon: '📋' },
-        { label: 'ลูกค้าเป้าหมาย', href: '/admin/customers/target', icon: '🎯' },
-        { label: 'ลูกค้าใหม่', href: '/admin/customers/new', icon: '🆕' },
-        { label: 'ลูกค้าประจำ', href: '/admin/customers/regular', icon: '⭐' },
-        { label: 'ลูกค้าห่างหาย', href: '/admin/customers/inactive', icon: '😴' },
+        { label: 'ออเดอร์ทั้งหมด', href: '/admin/orders', icon: '📋' },
+        { label: 'ลูกค้าทั้งหมด', href: '/admin/orders?tab=customers', icon: '👥' },
+        { label: 'ลูกค้าเป้าหมาย', href: '/admin/orders?tab=customers&type=target', icon: '🎯' },
+        { label: 'ลูกค้าใหม่', href: '/admin/orders?tab=customers&type=new', icon: '🆕' },
+        { label: 'ลูกค้าประจำ', href: '/admin/orders?tab=customers&type=regular', icon: '⭐' },
+        { label: 'ลูกค้าห่างหาย', href: '/admin/orders?tab=customers&type=inactive', icon: '😴' },
       ]
     },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },

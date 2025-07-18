@@ -70,6 +70,10 @@ const AdminOrdersPage = () => {
   const [customEnd, setCustomEnd] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [formData,setFormData]=useState({customerName:'',customerPhone:'',totalAmount:'',shippingFee:'0',discount:'0'});
+  const [activeTab, setActiveTab] = useState<'orders' | 'customers'>('orders');
+  const [customerType, setCustomerType] = useState<'all' | 'target' | 'new' | 'regular' | 'inactive'>('all');
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
 
   const statusColors = {
@@ -112,6 +116,53 @@ const AdminOrdersPage = () => {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // ฟังก์ชันดึงข้อมูลลูกค้า
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoadingCustomers(true);
+      const queryParams = new URLSearchParams();
+      if (customerType !== 'all') {
+        queryParams.append('type', customerType);
+      }
+      if (searchTerm) {
+        queryParams.append('search', searchTerm);
+      }
+      
+      const response = await fetch(`/api/admin/customers?${queryParams.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCustomers(data.customers || []);
+      } else {
+        throw new Error('Failed to fetch customers');
+      }
+    } catch (error) {
+      console.error('ไม่สามารถดึงข้อมูลลูกค้าได้:', error);
+      toast.error('ไม่สามารถดึงข้อมูลลูกค้าได้');
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }, [customerType, searchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'customers') {
+      fetchCustomers();
+    }
+  }, [activeTab, fetchCustomers]);
+
+  // ตรวจสอบ URL parameters เพื่อกำหนด tab และ type
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    const type = urlParams.get('type');
+    
+    if (tab === 'customers') {
+      setActiveTab('customers');
+      if (type && ['target', 'new', 'regular', 'inactive'].includes(type)) {
+        setCustomerType(type as any);
+      }
+    }
+  }, []);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -246,7 +297,7 @@ const AdminOrdersPage = () => {
     const total = orders.length;
     const pending = orders.filter(o => o.status === 'pending').length;
     const confirmed = orders.filter(o => o.status === 'confirmed').length;
-    const packing = orders.filter(o => o.status === 'packing').length;
+    const ready = orders.filter(o => o.status === 'ready').length;
     const shipped = orders.filter(o => o.status === 'shipped').length;
     const delivered = orders.filter(o => o.status === 'delivered').length;
     const claimed = orders.filter(o => o.status === 'claimed').length;
@@ -255,7 +306,7 @@ const AdminOrdersPage = () => {
       .filter(o => o.status !== 'cancelled' && o.status !== 'claimed')
       .reduce((sum, o) => sum + o.totalAmount, 0);
 
-    return { total, pending, confirmed, packing, shipped, delivered, claimed, taxInvoiceRequests, totalRevenue };
+    return { total, pending, confirmed, ready, shipped, delivered, claimed, taxInvoiceRequests, totalRevenue };
   };
 
   const stats = getOrderStats();
@@ -292,6 +343,31 @@ const AdminOrdersPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const exportCustomersToCSV = (data: any[]) => {
+    const header = ['Name','Phone','Type','TotalOrders','TotalSpent','AverageOrder','LastOrder','AssignedTo'];
+    const rows = data.map(customer => [
+      customer.name || '',
+      customer.phoneNumber || '',
+      customer.customerType || '',
+      customer.totalOrders || 0,
+      customer.totalSpent || 0,
+      customer.averageOrderValue || 0,
+      customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : '',
+      customer.assignedTo || ''
+    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    
+    const csvContent = [header.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `customers_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -311,16 +387,48 @@ const AdminOrdersPage = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการคำสั่งซื้อ</h1>
-            <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อทั้งหมด</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการออเดอร์ & ลูกค้า</h1>
+            <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อและลูกค้าทั้งหมด</p>
           </div>
-          <button onClick={()=>exportToCSV(filteredAndSortedOrders)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+          <button 
+            onClick={() => activeTab === 'orders' ? exportToCSV(filteredAndSortedOrders) : exportCustomersToCSV(customers)} 
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+          >
             Export CSV
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'orders'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                📦 ออเดอร์ ({orders.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('customers')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'customers'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                👥 ลูกค้า ({customers.length})
+              </button>
+            </nav>
+          </div>
+        </div>
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-4 mb-8">
+        {activeTab === 'orders' && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-600">คำสั่งซื้อทั้งหมด</div>
@@ -331,11 +439,11 @@ const AdminOrdersPage = () => {
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-blue-600">{stats.confirmed}</div>
-            <div className="text-sm text-gray-600">ยืนยันออเดอร์</div>
+            <div className="text-sm text-gray-600">ยืนยันออเดอร์แล้ว</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-orange-600">{stats.packing}</div>
-            <div className="text-sm text-gray-600">แพ็คสินค้า</div>
+            <div className="text-2xl font-bold text-orange-600">{stats.ready}</div>
+            <div className="text-sm text-gray-600">ที่ต้องได้รับ</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="text-2xl font-bold text-purple-600">{stats.shipped}</div>
@@ -358,8 +466,10 @@ const AdminOrdersPage = () => {
             <div className="text-sm text-gray-600">ยอดขายรวม</div>
           </div>
         </div>
+        )}
 
         {/* Filters and Search */}
+        {activeTab === 'orders' && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -381,8 +491,8 @@ const AdminOrdersPage = () => {
               >
                 <option value="all">ทั้งหมด</option>
                 <option value="pending">รอดำเนินการ</option>
-                <option value="confirmed">ยืนยันออเดอร์</option>
-                <option value="packing">แพ็คสินค้า</option>
+                <option value="confirmed">ยืนยันออเดอร์แล้ว</option>
+                <option value="ready">ที่ต้องได้รับ</option>
                 <option value="shipped">จัดส่งแล้ว</option>
                 <option value="delivered">ส่งสำเร็จ</option>
                 <option value="cancelled">ยกเลิก</option>
@@ -424,8 +534,42 @@ const AdminOrdersPage = () => {
 
         {/* create order button */}
         <button onClick={()=>setShowCreate(true)} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">สร้างออเดอร์ใหม่</button>
+        )}
+
+        {/* Customer Filters */}
+        {activeTab === 'customers' && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหาลูกค้า</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="ค้นหาด้วยชื่อ หรือ เบอร์โทร"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทลูกค้า</label>
+              <select
+                value={customerType}
+                onChange={(e) => setCustomerType(e.target.value as any)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">ทั้งหมด</option>
+                <option value="target">ลูกค้าเป้าหมาย</option>
+                <option value="new">ลูกค้าใหม่</option>
+                <option value="regular">ลูกค้าประจำ</option>
+                <option value="inactive">ลูกค้าห่างหาย</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* Orders Table */}
+        {activeTab === 'orders' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -557,6 +701,97 @@ const AdminOrdersPage = () => {
               <p className="text-gray-600">ลองเปลี่ยนเงื่อนไขการค้นหาหรือกรองข้อมูล</p>
             </div>
           </div>
+        )}
+        )}
+
+        {/* Customers Table */}
+        {activeTab === 'customers' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ลูกค้า
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ประเภท
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จำนวนออเดอร์
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ยอดซื้อรวม
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ออเดอร์ล่าสุด
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ผู้รับผิดชอบ
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loadingCustomers ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                        <span className="ml-2">กำลังโหลดข้อมูลลูกค้า...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : customers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                      ไม่พบข้อมูลลูกค้า
+                    </td>
+                  </tr>
+                ) : (
+                  customers.map((customer) => (
+                    <tr key={customer._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                          <div className="text-sm text-gray-500">{customer.phoneNumber}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          customer.customerType === 'target' ? 'bg-green-100 text-green-800' :
+                          customer.customerType === 'new' ? 'bg-blue-100 text-blue-800' :
+                          customer.customerType === 'regular' ? 'bg-yellow-100 text-yellow-800' :
+                          customer.customerType === 'inactive' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {customer.customerType === 'target' ? 'เป้าหมาย' :
+                           customer.customerType === 'new' ? 'ใหม่' :
+                           customer.customerType === 'regular' ? 'ประจำ' :
+                           customer.customerType === 'inactive' ? 'ห่างหาย' : 'ทั่วไป'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {customer.totalOrders || 0} ครั้ง
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ฿{(customer.totalSpent || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {customer.lastOrderDate ? 
+                          new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : 
+                          'ไม่มีข้อมูล'
+                        }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {customer.assignedTo || 'ไม่ได้กำหนด'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
         )}
       </div>
 
@@ -750,7 +985,7 @@ const AdminOrdersPage = () => {
                   </div>
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      💡 <strong>คำแนะนำ:</strong> รอดำเนินการ → ยืนยันออเดอร์ → แพ็คสินค้า (แนบรูป) → จัดส่งแล้ว → ส่งสำเร็จ
+                      💡 <strong>คำแนะนำ:</strong> รอดำเนินการ → ยืนยันออเดอร์แล้ว → ที่ต้องได้รับ (แนบรูป) → จัดส่งแล้ว → ส่งสำเร็จ
                     </p>
                   </div>
                 </div>
