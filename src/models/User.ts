@@ -31,9 +31,10 @@ const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, 'ต้องระบุชื่อผู้ใช้'],
+      required: false, // เปลี่ยนเป็น false เพื่อรองรับลูกค้าเก่าที่ไม่มีชื่อ
       minlength: [2, 'ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 2 ตัวอักษร'],
       maxlength: [50, 'ชื่อผู้ใช้ต้องมีความยาวไม่เกิน 50 ตัวอักษร'],
+      default: 'ลูกค้า', // ค่าเริ่มต้น
     },
     phoneNumber: {
       type: String,

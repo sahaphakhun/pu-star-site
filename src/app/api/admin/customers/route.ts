@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
+import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Order from '@/models/Order';
 import { verifyToken } from '@/lib/auth';
@@ -12,13 +12,19 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Starting GET /api/admin/customers');
+    
     // ตรวจสอบสิทธิ์ admin
     const authResult = await verifyToken(request);
+    console.log('Auth result:', authResult);
+    
     if (!authResult.valid || authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 
+    console.log('Connecting to DB...');
     await connectDB();
+    console.log('DB connected successfully');
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -63,11 +69,17 @@ export async function GET(request: NextRequest) {
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     // ดึงข้อมูลลูกค้า
+    console.log('Filters:', filters);
+    console.log('Sort options:', sortOptions);
+    
     const customers = await User.find(filters)
       .sort(sortOptions)
       .skip((page - 1) * limit)
       .limit(limit)
+      .select('-password') // ไม่เอาฟิลด์ password
       .lean();
+      
+    console.log('Found customers:', customers.length);
 
     const totalCustomers = await User.countDocuments(filters);
     const totalPages = Math.ceil(totalCustomers / limit);
@@ -85,7 +97,9 @@ export async function GET(request: NextRequest) {
     }
 
     // สร้างสถิติรวม
-    const allCustomersForStats = await User.find({ role: 'user' }).lean();
+    const allCustomersForStats = await User.find({ role: 'user' })
+      .select('-password')
+      .lean();
     const stats = generateCustomerStats(allCustomersForStats);
 
     return NextResponse.json({
@@ -105,8 +119,13 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching customers:', error);
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลลูกค้า' },
+      { 
+        error: 'เกิดข้อผิดพลาดในการดึงข้อมูลลูกค้า',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

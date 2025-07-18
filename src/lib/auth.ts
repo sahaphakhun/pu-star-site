@@ -108,6 +108,30 @@ export async function verifyAuth(req: Request): Promise<AuthResult> {
   }
 }
 
+// ฟังก์ชัน verifyToken สำหรับ API routes
+export async function verifyToken(request: any) {
+  try {
+    const authResult = await verifyAuth(request);
+    return {
+      valid: authResult.success,
+      decoded: authResult.user ? {
+        userId: authResult.user._id,
+        phoneNumber: authResult.user.phoneNumber,
+        name: authResult.user.name,
+        role: authResult.user.role
+      } : null,
+      message: authResult.message
+    };
+  } catch (error) {
+    console.error('Error in verifyToken:', error);
+    return {
+      valid: false,
+      decoded: null,
+      message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์'
+    };
+  }
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({

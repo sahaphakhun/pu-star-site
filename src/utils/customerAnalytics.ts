@@ -164,9 +164,9 @@ export function filterCustomers(
     // กรองตามคำค้นหา (ชื่อ, เบอร์โทร, อีเมล)
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
-      const matchName = customer.name.toLowerCase().includes(searchLower);
-      const matchPhone = customer.phoneNumber.includes(searchLower);
-      const matchEmail = customer.email?.toLowerCase().includes(searchLower);
+      const matchName = customer.name ? customer.name.toLowerCase().includes(searchLower) : false;
+      const matchPhone = customer.phoneNumber ? customer.phoneNumber.includes(searchLower) : false;
+      const matchEmail = customer.email ? customer.email.toLowerCase().includes(searchLower) : false;
       
       if (!matchName && !matchPhone && !matchEmail) {
         return false;
@@ -188,7 +188,8 @@ export function generateCustomerStats(customers: IUser[]): CustomerStats {
   const inactiveCustomers = customers.filter(c => c.customerType === 'inactive').length;
 
   const totalRevenue = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
-  const averageOrderValue = customers.reduce((sum, c) => sum + (c.averageOrderValue || 0), 0) / totalCustomers;
+  const averageOrderValue = totalCustomers > 0 ? 
+    customers.reduce((sum, c) => sum + (c.averageOrderValue || 0), 0) / totalCustomers : 0;
 
   // ลูกค้าท็อป 10
   const topCustomers = customers
@@ -226,8 +227,8 @@ export function calculateGrowthRate(current: number, previous: number): number {
  */
 export function prepareCustomerDataForExport(customers: IUser[]) {
   return customers.map(customer => ({
-    'ชื่อ': customer.name,
-    'เบอร์โทรศัพท์': customer.phoneNumber,
+    'ชื่อ': customer.name || 'ลูกค้า',
+    'เบอร์โทรศัพท์': customer.phoneNumber || '-',
     'อีเมล': customer.email || '-',
     'ประเภทลูกค้า': getCustomerTypeLabel(customer.customerType),
     'ผู้รับผิดชอบ': customer.assignedTo || '-',
@@ -237,7 +238,8 @@ export function prepareCustomerDataForExport(customers: IUser[]) {
     'ค่าเฉลี่ยต่อออเดอร์': customer.averageOrderValue || 0,
     'วันที่สั่งซื้อล่าสุด': customer.lastOrderDate ? 
       new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : '-',
-    'วันที่สมัครสมาชิก': new Date(customer.createdAt).toLocaleDateString('th-TH'),
+    'วันที่สมัครสมาชิก': customer.createdAt ? 
+      new Date(customer.createdAt).toLocaleDateString('th-TH') : '-',
   }));
 }
 
