@@ -348,7 +348,7 @@ const ShopPage = () => {
       }
       
       // เพิ่ม logic บันทึกที่อยู่ใหม่
-      if (saveNewAddress && showNewAddress && customerAddress) {
+      if (saveNewAddress && customerAddress) {
         try {
           const response = await fetch('/api/profile/addresses', {
             method: 'POST',
