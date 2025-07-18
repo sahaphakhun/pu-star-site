@@ -58,10 +58,10 @@ export async function GET(request: NextRequest) {
 
     const hasPaginationParam = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || searchParams.has('status');
     if (!hasPaginationParam && !startDate && !endDate) {
-      return NextResponse.json(orders);
+      return NextResponse.json({ orders });
     }
 
-    return NextResponse.json({ data: orders, total, page, limit, totalPages: Math.ceil(total / limit) });
+    return NextResponse.json({ orders: orders, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(
