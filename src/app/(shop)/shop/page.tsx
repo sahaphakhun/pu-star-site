@@ -66,24 +66,31 @@ const ShopPage = () => {
     }
   }, [isLoggedIn, user]);
 
+  // ฟังก์ชันสำหรับดึง addresses
+  const fetchAddresses = async () => {
+    if (isLoggedIn) {
+      try {
+        const res = await fetch('/api/profile/addresses');
+        const data = await res.json();
+        if (data.success && data.data) {
+          setAddresses(data.data);
+          // autofill ที่อยู่ default
+          const def = data.data.find((a:any) => a.isDefault) || data.data[0];
+          if (def) {
+            setSelectedAddressId(def._id || null);
+            setCustomerAddress(def.address);
+            setShowNewAddress(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
+      }
+    }
+  };
+
   // ดึง addresses ของ user
   useEffect(() => {
-    if (isLoggedIn) {
-      fetch('/api/profile/addresses')
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.data) {
-            setAddresses(data.data);
-            // autofill ที่อยู่ default
-            const def = data.data.find((a:any) => a.isDefault) || data.data[0];
-            if (def) {
-              setSelectedAddressId(def._id || null);
-              setCustomerAddress(def.address);
-              setShowNewAddress(false);
-            }
-          }
-        });
-    }
+    fetchAddresses();
   }, [isLoggedIn]);
 
   // เมื่อเลือกที่อยู่เดิม
@@ -363,6 +370,11 @@ const ShopPage = () => {
               toast.success('บันทึกที่อยู่สำเร็จ');
               // อัพเดท addresses state
               setAddresses(data.data || []);
+              // ตั้งค่าที่อยู่ใหม่เป็นที่อยู่ที่เลือก
+              const newAddress = data.data.find((a:any) => a.address === customerAddress);
+              if (newAddress) {
+                setSelectedAddressId(newAddress._id);
+              }
             }
           }
         } catch (error) {
@@ -424,6 +436,14 @@ const ShopPage = () => {
         setCompanyAddress('');
         setCompanyPhone('');
         setCompanyEmail('');
+        setSaveNewAddress(false);
+        setAddressLabel('');
+        setSelectedAddressId(null);
+        setShowNewAddress(false);
+        // รีเฟรช addresses หากมีการบันทึกที่อยู่ใหม่
+        if (saveNewAddress) {
+          await fetchAddresses();
+        }
       } else {
         throw new Error('Failed to submit order');
       }
