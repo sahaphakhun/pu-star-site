@@ -353,6 +353,7 @@ const ShopPage = () => {
           const response = await fetch('/api/profile/addresses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ 
               label: addressLabel || 'ที่อยู่ใหม่', 
               address: customerAddress, 
@@ -440,10 +441,14 @@ const ShopPage = () => {
         setAddressLabel('');
         setSelectedAddressId(null);
         setShowNewAddress(false);
-        // รีเฟรช addresses หากมีการบันทึกที่อยู่ใหม่
-        if (saveNewAddress) {
-          await fetchAddresses();
-        }
+        // รีเฟรชรายการที่อยู่ เพื่อให้ที่อยู่ใหม่แสดงผลในฟอร์ม/โปรไฟล์ทันที
+        await fetchAddresses();
+
+        // เคลียร์ state ที่เกี่ยวข้องกับที่อยู่ใหม่
+        setSaveNewAddress(false);
+        setAddressLabel('');
+        setSelectedAddressId(null);
+        setShowNewAddress(false);
       } else {
         throw new Error('Failed to submit order');
       }
