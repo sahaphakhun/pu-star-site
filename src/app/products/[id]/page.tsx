@@ -147,7 +147,7 @@ export default function ProductDetail() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold text-red-500 mb-4">{error || 'ไม่พบสินค้า'}</h1>
-        <Link href="/" className="text-blue-600 underline">กลับหน้าหลัก</Link>
+        <Link href="/shop" className="text-blue-600 underline">กลับหน้าร้าน</Link>
       </div>
     );
   }
@@ -278,8 +278,8 @@ export default function ProductDetail() {
               <Link href="/cart" className="flex-1 text-center bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors">
                 ดูตะกร้า
               </Link>
-              <Link href="/" className="flex-1 text-center bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                กลับหน้าหลัก
+              <Link href="/shop" className="flex-1 text-center bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                กลับหน้าร้าน
               </Link>
             </div>
           </div>

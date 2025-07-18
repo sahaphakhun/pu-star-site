@@ -116,11 +116,7 @@ export async function showProducts(psid: string, categorySlug?: string) {
       subtitle,
       image_url: transformImage(p.imageUrl),
       buttons: [
-        {
-          type: 'postback',
-          title: 'สั่งซื้อ 🛒',
-          payload: `ORDER_${p._id}`,
-        },
+        // ลบปุ่มสั่งซื้อ 🛒 ออก เหลือแค่ดูรายละเอียดและติดต่อแอดมิน
         {
           type: 'web_url',
           title: 'ดูรายละเอียด',
@@ -156,82 +152,7 @@ export async function handleCategoryPostback(psid: string, payload: string) {
   return showProducts(psid, slug);
 }
 
-// จัดการ postback ORDER_<id>
-export async function handleOrderPostback(psid: string, payload: string) {
-  const productId = payload.replace('ORDER_', '');
-  const product = await getProductById(productId);
-  if (!product) {
-    callSendAPIAsync(psid, { text: 'ไม่พบสินค้านี้แล้วครับ' });
-    return;
-  }
-  const idStr = (product._id as any).toString();
-
-  // ถ้ามีหน่วย ให้ถามหน่วยก่อน
-  if (product.units && product.units.length > 0) {
-    await updateSession(psid, {
-      step: 'select_unit',
-      tempData: {
-        product: {
-          id: idStr,
-          name: product.name,
-          price: product.price, // default
-          options: product.options ?? [],
-          units: product.units,
-        },
-      },
-    });
-    return askUnit(psid);
-  }
-
-  // ถ้าสินค้ามีตัวเลือก ให้ถามตัวเลือกต่อ
-  if (product.options && product.options.length > 0) {
-    // เก็บข้อมูลสินค้าไว้ใน session ชั่วคราว
-    await updateSession(psid, {
-      step: 'select_option',
-      tempData: {
-        product: {
-          id: idStr,
-          name: product.name,
-          price: product.price,
-          options: product.options,
-        },
-        selections: {},
-        optIdx: 0,
-      },
-    });
-    return askNextOption(psid);
-  }
-
-  // ไม่มีตัวเลือก จึงเพิ่มตรง ๆ
-  await addToCart(psid, {
-    productId: idStr,
-    name: product.name,
-    price: product.price || (product.units && product.units[0]?.price) || 0,
-    quantity: 1,
-    selectedOptions: {},
-    unitLabel: product.units && product.units[0]?.label,
-    unitPrice: product.units && product.units[0]?.price,
-  });
-
-  const session = await getSession(psid);
-  const total = session.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  
-  let unitText = '';
-  if (product.units && product.units[0]?.label) {
-    unitText = ` (${product.units[0].label})`;
-  }
-  
-  callSendAPIAsync(psid, {
-    text: `เพิ่ม ${product.name}${unitText} ในตะกร้าแล้ว 🎉\nยอดรวม ${total.toLocaleString()} บาท`,
-    quick_replies: [
-      { content_type: 'text', title: 'ยืนยันการสั่งซื้อ', payload: 'CONFIRM_CART' },
-      { content_type: 'text', title: 'ดูตะกร้า', payload: 'SHOW_CART' },
-      { content_type: 'text', title: 'ดูสินค้าเพิ่ม', payload: 'SHOW_PRODUCTS' },
-    ],
-  });
-
-  await updateSession(psid, { step: 'summary' });
-}
+// ลบฟังก์ชัน handleOrderPostback และการเรียกใช้งานที่เกี่ยวข้องกับ ORDER_ ออก (หรือคอมเมนต์ไว้ถ้าจำเป็น)
 
 // ถามตัวเลือกตามลำดับ
 export async function askNextOption(psid: string): Promise<void> {

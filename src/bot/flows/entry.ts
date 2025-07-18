@@ -59,9 +59,6 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload.startsWith('CATEGORY_')) {
       return handleCategoryPostback(psid, payload);
     }
-    if (payload.startsWith('ORDER_')) {
-      return handleOrderPostback(psid, payload);
-    }
     if (payload === 'CONTACT_ADMIN' || payload === 'CONTACT_ADMIN_INIT') {
       notifyAdminsContact(psid);
       return callSendAPI(psid, {
