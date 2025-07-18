@@ -805,18 +805,25 @@ const ShopPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">เลือกหน่วย</label>
                     <div className="space-y-2">
                       {selectedProduct.units.map((unit, index) => (
-                        <label key={index} className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="unit"
-                            checked={selectedUnit?.label === unit.label}
-                            onChange={() => setSelectedUnit(unit)}
-                            disabled={selectedProduct.isAvailable === false}
-                            className="disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                          <span className={selectedProduct.isAvailable === false ? 'text-gray-400' : ''}>
-                            {unit.label} - ฿{unit.price.toLocaleString()}
-                          </span>
+                        <label key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="radio"
+                              name="unit"
+                              checked={selectedUnit?.label === unit.label}
+                              onChange={() => setSelectedUnit(unit)}
+                              disabled={selectedProduct.isAvailable === false}
+                              className="disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <span className={selectedProduct.isAvailable === false ? 'text-gray-400' : 'text-gray-800'}>
+                              {unit.label} - ฿{unit.price.toLocaleString()}
+                            </span>
+                          </div>
+                          {(unit.shippingFee === 0 || unit.shippingFee === undefined) && (
+                            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-sm">
+                              ส่งฟรี
+                            </span>
+                          )}
                         </label>
                       ))}
                     </div>
