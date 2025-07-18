@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import PackingImageGallery from '@/components/PackingImageGallery';
 
 interface TaxInvoice {
   requestTaxInvoice: boolean;
@@ -24,6 +25,11 @@ interface Order {
     price: number;
     quantity: number;
   }[];
+  packingProofs?: Array<{
+    url: string;
+    type: 'image' | 'video';
+    addedAt: string;
+  }>;
   totalAmount: number;
   paymentMethod: 'cod' | 'transfer';
   slipUrl?: string;
@@ -287,6 +293,17 @@ const ProfilePage = () => {
                       <p><span className="font-medium">นิติบุคคล/บุคคลธรรมดา:</span> {order.taxInvoice.companyName}</p>
                       <p><span className="font-medium">เลขประจำตัวผู้เสียภาษี:</span> <span className="font-mono">{order.taxInvoice.taxId}</span></p>
                     </div>
+                  </div>
+                )}
+
+                {/* Packing Images */}
+                {order.packingProofs && order.packingProofs.length > 0 && (
+                  <div className="mt-4">
+                    <PackingImageGallery
+                      orderId={order._id}
+                      packingProofs={order.packingProofs}
+                      isAdmin={false}
+                    />
                   </div>
                 )}
               </div>

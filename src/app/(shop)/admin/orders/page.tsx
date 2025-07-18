@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
+import PackingImageGallery from '@/components/PackingImageGallery';
 
 interface OrderItem {
   productId: string;
@@ -43,7 +44,7 @@ interface Order {
   totalAmount: number;
   shippingFee: number;
   discount?: number;
-  status: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
   createdAt: string;
   updatedAt: string;
   trackingNumber?: string;
@@ -69,13 +70,12 @@ const AdminOrdersPage = () => {
   const [customEnd, setCustomEnd] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [formData,setFormData]=useState({customerName:'',customerPhone:'',totalAmount:'',shippingFee:'0',discount:'0'});
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
-    packing: 'bg-orange-100 text-orange-800 border-orange-200',
+    ready: 'bg-orange-100 text-orange-800 border-orange-200',
     shipped: 'bg-purple-100 text-purple-800 border-purple-200',
     delivered: 'bg-green-100 text-green-800 border-green-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200',
@@ -84,8 +84,8 @@ const AdminOrdersPage = () => {
 
   const statusLabels = {
     pending: 'รอดำเนินการ',
-    confirmed: 'ยืนยันออเดอร์',
-    packing: 'แพ็คสินค้า',
+    confirmed: 'ยืนยันออเดอร์แล้ว',
+    ready: 'ที่ต้องได้รับ',
     shipped: 'จัดส่งแล้ว',
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
@@ -201,67 +201,7 @@ const AdminOrdersPage = () => {
     }
   };
 
-  const uploadPackingImages = async (files: File[]) => {
-    if (!selectedOrder) return;
-    
-    setUploadingImage(true);
-    
-    try {
-      const uploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch(`/api/orders/${selectedOrder._id}/upload-packing-image`, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'เกิดข้อผิดพลาดในการอัพโหลด');
-        }
-        
-        return response.json();
-      });
-      
-      const results = await Promise.all(uploadPromises);
-      
-      // อัพเดตข้อมูลออเดอร์
-      setOrders((prev) =>
-        prev.map((order) => {
-          if (order._id === selectedOrder._id) {
-            const newPackingProofs = results.map((result) => result.packingProof);
-            return {
-              ...order,
-              packingProofs: [...(order.packingProofs || []), ...newPackingProofs],
-            };
-          }
-          return order;
-        })
-      );
-      
-      // อัพเดต selectedOrder
-      setSelectedOrder((prev) => {
-        if (prev) {
-          const newPackingProofs = results.map((result) => result.packingProof);
-          return {
-            ...prev,
-            packingProofs: [...(prev.packingProofs || []), ...newPackingProofs],
-          };
-        }
-        return prev;
-      });
-      
-      toast.success(`อัพโหลดรูปภาพแพ็คสินค้าสำเร็จ ${results.length} รูป`);
-      setSelectedFiles([]);
-      
-    } catch (error) {
-      console.error('เกิดข้อผิดพลาดในการอัพโหลด:', error);
-      toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการอัพโหลด');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
+
 
   const filteredAndSortedOrders = orders
     .filter((order) => {
@@ -559,6 +499,14 @@ const AdminOrdersPage = () => {
                         {order.items.slice(0, 2).map(item => item.name).join(', ')}
                         {order.items.length > 2 && '...'}
                       </div>
+                      {order.packingProofs && order.packingProofs.length > 0 && (
+                        <div className="text-xs text-blue-600 mt-1 flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {order.packingProofs.length} รูป
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-900">
@@ -761,110 +709,23 @@ const AdminOrdersPage = () => {
 
                 {/* Packing Images */}
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">รูปภาพแพ็คสินค้า</h3>
-                  
-                  {/* Display existing images */}
-                  {selectedOrder.packingProofs && selectedOrder.packingProofs.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                      {selectedOrder.packingProofs.map((proof, index) => (
-                        <div key={index} className="relative group">
-                          <Image
-                            src={proof.url}
-                            alt={`รูปแพ็คสินค้า ${index + 1}`}
-                            width={200}
-                            height={200}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <button
-                              onClick={() => window.open(proof.url, '_blank')}
-                              className="bg-white text-gray-800 px-3 py-1 rounded-md text-sm hover:bg-gray-100"
-                            >
-                              ดูใหญ่
-                            </button>
-                          </div>
-                          <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                            {new Date(proof.addedAt).toLocaleDateString('th-TH', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg mb-4">
-                      <svg className="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p>ยังไม่มีรูปภาพแพ็คสินค้า</p>
-                    </div>
-                  )}
-                  
-                  {/* Upload Section */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-4 mb-4">
-                      <label className="flex-1">
-                        <span className="block text-sm font-medium text-gray-700 mb-2">
-                          เลือกรูปภาพ (สูงสุด 10 รูป)
-                        </span>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={(e) => {
-                            if (e.target.files) {
-                              const files = Array.from(e.target.files);
-                              if (files.length > 10) {
-                                toast.error('สามารถอัพโหลดได้สูงสุด 10 รูป');
-                                return;
-                              }
-                              setSelectedFiles(files);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </label>
-                    </div>
-                    
-                    {selectedFiles.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-600 mb-2">
-                          เลือกแล้ว {selectedFiles.length} ไฟล์:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedFiles.map((file, index) => (
-                            <span key={index} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
-                              {file.name}
-                              <button
-                                onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                                className="ml-1 text-blue-600 hover:text-blue-800"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <button
-                      onClick={() => uploadPackingImages(selectedFiles)}
-                      disabled={selectedFiles.length === 0 || uploadingImage}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {uploadingImage ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          กำลังอัพโหลด...
-                        </div>
-                      ) : (
-                        `อัพโหลดรูปภาพ ${selectedFiles.length > 0 ? `(${selectedFiles.length} ไฟล์)` : ''}`
-                      )}
-                    </button>
-                  </div>
+                  <PackingImageGallery
+                    orderId={selectedOrder._id}
+                    packingProofs={selectedOrder.packingProofs || []}
+                    isAdmin={true}
+                    onImagesUpdated={(updatedProofs) => {
+                      setSelectedOrder(prev => prev ? {
+                        ...prev,
+                        packingProofs: updatedProofs
+                      } : null);
+                      // อัปเดตรายการออเดอร์ในหน้าหลัก
+                      setOrders(prev => prev.map(order => 
+                        order._id === selectedOrder._id 
+                          ? { ...order, packingProofs: updatedProofs }
+                          : order
+                      ));
+                    }}
+                  />
                 </div>
 
                 {/* Status Update */}

@@ -47,7 +47,7 @@ export interface IOrder extends Document {
   paymentMethod?: 'cod' | 'transfer';
   slipUrl?: string;
   userId?: Schema.Types.ObjectId;
-  status: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
   trackingNumber?: string;
   shippingProvider?: string;
   trackingSent?: boolean;
@@ -132,7 +132,7 @@ const orderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'packing', 'shipped', 'delivered', 'cancelled', 'claimed'],
+      enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled', 'claimed'],
       default: 'pending'
     },
     userId: {
