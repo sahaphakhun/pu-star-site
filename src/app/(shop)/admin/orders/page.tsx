@@ -53,7 +53,7 @@ interface Order {
   packingProofs?: Array<{
     url: string;
     type: 'image' | 'video';
-    addedAt: string;
+    addedAt: Date;
   }>;
   claimInfo?: ClaimInfo;
 }
@@ -69,7 +69,13 @@ const AdminOrdersPage = () => {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [formData,setFormData]=useState({customerName:'',customerPhone:'',totalAmount:'',shippingFee:'0',discount:'0'});
+  const [formData, setFormData] = useState({
+    customerName: '',
+    customerPhone: '',
+    totalAmount: '',
+    shippingFee: '0',
+    discount: '0'
+  });
   const [activeTab, setActiveTab] = useState<'orders' | 'customers'>('orders');
   const [customerType, setCustomerType] = useState<'all' | 'target' | 'new' | 'regular' | 'inactive'>('all');
   const [customers, setCustomers] = useState<any[]>([]);
@@ -368,6 +374,35 @@ const AdminOrdersPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleCreateOrder = async () => {
+    const sub = parseFloat(formData.totalAmount || '0');
+    const shipping = parseFloat(formData.shippingFee || '0');
+    const disc = parseFloat(formData.discount || '0');
+    const total = sub + shipping - disc;
+    
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: formData.customerName,
+        customerPhone: formData.customerPhone,
+        items: [],
+        shippingFee: shipping,
+        discount: disc,
+        totalAmount: total
+      })
+    });
+    
+    if (res.ok) {
+      toast.success('สร้างออเดอร์แล้ว');
+      setShowCreate(false);
+      fetchOrders();
+    } else {
+      const d = await res.json();
+      toast.error(d.error || 'ผิดพลาด');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -470,70 +505,70 @@ const AdminOrdersPage = () => {
 
         {/* Filters and Search */}
         {activeTab === 'orders' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหา</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ค้นหาด้วยชื่อ, เบอร์โทร, หรือรหัสคำสั่งซื้อ"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหา</label>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="ค้นหาด้วยชื่อ, เบอร์โทร, หรือรหัสคำสั่งซื้อ"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">ทั้งหมด</option>
+                  <option value="pending">รอดำเนินการ</option>
+                  <option value="confirmed">ยืนยันออเดอร์แล้ว</option>
+                  <option value="ready">ที่ต้องได้รับ</option>
+                  <option value="shipped">จัดส่งแล้ว</option>
+                  <option value="delivered">ส่งสำเร็จ</option>
+                  <option value="cancelled">ยกเลิก</option>
+                  <option value="claimed">เคลมสินค้า</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">เรียงลำดับ</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="newest">ใหม่สุด</option>
+                  <option value="oldest">เก่าสุด</option>
+                  <option value="amount-high">ยอดสูงสุด</option>
+                  <option value="amount-low">ยอดต่ำสุด</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">ทั้งหมด</option>
-                <option value="pending">รอดำเนินการ</option>
-                <option value="confirmed">ยืนยันออเดอร์แล้ว</option>
-                <option value="ready">ที่ต้องได้รับ</option>
-                <option value="shipped">จัดส่งแล้ว</option>
-                <option value="delivered">ส่งสำเร็จ</option>
-                <option value="cancelled">ยกเลิก</option>
-                <option value="claimed">เคลมสินค้า</option>
+
+            {/* Date filter */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <select value={dateFilter} onChange={e=>setDateFilter(e.target.value as any)} className="border p-2 rounded">
+                <option value="all">ทุกเวลา</option>
+                <option value="today">วันนี้</option>
+                <option value="week">7 วัน</option>
+                <option value="month">เดือนนี้</option>
+                <option value="custom">กำหนดเอง</option>
               </select>
+              {dateFilter==='custom' && (
+                <>
+                  <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="border p-2 rounded"/>
+                  <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="border p-2 rounded"/>
+                </>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">เรียงลำดับ</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="newest">ใหม่สุด</option>
-                <option value="oldest">เก่าสุด</option>
-                <option value="amount-high">ยอดสูงสุด</option>
-                <option value="amount-low">ยอดต่ำสุด</option>
-              </select>
-            </div>
+
+            {/* create order button */}
+            <button onClick={()=>setShowCreate(true)} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">สร้างออเดอร์ใหม่</button>
           </div>
-        </div>
-
-        {/* Date filter */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select value={dateFilter} onChange={e=>setDateFilter(e.target.value as any)} className="border p-2 rounded">
-            <option value="all">ทุกเวลา</option>
-            <option value="today">วันนี้</option>
-            <option value="week">7 วัน</option>
-            <option value="month">เดือนนี้</option>
-            <option value="custom">กำหนดเอง</option>
-          </select>
-          {dateFilter==='custom' && (
-            <>
-              <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="border p-2 rounded"/>
-              <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="border p-2 rounded"/>
-            </>
-          )}
-        </div>
-
-        {/* create order button */}
-        <button onClick={()=>setShowCreate(true)} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">สร้างออเดอร์ใหม่</button>
         )}
 
         {/* Customer Filters */}
@@ -688,6 +723,7 @@ const AdminOrdersPage = () => {
             </table>
           </div>
         </div>
+        )}
 
         {filteredAndSortedOrders.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
@@ -701,7 +737,6 @@ const AdminOrdersPage = () => {
               <p className="text-gray-600">ลองเปลี่ยนเงื่อนไขการค้นหาหรือกรองข้อมูล</p>
             </div>
           </div>
-        )}
         )}
 
         {/* Customers Table */}
@@ -1007,27 +1042,57 @@ const AdminOrdersPage = () => {
 
       {/* create order modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowCreate(false)}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold mb-4">สร้างออเดอร์</h2>
             <div className="space-y-3">
-              <input value={formData.customerName} onChange={e=>setFormData({...formData,customerName:e.target.value})} placeholder="ชื่อลูกค้า" className="w-full border p-2 rounded"/>
-              <input value={formData.customerPhone} onChange={e=>setFormData({...formData,customerPhone:e.target.value})} placeholder="เบอร์โทร" className="w-full border p-2 rounded"/>
-              <input type="number" value={formData.totalAmount} onChange={e=>setFormData({...formData,totalAmount:e.target.value})} placeholder="ยอดสินค้า (บาท)" className="w-full border p-2 rounded"/>
-              <input type="number" value={formData.shippingFee} onChange={e=>setFormData({...formData,shippingFee:e.target.value})} placeholder="ค่าจัดส่ง" className="w-full border p-2 rounded"/>
-              <input type="number" value={formData.discount} onChange={e=>setFormData({...formData,discount:e.target.value})} placeholder="ส่วนลด" className="w-full border p-2 rounded"/>
+              <input 
+                value={formData.customerName} 
+                onChange={e => setFormData({...formData, customerName: e.target.value})} 
+                placeholder="ชื่อลูกค้า" 
+                className="w-full border p-2 rounded"
+              />
+              <input 
+                value={formData.customerPhone} 
+                onChange={e => setFormData({...formData, customerPhone: e.target.value})} 
+                placeholder="เบอร์โทร" 
+                className="w-full border p-2 rounded"
+              />
+              <input 
+                type="number" 
+                value={formData.totalAmount} 
+                onChange={e => setFormData({...formData, totalAmount: e.target.value})} 
+                placeholder="ยอดสินค้า (บาท)" 
+                className="w-full border p-2 rounded"
+              />
+              <input 
+                type="number" 
+                value={formData.shippingFee} 
+                onChange={e => setFormData({...formData, shippingFee: e.target.value})} 
+                placeholder="ค่าจัดส่ง" 
+                className="w-full border p-2 rounded"
+              />
+              <input 
+                type="number" 
+                value={formData.discount} 
+                onChange={e => setFormData({...formData, discount: e.target.value})} 
+                placeholder="ส่วนลด" 
+                className="w-full border p-2 rounded"
+              />
             </div>
             <div className="flex justify-end mt-4 gap-2">
-              <button onClick={()=>setShowCreate(false)} className="px-4 py-2 bg-gray-200 rounded">ยกเลิก</button>
-              <button onClick={async()=>{
-                const sub=parseFloat(formData.totalAmount||'0');
-                const shipping=parseFloat(formData.shippingFee||'0');
-                const disc=parseFloat(formData.discount||'0');
-                const total=sub+shipping-disc;
-                const res=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerName:formData.customerName,customerPhone:formData.customerPhone,items:[],shippingFee:shipping,discount:disc,totalAmount:total})});
-                if(res.ok){toast.success('สร้างออเดอร์แล้ว');setShowCreate(false);fetchOrders();}
-                else {const d=await res.json();toast.error(d.error||'ผิดพลาด');}
-              }} className="px-4 py-2 bg-blue-600 text-white rounded">บันทึก</button>
+              <button 
+                onClick={() => setShowCreate(false)} 
+                className="px-4 py-2 bg-gray-200 rounded"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleCreateOrder} 
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                บันทึก
+              </button>
             </div>
           </div>
         </div>
@@ -1036,4 +1101,4 @@ const AdminOrdersPage = () => {
   );
 };
 
-export default AdminOrdersPage; 
+export default AdminOrdersPage;

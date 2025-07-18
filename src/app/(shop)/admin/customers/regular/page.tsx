@@ -197,7 +197,7 @@ const RegularCustomersPage: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">ลูกค้าภักดี</h3>
           <p className="text-2xl font-bold text-purple-600">{stats.loyalCustomers.toLocaleString()}</p>
-          <p className="text-xs text-gray-500">ซื้อ >10 ครั้ง</p>
+          <p className="text-xs text-gray-500">ซื้อ &gt;10 ครั้ง</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">ใช้งานล่าสุด</h3>

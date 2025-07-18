@@ -241,7 +241,7 @@ const InactiveCustomersPage: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">ห่างหายนาน</h3>
           <p className="text-2xl font-bold text-gray-600">{stats.longTermInactive.toLocaleString()}</p>
-          <p className="text-xs text-gray-500">>180 วัน</p>
+          <p className="text-xs text-gray-500">&gt;180 วัน</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">เฉลี่ยวันห่างหาย</h3>
