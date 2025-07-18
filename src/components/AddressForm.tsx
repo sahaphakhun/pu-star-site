@@ -187,14 +187,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
           />
         </div>
 
-        {/* ข้อความช่วยเหลือ */}
-        {savedAddresses.length === 0 && (
-          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
-              💡 <strong>เคล็ดลับ:</strong> เพิ่มที่อยู่ในหน้าโปรไฟล์เพื่อความสะดวกในการสั่งซื้อครั้งต่อไป
-            </p>
-          </div>
-        )}
+
       </div>
     </div>
   );
