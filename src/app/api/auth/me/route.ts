@@ -110,8 +110,25 @@ export async function PATCH(req: Request) {
     if (!user) {
       return NextResponse.json({ success: false, message: 'ไม่พบผู้ใช้' }, { status: 404 });
     }
-    const { action, address, addressId } = await req.json();
-    if (action === 'add') {
+    const { action, address, addressId, name } = await req.json();
+    
+    if (action === 'updateProfile') {
+      // อัปเดตข้อมูลโปรไฟล์
+      if (name && name.trim()) {
+        user.name = name.trim();
+        await user.save();
+      }
+      return NextResponse.json({ 
+        success: true, 
+        user: {
+          _id: user._id,
+          name: user.name,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+          addresses: user.addresses || [],
+        }
+      });
+    } else if (action === 'add') {
       // เพิ่มที่อยู่ใหม่
       user.addresses = user.addresses || [];
       if (address.isDefault) {

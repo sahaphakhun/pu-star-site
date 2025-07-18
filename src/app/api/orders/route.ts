@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { sendSMS } from '@/utils/deesmsx';
 import { orderInputSchema } from '@schemas/order';
 import AdminPhone from '@/models/AdminPhone';
+import { updateUserNameFromOrder } from '@/utils/userNameSync';
 
 export async function GET(request: NextRequest) {
   try {
@@ -103,6 +104,15 @@ export async function POST(request: NextRequest) {
       orderDate: new Date(),
       ...(userId && { userId })
     });
+
+    // อัปเดตชื่อผู้ใช้จากออเดอร์หากยังไม่ได้ตั้งชื่อ
+    if (userId && data.customerName) {
+      try {
+        await updateUserNameFromOrder(userId, data.customerName);
+      } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการอัปเดตชื่อผู้ใช้:', error);
+      }
+    }
 
     // ส่ง SMS แจ้งเตือนลูกค้า
     try {

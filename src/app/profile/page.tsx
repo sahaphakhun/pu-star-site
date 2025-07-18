@@ -37,6 +37,9 @@ const ProfilePage = () => {
   const { isLoggedIn, user, loading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [fetchingOrders, setFetchingOrders] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [updatingProfile, setUpdatingProfile] = useState(false);
 
   useEffect(() => {
     // ถ้าไม่ได้ล็อกอิน และไม่ได้อยู่ในสถานะโหลด ให้ redirect ไปหน้าล็อกอิน
@@ -49,6 +52,7 @@ const ProfilePage = () => {
     // ถ้าล็อกอินแล้ว ให้ดึงประวัติการสั่งซื้อ
     if (isLoggedIn && user) {
       fetchOrders();
+      setNewName(user.name || '');
     }
   }, [isLoggedIn, user]);
 
@@ -78,6 +82,47 @@ const ProfilePage = () => {
     }).format(date);
   };
 
+  const handleUpdateProfile = async () => {
+    if (!newName.trim()) {
+      alert('กรุณาระบุชื่อ');
+      return;
+    }
+
+    try {
+      setUpdatingProfile(true);
+      const response = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateProfile',
+          name: newName.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsEditingName(false);
+        // รีเฟรชหน้าเพื่อให้ข้อมูลในบริบท Auth อัปเดต
+        window.location.reload();
+      } else {
+        alert('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setNewName(user?.name || '');
+    setIsEditingName(false);
+  };
+
   if (loading || !isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -101,7 +146,40 @@ const ProfilePage = () => {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm text-gray-600">ชื่อ</label>
-                  <p className="font-medium">{user?.name}</p>
+                  {isEditingName ? (
+                    <div className="flex items-center space-x-2 mt-1">
+                      <input
+                        type="text"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="ระบุชื่อของคุณ"
+                      />
+                      <button
+                        onClick={handleUpdateProfile}
+                        disabled={updatingProfile}
+                        className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                      >
+                        {updatingProfile ? 'บันทึก...' : 'บันทึก'}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                      >
+                        ยกเลิก
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2 mt-1">
+                      <p className="font-medium">{user?.name || 'ยังไม่ได้ตั้งชื่อ'}</p>
+                      <button
+                        onClick={() => setIsEditingName(true)}
+                        className="text-blue-500 hover:text-blue-700 text-sm"
+                      >
+                        ✏️ แก้ไข
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600">เบอร์โทรศัพท์</label>
