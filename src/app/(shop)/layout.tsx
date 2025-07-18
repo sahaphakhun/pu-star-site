@@ -19,7 +19,7 @@ export default function ShopLayout({ children }: LayoutProps) {
 
   const navItems = [
     { href: '/shop', label: 'หน้าร้าน' },
-    ...(isLoggedIn ? [{ href: '/my-orders', label: 'คำสั่งซื้อของฉัน' }] : []),
+    ...(isLoggedIn ? [{ href: '/profile', label: 'ข้อมูลส่วนตัว' }] : []),
     ...(isLoggedIn && user?.role === 'admin'
       ? [ { href: '/admin/orders', label: 'แอดมิน' } ]
       : []),

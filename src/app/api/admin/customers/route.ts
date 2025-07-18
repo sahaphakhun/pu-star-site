@@ -18,8 +18,14 @@ export async function GET(request: NextRequest) {
     const authResult = await verifyToken(request);
     console.log('Auth result:', authResult);
     
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
-      return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    if (!authResult.valid) {
+      console.log('Authentication failed');
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' }, { status: 401 });
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      console.log('User role:', authResult.decoded?.role);
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' }, { status: 403 });
     }
 
     console.log('Connecting to DB...');
@@ -40,37 +46,71 @@ export async function GET(request: NextRequest) {
     const minSpent = searchParams.get('minSpent');
     const maxSpent = searchParams.get('maxSpent');
 
+    console.log('Query params:', {
+      page, limit, customerType, assignedTo, searchTerm, sortBy, sortOrder,
+      startDate, endDate, minSpent, maxSpent
+    });
+
     // สร้างเงื่อนไขการค้นหา
     const filters: any = {};
     
-    if (customerType) filters.customerType = customerType;
-    if (assignedTo) filters.assignedTo = assignedTo;
+    // เฉพาะลูกค้า (ไม่ใช่ admin)
+    filters.role = 'user';
+    
+    if (customerType) {
+      filters.customerType = customerType;
+      console.log('Adding customerType filter:', customerType);
+    }
+    
+    if (assignedTo) {
+      filters.assignedTo = assignedTo;
+      console.log('Adding assignedTo filter:', assignedTo);
+    }
+    
     if (searchTerm) {
       filters.$or = [
         { name: { $regex: searchTerm, $options: 'i' } },
         { phoneNumber: { $regex: searchTerm, $options: 'i' } },
         { email: { $regex: searchTerm, $options: 'i' } }
       ];
+      console.log('Adding search filter:', searchTerm);
     }
+    
     if (startDate && endDate) {
       filters.lastOrderDate = {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       };
+      console.log('Adding date filter:', startDate, 'to', endDate);
     }
-    if (minSpent) filters.totalSpent = { ...filters.totalSpent, $gte: parseInt(minSpent) };
-    if (maxSpent) filters.totalSpent = { ...filters.totalSpent, $lte: parseInt(maxSpent) };
-
-    // เฉพาะลูกค้า (ไม่ใช่ admin)
-    filters.role = 'user';
+    
+    if (minSpent) {
+      filters.totalSpent = { ...filters.totalSpent, $gte: parseInt(minSpent) };
+      console.log('Adding minSpent filter:', minSpent);
+    }
+    
+    if (maxSpent) {
+      filters.totalSpent = { ...filters.totalSpent, $lte: parseInt(maxSpent) };
+      console.log('Adding maxSpent filter:', maxSpent);
+    }
 
     // สร้างการเรียงลำดับ
     const sortOptions: any = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     // ดึงข้อมูลลูกค้า
-    console.log('Filters:', filters);
+    console.log('Final filters:', JSON.stringify(filters, null, 2));
     console.log('Sort options:', sortOptions);
+    
+    // ตรวจสอบจำนวนผู้ใช้ทั้งหมดในฐานข้อมูล
+    const allUsersCount = await User.countDocuments({});
+    const userRoleCount = await User.countDocuments({ role: 'user' });
+    console.log('Total users in DB:', allUsersCount);
+    console.log('Users with role "user":', userRoleCount);
+    
+    // ตรวจสอบข้อมูลตัวอย่าง
+    const sampleUsers = await User.find({ role: 'user' }).limit(3).select('name phoneNumber customerType role').lean();
+    console.log('Sample users:', sampleUsers);
     
     const customers = await User.find(filters)
       .sort(sortOptions)
@@ -80,9 +120,13 @@ export async function GET(request: NextRequest) {
       .lean();
       
     console.log('Found customers:', customers.length);
+    console.log('Customer sample:', customers.slice(0, 2));
 
     const totalCustomers = await User.countDocuments(filters);
     const totalPages = Math.ceil(totalCustomers / limit);
+    
+    console.log('Total customers matching filters:', totalCustomers);
+    console.log('Total pages:', totalPages);
 
     // หากต้องการ export
     if (export_format === 'csv') {
@@ -100,7 +144,10 @@ export async function GET(request: NextRequest) {
     const allCustomersForStats = await User.find({ role: 'user' })
       .select('-password')
       .lean();
+    console.log('All customers for stats:', allCustomersForStats.length);
+    
     const stats = generateCustomerStats(allCustomersForStats);
+    console.log('Generated stats:', stats);
 
     return NextResponse.json({
       success: true,

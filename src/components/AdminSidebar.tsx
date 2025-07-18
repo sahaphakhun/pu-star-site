@@ -21,8 +21,7 @@ const AdminSidebar: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [showOrdersDropdown, setShowOrdersDropdown] = useState(false);
-  const [showCustomersDropdown, setShowCustomersDropdown] = useState(false);
+
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -115,20 +114,8 @@ const AdminSidebar: React.FC = () => {
 
   const menuItems = [
     { label: 'ภาพรวม', href: '/admin', icon: '📊' },
-    { 
-      label: 'จัดการออเดอร์ & ลูกค้า', 
-      href: '/admin/orders', 
-      icon: '📦',
-      hasDropdown: true,
-      subItems: [
-        { label: 'ออเดอร์ทั้งหมด', href: '/admin/orders', icon: '📋' },
-        { label: 'ลูกค้าทั้งหมด', href: '/admin/orders?tab=customers', icon: '👥' },
-        { label: 'ลูกค้าเป้าหมาย', href: '/admin/orders?tab=customers&type=target', icon: '🎯' },
-        { label: 'ลูกค้าใหม่', href: '/admin/orders?tab=customers&type=new', icon: '🆕' },
-        { label: 'ลูกค้าประจำ', href: '/admin/orders?tab=customers&type=regular', icon: '⭐' },
-        { label: 'ลูกค้าห่างหาย', href: '/admin/orders?tab=customers&type=inactive', icon: '😴' },
-      ]
-    },
+    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦' },
+    { label: 'ลูกค้า', href: '/admin/customers', icon: '👥' },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },
     { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥' },
     { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢' },
@@ -246,79 +233,22 @@ const AdminSidebar: React.FC = () => {
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.href}>
-              {item.hasDropdown ? (
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      if (item.href === '/admin/orders') {
-                        setShowOrdersDropdown(!showOrdersDropdown);
-                      } else if (item.href === '/admin/customers') {
-                        setShowCustomersDropdown(!showCustomersDropdown);
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between space-x-3 p-3 rounded-lg transition-colors ${
-                      pathname.startsWith(item.href)
-                        ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">{item.icon}</span>
-                      <span className="font-medium">{item.label}</span>
-                      {item.href === '/admin/orders' && pendingOrders.length > 0 && (
-                        <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {pendingOrders.length}
-                        </span>
-                      )}
-                    </div>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${
-                        (item.href === '/admin/orders' && showOrdersDropdown) || 
-                        (item.href === '/admin/customers' && showCustomersDropdown) 
-                          ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  
-                  {((item.href === '/admin/orders' && showOrdersDropdown) || 
-                    (item.href === '/admin/customers' && showCustomersDropdown)) && (
-                    <ul className="mt-2 ml-4 space-y-1 border-l-2 border-gray-200 pl-4">
-                      {item.subItems?.map((subItem) => (
-                        <li key={subItem.href}>
-                          <a
-                            href={subItem.href}
-                            className={`flex items-center space-x-3 p-2 rounded-lg transition-colors text-sm ${
-                              pathname === subItem.href
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm">{subItem.icon}</span>
-                            <span>{subItem.label}</span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <a
-                  href={item.href}
-                  className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                    pathname === item.href
-                      ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
-                </a>
-              )}
+              <a
+                href={item.href}
+                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                  pathname === item.href
+                    ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="font-medium">{item.label}</span>
+                {item.href === '/admin/orders' && pendingOrders.length > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingOrders.length}
+                  </span>
+                )}
+              </a>
             </li>
           ))}
         </ul>
