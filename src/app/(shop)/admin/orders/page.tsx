@@ -815,6 +815,24 @@ const AdminOrdersPage = () => {
                         <label className="block text-sm font-medium text-gray-700">เบอร์โทร</label>
                         <p className="text-gray-900">{selectedOrder.customerPhone}</p>
                       </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">ที่อยู่จัดส่ง</label>
+                        <p className="text-gray-900">{selectedOrder.customerAddress}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">การชำระเงิน</label>
+                        <p className="text-gray-900">
+                          {selectedOrder.paymentMethod === 'cod' ? '💰 เก็บเงินปลายทาง' : '🏦 โอนเงิน'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">ค่าจัดส่ง</label>
+                        <p className="text-gray-900">฿{selectedOrder.shippingFee.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">ส่วนลด</label>
+                        <p className="text-gray-900">฿{(selectedOrder.discount || 0).toLocaleString()}</p>
+                      </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">ยอดรวม</label>
                         <p className="text-gray-900 font-bold">฿{selectedOrder.totalAmount.toLocaleString()}</p>
@@ -824,6 +842,35 @@ const AdminOrdersPage = () => {
                         <p className="text-gray-900">{new Date(selectedOrder.createdAt).toLocaleDateString('th-TH')}</p>
                       </div>
                     </div>
+                    
+                    {/* แสดงข้อมูลใบกำกับภาษี ถ้ามี */}
+                    {selectedOrder.taxInvoice?.requestTaxInvoice && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h4 className="font-medium text-gray-900 mb-2">ข้อมูลใบกำกับภาษี</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500">ชื่อบริษัท</label>
+                            <p className="text-gray-900">{selectedOrder.taxInvoice.companyName}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500">เลขประจำตัวผู้เสียภาษี</label>
+                            <p className="text-gray-900">{selectedOrder.taxInvoice.taxId}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500">ที่อยู่บริษัท</label>
+                            <p className="text-gray-900">{selectedOrder.taxInvoice.companyAddress}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500">เบอร์โทร</label>
+                            <p className="text-gray-900">{selectedOrder.taxInvoice.companyPhone}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500">อีเมล</label>
+                            <p className="text-gray-900">{selectedOrder.taxInvoice.companyEmail}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -841,27 +888,19 @@ const AdminOrdersPage = () => {
                     </div>
                   </div>
 
-                  {/* รูปหลักฐานที่มีอยู่ */}
-                  {selectedOrder.packingProofs && selectedOrder.packingProofs.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        รูปหลักฐานที่มีอยู่ ({selectedOrder.packingProofs.length}/10)
-                      </label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {selectedOrder.packingProofs.map((proof, index) => (
-                          <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                            <Image
-                              src={proof.url}
-                              alt={`หลักฐาน ${index + 1}`}
-                              width={150}
-                              height={150}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* รูปหลักฐานการแพ็ก */}
+                  <div>
+                    <PackingImageGallery
+                      orderId={selectedOrder._id}
+                      packingProofs={selectedOrder.packingProofs || []}
+                      isAdmin={true}
+                      onImagesUpdated={(updatedProofs) => {
+                        setSelectedOrder(prev => prev ? { ...prev, packingProofs: updatedProofs } : null);
+                        // รีเฟรชข้อมูลออเดอร์
+                        fetchOrders();
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* ฟอร์มแก้ไข */}
@@ -919,40 +958,7 @@ const AdminOrdersPage = () => {
                     </div>
                   </div>
 
-                  {/* อัพโหลดรูป */}
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-medium mb-3">อัพโหลดรูปหลักฐาน</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          เลือกรูปภาพ (สูงสุด {10 - (selectedOrder.packingProofs?.length || 0)} รูป)
-                        </label>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          รองรับ: JPG, PNG, GIF, WebP (สูงสุด 5MB ต่อรูป)
-                        </p>
-                      </div>
-                      
-                      {imageFiles.length > 0 && (
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">รูปที่เลือก ({imageFiles.length}):</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {imageFiles.map((file, index) => (
-                              <div key={index} className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
-                                {file.name}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
 
                   {/* ปุ่มบันทึก */}
                   <div className="flex justify-end space-x-3 pt-4">

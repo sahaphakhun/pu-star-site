@@ -41,27 +41,58 @@ const PackingImageGallery: React.FC<PackingImageGalleryProps> = ({
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      Array.from(files).forEach(file => {
-        formData.append('files', file);
+      // อัพโหลดไฟล์ทั้งหมดไปยัง Cloudinary แบบ client-side
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+        formData.append('folder', 'packing-images');
+        formData.append('public_id', `order-${orderId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`การอัพโหลดรูปภาพล้มเหลว: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+          url: data.secure_url,
+          type: 'image' as const,
+          addedAt: new Date()
+        };
       });
 
-      const response = await fetch(`/api/orders/${orderId}/upload-packing-image`, {
+      const uploadedProofs = await Promise.all(uploadPromises);
+
+      // บันทึกข้อมูลรูปภาพไปยัง API
+      const saveResponse = await fetch(`/api/orders/${orderId}/upload-packing-image`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          packingProofs: uploadedProofs
+        }),
       });
 
-      const data = await response.json();
+      const saveData = await saveResponse.json();
 
-      if (data.success) {
+      if (saveData.success) {
         // อัปเดตรายการรูปภาพ
-        const updatedProofs = [...packingProofs, ...data.packingProofs];
+        const updatedProofs = [...packingProofs, ...uploadedProofs];
         onImagesUpdated?.(updatedProofs);
         
         // Reset input
         event.target.value = '';
       } else {
-        alert(data.error || 'เกิดข้อผิดพลาดในการอัพโหลด');
+        alert(saveData.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       }
     } catch (error) {
       console.error('Upload error:', error);
