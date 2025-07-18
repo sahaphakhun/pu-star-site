@@ -540,21 +540,27 @@ const ShopPage = () => {
 
         {/* Floating Cart Button */}
         {getTotalItems() > 0 && (
-          <motion.button
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            onClick={() => setShowCart(true)}
-            className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
-          >
-            <div className="relative">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6.5-5v5a2 2 0 01-2 2H9a2 2 0 01-2-2v-5m6.5-5H9" />
-              </svg>
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {getTotalItems()}
-              </span>
+          <>
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              onClick={() => setShowCart(true)}
+              className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+            >
+              <div className="relative">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6.5-5v5a2 2 0 01-2 2H9a2 2 0 01-2-2v-5m6.5-5H9" />
+                </svg>
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {getTotalItems()}
+                </span>
+              </div>
+            </motion.button>
+            {/* ยอดรวมราคารวมใต้ไอคอนตะกร้า */}
+            <div className="fixed bottom-2 right-6 z-10 bg-white bg-opacity-90 rounded-lg px-3 py-1 shadow text-blue-700 font-bold text-sm text-center pointer-events-none select-none">
+              ฿{calculateTotal().toLocaleString()}
             </div>
-          </motion.button>
+          </>
         )}
       </div>
 
