@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -39,10 +32,30 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     try {
-      // ลบรูปภาพจาก Cloudinary
-      const publicId = imageUrl.split('/').pop()?.split('.')[0];
-      if (publicId) {
-        await cloudinary.uploader.destroy(`packing-images/${publicId}`);
+      // ลบรูปภาพจาก Cloudinary โดยใช้ Upload API
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+      
+      if (cloudName) {
+        // ดึง public_id จาก URL
+        const publicId = imageUrl.split('/').pop()?.split('.')[0];
+        if (publicId) {
+          const deleteFormData = new FormData();
+          deleteFormData.append('public_id', `packing-images/${publicId}`);
+          deleteFormData.append('upload_preset', uploadPreset);
+          
+          const deleteResponse = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
+            {
+              method: 'POST',
+              body: deleteFormData,
+            }
+          );
+          
+          if (!deleteResponse.ok) {
+            console.error('Error deleting from Cloudinary:', await deleteResponse.text());
+          }
+        }
       }
     } catch (cloudinaryError) {
       console.error('Error deleting from Cloudinary:', cloudinaryError);

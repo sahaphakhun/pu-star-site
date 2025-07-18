@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -65,26 +58,45 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // อัพโหลดไฟล์ทั้งหมด
     const uploadedImages = [];
     const newPackingProofs = [];
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+
+    if (!cloudName) {
+      return NextResponse.json({ 
+        error: 'การตั้งค่า Cloudinary ไม่ครบถ้วน' 
+      }, { status: 500 });
+    }
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
       try {
-        // แปลงไฟล์เป็น base64
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const base64 = buffer.toString('base64');
-        const dataURI = `data:${file.type};base64,${base64}`;
+        // สร้าง FormData สำหรับส่งไป Cloudinary
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', file);
+        cloudinaryFormData.append('upload_preset', uploadPreset);
+        cloudinaryFormData.append('folder', 'packing-images');
+        cloudinaryFormData.append('public_id', `order-${orderId}-${Date.now()}-${i}`);
+        cloudinaryFormData.append('transformation', 'w_1200,h_1200,c_limit,q_auto');
 
-        // อัพโหลดไป Cloudinary
-        const uploadResult = await cloudinary.uploader.upload(dataURI, {
-          folder: 'packing-images',
-          resource_type: 'image',
-          public_id: `order-${orderId}-${Date.now()}-${i}`,
-          transformation: [
-            { width: 1200, height: 1200, crop: 'limit', quality: 'auto' }
-          ]
-        });
+        // อัพโหลดไป Cloudinary โดยใช้ Upload API
+        const uploadResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          {
+            method: 'POST',
+            body: cloudinaryFormData,
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.text();
+          console.error(`Cloudinary upload error for file ${file.name}:`, errorData);
+          return NextResponse.json({ 
+            error: `เกิดข้อผิดพลาดในการอัพโหลด ${file.name}` 
+          }, { status: 500 });
+        }
+
+        const uploadResult = await uploadResponse.json();
 
         const packingProof = {
           url: uploadResult.secure_url,
