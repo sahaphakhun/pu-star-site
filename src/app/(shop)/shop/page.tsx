@@ -805,7 +805,7 @@ const ShopPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">เลือกหน่วย</label>
                     <div className="space-y-2">
                       {selectedProduct.units.map((unit, index) => (
-                        <label key={index} className="flex items-center justify-between p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <label key={index} className="flex items-center justify-between p-3 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 cursor-pointer transition-colors">
                           <div className="flex items-center space-x-3">
                             <input
                               type="radio"
