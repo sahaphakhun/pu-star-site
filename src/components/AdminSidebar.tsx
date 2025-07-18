@@ -22,6 +22,7 @@ const AdminSidebar: React.FC = () => {
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showOrdersDropdown, setShowOrdersDropdown] = useState(false);
+  const [showCustomersDropdown, setShowCustomersDropdown] = useState(false);
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -125,6 +126,19 @@ const AdminSidebar: React.FC = () => {
         { label: 'จัดส่งไม่สำเร็จ', href: '/admin/orders/failed', icon: '❌' },
         { label: 'เคลมสินค้า', href: '/admin/orders/claims', icon: '🔄' },
         { label: 'ขอใบกำกับภาษี', href: '/admin/orders/tax-invoices', icon: '📄' },
+      ]
+    },
+    { 
+      label: 'จัดการลูกค้า', 
+      href: '/admin/customers', 
+      icon: '👥',
+      hasDropdown: true,
+      subItems: [
+        { label: 'ลูกค้าทั้งหมด', href: '/admin/customers', icon: '📋' },
+        { label: 'ลูกค้าเป้าหมาย', href: '/admin/customers/target', icon: '🎯' },
+        { label: 'ลูกค้าใหม่', href: '/admin/customers/new', icon: '🆕' },
+        { label: 'ลูกค้าประจำ', href: '/admin/customers/regular', icon: '⭐' },
+        { label: 'ลูกค้าห่างหาย', href: '/admin/customers/inactive', icon: '😴' },
       ]
     },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },
@@ -247,9 +261,15 @@ const AdminSidebar: React.FC = () => {
               {item.hasDropdown ? (
                 <div className="relative">
                   <button
-                    onClick={() => setShowOrdersDropdown(!showOrdersDropdown)}
+                    onClick={() => {
+                      if (item.href === '/admin/orders') {
+                        setShowOrdersDropdown(!showOrdersDropdown);
+                      } else if (item.href === '/admin/customers') {
+                        setShowCustomersDropdown(!showCustomersDropdown);
+                      }
+                    }}
                     className={`w-full flex items-center justify-between space-x-3 p-3 rounded-lg transition-colors ${
-                      pathname.startsWith('/admin/orders')
+                      pathname.startsWith(item.href)
                         ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
@@ -257,14 +277,18 @@ const AdminSidebar: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <span className="text-lg">{item.icon}</span>
                       <span className="font-medium">{item.label}</span>
-                      {pendingOrders.length > 0 && (
+                      {item.href === '/admin/orders' && pendingOrders.length > 0 && (
                         <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                           {pendingOrders.length}
                         </span>
                       )}
                     </div>
                     <svg
-                      className={`w-4 h-4 transition-transform ${showOrdersDropdown ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 transition-transform ${
+                        (item.href === '/admin/orders' && showOrdersDropdown) || 
+                        (item.href === '/admin/customers' && showCustomersDropdown) 
+                          ? 'rotate-180' : ''
+                      }`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -273,7 +297,8 @@ const AdminSidebar: React.FC = () => {
                     </svg>
                   </button>
                   
-                  {showOrdersDropdown && (
+                  {((item.href === '/admin/orders' && showOrdersDropdown) || 
+                    (item.href === '/admin/customers' && showCustomersDropdown)) && (
                     <ul className="mt-2 ml-4 space-y-1 border-l-2 border-gray-200 pl-4">
                       {item.subItems?.map((subItem) => (
                         <li key={subItem.href}>
