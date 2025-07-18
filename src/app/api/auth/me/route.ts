@@ -70,6 +70,7 @@ export async function GET() {
           name: user.name,
           phoneNumber: user.phoneNumber,
           role: user.role,
+          addresses: user.addresses || [],
         },
       });
     } catch (_error) {
@@ -87,5 +88,60 @@ export async function GET() {
       message: 'เกิดข้อผิดพลาดในการตรวจสอบข้อมูลผู้ใช้',
       isLoggedIn: false,
     });
+  }
+}
+
+// PATCH: เพิ่ม/แก้ไข/ลบ addresses ของ user
+export async function PATCH(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token');
+    if (!token) {
+      return NextResponse.json({ success: false, message: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
+    }
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token.value, process.env.JWT_SECRET || 'default_secret_replace_in_production');
+    } catch {
+      return NextResponse.json({ success: false, message: 'token ไม่ถูกต้อง' }, { status: 401 });
+    }
+    await connectDB();
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return NextResponse.json({ success: false, message: 'ไม่พบผู้ใช้' }, { status: 404 });
+    }
+    const { action, address, addressId } = await req.json();
+    if (action === 'add') {
+      // เพิ่มที่อยู่ใหม่
+      user.addresses = user.addresses || [];
+      if (address.isDefault) {
+        user.addresses.forEach((a: any) => (a.isDefault = false));
+      }
+      user.addresses.push(address);
+      await user.save();
+      return NextResponse.json({ success: true, addresses: user.addresses });
+    } else if (action === 'edit') {
+      // แก้ไขที่อยู่เดิม
+      user.addresses = (user.addresses || []).map((a: any) => {
+        if (a._id?.toString() === addressId || a._id === addressId) {
+          if (address.isDefault) {
+            user.addresses.forEach((b: any) => (b.isDefault = false));
+          }
+          return { ...a.toObject?.() || a, ...address };
+        }
+        return a;
+      });
+      await user.save();
+      return NextResponse.json({ success: true, addresses: user.addresses });
+    } else if (action === 'delete') {
+      // ลบที่อยู่
+      user.addresses = (user.addresses || []).filter((a: any) => (a._id?.toString() || a._id) !== addressId);
+      await user.save();
+      return NextResponse.json({ success: true, addresses: user.addresses });
+    }
+    return NextResponse.json({ success: false, message: 'action ไม่ถูกต้อง' }, { status: 400 });
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการจัดการ addresses:', error);
+    return NextResponse.json({ success: false, message: 'เกิดข้อผิดพลาด' }, { status: 500 });
   }
 } 

@@ -52,12 +52,48 @@ const ShopPage = () => {
   const [companyPhone, setCompanyPhone] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
 
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddress, setShowNewAddress] = useState(false);
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
+
   useEffect(() => {
     if (isLoggedIn && user) {
       setCustomerName(user.name);
       setCustomerPhone(user.phoneNumber);
     }
   }, [isLoggedIn, user]);
+
+  // ดึง addresses ของ user
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(data => {
+          if (data?.user?.addresses) {
+            setAddresses(data.user.addresses);
+            // autofill ที่อยู่ default
+            const def = data.user.addresses.find((a:any) => a.isDefault) || data.user.addresses[0];
+            if (def) {
+              setSelectedAddressId(def._id || null);
+              setCustomerAddress(def.address);
+              setShowNewAddress(false);
+            }
+          }
+        });
+    }
+  }, [isLoggedIn]);
+
+  // เมื่อเลือกที่อยู่เดิม
+  useEffect(() => {
+    if (selectedAddressId && addresses.length > 0) {
+      const addr = addresses.find((a:any) => (a._id || '') === selectedAddressId);
+      if (addr) {
+        setCustomerAddress(addr.address);
+        setShowNewAddress(false);
+      }
+    }
+  }, [selectedAddressId]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -295,6 +331,17 @@ const ShopPage = () => {
         slipUrl = data.secure_url;
       }
       
+      // เพิ่ม logic บันทึกที่อยู่ใหม่
+      if (saveNewAddress && showNewAddress && customerAddress) {
+        try {
+          await fetch('/api/auth/me', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'add', address: { label: customerName, address: customerAddress, isDefault: addresses.length === 0 } })
+          });
+        } catch {}
+      }
+
       const orderData = {
         customerName,
         customerPhone,
@@ -885,15 +932,52 @@ const ShopPage = () => {
                     />
                   </div>
 
+                  {/* ที่อยู่จัดส่ง */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่จัดส่ง</label>
-                    <textarea
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
+                    {addresses.length > 0 && !showNewAddress && (
+                      <div className="mb-2 space-y-2">
+                        {addresses.map((a:any) => (
+                          <label key={a._id} className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name="address"
+                              checked={selectedAddressId === a._id}
+                              onChange={() => { setSelectedAddressId(a._id); setShowNewAddress(false); }}
+                            />
+                            <span>{a.label ? `[${a.label}] ` : ''}{a.address}</span>
+                            {a.isDefault && <span className="ml-2 text-xs text-blue-600">(ค่าเริ่มต้น)</span>}
+                          </label>
+                        ))}
+                        <button type="button" className="text-blue-600 underline text-sm mt-1" onClick={() => { setShowNewAddress(true); setSelectedAddressId(null); }}>+ เพิ่มที่อยู่ใหม่</button>
+                      </div>
+                    )}
+                    {(showNewAddress || addresses.length === 0) && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="เช่น สำนักงาน 1, สำนักงาน 2"
+                          onChange={e => setCustomerName(e.target.value)}
+                          value={customerName}
+                          style={{ marginBottom: 4 }}
+                        />
+                        <textarea
+                          value={customerAddress}
+                          onChange={(e) => setCustomerAddress(e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        />
+                        <label className="flex items-center space-x-2 mt-1">
+                          <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} />
+                          <span>บันทึกที่อยู่นี้</span>
+                        </label>
+                        {addresses.length > 0 && (
+                          <button type="button" className="text-gray-500 underline text-xs" onClick={() => setShowNewAddress(false)}>เลือกจากที่อยู่เดิม</button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -997,14 +1081,24 @@ const ShopPage = () => {
                         type="checkbox"
                         id="requestTaxInvoice"
                         checked={requestTaxInvoice}
-                        onChange={(e) => setRequestTaxInvoice(e.target.checked)}
+                        onChange={(e) => {
+                          setRequestTaxInvoice(e.target.checked);
+                          if (e.target.checked) {
+                            setTimeout(() => {
+                              document.getElementById('taxIdInput')?.focus();
+                            }, 100);
+                          }
+                        }}
                         className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
                       <label htmlFor="requestTaxInvoice" className="text-sm font-medium text-gray-700">
-                        ต้องการใบกำกับภาษี (ไม่บังคับ)
+                        ขอใบกำกับภาษีเต็มรูปแบบ
                       </label>
                     </div>
-                    
+                    {/* เงื่อนไขใบกำกับภาษี */}
+                    <div className="text-xs text-red-600 mb-2">
+                      เงื่อนไข: ไม่สามารถออกใบกำกับภาษีย้อนหลังจากวันที่สั่งซื้อได้ กรุณากรอกเลขประจำตัวผู้เสียภาษีให้ถูกต้องเพื่อความรวดเร็วในการออกใบกำกับฯ
+                    </div>
                     {requestTaxInvoice && (
                       <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
                         <div>
@@ -1018,11 +1112,11 @@ const ShopPage = () => {
                             required={requestTaxInvoice}
                           />
                         </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี *</label>
                           <input
                             type="text"
+                            id="taxIdInput"
                             value={taxId}
                             onChange={(e) => setTaxId(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1031,7 +1125,6 @@ const ShopPage = () => {
                             required={requestTaxInvoice}
                           />
                         </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่สำหรับออกใบกำกับภาษี</label>
                           <textarea
@@ -1042,7 +1135,6 @@ const ShopPage = () => {
                             placeholder="ที่อยู่ตามใบกำกับภาษี"
                           />
                         </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์บริษัท</label>
                           <input
@@ -1052,7 +1144,6 @@ const ShopPage = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">อีเมลบริษัท</label>
                           <input
