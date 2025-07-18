@@ -343,12 +343,28 @@ const ShopPage = () => {
       // เพิ่ม logic บันทึกที่อยู่ใหม่
       if (saveNewAddress && showNewAddress && customerAddress) {
         try {
-          await fetch('/api/auth/me', {
+          const response = await fetch('/api/auth/me', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'add', address: { label: addressLabel || 'ที่อยู่ใหม่', address: customerAddress, isDefault: addresses.length === 0 } })
           });
-        } catch {}
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error saving address:', errorData);
+            toast.error(errorData.message || 'เกิดข้อผิดพลาดในการบันทึกที่อยู่');
+          } else {
+            const data = await response.json();
+            if (data.success) {
+              toast.success('บันทึกที่อยู่สำเร็จ');
+              // อัพเดท addresses state
+              setAddresses(data.addresses || []);
+            }
+          }
+        } catch (error) {
+          console.error('Error saving address:', error);
+          toast.error('เกิดข้อผิดพลาดในการบันทึกที่อยู่');
+        }
       }
 
       const orderData = {
@@ -1047,48 +1063,77 @@ const ShopPage = () => {
 
                   {/* ที่อยู่จัดส่ง */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่จัดส่ง</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่จัดส่ง</label>
                     {addresses.length > 0 && !showNewAddress && (
-                      <div className="mb-2 space-y-2">
+                      <div className="mb-4 space-y-3">
                         {addresses.map((a:any) => (
-                          <label key={a._id} className="flex items-center space-x-2">
-                            <input
-                              type="radio"
-                              name="address"
-                              checked={selectedAddressId === a._id}
-                              onChange={() => { setSelectedAddressId(a._id); setShowNewAddress(false); }}
-                            />
-                            <span>{a.label ? `[${a.label}] ` : ''}{a.address}</span>
-                            {a.isDefault && <span className="ml-2 text-xs text-blue-600">(ค่าเริ่มต้น)</span>}
-                          </label>
+                          <div key={a._id} className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                            selectedAddressId === a._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          }`} onClick={() => { setSelectedAddressId(a._id); setShowNewAddress(false); }}>
+                            <div className="flex items-start space-x-3">
+                              <input
+                                type="radio"
+                                name="address"
+                                checked={selectedAddressId === a._id}
+                                onChange={() => { setSelectedAddressId(a._id); setShowNewAddress(false); }}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-medium text-gray-900">{a.label || 'ที่อยู่'}</span>
+                                  {a.isDefault && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">ค่าเริ่มต้น</span>}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{a.address}</p>
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                        <button type="button" className="text-blue-600 underline text-sm mt-1" onClick={() => { setShowNewAddress(true); setSelectedAddressId(null); }}>+ เพิ่มที่อยู่ใหม่</button>
+                        <button 
+                          type="button" 
+                          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium"
+                          onClick={() => { setShowNewAddress(true); setSelectedAddressId(null); setCustomerAddress(''); }}
+                        >
+                          + เพิ่มที่อยู่ใหม่
+                        </button>
                       </div>
                     )}
                     {(showNewAddress || addresses.length === 0) && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <input
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="เช่น สำนักงาน 1, สำนักงาน 2"
+                          placeholder="ชื่อที่อยู่สำหรับใช้ภายหลัง (เช่น บ้าน, ออฟฟิศ)"
                           onChange={e => setAddressLabel(e.target.value)}
                           value={addressLabel}
-                          style={{ marginBottom: 4 }}
                         />
                         <textarea
                           value={customerAddress}
                           onChange={(e) => setCustomerAddress(e.target.value)}
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="ที่อยู่จัดส่งเต็มรูปแบบ"
                           required
                         />
-                        <label className="flex items-center space-x-2 mt-1">
-                          <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} />
-                          <span>บันทึกที่อยู่นี้</span>
-                        </label>
-                        {addresses.length > 0 && (
-                          <button type="button" className="text-gray-500 underline text-xs" onClick={() => setShowNewAddress(false)}>เลือกจากที่อยู่เดิม</button>
-                        )}
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center space-x-2">
+                            <input 
+                              type="checkbox" 
+                              checked={saveNewAddress} 
+                              onChange={e => setSaveNewAddress(e.target.checked)}
+                              className="rounded"
+                            />
+                            <span className="text-sm text-gray-700">บันทึกที่อยู่นี้สำหรับใช้ครั้งต่อไป</span>
+                          </label>
+                          {addresses.length > 0 && (
+                            <button 
+                              type="button" 
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                              onClick={() => { setShowNewAddress(false); setCustomerAddress(''); }}
+                            >
+                              ← เลือกจากที่อยู่เดิม
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

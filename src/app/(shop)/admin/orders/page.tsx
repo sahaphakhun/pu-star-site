@@ -839,7 +839,17 @@ const AdminOrdersPage = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">วันที่สั่งซื้อ</label>
-                        <p className="text-gray-900">{new Date(selectedOrder.createdAt).toLocaleDateString('th-TH')}</p>
+                        <p className="text-gray-900">
+                          {new Date(selectedOrder.createdAt).toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            timeZone: 'Asia/Bangkok'
+                          })}
+                        </p>
                       </div>
                     </div>
                     

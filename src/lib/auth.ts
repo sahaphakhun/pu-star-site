@@ -58,7 +58,7 @@ interface DecodedToken {
 export async function verifyAuth(req: Request): Promise<AuthResult> {
   try {
     // ดึง token จาก cookies หรือ Authorization header
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const tokenFromCookie = cookieStore.get('token');
     const authHeader = req.headers.get('authorization');
     
