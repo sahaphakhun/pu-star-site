@@ -76,6 +76,16 @@ const AdminOrdersPage = () => {
     shippingFee: '0',
     discount: '0'
   });
+  
+  // States for order editing
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editForm, setEditForm] = useState({
+    status: '',
+    trackingNumber: '',
+    shippingProvider: ''
+  });
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -266,6 +276,117 @@ const AdminOrdersPage = () => {
     } catch (error) {
       toast.error('เกิดข้อผิดพลาดในการสร้างออเดอร์');
     }
+  };
+
+  const uploadPackingImages = async (orderId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    
+    try {
+      const res = await fetch(`/api/orders/${orderId}/upload-packing-image`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        return result;
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการอัพโหลด');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, updates: any) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (res.ok) {
+        const updatedOrder = await res.json();
+        return updatedOrder;
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการอัพเดท');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    if (!editingOrder) return;
+
+    try {
+      setLoading(true);
+      
+      // อัพโหลดรูปก่อน (ถ้ามี)
+      if (imageFiles.length > 0) {
+        setUploadingImages(true);
+        toast.loading('กำลังอัพโหลดรูปภาพ...');
+        await uploadPackingImages(editingOrder._id, imageFiles);
+        setUploadingImages(false);
+      }
+
+      // อัพเดทข้อมูลออเดอร์
+      const updates: any = {};
+      if (editForm.status && editForm.status !== editingOrder.status) {
+        updates.status = editForm.status;
+      }
+      if (editForm.trackingNumber && editForm.trackingNumber !== editingOrder.trackingNumber) {
+        updates.trackingNumber = editForm.trackingNumber;
+      }
+      if (editForm.shippingProvider && editForm.shippingProvider !== editingOrder.shippingProvider) {
+        updates.shippingProvider = editForm.shippingProvider;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await updateOrderStatus(editingOrder._id, updates);
+      }
+
+      toast.success('อัพเดทออเดอร์สำเร็จ');
+      
+      // รีเซ็ตฟอร์มและรีเฟรชข้อมูล
+      setEditingOrder(null);
+      setEditForm({ status: '', trackingNumber: '', shippingProvider: '' });
+      setImageFiles([]);
+      setSelectedOrder(null);
+      await fetchOrders();
+      
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด');
+    } finally {
+      setLoading(false);
+      setUploadingImages(false);
+    }
+  };
+
+  const startEditOrder = (order: Order) => {
+    setEditingOrder(order);
+    setEditForm({
+      status: order.status,
+      trackingNumber: order.trackingNumber || '',
+      shippingProvider: order.shippingProvider || ''
+    });
+    setImageFiles([]);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const currentImageCount = editingOrder?.packingProofs?.length || 0;
+    
+    if (currentImageCount + files.length > 10) {
+      toast.error(`สามารถอัพโหลดได้สูงสุด ${10 - currentImageCount} รูป`);
+      return;
+    }
+    
+    setImageFiles(files);
   };
 
   if (loading) {
@@ -528,7 +649,10 @@ const AdminOrdersPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
-                              onClick={() => setSelectedOrder(order)}
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                startEditOrder(order);
+                              }}
                               className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors"
                             >
                               จัดการ
@@ -587,7 +711,10 @@ const AdminOrdersPage = () => {
                           </div>
                         </div>
                         <button
-                          onClick={() => setSelectedOrder(order)}
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            startEditOrder(order);
+                          }}
                           className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
                         >
                           จัดการ
@@ -654,56 +781,199 @@ const AdminOrdersPage = () => {
         </div>
       )}
 
-      {/* Order Detail Modal - จะเพิ่มในภายหลัง */}
-      {selectedOrder && (
+      {/* Order Detail Modal */}
+      {selectedOrder && editingOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">รายละเอียดออเดอร์ #{selectedOrder._id.slice(-8).toUpperCase()}</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">จัดการออเดอร์ #{selectedOrder._id.slice(-8).toUpperCase()}</h2>
                 <button
-                  onClick={() => setSelectedOrder(null)}
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setEditingOrder(null);
+                    setEditForm({ status: '', trackingNumber: '', shippingProvider: '' });
+                    setImageFiles([]);
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   ✕
                 </button>
               </div>
               
-              {/* Order details content here */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">ลูกค้า</label>
-                    <p className="text-gray-900">{selectedOrder.customerName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">เบอร์โทร</label>
-                    <p className="text-gray-900">{selectedOrder.customerPhone}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">ยอดรวม</label>
-                    <p className="text-gray-900 font-bold">฿{selectedOrder.totalAmount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">สถานะ</label>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[selectedOrder.status]}`}>
-                      {statusIcons[selectedOrder.status]} {statusLabels[selectedOrder.status]}
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">รายการสินค้า</label>
-                  <div className="space-y-2">
-                    {selectedOrder.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-gray-500 ml-2">x{item.quantity}</span>
-                        </div>
-                        <span className="font-medium">฿{(item.price * item.quantity).toLocaleString()}</span>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ข้อมูลออเดอร์ */}
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-3">ข้อมูลออเดอร์</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">ลูกค้า</label>
+                        <p className="text-gray-900">{selectedOrder.customerName}</p>
                       </div>
-                    ))}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">เบอร์โทร</label>
+                        <p className="text-gray-900">{selectedOrder.customerPhone}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">ยอดรวม</label>
+                        <p className="text-gray-900 font-bold">฿{selectedOrder.totalAmount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">วันที่สั่งซื้อ</label>
+                        <p className="text-gray-900">{new Date(selectedOrder.createdAt).toLocaleDateString('th-TH')}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">รายการสินค้า</label>
+                    <div className="space-y-2">
+                      {selectedOrder.items.map((item, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-gray-500 ml-2">x{item.quantity}</span>
+                          </div>
+                          <span className="font-medium">฿{(item.price * item.quantity).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* รูปหลักฐานที่มีอยู่ */}
+                  {selectedOrder.packingProofs && selectedOrder.packingProofs.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        รูปหลักฐานที่มีอยู่ ({selectedOrder.packingProofs.length}/10)
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {selectedOrder.packingProofs.map((proof, index) => (
+                          <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                            <Image
+                              src={proof.url}
+                              alt={`หลักฐาน ${index + 1}`}
+                              width={150}
+                              height={150}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ฟอร์มแก้ไข */}
+                <div className="space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-3">แก้ไขสถานะออเดอร์</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">สถานะปัจจุบัน</label>
+                        <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${statusColors[selectedOrder.status]}`}>
+                          {statusIcons[selectedOrder.status]} {statusLabels[selectedOrder.status]}
+                        </span>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">เปลี่ยนสถานะ</label>
+                        <select
+                          value={editForm.status}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">-- เลือกสถานะใหม่ --</option>
+                          <option value="pending">รอดำเนินการ</option>
+                          <option value="confirmed">ยืนยันออเดอร์แล้ว</option>
+                          <option value="ready">พร้อมส่ง</option>
+                          <option value="shipped">จัดส่งแล้ว</option>
+                          <option value="delivered">ส่งสำเร็จ</option>
+                          <option value="cancelled">ยกเลิก</option>
+                          <option value="claimed">เคลมสินค้า</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">เลขพัสดุ</label>
+                        <input
+                          type="text"
+                          value={editForm.trackingNumber}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                          placeholder="ใส่เลขพัสดุ"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">ผู้ส่ง/ขนส่ง</label>
+                        <input
+                          type="text"
+                          value={editForm.shippingProvider}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, shippingProvider: e.target.value }))}
+                          placeholder="เช่น Kerry, Flash Express"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* อัพโหลดรูป */}
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-3">อัพโหลดรูปหลักฐาน</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          เลือกรูปภาพ (สูงสุด {10 - (selectedOrder.packingProofs?.length || 0)} รูป)
+                        </label>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          รองรับ: JPG, PNG, GIF, WebP (สูงสุด 5MB ต่อรูป)
+                        </p>
+                      </div>
+                      
+                      {imageFiles.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">รูปที่เลือก ({imageFiles.length}):</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {imageFiles.map((file, index) => (
+                              <div key={index} className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
+                                {file.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ปุ่มบันทึก */}
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(null);
+                        setEditingOrder(null);
+                        setEditForm({ status: '', trackingNumber: '', shippingProvider: '' });
+                        setImageFiles([]);
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleSaveOrder}
+                      disabled={loading || uploadingImages}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {loading || uploadingImages ? 'กำลังบันทึก...' : 'บันทึก'}
+                    </button>
                   </div>
                 </div>
               </div>
