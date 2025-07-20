@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import toast, { Toaster } from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster, toast } from 'react-hot-toast';
 
 interface OrderItem {
   productId: string;
   name: string;
   price: number;
   quantity: number;
-  selectedOptions?: { [key: string]: string };
-  unitLabel?: string;
-  unitPrice?: number;
+  selectedOptions?: Record<string, string>;
 }
 
 interface ClaimInfo {
@@ -21,6 +19,7 @@ interface ClaimInfo {
   claimImages: string[];
   claimStatus: 'pending' | 'approved' | 'rejected';
   adminResponse?: string;
+  responseDate?: string;
 }
 
 interface Order {
@@ -29,15 +28,11 @@ interface Order {
   customerPhone: string;
   customerAddress: string;
   paymentMethod: 'cod' | 'transfer';
-  slipUrl?: string;
   items: OrderItem[];
   totalAmount: number;
   shippingFee: number;
-  status: 'claimed';
+  status: string;
   createdAt: string;
-  updatedAt: string;
-  trackingNumber?: string;
-  shippingProvider?: string;
   claimInfo?: ClaimInfo;
 }
 
@@ -45,40 +40,32 @@ const AdminClaimsPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState<'all'|'today'|'week'|'month'|'custom'>('all');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [responseForm, setResponseForm] = useState({
     claimStatus: '',
     adminResponse: '',
-    newOrderStatus: 'delivered' // สถานะออเดอร์ใหม่ถ้าอนุมัติเคลม
+    newOrderStatus: 'delivered'
   });
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchClaimedOrders = async () => {
     try {
-      const response = await fetch('/api/orders');
+      const response = await fetch('/api/orders?status=claimed');
       if (response.ok) {
         const data = await response.json();
-        // กรองเฉพาะออเดอร์ที่มีการเคลม
-        const claimOrders = data.orders ? data.orders.filter((order: Order) => 
-          order.status === 'claimed' && order.claimInfo
-        ) : [];
-        setOrders(claimOrders);
+        // กรองเฉพาะออเดอร์ที่มีข้อมูลการเคลม
+        const claimedOrders = data.orders?.filter((order: Order) => 
+          order.claimInfo && order.claimInfo.claimDate
+        ) || [];
+        setOrders(claimedOrders);
       }
     } catch (error) {
-      console.error('ไม่สามารถดึงข้อมูลเคลมได้:', error);
-      toast.error('ไม่สามารถดึงข้อมูลเคลมได้');
+      console.error('Error fetching claimed orders:', error);
+      toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลการเคลม');
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  };
 
   const handleClaimResponse = async () => {
     if (!selectedOrder || !responseForm.claimStatus || !responseForm.adminResponse.trim()) {
@@ -89,72 +76,64 @@ const AdminClaimsPage = () => {
     setResponding(true);
     try {
       const response = await fetch(`/api/orders/${selectedOrder._id}/claim-response`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          claimStatus: responseForm.claimStatus,
-          adminResponse: responseForm.adminResponse,
-          newOrderStatus: responseForm.claimStatus === 'approved' ? responseForm.newOrderStatus : undefined
-        }),
+          action: responseForm.claimStatus === 'approved' ? 'approve' : 'reject',
+          adminResponse: responseForm.adminResponse
+        })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(result.message);
-        fetchOrders(); // รีเฟรชรายการ
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(data.message);
+        
+        // อัพเดตรายการออเดอร์
+        setOrders(prev => prev.map(order => 
+          order._id === selectedOrder._id 
+            ? { ...order, ...data.order, claimInfo: data.order.claimInfo }
+            : order
+        ));
+        
+        // ปิด modal และรีเซ็ตฟอร์ม
         setSelectedOrder(null);
-        setResponseForm({
-          claimStatus: '',
-          adminResponse: '',
-          newOrderStatus: 'delivered'
-        });
+        setResponseForm({ claimStatus: '', adminResponse: '', newOrderStatus: 'delivered' });
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการตอบกลับ');
+        toast.error(data.error || 'เกิดข้อผิดพลาดในการตอบกลับ');
       }
     } catch (error) {
       console.error('Error responding to claim:', error);
-      toast.error('เกิดข้อผิดพลาดในการตอบกลับ');
+      toast.error('เกิดข้อผิดพลาดในการตอบกลับการเคลม');
     } finally {
       setResponding(false);
     }
   };
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch = 
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.includes(searchTerm) ||
-      order._id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const dateObj = new Date(order.claimInfo?.claimDate || order.createdAt);
-    let datePass = true;
-    
-    if (dateFilter === 'today') {
-      const now = new Date();
-      datePass = dateObj.toDateString() === now.toDateString();
-    } else if (dateFilter === 'week') {
-      const now = new Date();
-      const weekAgo = new Date();
-      weekAgo.setDate(now.getDate() - 7);
-      datePass = dateObj >= weekAgo && dateObj <= now;
-    } else if (dateFilter === 'month') {
-      const now = new Date();
-      datePass = dateObj.getMonth() === now.getMonth() && dateObj.getFullYear() === now.getFullYear();
-    } else if (dateFilter === 'custom' && customStart && customEnd) {
-      datePass = dateObj >= new Date(customStart) && dateObj <= new Date(customEnd);
-    }
-    
-    return matchesSearch && datePass;
-  });
+  useEffect(() => {
+    fetchClaimedOrders();
+  }, []);
+
+  const statusLabels = {
+    claimed: 'รอตอบกลับ',
+    claim_approved: 'อนุมัติแล้ว',
+    claim_rejected: 'ปฏิเสธแล้ว'
+  };
+
+  const statusColors = {
+    claimed: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    claim_approved: 'bg-green-100 text-green-800 border-green-200',
+    claim_rejected: 'bg-red-100 text-red-800 border-red-200'
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-600">กำลังโหลดข้อมูลการเคลม...</p>
         </div>
       </div>
     );
@@ -165,185 +144,169 @@ const AdminClaimsPage = () => {
       <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการเคลมสินค้า</h1>
-          <p className="text-gray-600">ออเดอร์ที่ลูกค้าขอเคลมสินค้า</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการการเคลม</h1>
+          <p className="text-gray-600">ตรวจสอบและตอบกลับการเคลมสินค้าจากลูกค้า</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-orange-600">{filteredOrders.length}</div>
-            <div className="text-sm text-gray-600">เคลมรอดำเนินการ</div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-red-600">
-              ฿{filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">มูลค่าเคลมรวม</div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-purple-600">
-              {filteredOrders.length > 0 ? Math.round(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / filteredOrders.length) : 0}
-            </div>
-            <div className="text-sm text-gray-600">มูลค่าเฉลี่ยต่อเคลม</div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหา</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ค้นหาด้วยชื่อ, เบอร์โทร, หรือรหัสออเดอร์"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">กรองตามวัน</label>
-              <select 
-                value={dateFilter} 
-                onChange={(e) => setDateFilter(e.target.value as any)} 
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">ทุกเวลา</option>
-                <option value="today">วันนี้</option>
-                <option value="week">7 วันล่าสุด</option>
-                <option value="month">เดือนนี้</option>
-                <option value="custom">กำหนดเอง</option>
-              </select>
-            </div>
-            
-            {dateFilter === 'custom' && (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">จาก</label>
-                  <input 
-                    type="date" 
-                    value={customStart} 
-                    onChange={(e) => setCustomStart(e.target.value)} 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ถึง</label>
-                  <input 
-                    type="date" 
-                    value={customEnd} 
-                    onChange={(e) => setCustomEnd(e.target.value)} 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-            )}
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-yellow-600">
+                  {orders.filter(o => o.status === 'claimed').length}
+                </p>
+                <p className="text-gray-600">รอตอบกลับ</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-green-600">
+                  {orders.filter(o => o.status === 'claim_approved').length}
+                </p>
+                <p className="text-gray-600">อนุมัติแล้ว</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-red-600">
+                  {orders.filter(o => o.status === 'claim_rejected').length}
+                </p>
+                <p className="text-gray-600">ปฏิเสธแล้ว</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Claims Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    รหัสออเดอร์
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ลูกค้า
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    วันที่เคลม
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ยอดรวม
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    รูปภาพ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    จัดการ
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order) => (
-                  <motion.tr
-                    key={order._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">
-                          #{order._id.slice(-8).toUpperCase()}
-                        </span>
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 mt-1">
-                          🔄 รอตอบกลับ
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
-                        <div className="text-sm text-gray-500">{order.customerPhone}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(order.claimInfo?.claimDate || order.createdAt).toLocaleDateString('th-TH', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ฿{order.totalAmount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.claimInfo?.claimImages && order.claimInfo.claimImages.length > 0 ? (
-                        <span className="text-blue-600">
-                          📷 {order.claimInfo.claimImages.length} รูป
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">ไม่มีรูป</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        ตอบกลับ
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {filteredOrders.length === 0 && (
+        {/* Claims List */}
+        {orders.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
             <div className="text-center">
               <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบเคลมสินค้า</h3>
-              <p className="text-gray-600">ไม่มีออเดอร์ที่ขอเคลมในช่วงเวลาที่เลือก</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่มีการเคลม</h3>
+              <p className="text-gray-600">ยังไม่มีการเคลมสินค้าจากลูกค้า</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ออเดอร์
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ลูกค้า
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      เหตุผลเคลม
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      วันที่เคลม
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      สถานะ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      จัดการ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {orders.map((order) => (
+                    <motion.tr
+                      key={order._id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900">
+                            #{order._id.slice(-8).toUpperCase()}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            ฿{order.totalAmount.toLocaleString()}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
+                          <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs">
+                          {order.claimInfo?.claimReason ? (
+                            order.claimInfo.claimReason.length > 60 
+                              ? order.claimInfo.claimReason.substring(0, 60) + '...'
+                              : order.claimInfo.claimReason
+                          ) : '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {order.claimInfo?.claimDate 
+                          ? new Date(order.claimInfo.claimDate).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              timeZone: 'Asia/Bangkok'
+                            })
+                          : '-'
+                        }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
+                          {statusLabels[order.status] || order.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          ดูรายละเอียด
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
       </div>
 
-      {/* Claim Response Modal */}
+      {/* Claim Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <motion.div
@@ -354,7 +317,7 @@ const AdminClaimsPage = () => {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  ตอบกลับเคลม #{selectedOrder._id.slice(-8).toUpperCase()}
+                  🚨 รายละเอียดการเคลม #{selectedOrder._id.slice(-8).toUpperCase()}
                 </h2>
                 <button
                   onClick={() => {
@@ -403,11 +366,39 @@ const AdminClaimsPage = () => {
                   {/* ข้อมูลการเคลม */}
                   <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
                     <h3 className="font-semibold text-orange-900 mb-3">ข้อมูลการเคลม</h3>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>วันที่เคลม:</strong> {new Date(selectedOrder.claimInfo?.claimDate || '').toLocaleDateString('th-TH')}</p>
-                      <p><strong>เหตุผล:</strong></p>
-                      <div className="bg-white p-3 rounded border">
-                        {selectedOrder.claimInfo?.claimReason}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">วันที่เคลม</p>
+                        <p className="text-gray-900">
+                          {selectedOrder.claimInfo?.claimDate 
+                            ? new Date(selectedOrder.claimInfo.claimDate).toLocaleDateString('th-TH', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Asia/Bangkok'
+                              })
+                            : '-'
+                          }
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">เหตุผลในการเคลม</p>
+                        <div className="bg-white p-3 rounded border border-orange-200">
+                          <p className="text-gray-900">{selectedOrder.claimInfo?.claimReason || '-'}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">สถานะการเคลม</p>
+                        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                          selectedOrder.claimInfo?.claimStatus === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          selectedOrder.claimInfo?.claimStatus === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {selectedOrder.claimInfo?.claimStatus === 'pending' ? '⏳ รอดำเนินการ' :
+                           selectedOrder.claimInfo?.claimStatus === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -415,10 +406,10 @@ const AdminClaimsPage = () => {
                   {/* รูปภาพเคลม */}
                   {selectedOrder.claimInfo?.claimImages && selectedOrder.claimInfo.claimImages.length > 0 && (
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">รูปภาพประกอบการเคลม</h3>
-                      <div className="grid grid-cols-2 gap-2">
+                      <h3 className="font-semibold text-gray-900 mb-3">รูปภาพประกอบการเคลม ({selectedOrder.claimInfo.claimImages.length} รูป)</h3>
+                      <div className="grid grid-cols-2 gap-3">
                         {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
-                          <div key={index} className="relative aspect-square">
+                          <div key={index} className="relative aspect-square group">
                             <Image
                               src={imageUrl}
                               alt={`รูปภาพเคลม ${index + 1}`}
@@ -426,85 +417,98 @@ const AdminClaimsPage = () => {
                               className="object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => setSelectedImage(imageUrl)}
                             />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                              <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
                           </div>
                         ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">💡 คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                    </div>
+                  )}
+
+                  {/* การตอบกลับที่มีอยู่แล้ว */}
+                  {selectedOrder.claimInfo?.adminResponse && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h3 className="font-semibold text-blue-900 mb-3">การตอบกลับของแอดมิน</h3>
+                      <div className="bg-white p-3 rounded border border-blue-200">
+                        <p className="text-gray-900">{selectedOrder.claimInfo.adminResponse}</p>
+                        {selectedOrder.claimInfo.responseDate && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            ตอบกลับเมื่อ: {new Date(selectedOrder.claimInfo.responseDate).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Asia/Bangkok'
+                            })}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* ฟอร์มตอบกลับ */}
-                <div className="space-y-4">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h3 className="font-semibold text-blue-900 mb-4">ตอบกลับการเคลม</h3>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          การตัดสินใจ <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={responseForm.claimStatus}
-                          onChange={(e) => setResponseForm(prev => ({ ...prev, claimStatus: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">-- เลือกการตัดสินใจ --</option>
-                          <option value="approved">อนุมัติเคลม</option>
-                          <option value="rejected">ปฏิเสธเคลม</option>
-                        </select>
-                      </div>
-
-                      {responseForm.claimStatus === 'approved' && (
+                {selectedOrder.claimInfo?.claimStatus === 'pending' && (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h3 className="font-semibold text-blue-900 mb-4">ตอบกลับการเคลม</h3>
+                      
+                      <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            สถานะออเดอร์ใหม่
+                            การตัดสินใจ <span className="text-red-500">*</span>
                           </label>
                           <select
-                            value={responseForm.newOrderStatus}
-                            onChange={(e) => setResponseForm(prev => ({ ...prev, newOrderStatus: e.target.value }))}
+                            value={responseForm.claimStatus}
+                            onChange={(e) => setResponseForm(prev => ({ ...prev, claimStatus: e.target.value }))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
-                            <option value="delivered">ส่งสำเร็จ (รับเคลม)</option>
-                            <option value="cancelled">ยกเลิกออเดอร์</option>
-                            <option value="ready">ส่งสินค้าใหม่</option>
+                            <option value="">-- เลือกการตัดสินใจ --</option>
+                            <option value="approved">อนุมัติเคลม</option>
+                            <option value="rejected">ปฏิเสธเคลม</option>
                           </select>
                         </div>
-                      )}
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          ข้อความตอบกลับ <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={responseForm.adminResponse}
-                          onChange={(e) => setResponseForm(prev => ({ ...prev, adminResponse: e.target.value }))}
-                          rows={6}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="กรุณาระบุข้อความตอบกลับถึงลูกค้า..."
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ข้อความตอบกลับ <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={responseForm.adminResponse}
+                            onChange={(e) => setResponseForm(prev => ({ ...prev, adminResponse: e.target.value }))}
+                            rows={6}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="กรุณาระบุข้อความตอบกลับถึงลูกค้า..."
+                          />
+                        </div>
 
-                      <div className="flex justify-end space-x-3 pt-4">
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(null);
-                            setResponseForm({ claimStatus: '', adminResponse: '', newOrderStatus: 'delivered' });
-                          }}
-                          className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                        >
-                          ยกเลิก
-                        </button>
-                        <button
-                          onClick={handleClaimResponse}
-                          disabled={responding || !responseForm.claimStatus || !responseForm.adminResponse.trim()}
-                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                          {responding ? 'กำลังส่ง...' : 'ส่งการตอบกลับ'}
-                        </button>
+                        <div className="flex justify-end space-x-3 pt-4">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(null);
+                              setResponseForm({ claimStatus: '', adminResponse: '', newOrderStatus: 'delivered' });
+                            }}
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                          >
+                            ยกเลิก
+                          </button>
+                          <button
+                            onClick={handleClaimResponse}
+                            disabled={responding || !responseForm.claimStatus || !responseForm.adminResponse.trim()}
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                          >
+                            {responding ? 'กำลังส่ง...' : 'ส่งการตอบกลับ'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>

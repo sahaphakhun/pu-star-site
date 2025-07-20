@@ -973,6 +973,102 @@ const AdminOrdersPage = () => {
                       }}
                     />
                   </div>
+
+                  {/* ข้อมูลการเคลม (ถ้ามี) */}
+                  {selectedOrder.claimInfo && (
+                    <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                      <h3 className="font-semibold text-red-900 mb-3 flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        🚨 ข้อมูลการเคลม
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">วันที่เคลม</label>
+                            <p className="text-gray-900 bg-white p-2 rounded border">
+                              {new Date(selectedOrder.claimInfo.claimDate).toLocaleDateString('th-TH', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Asia/Bangkok'
+                              })}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">สถานะการเคลม</label>
+                            <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                              selectedOrder.claimInfo.claimStatus === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                              selectedOrder.claimInfo.claimStatus === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
+                              'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {selectedOrder.claimInfo.claimStatus === 'pending' ? '⏳ รอดำเนินการ' :
+                               selectedOrder.claimInfo.claimStatus === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เหตุผลในการเคลม</label>
+                          <div className="bg-white p-3 rounded border border-red-200">
+                            <p className="text-gray-900">{selectedOrder.claimInfo.claimReason}</p>
+                          </div>
+                        </div>
+
+                        {/* รูปภาพการเคลมจากลูกค้า */}
+                        {selectedOrder.claimInfo.claimImages && selectedOrder.claimInfo.claimImages.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              รูปภาพประกอบการเคลม ({selectedOrder.claimInfo.claimImages.length} รูป)
+                            </label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
+                                <div key={index} className="relative group">
+                                  <img
+                                    src={imageUrl}
+                                    alt={`รูปประกอบการเคลม ${index + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg border border-red-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => window.open(imageUrl, '_blank')}
+                                  />
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">💡 คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                          </div>
+                        )}
+
+                        {/* การตอบกลับจากแอดมิน */}
+                        {selectedOrder.claimInfo.adminResponse && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">การตอบกลับของแอดมิน</label>
+                            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                              <p className="text-gray-900">{selectedOrder.claimInfo.adminResponse}</p>
+                              {selectedOrder.claimInfo.responseDate && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                  ตอบกลับเมื่อ: {new Date(selectedOrder.claimInfo.responseDate).toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    timeZone: 'Asia/Bangkok'
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ฟอร์มแก้ไข */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
+import AdminNotification from '@/models/AdminNotification';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
@@ -82,6 +83,21 @@ export async function POST(
       },
       { new: true }
     );
+
+    // สร้างการแจ้งเตือนสำหรับแอดมิน
+    try {
+      await AdminNotification.create({
+        type: 'claim_request',
+        title: `🚨 มีการเคลมสินค้าใหม่`,
+        message: `ลูกค้า ${order.customerName} ได้ทำการเคลมออเดอร์ #${orderId.slice(-8).toUpperCase()} เหตุผล: ${reason.trim()}`,
+        relatedId: orderId,
+        isGlobal: true,
+        readBy: [] // ยังไม่มีใครอ่าน
+      });
+    } catch (notificationError) {
+      console.error('Error creating claim notification:', notificationError);
+      // ไม่ให้ error การแจ้งเตือนทำให้การเคลมล้มเหลว
+    }
     
     return NextResponse.json(updatedOrder);
     

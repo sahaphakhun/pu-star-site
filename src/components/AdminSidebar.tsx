@@ -1,27 +1,40 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 interface Order {
   _id: string;
   customerName: string;
+  customerPhone: string;
   totalAmount: number;
-  paymentMethod: string;
   createdAt: string;
+  paymentMethod: 'cod' | 'transfer';
   status: string;
+}
+
+interface Notification {
+  _id: string;
+  type: 'new_order' | 'claim_request' | 'general';
+  title: string;
+  message: string;
+  relatedId?: string;
+  createdAt: string;
+  isRead: boolean;
 }
 
 const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastOrderCount, setLastOrderCount] = useState(0);
+  const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
-
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -49,7 +62,7 @@ const AdminSidebar: React.FC = () => {
         body,
         icon: '/logo.jpg',
         badge: '/logo.jpg',
-        tag: 'new-order',
+        tag: 'admin-notification',
       });
     }
   };
@@ -59,72 +72,167 @@ const AdminSidebar: React.FC = () => {
     requestNotificationPermission();
   }, []);
 
-  useEffect(() => {
-    const fetchPendingOrders = async () => {
-      try {
-        const response = await fetch('/api/orders?status=pending');
-        if (response.ok) {
-          const data = await response.json();
-          setPendingOrders(data);
+  // ฟังก์ชันดึงข้อมูลออเดอร์รอดำเนินการ
+  const fetchPendingOrders = async () => {
+    try {
+      const response = await fetch('/api/orders?status=pending');
+      if (response.ok) {
+        const data = await response.json();
+        setPendingOrders(data);
+        
+        // แจ้งเตือนถ้ามีออเดอร์ใหม่ (หลังจากที่ initialized แล้ว)
+        if (isInitialized && data.length > lastOrderCount && lastOrderCount >= 0) {
+          const newOrdersCount = data.length - lastOrderCount;
+          if (newOrdersCount > 0) {
+            // เล่นเสียงแจ้งเตือน
+            playNotificationSound();
+            
+            // แสดง toast notification
+            toast.success(`🔔 มีออเดอร์ใหม่ ${newOrdersCount} รายการ!`, {
+              duration: 8000,
+              position: 'top-right',
+              style: {
+                background: '#10B981',
+                color: 'white',
+                fontWeight: 'bold',
+              },
+            });
+            
+            // ส่ง browser notification
+            sendBrowserNotification(
+              'ออเดอร์ใหม่!', 
+              `มีออเดอร์ใหม่ ${newOrdersCount} รายการรอดำเนินการ`
+            );
+          }
+        }
+        
+        setLastOrderCount(data.length);
+      }
+    } catch (error) {
+      console.error('Error fetching pending orders:', error);
+    }
+  };
+
+  // ฟังก์ชันดึงข้อมูลการแจ้งเตือน
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/admin/notifications?limit=20');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setNotifications(data.notifications);
           
-          // แจ้งเตือนถ้ามีออเดอร์ใหม่ (หลังจากที่ initialized แล้ว)
-          if (isInitialized && data.length > lastOrderCount && lastOrderCount >= 0) {
-            const newOrdersCount = data.length - lastOrderCount;
-            if (newOrdersCount > 0) {
-              // เล่นเสียงแจ้งเตือน
-              playNotificationSound();
-              
-              // แสดง toast notification
-              toast.success(`🔔 มีออเดอร์ใหม่ ${newOrdersCount} รายการ!`, {
-                duration: 8000,
-                position: 'top-right',
-                style: {
-                  background: '#10B981',
-                  color: 'white',
-                  fontWeight: 'bold',
-                },
-              });
-              
-              // ส่ง browser notification
-              sendBrowserNotification(
-                'ออเดอร์ใหม่!', 
-                `มีออเดอร์ใหม่ ${newOrdersCount} รายการรอดำเนินการ`
-              );
+          // นับการแจ้งเตือนที่ยังไม่อ่าน
+          const unreadCount = data.notifications.filter((n: Notification) => !n.isRead).length;
+          
+          // แจ้งเตือนถ้ามีการแจ้งเตือนใหม่
+          if (isInitialized && unreadCount > lastNotificationCount && lastNotificationCount >= 0) {
+            const newNotificationsCount = unreadCount - lastNotificationCount;
+            if (newNotificationsCount > 0) {
+              // หาการแจ้งเตือนใหม่ล่าสุด
+              const latestNotification = data.notifications.find((n: Notification) => !n.isRead);
+              if (latestNotification && latestNotification.type === 'claim_request') {
+                // เล่นเสียงแจ้งเตือน
+                playNotificationSound();
+                
+                // แสดง toast notification สำหรับการเคลม
+                toast.error(`🚨 ${latestNotification.title}`, {
+                  duration: 10000,
+                  position: 'top-right',
+                  style: {
+                    background: '#EF4444',
+                    color: 'white',
+                    fontWeight: 'bold',
+                  },
+                });
+                
+                // ส่ง browser notification
+                sendBrowserNotification(
+                  latestNotification.title,
+                  latestNotification.message
+                );
+              }
             }
           }
           
-          if (!isInitialized) {
-            setIsInitialized(true);
-          }
-          
-          setLastOrderCount(data.length);
+          setLastNotificationCount(unreadCount);
         }
-      } catch (error) {
-        console.error('Error fetching pending orders:', error);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchPendingOrders();
+    fetchNotifications();
     
-    // ตั้งให้เช็คออเดอร์ใหม่ทุก 15 วินาทีเพื่อความเร็วในการแจ้งเตือน
-    const interval = setInterval(fetchPendingOrders, 15000);
+    if (!isInitialized) {
+      setIsInitialized(true);
+    }
+    
+    // ตั้งให้เช็คออเดอร์และการแจ้งเตือนใหม่ทุก 15 วินาทีเพื่อความเร็วในการแจ้งเตือน
+    const interval = setInterval(() => {
+      fetchPendingOrders();
+      fetchNotifications();
+    }, 15000);
     
     return () => clearInterval(interval);
-  }, [lastOrderCount, isInitialized]);
+  }, [lastOrderCount, lastNotificationCount, isInitialized]);
+
+  // ฟังก์ชันทำเครื่องหมายอ่านแล้ว
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(`/api/admin/notifications/${notificationId}/read`, {
+        method: 'PATCH'
+      });
+      
+      if (response.ok) {
+        // อัพเดตสถานะในหน้าจอ
+        setNotifications(prev => 
+          prev.map(n => 
+            n._id === notificationId ? { ...n, isRead: true } : n
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // ทำเครื่องหมายอ่านแล้ว
+    if (!notification.isRead) {
+      await markAsRead(notification._id);
+    }
+    
+    // นำทางไปยังหน้าที่เกี่ยวข้อง
+    if (notification.type === 'claim_request' && notification.relatedId) {
+      router.push(`/admin/orders/claims`);
+    } else if (notification.type === 'new_order' && notification.relatedId) {
+      router.push(`/admin/orders?highlight=${notification.relatedId}`);
+    }
+    
+    setShowNotifications(false);
+  };
+
+  const handleOrderClick = (orderId: string) => {
+    router.push(`/admin/orders?highlight=${orderId}`);
+    setShowNotifications(false);
+  };
 
   const menuItems = [
     { label: 'ภาพรวม', href: '/admin', icon: '📊' },
     { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦' },
+    { label: 'จัดการการเคลม', href: '/admin/orders/claims', icon: '🚨' },
     { label: 'ลูกค้า', href: '/admin/customers', icon: '👥' },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },
     { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥' },
     { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢' },
   ];
 
-  const handleOrderClick = (orderId: string) => {
-    router.push(`/admin/orders?highlight=${orderId}`);
-    setShowNotifications(false);
-  };
+  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+  const totalNotifications = pendingOrders.length + unreadNotificationsCount;
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
@@ -143,9 +251,9 @@ const AdminSidebar: React.FC = () => {
               </svg>
               
               {/* Notification Badge */}
-              {pendingOrders.length > 0 && (
+              {totalNotifications > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                  {pendingOrders.length > 99 ? '99+' : pendingOrders.length}
+                  {totalNotifications > 99 ? '99+' : totalNotifications}
                 </span>
               )}
             </button>
@@ -160,65 +268,97 @@ const AdminSidebar: React.FC = () => {
                   className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                 >
                   <div className="p-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-900">🔔 แจ้งเตือนออเดอร์</h3>
-                    <p className="text-sm text-gray-600">{pendingOrders.length} ออเดอร์รอดำเนินการ</p>
+                    <h3 className="font-semibold text-gray-900">🔔 แจ้งเตือน</h3>
+                    <p className="text-sm text-gray-600">
+                      ออเดอร์รอดำเนินการ: {pendingOrders.length} | ยังไม่อ่าน: {unreadNotificationsCount}
+                    </p>
                   </div>
                   
                   <div className="max-h-96 overflow-y-auto">
-                    {pendingOrders.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
-                        ✅ ไม่มีออเดอร์ที่รอดำเนินการ
-                      </div>
-                    ) : (
-                      pendingOrders.slice(0, 10).map((order) => (
-                        <div
-                          key={order._id}
-                          className="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => handleOrderClick(order._id)}
-                        >
-                          <div className="flex justify-between items-start">
+                    {/* ออเดอร์รอดำเนินการ */}
+                    {pendingOrders.length > 0 && (
+                      <div className="p-3 border-b border-gray-100">
+                        <h4 className="text-sm font-medium text-blue-600 mb-2">📦 ออเดอร์รอดำเนินการ</h4>
+                        {pendingOrders.slice(0, 5).map((order) => (
+                          <div
+                            key={order._id}
+                            onClick={() => handleOrderClick(order._id)}
+                            className="flex items-center justify-between p-2 hover:bg-blue-50 rounded cursor-pointer mb-1"
+                          >
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">
-                                {order.customerName}
-                              </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm font-medium text-gray-900">
                                 #{order._id.slice(-8).toUpperCase()}
                               </p>
-                              <p className="text-sm text-blue-600 font-semibold">
-                                ฿{order.totalAmount.toLocaleString()}
+                              <p className="text-xs text-gray-600">
+                                {order.customerName} • ฿{order.totalAmount.toLocaleString()}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <span className="text-xs text-gray-500">
-                                {new Date(order.createdAt).toLocaleDateString('th-TH', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                              <div className="mt-1">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  รอดำเนินการ
-                                </span>
-                              </div>
+                            <div className="text-xs text-blue-600">
+                              {order.paymentMethod === 'cod' ? '💰' : '🏦'}
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
-                    
-                    {pendingOrders.length > 10 && (
-                      <div className="p-4 text-center">
-                        <button
-                          onClick={() => {
-                            router.push('/admin/orders');
-                            setShowNotifications(false);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          ดูทั้งหมด ({pendingOrders.length} รายการ)
-                        </button>
+
+                    {/* การแจ้งเตือนอื่น ๆ */}
+                    {notifications.length > 0 && (
+                      <div className="p-3">
+                        <h4 className="text-sm font-medium text-red-600 mb-2">🚨 การแจ้งเตือน</h4>
+                        {notifications.slice(0, 10).map((notification) => (
+                          <div
+                            key={notification._id}
+                            onClick={() => handleNotificationClick(notification)}
+                            className={`p-3 rounded cursor-pointer mb-2 transition-colors ${
+                              notification.isRead
+                                ? 'bg-gray-50 hover:bg-gray-100'
+                                : notification.type === 'claim_request'
+                                ? 'bg-red-50 hover:bg-red-100 border border-red-200'
+                                : 'bg-blue-50 hover:bg-blue-100 border border-blue-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className={`text-sm font-medium ${
+                                  notification.isRead ? 'text-gray-700' : 
+                                  notification.type === 'claim_request' ? 'text-red-800' : 'text-blue-800'
+                                }`}>
+                                  {notification.title}
+                                </p>
+                                <p className={`text-xs mt-1 ${
+                                  notification.isRead ? 'text-gray-500' : 
+                                  notification.type === 'claim_request' ? 'text-red-600' : 'text-blue-600'
+                                }`}>
+                                  {notification.message.length > 60 
+                                    ? notification.message.substring(0, 60) + '...'
+                                    : notification.message
+                                  }
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {new Date(notification.createdAt).toLocaleDateString('th-TH', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    timeZone: 'Asia/Bangkok'
+                                  })}
+                                </p>
+                              </div>
+                              {!notification.isRead && (
+                                <div className={`w-2 h-2 rounded-full ${
+                                  notification.type === 'claim_request' ? 'bg-red-500' : 'bg-blue-500'
+                                } ml-2 mt-1`} />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {pendingOrders.length === 0 && notifications.length === 0 && (
+                      <div className="p-8 text-center text-gray-500">
+                        <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                        <p className="text-sm">ไม่มีการแจ้งเตือนใหม่</p>
                       </div>
                     )}
                   </div>
@@ -233,34 +373,21 @@ const AdminSidebar: React.FC = () => {
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.href}>
-              <a
+              <Link
                 href={item.href}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                   pathname === item.href
-                    ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
                 <span className="font-medium">{item.label}</span>
-                {item.href === '/admin/orders' && pendingOrders.length > 0 && (
-                  <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {pendingOrders.length}
-                  </span>
-                )}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
       </nav>
-
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <p className="text-xs text-gray-600">
-            🟢 ออนไลน์ - ตรวจสอบออเดอร์ใหม่ทุก 15 วินาที
-          </p>
-        </div>
-      </div>
     </aside>
   );
 };
