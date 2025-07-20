@@ -13,6 +13,14 @@ export interface IUser {
   customerType?: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string; // ผู้รับผิดชอบ
   taxId?: string; // เลขผู้เสียภาษี
+  // เพิ่มข้อมูลใบกำกับภาษีที่สามารถบันทึกไว้และนำกลับมาใช้ได้
+  taxInvoiceInfo?: {
+    companyName: string;
+    taxId: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  };
   lastOrderDate?: Date; // วันที่สั่งซื้อล่าสุด
   totalOrders?: number; // จำนวนออเดอร์ทั้งหมด
   totalSpent?: number; // ยอดซื้อรวมทั้งหมด
@@ -89,6 +97,13 @@ const userSchema = new Schema<IUser>(
     taxId: {
       type: String,
       required: false,
+    },
+    taxInvoiceInfo: {
+      companyName: { type: String, required: false },
+      taxId: { type: String, required: false },
+      companyAddress: { type: String, required: false },
+      companyPhone: { type: String, required: false },
+      companyEmail: { type: String, required: false },
     },
     lastOrderDate: {
       type: Date,

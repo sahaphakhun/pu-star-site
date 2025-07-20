@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
+import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 
 interface ProductWithId extends IProduct {
   _id: string;
@@ -46,12 +47,13 @@ const ShopPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Tax Invoice states
-  const [requestTaxInvoice, setRequestTaxInvoice] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [taxId, setTaxId] = useState('');
-  const [companyAddress, setCompanyAddress] = useState('');
-  const [companyPhone, setCompanyPhone] = useState('');
-  const [companyEmail, setCompanyEmail] = useState('');
+  const [taxInvoiceData, setTaxInvoiceData] = useState<{
+    companyName: string;
+    taxId: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  } | null>(null);
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -429,13 +431,13 @@ const ShopPage = () => {
         })),
         shippingFee: calculateShippingFee(),
         totalAmount: calculateGrandTotal(),
-        taxInvoice: requestTaxInvoice ? {
-          requestTaxInvoice,
-          companyName: companyName || undefined,
-          taxId: taxId || undefined,
-          companyAddress: companyAddress || undefined,
-          companyPhone: companyPhone || undefined,
-          companyEmail: companyEmail || undefined
+        taxInvoice: taxInvoiceData ? {
+          requestTaxInvoice: true,
+          companyName: taxInvoiceData.companyName,
+          taxId: taxInvoiceData.taxId,
+          companyAddress: taxInvoiceData.companyAddress || undefined,
+          companyPhone: taxInvoiceData.companyPhone || undefined,
+          companyEmail: taxInvoiceData.companyEmail || undefined
         } : undefined
       };
 
@@ -459,12 +461,7 @@ const ShopPage = () => {
         setCustomerAddress('');
         setSlipFile(null);
         setSlipPreview(null);
-        setRequestTaxInvoice(false);
-        setCompanyName('');
-        setTaxId('');
-        setCompanyAddress('');
-        setCompanyPhone('');
-        setCompanyEmail('');
+        setTaxInvoiceData(null);
         setSaveNewAddress(false);
         setAddressLabel('');
         setSelectedAddressId(null);
@@ -1326,87 +1323,10 @@ const ShopPage = () => {
                   )}
 
                   {/* Tax Invoice Section */}
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <input
-                        type="checkbox"
-                        id="requestTaxInvoice"
-                        checked={requestTaxInvoice}
-                        onChange={(e) => {
-                          setRequestTaxInvoice(e.target.checked);
-                          if (e.target.checked) {
-                            setTimeout(() => {
-                              document.getElementById('taxIdInput')?.focus();
-                            }, 100);
-                          }
-                        }}
-                        className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <label htmlFor="requestTaxInvoice" className="text-sm font-medium text-gray-700">
-                        ขอใบกำกับภาษีเต็มรูปแบบ
-                      </label>
-                    </div>
-                    {/* เงื่อนไขใบกำกับภาษี */}
-                    <div className="text-xs text-red-600 mb-2">
-                      เงื่อนไข: ไม่สามารถออกใบกำกับภาษีย้อนหลังจากวันที่สั่งซื้อได้ กรุณากรอกเลขประจำตัวผู้เสียภาษีให้ถูกต้องเพื่อความรวดเร็วในการออกใบกำกับฯ
-                    </div>
-                    {requestTaxInvoice && (
-                      <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">นิติบุคคล/บุคคลธรรมดา *</label>
-                          <input
-                            type="text"
-                            value={companyName}
-                            onChange={(e) => setCompanyName(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="ชื่อบริษัท หรือ ชื่อ-นามสกุล บุคคลธรรมดา"
-                            required={requestTaxInvoice}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี *</label>
-                          <input
-                            type="text"
-                            id="taxIdInput"
-                            value={taxId}
-                            onChange={(e) => setTaxId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="0000000000000"
-                            maxLength={13}
-                            required={requestTaxInvoice}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่สำหรับออกใบกำกับภาษี</label>
-                          <textarea
-                            value={companyAddress}
-                            onChange={(e) => setCompanyAddress(e.target.value)}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="ที่อยู่ตามใบกำกับภาษี"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์บริษัท</label>
-                          <input
-                            type="tel"
-                            value={companyPhone}
-                            onChange={(e) => setCompanyPhone(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">อีเมลบริษัท</label>
-                          <input
-                            type="email"
-                            value={companyEmail}
-                            onChange={(e) => setCompanyEmail(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <TaxInvoiceForm
+                    onTaxInvoiceChange={setTaxInvoiceData}
+                    className="mb-6"
+                  />
 
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">สรุปคำสั่งซื้อ</h4>

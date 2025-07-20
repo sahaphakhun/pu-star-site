@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
+import User from '@/models/User';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { sendSMS } from '@/utils/deesmsx';
@@ -111,6 +112,25 @@ export async function POST(request: NextRequest) {
         await updateUserNameFromOrder(userId, data.customerName);
       } catch (error) {
         console.error('เกิดข้อผิดพลาดในการอัปเดตชื่อผู้ใช้:', error);
+      }
+    }
+
+    // บันทึกข้อมูลใบกำกับภาษีอัตโนมัติถ้าลูกค้าขอใบกำกับภาษีและยังไม่มีข้อมูลบันทึกไว้
+    if (userId && data.taxInvoice?.requestTaxInvoice && data.taxInvoice.companyName && data.taxInvoice.taxId) {
+      try {
+        const user = await User.findById(userId);
+        if (user && !user.taxInvoiceInfo) {
+          user.taxInvoiceInfo = {
+            companyName: data.taxInvoice.companyName,
+            taxId: data.taxInvoice.taxId,
+            companyAddress: data.taxInvoice.companyAddress || '',
+            companyPhone: data.taxInvoice.companyPhone || '',
+            companyEmail: data.taxInvoice.companyEmail || ''
+          };
+          await user.save();
+        }
+      } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูลใบกำกับภาษี:', error);
       }
     }
 

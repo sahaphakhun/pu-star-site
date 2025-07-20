@@ -6,12 +6,21 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 
 interface Address {
   _id: string;
   label: string;
   address: string;
   isDefault: boolean;
+}
+
+interface TaxInvoiceInfo {
+  companyName: string;
+  taxId: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
 }
 
 interface OrderItem {
@@ -52,7 +61,7 @@ const ProfilePage = () => {
   const router = useRouter();
 
   // States
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'tax-invoice'>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +91,10 @@ const ProfilePage = () => {
     reason: '',
     images: [] as File[]
   });
+
+  // Tax Invoice states
+  const [taxInvoiceInfo, setTaxInvoiceInfo] = useState<TaxInvoiceInfo | null>(null);
+  const [isEditingTaxInvoice, setIsEditingTaxInvoice] = useState(false);
 
   // Mock customer level data
   const calculateCustomerLevel = () => {
@@ -173,7 +186,8 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
     { id: 'orders', label: 'คำสั่งซื้อ', icon: '📦' },
-    { id: 'addresses', label: 'ที่อยู่', icon: '📍' }
+    { id: 'addresses', label: 'ที่อยู่', icon: '📍' },
+    { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '🧾' }
   ];
 
   useEffect(() => {
@@ -187,6 +201,7 @@ const ProfilePage = () => {
       fetchProfile();
       fetchOrders();
       fetchAddresses();
+      fetchTaxInvoiceInfo();
     }
   }, [isLoggedIn, user]);
 
@@ -230,6 +245,48 @@ const ProfilePage = () => {
       }
     } catch (err) {
       console.error('Error fetching addresses:', err);
+    }
+  };
+
+  const fetchTaxInvoiceInfo = async () => {
+    try {
+      const res = await fetch('/api/profile/tax-invoice');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setTaxInvoiceInfo(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching tax invoice info:', err);
+    }
+  };
+
+  const handleUpdateTaxInvoice = async (taxData: TaxInvoiceInfo | null) => {
+    if (!taxData || !taxData.companyName || !taxData.taxId) {
+      toast.error('กรุณากรอกชื่อบริษัทและเลขประจำตัวผู้เสียภาษี');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/profile/tax-invoice', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taxData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTaxInvoiceInfo(data.data);
+        setIsEditingTaxInvoice(false);
+        toast.success('บันทึกข้อมูลใบกำกับภาษีสำเร็จ');
+      } else {
+        toast.error(data.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+    } catch (error) {
+      console.error('Error updating tax invoice info:', error);
+      toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     }
   };
 
@@ -735,6 +792,88 @@ const ProfilePage = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Tax Invoice Tab */}
+            {activeTab === 'tax-invoice' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">ข้อมูลใบกำกับภาษี</h2>
+                  {taxInvoiceInfo && !isEditingTaxInvoice && (
+                    <button
+                      onClick={() => setIsEditingTaxInvoice(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      แก้ไข
+                    </button>
+                  )}
+                </div>
+
+                {!taxInvoiceInfo && !isEditingTaxInvoice ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีข้อมูลใบกำกับภาษี</h3>
+                    <p className="text-gray-600 mb-4">บันทึกข้อมูลใบกำกับภาษีเพื่อใช้ในการสั่งซื้อครั้งต่อไป</p>
+                    <button
+                      onClick={() => setIsEditingTaxInvoice(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      เพิ่มข้อมูลใบกำกับภาษี
+                    </button>
+                  </div>
+                ) : isEditingTaxInvoice ? (
+                  <div className="space-y-6">
+                    <TaxInvoiceForm
+                      onTaxInvoiceChange={handleUpdateTaxInvoice}
+                      className=""
+                      initialRequestTaxInvoice={true}
+                    />
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        onClick={() => setIsEditingTaxInvoice(false)}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      >
+                        ยกเลิก
+                      </button>
+                    </div>
+                  </div>
+                ) : taxInvoiceInfo && (
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อบริษัท/นิติบุคคล</label>
+                        <p className="text-gray-900 font-medium">{taxInvoiceInfo.companyName}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี</label>
+                        <p className="text-gray-900 font-mono">{taxInvoiceInfo.taxId}</p>
+                      </div>
+                      {taxInvoiceInfo.companyAddress && (
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label>
+                          <p className="text-gray-900">{taxInvoiceInfo.companyAddress}</p>
+                        </div>
+                      )}
+                      {taxInvoiceInfo.companyPhone && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทร</label>
+                          <p className="text-gray-900">{taxInvoiceInfo.companyPhone}</p>
+                        </div>
+                      )}
+                      {taxInvoiceInfo.companyEmail && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
+                          <p className="text-gray-900">{taxInvoiceInfo.companyEmail}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

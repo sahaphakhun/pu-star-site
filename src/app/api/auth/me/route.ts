@@ -71,6 +71,7 @@ export async function GET() {
           phoneNumber: user.phoneNumber,
           role: user.role,
           addresses: user.addresses || [],
+          taxInvoiceInfo: user.taxInvoiceInfo || null,
         },
       });
     } catch (_error) {
@@ -110,7 +111,7 @@ export async function PATCH(req: Request) {
     if (!user) {
       return NextResponse.json({ success: false, message: 'ไม่พบผู้ใช้' }, { status: 404 });
     }
-    const { action, address, addressId, name } = await req.json();
+    const { action, address, addressId, name, taxInvoiceInfo } = await req.json();
     
     if (action === 'updateProfile') {
       // อัปเดตข้อมูลโปรไฟล์
@@ -126,6 +127,7 @@ export async function PATCH(req: Request) {
           phoneNumber: user.phoneNumber,
           role: user.role,
           addresses: user.addresses || [],
+          taxInvoiceInfo: user.taxInvoiceInfo || null,
         }
       });
     } else if (action === 'add') {
@@ -155,6 +157,20 @@ export async function PATCH(req: Request) {
       user.addresses = (user.addresses || []).filter((a: any) => (a._id?.toString() || a._id) !== addressId);
       await user.save();
       return NextResponse.json({ success: true, addresses: user.addresses });
+    } else if (action === 'updateTaxInvoice') {
+      // อัปเดตข้อมูลใบกำกับภาษี
+      if (!taxInvoiceInfo || !taxInvoiceInfo.companyName || !taxInvoiceInfo.taxId) {
+        return NextResponse.json({ success: false, message: 'ต้องระบุชื่อบริษัทและเลขประจำตัวผู้เสียภาษี' }, { status: 400 });
+      }
+      user.taxInvoiceInfo = {
+        companyName: taxInvoiceInfo.companyName,
+        taxId: taxInvoiceInfo.taxId,
+        companyAddress: taxInvoiceInfo.companyAddress || '',
+        companyPhone: taxInvoiceInfo.companyPhone || '',
+        companyEmail: taxInvoiceInfo.companyEmail || ''
+      };
+      await user.save();
+      return NextResponse.json({ success: true, taxInvoiceInfo: user.taxInvoiceInfo });
     }
     return NextResponse.json({ success: false, message: 'action ไม่ถูกต้อง' }, { status: 400 });
   } catch (error) {
