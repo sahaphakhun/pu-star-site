@@ -39,7 +39,7 @@ interface Order {
   orderDate: string;
   items: OrderItem[];
   paymentMethod?: 'cod' | 'transfer';
-  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'claim_rejected';
+  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'claim_approved' | 'claim_rejected';
   trackingNumber?: string;
   shippingProvider?: string;
   packingProofs?: Array<{
@@ -53,6 +53,7 @@ interface Order {
     claimImages: string[];
     claimStatus: 'pending' | 'approved' | 'rejected';
     adminResponse?: string;
+    responseDate?: string;
   };
 }
 
@@ -169,6 +170,7 @@ const ProfilePage = () => {
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
     claimed: 'เคลมสินค้า',
+    claim_approved: 'เคลมสำเร็จ',
     claim_rejected: 'เคลมถูกปฏิเสธ'
   };
 
@@ -180,6 +182,7 @@ const ProfilePage = () => {
     delivered: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
     claimed: 'bg-pink-100 text-pink-800',
+    claim_approved: 'bg-teal-100 text-teal-800',
     claim_rejected: 'bg-orange-100 text-orange-800'
   };
 
@@ -861,6 +864,109 @@ const ProfilePage = () => {
                     </svg>
                   </button>
                 </div>
+
+                {/* Claim Info */}
+                {(selectedOrder.claimInfo || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
+                  <div className={`p-4 rounded-lg mb-6 border ${
+                    selectedOrder.status === 'claim_approved' ? 'bg-green-50 border-green-200' :
+                    selectedOrder.status === 'claim_rejected' ? 'bg-red-50 border-red-200' : 
+                    'bg-pink-50 border-pink-200'
+                  }`}>
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className={`w-5 h-5 mr-2 ${
+                        selectedOrder.status === 'claim_approved' ? 'text-green-600' :
+                        selectedOrder.status === 'claim_rejected' ? 'text-red-600' : 
+                        'text-pink-600'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      ข้อมูลการเคลม
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedOrder.claimInfo?.claimDate && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">วันที่เคลม</p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedOrder.claimInfo.claimDate).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'long', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Asia/Bangkok'
+                            })}
+                          </p>
+                        </div>
+                      )}
+                      {selectedOrder.claimInfo?.claimReason && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">เหตุผลในการเคลม</p>
+                          <div className="bg-white p-3 rounded border border-pink-200">
+                            <p className="text-gray-900">{selectedOrder.claimInfo.claimReason}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">สถานะการเคลม</p>
+                        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                          (selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? 'bg-green-100 text-green-800 border border-green-200' :
+                          'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {(selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? '⏳ รอดำเนินการ' :
+                           (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                        </span>
+                      </div>
+                      
+                      {/* รูปภาพการเคลมที่ลูกค้าส่งไป */}
+                      {selectedOrder.claimInfo?.claimImages && selectedOrder.claimInfo.claimImages.length > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">รูปภาพประกอบการเคลม ({selectedOrder.claimInfo?.claimImages?.length || 0} รูป)</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={imageUrl}
+                                  alt={`รูปประกอบการเคลม ${index + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-pink-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(imageUrl, '_blank')}
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">💡 คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                        </div>
+                      )}
+                      
+                      {/* การตอบกลับจากแอดมิน */}
+                      {selectedOrder.claimInfo?.adminResponse && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">การตอบกลับจากแอดมิน</p>
+                          <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                            <p className="text-gray-900">{selectedOrder.claimInfo.adminResponse}</p>
+                            {selectedOrder.claimInfo?.responseDate && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                ตอบกลับเมื่อ: {new Date(selectedOrder.claimInfo.responseDate).toLocaleDateString('th-TH', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric', 
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZone: 'Asia/Bangkok'
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Order Items */}
                 <div className="space-y-4 mb-6">

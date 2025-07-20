@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import mongoose from 'mongoose';
 import { verifyToken } from '@/lib/auth';
+import { sendSMS } from '@/app/notification';
 
 export async function PUT(
   request: NextRequest,
@@ -59,6 +60,21 @@ export async function PUT(
       },
       { new: true }
     );
+
+    // ส่ง SMS แจ้งลูกค้าเกี่ยวกับการตอบกลับการเคลม
+    try {
+      if (order.customerPhone) {
+        const orderNumber = orderId.slice(-8).toUpperCase();
+        const statusText = claimStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
+        const smsMessage = `การเคลมออเดอร์ #${orderNumber} ได้รับการ${statusText}แล้ว\n\nข้อความจากแอดมิน: ${adminResponse.trim()}\n\nตรวจสอบรายละเอียดเพิ่มเติมได้ในแอป ขอบคุณครับ`;
+        
+        await sendSMS(order.customerPhone, smsMessage);
+        console.log(`✅ ส่ง SMS แจ้งการ${statusText}เคลมให้ลูกค้า ${order.customerPhone} สำหรับออเดอร์ #${orderNumber}`);
+      }
+    } catch (smsError) {
+      console.error('❌ เกิดข้อผิดพลาดในการส่ง SMS แจ้งลูกค้า:', smsError);
+      // ไม่ให้ error การส่ง SMS ทำให้การอัพเดตการเคลมล้มเหลว
+    }
 
     return NextResponse.json({
       success: true,
@@ -131,6 +147,21 @@ export async function PATCH(
       },
       { new: true }
     );
+
+    // ส่ง SMS แจ้งลูกค้าเกี่ยวกับการตอบกลับการเคลม
+    try {
+      if (order.customerPhone) {
+        const orderNumber = orderId.slice(-8).toUpperCase();
+        const statusText = action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ';
+        const smsMessage = `การเคลมออเดอร์ #${orderNumber} ได้รับการ${statusText}แล้ว\n\nข้อความจากแอดมิน: ${adminResponse.trim()}\n\nตรวจสอบรายละเอียดเพิ่มเติมได้ในแอป ขอบคุณครับ`;
+        
+        await sendSMS(order.customerPhone, smsMessage);
+        console.log(`✅ ส่ง SMS แจ้งการ${statusText}เคลมให้ลูกค้า ${order.customerPhone} สำหรับออเดอร์ #${orderNumber}`);
+      }
+    } catch (smsError) {
+      console.error('❌ เกิดข้อผิดพลาดในการส่ง SMS แจ้งลูกค้า:', smsError);
+      // ไม่ให้ error การส่ง SMS ทำให้การอัพเดตการเคลมล้มเหลว
+    }
     
     return NextResponse.json({
       success: true,
