@@ -109,17 +109,6 @@ const ShopPage = () => {
       // เพิ่ม cache busting parameter เพื่อให้ได้ข้อมูลล่าสุด
       const response = await fetch(`/api/products?_t=${Date.now()}`);
       const data: ProductWithId[] = await response.json();
-      
-      // Debug: ตรวจสอบข้อมูล isAvailable
-      console.log('Loaded products:', data.map(p => ({ 
-        name: p.name, 
-        isAvailable: p.isAvailable,
-        options: p.options?.map(opt => ({
-          name: opt.name,
-          values: opt.values.map(v => ({ label: v.label, isAvailable: v.isAvailable }))
-        }))
-      })));
-      
       setProducts(data);
       const cats = Array.from(new Set(data.map((p: any) => p.category || 'ทั่วไป')));
       setCategories(['ทั้งหมด', ...cats]);
@@ -631,8 +620,8 @@ const ShopPage = () => {
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
                         สินค้าหมด
                       </div>
-                      <div className="absolute inset-0 bg-gray-500 bg-opacity-60 flex items-center justify-center z-10">
-                        <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                      <div className="absolute inset-0 bg-gray-500 bg-opacity-30 flex items-center justify-center z-10">
+                        <span className="text-gray-800 font-bold text-lg bg-white bg-opacity-90 px-3 py-1 rounded-lg shadow">สินค้าหมด</span>
                       </div>
                     </>
                   )}
@@ -817,8 +806,8 @@ const ShopPage = () => {
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10">
                         สินค้าหมด
                       </div>
-                      <div className="absolute inset-0 bg-gray-500 bg-opacity-60 flex items-center justify-center z-10 rounded-lg">
-                        <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                      <div className="absolute inset-0 bg-gray-500 bg-opacity-30 flex items-center justify-center z-10 rounded-lg">
+                        <span className="text-gray-800 font-bold text-lg bg-white bg-opacity-90 px-3 py-1 rounded-lg shadow">สินค้าหมด</span>
                       </div>
                     </>
                   )}
@@ -895,12 +884,12 @@ const ShopPage = () => {
                                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                                 : isSelectable
                                   ? 'border-gray-300 hover:border-gray-400'
-                                  : 'border-gray-200 bg-gray-50'
-                            } ${!isSelectable ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                  : 'border-gray-200 bg-gray-100'
+                            } ${!isSelectable ? 'cursor-not-allowed' : ''} ${!isOptionAvailable ? 'opacity-75' : ''}`}
                           >
                             {!isOptionAvailable && (
-                              <div className="absolute inset-0 bg-gray-500 bg-opacity-30 rounded-lg flex items-center justify-center">
-                                <span className="text-gray-700 font-medium text-xs bg-white px-2 py-1 rounded shadow">
+                              <div className="absolute top-1 right-1">
+                                <span className="text-white font-bold text-xs bg-red-500 px-2 py-1 rounded-full shadow">
                                   หมด
                                 </span>
                               </div>
@@ -918,14 +907,9 @@ const ShopPage = () => {
                             )}
                             
                             <div className="flex items-center justify-between">
-                              <span className={!isOptionAvailable ? 'line-through text-gray-500' : ''}>
+                              <span className={!isOptionAvailable ? 'text-gray-500' : ''}>
                                 {value.label}
                               </span>
-                              {!isOptionAvailable && (
-                                <span className="text-xs text-red-600 font-medium">
-                                  หมด
-                                </span>
-                              )}
                             </div>
                           </button>
                         );
