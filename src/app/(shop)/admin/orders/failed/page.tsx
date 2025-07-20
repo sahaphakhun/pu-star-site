@@ -24,30 +24,34 @@ interface Order {
   items: OrderItem[];
   totalAmount: number;
   shippingFee: number;
-  status: 'cancelled';
+  status: 'shipped' | 'failed';
   createdAt: string;
   updatedAt: string;
   trackingNumber?: string;
   shippingProvider?: string;
 }
 
-const FailedOrdersPage = () => {
+const ShippingManagementPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'shipped' | 'failed'>('all');
   const [dateFilter, setDateFilter] = useState<'all'|'today'|'week'|'month'|'custom'>('all');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
       const response = await fetch('/api/orders');
       if (response.ok) {
         const data = await response.json();
-        // กรองเฉพาะออเดอร์ที่ยกเลิก
-        const cancelledOrders = data.filter((order: Order) => order.status === 'cancelled');
-        setOrders(cancelledOrders);
+        // กรองเฉพาะออเดอร์ที่จัดส่งแล้วและที่ส่งไม่สำเร็จ
+        const shippingOrders = data.orders ? data.orders.filter((order: Order) => 
+          order.status === 'shipped' || order.status === 'failed'
+        ) : [];
+        setOrders(shippingOrders);
       }
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลคำสั่งซื้อได้:', error);
@@ -61,7 +65,8 @@ const FailedOrdersPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: 'delivered' | 'failed') => {
+    setUpdating(true);
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
@@ -72,13 +77,18 @@ const FailedOrdersPage = () => {
       });
 
       if (response.ok) {
-        toast.success('อัพเดทสถานะเรียบร้อย');
+        toast.success(`อัพเดทสถานะเป็น ${newStatus === 'delivered' ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ'} แล้ว`);
         fetchOrders();
         setSelectedOrder(null);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการอัพเดท');
       }
     } catch (error) {
       console.error('เกิดข้อผิดพลาดในการอัพเดทสถานะ:', error);
       toast.error('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -86,7 +96,10 @@ const FailedOrdersPage = () => {
     const matchesSearch = 
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerPhone.includes(searchTerm) ||
-      order._id.toLowerCase().includes(searchTerm.toLowerCase());
+      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.trackingNumber && order.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     const dateObj = new Date(order.createdAt);
     let datePass = true;
@@ -106,10 +119,14 @@ const FailedOrdersPage = () => {
       datePass = dateObj >= new Date(customStart) && dateObj <= new Date(customEnd);
     }
     
-    return matchesSearch && datePass;
+    return matchesSearch && matchesStatus && datePass;
   });
 
-  const totalLoss = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+  const stats = {
+    total: filteredOrders.length,
+    shipped: filteredOrders.filter(o => o.status === 'shipped').length,
+    failed: filteredOrders.filter(o => o.status === 'failed').length,
+  };
 
   if (loading) {
     return (
@@ -128,23 +145,59 @@ const FailedOrdersPage = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">ออเดอร์ที่ยกเลิก</h1>
-          <p className="text-gray-600">ออเดอร์ที่ไม่สามารถจัดส่งได้หรือถูกยกเลิก</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการการจัดส่ง</h1>
+          <p className="text-gray-600">ออเดอร์ที่จัดส่งออกไปแล้ว รอการยืนยันสถานะ</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-red-600">{filteredOrders.length}</div>
-            <div className="text-sm text-gray-600">ออเดอร์ที่ยกเลิก</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+            <div className="text-sm text-gray-600">ออเดอร์ทั้งหมด</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-orange-600">฿{totalLoss.toLocaleString()}</div>
-            <div className="text-sm text-gray-600">ยอดขายที่สูญเสีย</div>
+            <div className="text-2xl font-bold text-orange-600">{stats.shipped}</div>
+            <div className="text-sm text-gray-600">รอยืนยันผล</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-2xl font-bold text-purple-600">{filteredOrders.length > 0 ? Math.round(totalLoss / filteredOrders.length) : 0}</div>
-            <div className="text-sm text-gray-600">ยอดขายเฉลี่ยต่อออเดอร์</div>
+            <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
+            <div className="text-sm text-gray-600">ส่งไม่สำเร็จ</div>
+          </div>
+        </div>
+
+        {/* Quick Status Filter Buttons */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                statusFilter === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              📦 ทั้งหมด ({stats.total})
+            </button>
+            <button
+              onClick={() => setStatusFilter('shipped')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                statusFilter === 'shipped' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              🚚 รอยืนยันผล ({stats.shipped})
+            </button>
+            <button
+              onClick={() => setStatusFilter('failed')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                statusFilter === 'failed' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              ❌ ส่งไม่สำเร็จ ({stats.failed})
+            </button>
           </div>
         </div>
 
@@ -157,7 +210,7 @@ const FailedOrdersPage = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ค้นหาด้วยชื่อ, เบอร์โทร, หรือรหัสออเดอร์"
+                placeholder="ค้นหาด้วยชื่อ, เบอร์โทร, รหัสออเดอร์ หรือเลขพัสดุ"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -215,13 +268,13 @@ const FailedOrdersPage = () => {
                     ลูกค้า
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    วันที่สั่งซื้อ
+                    เลขพัสดุ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    สถานะ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ยอดรวม
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    การชำระเงิน
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     จัดการ
@@ -237,12 +290,12 @@ const FailedOrdersPage = () => {
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+                      <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-900">
                           #{order._id.slice(-8).toUpperCase()}
                         </span>
-                        <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                          ❌ ยกเลิก
+                        <span className="text-xs text-gray-500">
+                          {new Date(order.createdAt).toLocaleDateString('th-TH')}
                         </span>
                       </div>
                     </td>
@@ -253,24 +306,33 @@ const FailedOrdersPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(order.createdAt).toLocaleDateString('th-TH', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
+                      {order.trackingNumber ? (
+                        <div>
+                          <div className="font-medium">{order.trackingNumber}</div>
+                          <div className="text-xs text-gray-500">{order.shippingProvider}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        order.status === 'shipped' 
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {order.status === 'shipped' ? '🚚 จัดส่งแล้ว' : '❌ ส่งไม่สำเร็จ'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       ฿{order.totalAmount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'โอนเงิน'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => setSelectedOrder(order)}
                         className="text-blue-600 hover:text-blue-900"
                       >
-                        ดูรายละเอียด
+                        จัดการ
                       </button>
                     </td>
                   </motion.tr>
@@ -285,17 +347,17 @@ const FailedOrdersPage = () => {
             <div className="text-center">
               <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบออเดอร์ที่ยกเลิก</h3>
-              <p className="text-gray-600">ไม่มีออเดอร์ที่ยกเลิกในช่วงเวลาที่เลือก</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบออเดอร์</h3>
+              <p className="text-gray-600">ไม่มีออเดอร์ที่จัดส่งในช่วงเวลาที่เลือก</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* Order Management Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <motion.div
@@ -306,7 +368,7 @@ const FailedOrdersPage = () => {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  รายละเอียดออเดอร์ #{selectedOrder._id.slice(-8).toUpperCase()}
+                  จัดการออเดอร์ #{selectedOrder._id.slice(-8).toUpperCase()}
                 </h2>
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -318,17 +380,32 @@ const FailedOrdersPage = () => {
                 </button>
               </div>
 
+              {/* Current Status */}
               <div className="mb-6">
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className={`p-4 rounded-lg border ${
+                  selectedOrder.status === 'shipped' 
+                    ? 'bg-orange-50 border-orange-200'
+                    : 'bg-red-50 border-red-200'
+                }`}>
                   <div className="flex items-center">
-                    <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    <svg className={`w-5 h-5 mr-2 ${
+                      selectedOrder.status === 'shipped' ? 'text-orange-600' : 'text-red-600'
+                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                     </svg>
-                    <span className="font-semibold text-red-800">ออเดอร์ถูกยกเลิก</span>
+                    <span className={`font-semibold ${
+                      selectedOrder.status === 'shipped' ? 'text-orange-800' : 'text-red-800'
+                    }`}>
+                      {selectedOrder.status === 'shipped' ? 'ออเดอร์จัดส่งแล้ว - รอยืนยันผล' : 'ออเดอร์ส่งไม่สำเร็จ'}
+                    </span>
                   </div>
-                  <div className="mt-2 text-sm text-red-700">
-                    ออเดอร์นี้ไม่สามารถจัดส่งได้หรือถูกยกเลิกแล้ว
-                  </div>
+                  {selectedOrder.trackingNumber && (
+                    <div className={`mt-2 text-sm ${
+                      selectedOrder.status === 'shipped' ? 'text-orange-700' : 'text-red-700'
+                    }`}>
+                      เลขพัสดุ: {selectedOrder.trackingNumber} ({selectedOrder.shippingProvider})
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -365,27 +442,59 @@ const FailedOrdersPage = () => {
                 </div>
               </div>
 
-              {/* Restore Actions */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-3">การดำเนินการ</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => updateOrderStatus(selectedOrder._id, 'pending')}
-                    className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
-                  >
-                    เปลี่ยนเป็น รอดำเนินการ
-                  </button>
-                  <button
-                    onClick={() => updateOrderStatus(selectedOrder._id, 'confirmed')}
-                    className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-                  >
-                    เปลี่ยนเป็น ยืนยันออเดอร์
-                  </button>
+              {/* Status Update Actions */}
+              {selectedOrder.status === 'shipped' && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">อัพเดทสถานะการจัดส่ง</h3>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
+                    <p className="text-sm text-yellow-800">
+                      📦 ออเดอร์นี้ได้จัดส่งออกไปแล้ว กรุณาอัพเดทสถานะหลังจากได้ยืนยันผลการจัดส่ง
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder._id, 'delivered')}
+                      disabled={updating}
+                      className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      ส่งสำเร็จ
+                    </button>
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder._id, 'failed')}
+                      disabled={updating}
+                      className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      ส่งไม่สำเร็จ
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  หากต้องการกู้คืนออเดอร์ สามารถเปลี่ยนสถานะได้
-                </p>
-              </div>
+              )}
+
+              {selectedOrder.status === 'failed' && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">การดำเนินการ</h3>
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
+                    <p className="text-sm text-red-800">
+                      ❌ ออเดอร์นี้ส่งไม่สำเร็จ สามารถเปลี่ยนกลับเป็นสถานะอื่นได้หากต้องการ
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder._id, 'delivered')}
+                      disabled={updating}
+                      className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium hover:bg-green-200 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      เปลี่ยนเป็น ส่งสำเร็จ
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-center">
                 <button
@@ -403,4 +512,4 @@ const FailedOrdersPage = () => {
   );
 };
 
-export default FailedOrdersPage; 
+export default ShippingManagementPage; 

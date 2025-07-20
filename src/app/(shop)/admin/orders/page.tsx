@@ -44,7 +44,7 @@ interface Order {
   totalAmount: number;
   shippingFee: number;
   discount?: number;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'failed' | 'claim_approved' | 'claim_rejected';
   createdAt: string;
   updatedAt: string;
   trackingNumber?: string;
@@ -96,6 +96,9 @@ const AdminOrdersPage = () => {
     delivered: 'bg-green-100 text-green-800 border-green-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200',
     claimed: 'bg-pink-100 text-pink-800 border-pink-200',
+    failed: 'bg-gray-100 text-gray-800 border-gray-200',
+    claim_approved: 'bg-teal-100 text-teal-800 border-teal-200',
+    claim_rejected: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   };
 
   const statusLabels = {
@@ -106,6 +109,9 @@ const AdminOrdersPage = () => {
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
     claimed: 'เคลมสินค้า',
+    failed: 'ส่งไม่สำเร็จ',
+    claim_approved: 'เคลมสำเร็จ',
+    claim_rejected: 'เคลมถูกปฏิเสธ',
   };
 
   const statusIcons = {
@@ -116,6 +122,9 @@ const AdminOrdersPage = () => {
     delivered: '🎉',
     cancelled: '❌',
     claimed: '🔁',
+    failed: '💥',
+    claim_approved: '✅',
+    claim_rejected: '❌',
   };
 
   // ฟังก์ชันคำนวณหาเวลาหลัง cutoff ล่าสุด
@@ -213,6 +222,9 @@ const AdminOrdersPage = () => {
     delivered: 0,
     cancelled: 0,
     claimed: 0,
+    failed: 0,
+    claim_approved: 0,
+    claim_rejected: 0,
     totalRevenue: 0,
     taxInvoiceRequests: 0,
   });
@@ -991,6 +1003,9 @@ const AdminOrdersPage = () => {
                           <option value="delivered">ส่งสำเร็จ</option>
                           <option value="cancelled">ยกเลิก</option>
                           <option value="claimed">เคลมสินค้า</option>
+                          <option value="failed">ส่งไม่สำเร็จ</option>
+                          <option value="claim_approved">เคลมสำเร็จ</option>
+                          <option value="claim_rejected">เคลมถูกปฏิเสธ</option>
                         </select>
                       </div>
 

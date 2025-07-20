@@ -55,22 +55,13 @@ export async function POST(
       return NextResponse.json({ error: 'กรุณาระบุเหตุผลในการเคลม' }, { status: 400 });
     }
     
-    // อัพโหลดรูปภาพ (ถ้ามี)
+    // รวบรวม URL ของรูปภาพที่อัพโหลดแล้ว
     const claimImages: string[] = [];
     
-    // วนลูปหารูปภาพที่อัพโหลด
+    // วนลูปหา URL ของรูปภาพ
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith('image_') && value instanceof File) {
-        try {
-          // ในที่นี้ควรมีการอัพโหลดไฟล์จริง เช่น ไปยัง cloud storage
-          // สำหรับตัวอย่างนี้ เราจะใช้ data URL
-          const buffer = await value.arrayBuffer();
-          const base64 = Buffer.from(buffer).toString('base64');
-          const dataUrl = `data:${value.type};base64,${base64}`;
-          claimImages.push(dataUrl);
-        } catch (error) {
-          console.error('Error processing image:', error);
-        }
+      if (key.startsWith('imageUrl_') && typeof value === 'string') {
+        claimImages.push(value);
       }
     }
     

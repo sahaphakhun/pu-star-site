@@ -31,7 +31,7 @@ interface Order {
   orderDate: string;
   items: OrderItem[];
   paymentMethod?: 'cod' | 'transfer';
-  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'claim_approved' | 'claim_rejected';
   taxInvoice?: TaxInvoice;
   trackingNumber?: string;
   shippingProvider?: string;
@@ -70,7 +70,9 @@ const MyOrdersPage = () => {
     shipped: 'จัดส่งแล้ว',
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
-    claimed: 'เคลมสินค้า'
+    claimed: 'เคลมสินค้า',
+    claim_approved: 'เคลมสำเร็จ',
+    claim_rejected: 'เคลมถูกปฏิเสธ'
   };
 
   const statusColors = {
@@ -80,7 +82,9 @@ const MyOrdersPage = () => {
     shipped: 'bg-purple-100 text-purple-800',
     delivered: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
-    claimed: 'bg-pink-100 text-pink-800'
+    claimed: 'bg-pink-100 text-pink-800',
+    claim_approved: 'bg-teal-100 text-teal-800',
+    claim_rejected: 'bg-indigo-100 text-indigo-800'
   };
 
   const getStatusProgress = (status: string) => {
@@ -121,10 +125,44 @@ const MyOrdersPage = () => {
 
     setUploadingClaim(true);
     try {
+      // อัพโหลดรูปภาพไป Cloudinary ก่อน (ถ้ามี)
+      const uploadedImageUrls: string[] = [];
+      
+      if (claimData.images.length > 0) {
+        const uploadPromises = claimData.images.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+          formData.append('folder', 'claim-images');
+          formData.append('public_id', `claim-${selectedOrder._id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+
+          const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+            {
+              method: 'POST',
+              body: formData,
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`การอัพโหลดรูปภาพล้มเหลว: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return data.secure_url;
+        });
+
+        const urls = await Promise.all(uploadPromises);
+        uploadedImageUrls.push(...urls);
+      }
+
+      // ส่งข้อมูลเคลมไป API
       const formData = new FormData();
       formData.append('reason', claimData.reason);
-      claimData.images.forEach((image, index) => {
-        formData.append(`image_${index}`, image);
+      
+      // ส่ง URL ของรูปที่อัพโหลดแล้ว
+      uploadedImageUrls.forEach((url, index) => {
+        formData.append(`imageUrl_${index}`, url);
       });
 
       const response = await fetch(`/api/orders/${selectedOrder._id}/claim`, {
@@ -147,7 +185,7 @@ const MyOrdersPage = () => {
       }
     } catch (error) {
       console.error('Error claiming order:', error);
-      alert('เกิดข้อผิดพลาดในการเคลม');
+      alert('เกิดข้อผิดพลาดในการเคลม: ' + (error instanceof Error ? error.message : 'ไม่ทราบสาเหตุ'));
     } finally {
       setUploadingClaim(false);
     }
@@ -232,6 +270,31 @@ const MyOrdersPage = () => {
                         </svg>
                         ติดตาม
                       </div>
+                    )}
+                    {/* ปุ่มเคลมสินค้า */}
+                    {((order.status === 'delivered' || order.status === 'claim_rejected') && !order.claimInfo) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrder(order);
+                          setShowClaimModal(true);
+                        }}
+                        className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-md hover:bg-red-200 transition-colors"
+                      >
+                        เคลม
+                      </button>
+                    )}
+                    {order.status === 'claim_rejected' && order.claimInfo && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrder(order);
+                          setShowClaimModal(true);
+                        }}
+                        className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-md hover:bg-orange-200 transition-colors"
+                      >
+                        เคลมใหม่
+                      </button>
                     )}
                   </div>
                 </div>
@@ -425,12 +488,20 @@ const MyOrdersPage = () => {
                   >
                     ปิด
                   </button>
-                  {selectedOrder.status === 'delivered' && !selectedOrder.claimInfo && (
+                  {(selectedOrder.status === 'delivered' || selectedOrder.status === 'claim_rejected') && !selectedOrder.claimInfo && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                     >
                       เคลมสินค้า
+                    </button>
+                  )}
+                  {selectedOrder.status === 'claim_rejected' && selectedOrder.claimInfo && (
+                    <button
+                      onClick={() => setShowClaimModal(true)}
+                      className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      เคลมใหม่อีกครั้ง
                     </button>
                   )}
                 </div>

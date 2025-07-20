@@ -31,6 +31,7 @@ export interface IClaimInfo {
   claimImages: string[];
   claimStatus: 'pending' | 'approved' | 'rejected';
   adminResponse?: string;
+  responseDate?: Date;
 }
 
 export interface IOrder extends Document {
@@ -47,7 +48,7 @@ export interface IOrder extends Document {
   paymentMethod?: 'cod' | 'transfer';
   slipUrl?: string;
   userId?: Schema.Types.ObjectId;
-  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'failed' | 'claim_approved' | 'claim_rejected';
   trackingNumber?: string;
   shippingProvider?: string;
   trackingSent?: boolean;
@@ -132,7 +133,7 @@ const orderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled', 'claimed'],
+      enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled', 'claimed', 'failed', 'claim_approved', 'claim_rejected'],
       default: 'pending'
     },
     userId: {
@@ -173,7 +174,8 @@ const orderSchema = new Schema<IOrder>(
       claimReason: { type: String },
       claimImages: { type: [String], default: [] },
       claimStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-      adminResponse: { type: String }
+      adminResponse: { type: String },
+      responseDate: { type: Date }
     }
   },
   { 
