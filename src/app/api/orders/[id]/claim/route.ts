@@ -43,7 +43,8 @@ export async function POST(
       return NextResponse.json({ error: 'สามารถเคลมได้เฉพาะออเดอร์ที่ส่งสำเร็จแล้ว' }, { status: 400 });
     }
     
-    if (order.claimInfo) {
+    // ตรวจสอบว่ามีการเคลมจริง ๆ หรือไม่ (ต้องมี claimDate หรือ claimReason)
+    if (order.claimInfo && (order.claimInfo.claimDate || order.claimInfo.claimReason)) {
       return NextResponse.json({ error: 'ออเดอร์นี้มีการเคลมแล้ว' }, { status: 400 });
     }
     
