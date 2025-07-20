@@ -483,18 +483,8 @@ const ProfilePage = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold relative overflow-hidden">
-                {profileData.profileImageUrl ? (
-                  <Image
-                    src={profileData.profileImageUrl}
-                    alt="รูปโปรไฟล์"
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  customerLevel.icon
-                )}
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                {customerLevel.icon}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">สวัสดี, {user?.name || 'ลูกค้า'}</h2>
@@ -583,8 +573,13 @@ const ProfilePage = () => {
 
                 {/* Profile Image Section */}
                 <div className="flex flex-col items-center space-y-4 pb-6 border-b border-gray-200">
-                  <div className="relative">
-                    <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                  <div className="text-center mb-2">
+                    <h3 className="text-lg font-medium text-gray-900">รูปโปรไฟล์</h3>
+                    <p className="text-sm text-gray-500">อัพโหลดรูปโปรไฟล์ของคุณ</p>
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-4 border-white shadow-lg">
                       {profileData.profileImageUrl ? (
                         <Image
                           src={profileData.profileImageUrl}
@@ -594,14 +589,16 @@ const ProfilePage = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="text-gray-400 text-4xl">
+                        <div className="text-gray-400 text-5xl">
                           👤
                         </div>
                       )}
                     </div>
+                    
+                    {/* Upload Button - แสดงเสมอเมื่อ isEditing เป็น true */}
                     {isEditing && (
-                      <div className="absolute bottom-0 right-0">
-                        <label className="cursor-pointer bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors shadow-lg">
+                      <div className="absolute bottom-2 right-2">
+                        <label className="cursor-pointer bg-blue-600 text-white rounded-full p-3 hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl group-hover:scale-110">
                           <input
                             type="file"
                             accept="image/*"
@@ -610,9 +607,9 @@ const ProfilePage = () => {
                             className="hidden"
                           />
                           {isUploadingImage ? (
-                            <div className="w-6 h-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                            <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                           ) : (
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
@@ -620,13 +617,44 @@ const ProfilePage = () => {
                         </label>
                       </div>
                     )}
+                    
+                    {/* Upload Overlay - แสดงเมื่อ hover */}
+                    {isEditing && !isUploadingImage && (
+                      <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <div className="text-white text-center">
+                          <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          <p className="text-xs font-medium">เปลี่ยนรูป</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {isEditing && (
-                    <p className="text-sm text-gray-500 text-center">
-                      คลิกที่ไอคอนกล้องเพื่อเปลี่ยนรูปโปรไฟล์<br/>
-                      (ขนาดไฟล์ไม่เกิน 5MB)
-                    </p>
+                    <div className="text-center space-y-2">
+                      <p className="text-sm text-gray-600">
+                        คลิกที่รูปโปรไฟล์เพื่อเปลี่ยนรูปภาพ
+                      </p>
+                      <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          JPG, PNG
+                        </span>
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7M4 7l2.73-2.73A3 3 0 018.77 3h6.46a3 3 0 012.04 1.27L20 7M4 7h16M9 11h6" />
+                          </svg>
+                          สูงสุด 5MB
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!isEditing && profileData.profileImageUrl && (
+                    <p className="text-sm text-gray-500">รูปโปรไฟล์ของคุณ</p>
                   )}
                 </div>
 
