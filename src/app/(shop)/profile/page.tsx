@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
+import ProfileImageUpload from '@/components/ProfileImageUpload';
 
 interface Address {
   _id: string;
@@ -75,7 +75,7 @@ const ProfilePage = () => {
     email: '',
     profileImageUrl: ''
   });
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   
   // Address states
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -290,51 +290,8 @@ const ProfilePage = () => {
     }
   };
 
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    
-    // ตรวจสอบขนาดไฟล์ (จำกัดที่ 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('ขนาดไฟล์ต้องไม่เกิน 5MB');
-      return;
-    }
-
-    try {
-      setIsUploadingImage(true);
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-      formData.append('folder', 'profile-images');
-      formData.append('public_id', `profile-${user?.phoneNumber}-${Date.now()}`);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`การอัพโหลดรูปภาพล้มเหลว: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.secure_url) {
-        setProfileData(prev => ({ ...prev, profileImageUrl: data.secure_url }));
-        toast.success('อัพโหลดรูปโปรไฟล์สำเร็จ');
-      }
-    } catch (error) {
-      console.error('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ:', error);
-      toast.error('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
-    } finally {
-      setIsUploadingImage(false);
-    }
+  const handleImageUpload = (imageUrl: string) => {
+    setProfileData(prev => ({ ...prev, profileImageUrl: imageUrl }));
   };
 
   const handleUpdateProfile = async () => {
@@ -482,42 +439,40 @@ const ProfilePage = () => {
         {/* Customer Level Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {customerLevel.icon}
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">สวัสดี, {user?.name || 'ลูกค้า'}</h2>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${customerLevel.color}`}>
-                    ระดับ {customerLevel.level} - {customerLevel.title}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    ส่วนลด {customerLevel.discount}%
-                  </span>
-                </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">สวัสดี, {user?.name || 'ลูกค้า'}</h2>
+              <div className="flex items-center space-x-3">
+                <span className={`px-4 py-2 rounded-full text-sm font-medium flex items-center space-x-2 ${customerLevel.color}`}>
+                  <span className="text-lg">{customerLevel.icon}</span>
+                  <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
+                </span>
+                <span className="text-sm bg-green-100 text-green-800 px-3 py-2 rounded-full font-medium">
+                  ส่วนลด {customerLevel.discount}%
+                </span>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">
-                {customerLevel.pointsToNext > 0 ? 
-                  `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
-                  'ถึงระดับสูงสุดแล้ว'
-                }
-              </p>
-              <div className="w-32 bg-gray-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${customerLevel.pointsToNext > 0 ? 
-                      (customerLevel.currentPoints / (customerLevel.currentPoints + customerLevel.pointsToNext)) * 100 : 
-                      100}%` 
-                  }}
-                ></div>
+              <div className="mb-3">
+                <p className="text-sm text-gray-500 mb-1">
+                  {customerLevel.pointsToNext > 0 ? 
+                    `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
+                    'ถึงระดับสูงสุดแล้ว'
+                  }
+                </p>
+                <div className="w-40 bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${customerLevel.pointsToNext > 0 ? 
+                        (customerLevel.currentPoints / (customerLevel.currentPoints + customerLevel.pointsToNext)) * 100 : 
+                        100}%` 
+                    }}
+                  ></div>
+                </div>
               </div>
-              <div className="mt-2 text-xs text-gray-500">
-                <p>ยอดซื้อรวม: ฿{(user?.totalSpent || 0).toLocaleString()}</p>
-                <p>ออเดอร์ทั้งหมด: {user?.totalOrders || 0} รายการ</p>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p className="font-medium">ยอดซื้อรวม: <span className="text-blue-600">฿{(user?.totalSpent || 0).toLocaleString()}</span></p>
+                <p className="font-medium">ออเดอร์ทั้งหมด: <span className="text-purple-600">{user?.totalOrders || 0} รายการ</span></p>
               </div>
             </div>
           </div>
@@ -562,168 +517,138 @@ const ProfilePage = () => {
             {activeTab === 'profile' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">ข้อมูลส่วนตัว</h2>
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    {isEditing ? 'ยกเลิก' : 'แก้ไข'}
-                  </button>
+                  <h2 className="text-2xl font-bold text-gray-900">ข้อมูลส่วนตัว</h2>
+                  {!isEditing && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>แก้ไขข้อมูล</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Profile Image Section */}
-                <div className="flex flex-col items-center space-y-4 pb-6 border-b border-gray-200">
-                  <div className="text-center mb-2">
-                    <h3 className="text-lg font-medium text-gray-900">รูปโปรไฟล์</h3>
-                    <p className="text-sm text-gray-500">อัพโหลดรูปโปรไฟล์ของคุณ</p>
+                <div className="pb-6 border-b border-gray-200">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">รูปโปรไฟล์</h3>
                   </div>
                   
-                  <div className="relative group">
-                    <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-4 border-white shadow-lg">
-                      {profileData.profileImageUrl ? (
-                        <Image
-                          src={profileData.profileImageUrl}
-                          alt="รูปโปรไฟล์"
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-gray-400 text-5xl">
-                          👤
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Upload Button - แสดงเสมอเมื่อ isEditing เป็น true */}
-                    {isEditing && (
-                      <div className="absolute bottom-2 right-2">
-                        <label className="cursor-pointer bg-blue-600 text-white rounded-full p-3 hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl group-hover:scale-110">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleProfileImageUpload}
-                            disabled={isUploadingImage}
-                            className="hidden"
-                          />
-                          {isUploadingImage ? (
-                            <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          )}
-                        </label>
-                      </div>
-                    )}
-                    
-                    {/* Upload Overlay - แสดงเมื่อ hover */}
-                    {isEditing && !isUploadingImage && (
-                      <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="text-white text-center">
-                          <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          <p className="text-xs font-medium">เปลี่ยนรูป</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {isEditing && (
-                    <div className="text-center space-y-2">
-                      <p className="text-sm text-gray-600">
-                        คลิกที่รูปโปรไฟล์เพื่อเปลี่ยนรูปภาพ
-                      </p>
-                      <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          JPG, PNG
-                        </span>
-                        <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7M4 7l2.73-2.73A3 3 0 018.77 3h6.46a3 3 0 012.04 1.27L20 7M4 7h16M9 11h6" />
-                          </svg>
-                          สูงสุด 5MB
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!isEditing && profileData.profileImageUrl && (
-                    <p className="text-sm text-gray-500">รูปโปรไฟล์ของคุณ</p>
-                  )}
+                  <ProfileImageUpload
+                    currentImageUrl={profileData.profileImageUrl}
+                    onImageUpload={handleImageUpload}
+                    isEditing={isEditing}
+                    phoneNumber={user?.phoneNumber}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>ชื่อ</span>
+                      </span>
+                    </label>
                     {isEditing ? (
                       <input
                         type="text"
                         value={profileData.name}
                         onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="กรุณาใส่ชื่อของคุณ"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{profileData.name || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-gray-900 font-medium">{profileData.name || 'ไม่ระบุ'}</p>
+                      </div>
                     )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">เบอร์โทรศัพท์</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span>เบอร์โทรศัพท์</span>
+                      </span>
+                    </label>
                     {isEditing ? (
                       <input
                         type="tel"
                         value={profileData.phoneNumber}
                         onChange={(e) => setProfileData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="เช่น 0812345678"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{profileData.phoneNumber || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-gray-900 font-medium">{profileData.phoneNumber || 'ไม่ระบุ'}</p>
+                      </div>
                     )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        </svg>
+                        <span>อีเมล</span>
+                      </span>
+                    </label>
                     {isEditing ? (
                       <input
                         type="email"
                         value={profileData.email}
                         onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="เช่น example@email.com"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{profileData.email || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-gray-900 font-medium">{profileData.email || 'ไม่ระบุ'}</p>
+                      </div>
                     )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ระดับลูกค้า</label>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-3 py-2 rounded-lg text-sm font-medium ${customerLevel.color}`}>
-                        {customerLevel.icon} ระดับ {customerLevel.level} - {customerLevel.title}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      <span className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        <span>ระดับลูกค้า</span>
+                      </span>
+                    </label>
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3">
+                      <span className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${customerLevel.color}`}>
+                        <span className="text-lg">{customerLevel.icon}</span>
+                        <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {isEditing && (
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all duration-200 font-medium"
                     >
                       ยกเลิก
                     </button>
                     <button
                       onClick={handleUpdateProfile}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                     >
-                      บันทึก
+                      บันทึกข้อมูล
                     </button>
                   </div>
                 )}
