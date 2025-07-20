@@ -107,6 +107,16 @@ const MyOrdersPage = () => {
       if (Array.isArray(data)) {
         setOrders(data);
         setLastUpdateTime(new Date());
+        
+        // Debug: แสดงข้อมูล orders ที่ส่งสำเร็จ
+        const deliveredOrders = data.filter(order => order.status === 'delivered');
+        console.log('🚚 Orders ที่ส่งสำเร็จ:', deliveredOrders.map(order => ({
+          id: order._id.slice(-8),
+          status: order.status,
+          claimInfo: order.claimInfo,
+          hasClaimDate: !!order.claimInfo?.claimDate,
+          shouldShowButton: !order.claimInfo || !order.claimInfo.claimDate
+        })));
       }
     } catch (err) {
       console.error('load my orders error', err);
@@ -332,7 +342,7 @@ const MyOrdersPage = () => {
                       </div>
                     )}
                     {/* ปุ่มเคลมสินค้า */}
-                    {(order.status === 'delivered' && !order.claimInfo) && (
+                    {order.status === 'delivered' && (!order.claimInfo || !order.claimInfo.claimDate) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -343,6 +353,18 @@ const MyOrdersPage = () => {
                       >
                         เคลม
                       </button>
+                    )}
+                    
+                    {/* Debug info - จะลบออกหลังแก้ไขเสร็จ */}
+                    {order.status === 'delivered' && (
+                      <div className="text-xs text-gray-500 mt-1 p-1 bg-yellow-50 rounded">
+                        <div>Status: {order.status}</div>
+                        <div>ClaimInfo: {order.claimInfo ? 'มี' : 'ไม่มี'}</div>
+                        {order.claimInfo && (
+                          <div>ClaimDate: {order.claimInfo.claimDate ? 'มี' : 'ไม่มี'}</div>
+                        )}
+                        <div>แสดงปุ่ม: {(!order.claimInfo || !order.claimInfo.claimDate) ? 'ควรแสดง' : 'ไม่แสดง'}</div>
+                      </div>
                     )}
                     {order.status === 'claim_rejected' && (
                       <button
@@ -548,7 +570,7 @@ const MyOrdersPage = () => {
                   >
                     ปิด
                   </button>
-                  {selectedOrder.status === 'delivered' && !selectedOrder.claimInfo && (
+                  {selectedOrder.status === 'delivered' && (!selectedOrder.claimInfo || !selectedOrder.claimInfo.claimDate) && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
