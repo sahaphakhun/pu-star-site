@@ -65,9 +65,10 @@ const AdminOrdersPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount-high' | 'amount-low'>('newest');
-  const [dateFilter, setDateFilter] = useState<'all'|'today'|'week'|'month'|'custom'>('all');
+  const [dateFilter, setDateFilter] = useState<'all'|'today'|'week'|'month'|'custom'>('today');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [cutoffTime, setCutoffTime] = useState('16:00'); // เวลาตัดออเดอร์ (ชั่วโมง:นาที)
   const [showCreate, setShowCreate] = useState(false);
   const [formData, setFormData] = useState({
     customerName: '',
@@ -117,8 +118,65 @@ const AdminOrdersPage = () => {
     claimed: '🔁',
   };
 
-  const stats = orders.reduce((acc, order) => {
-    acc.total = orders.length;
+  // ฟังก์ชันคำนวณหาเวลาหลัง cutoff ล่าสุด
+  const getLatestCutoffDate = (cutoffTimeStr: string) => {
+    const now = new Date();
+    const bangkokTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+    
+    const [hours, minutes] = cutoffTimeStr.split(':').map(Number);
+    const todayCutoff = new Date(bangkokTime);
+    todayCutoff.setHours(hours, minutes, 0, 0);
+    
+    // ถ้าเวลาปัจจุบันยังไม่ถึงเวลาตัดของวันนี้ ให้ใช้เวลาตัดของเมื่อวาน
+    if (bangkokTime < todayCutoff) {
+      const yesterdayCutoff = new Date(todayCutoff);
+      yesterdayCutoff.setDate(todayCutoff.getDate() - 1);
+      return yesterdayCutoff;
+    }
+    
+    return todayCutoff;
+  };
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = !searchTerm || 
+      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customerPhone.includes(searchTerm) ||
+      order._id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const orderDate = new Date(order.createdAt);
+      const now = new Date();
+      
+      switch (dateFilter) {
+        case 'today':
+          const latestCutoff = getLatestCutoffDate(cutoffTime);
+          matchesDate = orderDate >= latestCutoff;
+          break;
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchesDate = orderDate >= weekAgo;
+          break;
+        case 'month':
+          matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+          break;
+        case 'custom':
+          if (customStart && customEnd) {
+            const start = new Date(customStart);
+            const end = new Date(customEnd);
+            matchesDate = orderDate >= start && orderDate <= end;
+          }
+          break;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
+  const stats = filteredOrders.reduce((acc, order) => {
+    acc.total = filteredOrders.length;
     acc[order.status] = (acc[order.status] || 0) + 1;
     if (order.status === 'delivered') {
       acc.totalRevenue += order.totalAmount;
@@ -140,43 +198,7 @@ const AdminOrdersPage = () => {
     taxInvoiceRequests: 0,
   });
 
-  const filteredAndSortedOrders = orders
-    .filter(order => {
-      const matchesSearch = !searchTerm || 
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customerPhone.includes(searchTerm) ||
-        order._id.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
-      
-      let matchesDate = true;
-      if (dateFilter !== 'all') {
-        const orderDate = new Date(order.createdAt);
-        const now = new Date();
-        
-        switch (dateFilter) {
-          case 'today':
-            matchesDate = orderDate.toDateString() === now.toDateString();
-            break;
-          case 'week':
-            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            matchesDate = orderDate >= weekAgo;
-            break;
-          case 'month':
-            matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-            break;
-          case 'custom':
-            if (customStart && customEnd) {
-              const start = new Date(customStart);
-              const end = new Date(customEnd);
-              matchesDate = orderDate >= start && orderDate <= end;
-            }
-            break;
-        }
-      }
-      
-      return matchesSearch && matchesStatus && matchesDate;
-    })
+  const filteredAndSortedOrders = filteredOrders
     .sort((a, b) => {
       switch (sortBy) {
         case 'newest':
@@ -487,7 +509,7 @@ const AdminOrdersPage = () => {
 
         {/* Search and Filters */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหา</label>
               <input
@@ -519,11 +541,20 @@ const AdminOrdersPage = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">ทุกเวลา</option>
-                <option value="today">วันนี้</option>
+                <option value="today">หลัง {cutoffTime} ล่าสุด</option>
                 <option value="week">7 วันย้อนหลัง</option>
                 <option value="month">เดือนนี้</option>
                 <option value="custom">กำหนดเอง</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">เวลาตัดออเดอร์</label>
+              <input
+                type="time"
+                value={cutoffTime}
+                onChange={(e) => setCutoffTime(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
           
