@@ -342,8 +342,8 @@ const ShopPage = () => {
       toast.error('กรุณาแนบสลิปการโอนเงิน');
       return;
     }
-    if (requestTaxInvoice) {
-      if (!companyName || !taxId) {
+    if (taxInvoiceData) {
+      if (!taxInvoiceData.companyName || !taxInvoiceData.taxId) {
         toast.error('กรุณากรอกชื่อบริษัทและเลขประจำตัวผู้เสียภาษี');
         return;
       }
