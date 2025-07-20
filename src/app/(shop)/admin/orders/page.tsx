@@ -147,26 +147,45 @@ const AdminOrdersPage = () => {
     
     let matchesDate = true;
     if (dateFilter !== 'all') {
+      // แปลงเวลาออเดอร์เป็นเวลาประเทศไทย
       const orderDate = new Date(order.createdAt);
+      const orderBangkokTime = new Date(orderDate.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+      
       const now = new Date();
+      const bangkokTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+      const [hours, minutes] = cutoffTime.split(':').map(Number);
       
       switch (dateFilter) {
         case 'today':
           const latestCutoff = getLatestCutoffDate(cutoffTime);
-          matchesDate = orderDate >= latestCutoff;
+          matchesDate = orderBangkokTime >= latestCutoff;
           break;
         case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchesDate = orderDate >= weekAgo;
+          // 7 วันย้อนหลัง นับจากเวลาตัดออเดอร์ของ 7 วันก่อน
+          const weekAgoCutoff = new Date(bangkokTime);
+          weekAgoCutoff.setDate(bangkokTime.getDate() - 7);
+          weekAgoCutoff.setHours(hours, minutes, 0, 0);
+          matchesDate = orderBangkokTime >= weekAgoCutoff;
           break;
         case 'month':
-          matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+          // เดือนนี้ นับจากเวลาตัดออเดอร์ของวันสุดท้ายเดือนก่อน
+          const thisMonth = new Date(bangkokTime.getFullYear(), bangkokTime.getMonth(), 1);
+          const monthStartCutoff = new Date(thisMonth);
+          monthStartCutoff.setDate(0); // วันสุดท้ายเดือนก่อน
+          monthStartCutoff.setHours(hours, minutes, 0, 0);
+          matchesDate = orderBangkokTime >= monthStartCutoff;
           break;
         case 'custom':
           if (customStart && customEnd) {
-            const start = new Date(customStart);
-            const end = new Date(customEnd);
-            matchesDate = orderDate >= start && orderDate <= end;
+            // Custom range ใช้เวลาตัดออเดอร์เป็นตัวกำหนด (ใช้เวลาประเทศไทย)
+            const startDate = new Date(customStart + 'T00:00:00+07:00'); // เพิ่ม timezone Thailand
+            const start = new Date(startDate.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+            start.setHours(hours, minutes, 0, 0);
+            
+            const endDate = new Date(customEnd + 'T23:59:59+07:00'); // เพิ่ม timezone Thailand
+            const end = new Date(endDate.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+            
+            matchesDate = orderBangkokTime >= start && orderBangkokTime <= end;
           }
           break;
       }
