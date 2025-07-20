@@ -485,50 +485,62 @@ const MyOrdersPage = () => {
                 )}
 
                 {/* Claim Info */}
-                {selectedOrder.claimInfo && (
-                  <div className="bg-pink-50 p-4 rounded-lg mb-6 border border-pink-200">
+                {(selectedOrder.claimInfo || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
+                  <div className={`p-4 rounded-lg mb-6 border ${
+                    selectedOrder.status === 'claim_approved' ? 'bg-green-50 border-green-200' :
+                    selectedOrder.status === 'claim_rejected' ? 'bg-red-50 border-red-200' : 
+                    'bg-pink-50 border-pink-200'
+                  }`}>
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-5 h-5 mr-2 ${
+                        selectedOrder.status === 'claim_approved' ? 'text-green-600' :
+                        selectedOrder.status === 'claim_rejected' ? 'text-red-600' : 
+                        'text-pink-600'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
                       ข้อมูลการเคลม
                     </h3>
                     <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">วันที่เคลม</p>
-                        <p className="font-medium text-gray-900">
-                          {new Date(selectedOrder.claimInfo.claimDate).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'Asia/Bangkok'
-                          })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">เหตุผลในการเคลม</p>
-                        <div className="bg-white p-3 rounded border border-pink-200">
-                          <p className="text-gray-900">{selectedOrder.claimInfo.claimReason}</p>
+                      {selectedOrder.claimInfo?.claimDate && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">วันที่เคลม</p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedOrder.claimInfo.claimDate).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'long', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Asia/Bangkok'
+                            })}
+                          </p>
                         </div>
-                      </div>
+                      )}
+                      {selectedOrder.claimInfo?.claimReason && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">เหตุผลในการเคลม</p>
+                          <div className="bg-white p-3 rounded border border-pink-200">
+                            <p className="text-gray-900">{selectedOrder.claimInfo.claimReason}</p>
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm text-gray-600 mb-1">สถานะการเคลม</p>
                         <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-                          selectedOrder.claimInfo.claimStatus === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                          selectedOrder.claimInfo.claimStatus === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          (selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? 'bg-green-100 text-green-800 border border-green-200' :
                           'bg-red-100 text-red-800 border border-red-200'
                         }`}>
-                          {selectedOrder.claimInfo.claimStatus === 'pending' ? '⏳ รอดำเนินการ' :
-                           selectedOrder.claimInfo.claimStatus === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                          {(selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? '⏳ รอดำเนินการ' :
+                           (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
                         </span>
                       </div>
                       
                       {/* รูปภาพการเคลมที่ลูกค้าส่งไป */}
-                      {selectedOrder.claimInfo.claimImages && selectedOrder.claimInfo.claimImages.length > 0 && (
+                      {selectedOrder.claimInfo?.claimImages && selectedOrder.claimInfo.claimImages.length > 0 && (
                         <div>
-                          <p className="text-sm text-gray-600 mb-2">รูปภาพประกอบการเคลม ({selectedOrder.claimInfo.claimImages.length} รูป)</p>
+                                                      <p className="text-sm text-gray-600 mb-2">รูปภาพประกอบการเคลม ({selectedOrder.claimInfo?.claimImages?.length || 0} รูป)</p>
                           <div className="grid grid-cols-2 gap-3">
                             {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
                               <div key={index} className="relative group">
@@ -553,12 +565,12 @@ const MyOrdersPage = () => {
                       )}
                       
                       {/* การตอบกลับจากแอดมิน */}
-                      {selectedOrder.claimInfo.adminResponse && (
+                      {selectedOrder.claimInfo?.adminResponse && (
                         <div>
                           <p className="text-sm text-gray-600 mb-1">การตอบกลับจากแอดมิน</p>
                           <div className="bg-blue-50 p-3 rounded border border-blue-200">
                             <p className="text-gray-900">{selectedOrder.claimInfo.adminResponse}</p>
-                            {selectedOrder.claimInfo.responseDate && (
+                            {selectedOrder.claimInfo?.responseDate && (
                               <p className="text-xs text-gray-500 mt-2">
                                 ตอบกลับเมื่อ: {new Date(selectedOrder.claimInfo.responseDate).toLocaleDateString('th-TH', {
                                   year: 'numeric',
