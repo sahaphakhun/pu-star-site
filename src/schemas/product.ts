@@ -10,6 +10,7 @@ export const unitSchema = z.object({
 export const optionValueSchema = z.object({
   label: z.string().min(1),
   imageUrl: z.string().min(1).optional(),
+  isAvailable: z.boolean().optional(),
 });
 
 export const optionSchema = z.object({
@@ -26,6 +27,7 @@ export const productInputSchema = z.object({
   units: z.array(unitSchema).optional(),
   category: z.string().optional(),
   options: z.array(optionSchema).optional(),
+  isAvailable: z.boolean().optional(),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>; 

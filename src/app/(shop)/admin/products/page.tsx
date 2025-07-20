@@ -13,6 +13,7 @@ interface ProductWithId extends IProduct {
 interface OptionValue { 
   label: string; 
   imageUrl?: string;
+  isAvailable?: boolean;
 }
 
 interface ProductOption { 
@@ -131,6 +132,9 @@ const AdminProductsPage = () => {
             if (v.imageUrl && v.imageUrl.trim()) {
               val.imageUrl = v.imageUrl.trim();
             }
+            if (v.isAvailable !== undefined) {
+              val.isAvailable = v.isAvailable;
+            }
             return val;
           }),
       }));
@@ -163,7 +167,10 @@ const AdminProductsPage = () => {
 
       if (response.ok) {
         resetForm();
-        fetchProducts();
+        // รีเฟรชข้อมูลสินค้าและ clear cache
+        await fetchProducts();
+        // Force refresh โดยรอสักครู่
+        setTimeout(fetchProducts, 500);
         toast.success(editMode ? 'อัพเดทสินค้าสำเร็จ' : 'เพิ่มสินค้าสำเร็จ');
       } else {
         let msg = 'เกิดข้อผิดพลาดในการ' + (editMode ? 'อัพเดทสินค้า' : 'เพิ่มสินค้า');
@@ -199,6 +206,7 @@ const AdminProductsPage = () => {
         values: option.values.map((value) => ({
           label: value.label,
           imageUrl: value.imageUrl,
+          isAvailable: value.isAvailable !== false, // รวม availability status
         })),
       })));
     } else {
@@ -309,7 +317,7 @@ const AdminProductsPage = () => {
   const addOptionValue = (optIdx: number) => {
     setOptions((prev) =>
       prev.map((opt, i) =>
-        i === optIdx ? { ...opt, values: [...opt.values, { label: '', imageUrl: '' }] } : opt
+        i === optIdx ? { ...opt, values: [...opt.values, { label: '', imageUrl: '', isAvailable: true }] } : opt
       )
     );
   };
@@ -374,6 +382,21 @@ const AdminProductsPage = () => {
     } finally {
       setUploadingOptionImage(null);
     }
+  };
+
+  const updateOptionValueAvailability = (optIdx: number, valIdx: number, isAvailable: boolean) => {
+    setOptions((prev) =>
+      prev.map((opt, i) =>
+        i === optIdx
+          ? {
+              ...opt,
+              values: opt.values.map((v, vi) =>
+                vi === valIdx ? { ...v, isAvailable } : v
+              ),
+            }
+          : opt
+      )
+    );
   };
 
   const addUnit = () => {
@@ -521,11 +544,18 @@ const AdminProductsPage = () => {
                   <div className="mb-4">
                     <p className="text-xs text-gray-500 mb-2">ตัวเลือก:</p>
                     <div className="flex flex-wrap gap-1">
-                      {product.options.map((option, idx) => (
-                        <span key={idx} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                          {option.name} ({option.values.length})
-                        </span>
-                      ))}
+                      {product.options.map((option, idx) => {
+                        const availableCount = option.values.filter(v => v.isAvailable !== false).length;
+                        const totalCount = option.values.length;
+                        return (
+                          <span key={idx} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+                            {option.name} ({availableCount}/{totalCount})
+                            {availableCount === 0 && (
+                              <span className="text-red-600 ml-1">หมดทั้งหมด</span>
+                            )}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -871,6 +901,21 @@ const AdminProductsPage = () => {
                                       {uploadingOptionImage?.optIdx === optIdx && uploadingOptionImage?.valIdx === valIdx ? 
                                         'กำลังอัพโหลด...' : 'เลือกรูป'
                                       }
+                                    </span>
+                                  </label>
+
+                                  {/* Availability Toggle */}
+                                  <label className="flex items-center space-x-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={value.isAvailable !== false}
+                                      onChange={(e) => updateOptionValueAvailability(optIdx, valIdx, e.target.checked)}
+                                      className="rounded border-gray-300"
+                                    />
+                                    <span className={`text-xs font-medium ${
+                                      value.isAvailable !== false ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {value.isAvailable !== false ? 'มีสินค้า' : 'หมด'}
                                     </span>
                                   </label>
 

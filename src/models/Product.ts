@@ -17,6 +17,7 @@ export interface IProduct extends Document {
     values: {
       label: string;
       imageUrl?: string;
+      isAvailable?: boolean;
     }[];
     shippingFee?: number;
     unitPrice?: number;
@@ -72,6 +73,7 @@ const productSchema = new Schema<IProduct>(
             {
               label: { type: String, required: true },
               imageUrl: { type: String, required: false },
+              isAvailable: { type: Boolean, required: false, default: true },
             },
           ],
         },

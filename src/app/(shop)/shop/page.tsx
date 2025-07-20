@@ -106,8 +106,20 @@ const ShopPage = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await fetch('/api/products');
+      // เพิ่ม cache busting parameter เพื่อให้ได้ข้อมูลล่าสุด
+      const response = await fetch(`/api/products?_t=${Date.now()}`);
       const data: ProductWithId[] = await response.json();
+      
+      // Debug: ตรวจสอบข้อมูล isAvailable
+      console.log('Loaded products:', data.map(p => ({ 
+        name: p.name, 
+        isAvailable: p.isAvailable,
+        options: p.options?.map(opt => ({
+          name: opt.name,
+          values: opt.values.map(v => ({ label: v.label, isAvailable: v.isAvailable }))
+        }))
+      })));
+      
       setProducts(data);
       const cats = Array.from(new Set(data.map((p: any) => p.category || 'ทั่วไป')));
       setCategories(['ทั้งหมด', ...cats]);
@@ -203,13 +215,30 @@ const ShopPage = () => {
 
   const openProductModal = (product: ProductWithId) => {
     setSelectedProduct(product);
-    setSelectedOptions({});
     setModalQuantity(getQuantityForProduct(product._id));
+    
+    // เลือกหน่วยแรก
     if (product.units && product.units.length > 0) {
       setSelectedUnit(product.units[0]);
     } else {
       setSelectedUnit(null);
     }
+    
+    // เลือกตัวเลือกแรกที่มีสินค้าสำหรับแต่ละ option
+    const initialOptions: Record<string, string> = {};
+    if (product.options) {
+      product.options.forEach(option => {
+        // หาตัวเลือกแรกที่มีสินค้า
+        const availableValue = option.values.find(value => value.isAvailable !== false);
+        if (availableValue) {
+          initialOptions[option.name] = availableValue.label;
+        } else if (option.values.length > 0) {
+          // ถ้าไม่มีตัวเลือกที่มีสินค้า ให้เลือกตัวแรก (แต่จะ disabled อยู่แล้ว)
+          initialOptions[option.name] = option.values[0].label;
+        }
+      });
+    }
+    setSelectedOptions(initialOptions);
   };
 
   const addToCartWithOptions = () => {
@@ -229,6 +258,16 @@ const ShopPage = () => {
       if (missingOptions.length > 0) {
         toast.error(`กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')}`);
         return;
+      }
+      
+      // ตรวจสอบว่าตัวเลือกที่เลือกยังมีสินค้าหรือไม่
+      for (const option of selectedProduct.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          toast.error(`ตัวเลือก "${selectedValue}" ของ "${option.name}" หมดแล้ว กรุณาเลือกตัวเลือกอื่น`);
+          return;
+        }
       }
     }
 
@@ -835,36 +874,62 @@ const ShopPage = () => {
                   <div key={optionIndex} className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">{option.name}</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {option.values.map((value, valueIndex) => (
-                        <button
-                          key={valueIndex}
-                          onClick={() => {
-                            if (selectedProduct.isAvailable === false) return;
-                            setSelectedOptions(prev => ({
-                              ...prev,
-                              [option.name]: value.label
-                            }));
-                          }}
-                          disabled={selectedProduct.isAvailable === false}
-                          className={`p-2 border rounded-lg text-sm transition-colors ${
-                            selectedOptions[option.name] === value.label
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-300 hover:border-gray-400'
-                          } ${selectedProduct.isAvailable === false ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          {value.imageUrl && (
-                            <div className="relative w-full h-20 mb-2">
-                              <Image
-                                src={value.imageUrl}
-                                alt={value.label}
-                                fill
-                                className="object-cover rounded"
-                              />
+                      {option.values.map((value, valueIndex) => {
+                        const isOptionAvailable = value.isAvailable !== false;
+                        const isProductAvailable = selectedProduct.isAvailable !== false;
+                        const isSelectable = isProductAvailable && isOptionAvailable;
+                        
+                        return (
+                          <button
+                            key={valueIndex}
+                            onClick={() => {
+                              if (!isSelectable) return;
+                              setSelectedOptions(prev => ({
+                                ...prev,
+                                [option.name]: value.label
+                              }));
+                            }}
+                            disabled={!isSelectable}
+                            className={`relative p-2 border rounded-lg text-sm transition-colors ${
+                              selectedOptions[option.name] === value.label && isSelectable
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : isSelectable
+                                  ? 'border-gray-300 hover:border-gray-400'
+                                  : 'border-gray-200 bg-gray-50'
+                            } ${!isSelectable ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          >
+                            {!isOptionAvailable && (
+                              <div className="absolute inset-0 bg-gray-500 bg-opacity-30 rounded-lg flex items-center justify-center">
+                                <span className="text-gray-700 font-medium text-xs bg-white px-2 py-1 rounded shadow">
+                                  หมด
+                                </span>
+                              </div>
+                            )}
+                            
+                            {value.imageUrl && (
+                              <div className="relative w-full h-20 mb-2">
+                                <Image
+                                  src={value.imageUrl}
+                                  alt={value.label}
+                                  fill
+                                  className={`object-cover rounded ${!isOptionAvailable ? 'grayscale' : ''}`}
+                                />
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center justify-between">
+                              <span className={!isOptionAvailable ? 'line-through text-gray-500' : ''}>
+                                {value.label}
+                              </span>
+                              {!isOptionAvailable && (
+                                <span className="text-xs text-red-600 font-medium">
+                                  หมด
+                                </span>
+                              )}
                             </div>
-                          )}
-                          {value.label}
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
