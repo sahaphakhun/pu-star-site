@@ -62,6 +62,7 @@ const MyOrdersPage = () => {
     images: [] as File[]
   });
   const [uploadingClaim, setUploadingClaim] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
   const statusLabels = {
     pending: 'รอดำเนินการ',
@@ -98,23 +99,60 @@ const MyOrdersPage = () => {
     }
   }, [isLoggedIn, authLoading, router]);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch('/api/orders/my-orders');
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setOrders(data);
-        }
-      } catch (err) {
-        console.error('load my orders error', err);
-      } finally {
-        setLoading(false);
+  const fetchOrders = async () => {
+    try {
+      // เพิ่ม cache busting parameter เพื่อให้ได้ข้อมูลล่าสุด
+      const res = await fetch(`/api/orders/my-orders?_t=${Date.now()}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOrders(data);
+        setLastUpdateTime(new Date());
       }
-    };
+    } catch (err) {
+      console.error('load my orders error', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (isLoggedIn) {
       fetchOrders();
     }
+  }, [isLoggedIn]);
+
+  // เพิ่ม focus listener เพื่อ refresh ข้อมูลเมื่อกลับมาที่หน้า
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isLoggedIn) {
+        fetchOrders();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isLoggedIn]);
+
+  // Auto-refresh ทุก 30 วินาทีเมื่ออยู่ในหน้านี้
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const interval = setInterval(() => {
+      // Auto-refresh แบบเงียบ ๆ (ไม่แสดง loading)
+      fetch(`/api/orders/my-orders?_t=${Date.now()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setOrders(data);
+            setLastUpdateTime(new Date());
+          }
+        })
+        .catch(err => {
+          console.error('Auto-refresh error:', err);
+        });
+    }, 30000); // 30 วินาที
+
+    return () => clearInterval(interval);
   }, [isLoggedIn]);
 
   const handleClaim = async () => {
@@ -204,7 +242,29 @@ const MyOrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center md:text-left">คำสั่งซื้อของฉัน</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 text-center md:text-left">คำสั่งซื้อของฉัน</h1>
+        <div className="flex flex-col items-end space-y-2">
+          {lastUpdateTime && (
+            <div className="text-xs text-gray-500">
+              อัพเดตล่าสุด: {lastUpdateTime.toLocaleTimeString('th-TH')}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchOrders();
+            }}
+            disabled={loading}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="hidden sm:inline">{loading ? 'กำลังโหลด...' : 'รีเฟรช'}</span>
+          </button>
+        </div>
+      </div>
 
       {orders.length === 0 ? (
         <p className="text-center text-gray-600">คุณยังไม่มีประวัติการสั่งซื้อ</p>
@@ -272,7 +332,7 @@ const MyOrdersPage = () => {
                       </div>
                     )}
                     {/* ปุ่มเคลมสินค้า */}
-                    {((order.status === 'delivered' || order.status === 'claim_rejected') && !order.claimInfo) && (
+                    {(order.status === 'delivered' && !order.claimInfo) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -284,7 +344,7 @@ const MyOrdersPage = () => {
                         เคลม
                       </button>
                     )}
-                    {order.status === 'claim_rejected' && order.claimInfo && (
+                    {order.status === 'claim_rejected' && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -488,7 +548,7 @@ const MyOrdersPage = () => {
                   >
                     ปิด
                   </button>
-                  {(selectedOrder.status === 'delivered' || selectedOrder.status === 'claim_rejected') && !selectedOrder.claimInfo && (
+                  {selectedOrder.status === 'delivered' && !selectedOrder.claimInfo && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
@@ -496,7 +556,7 @@ const MyOrdersPage = () => {
                       เคลมสินค้า
                     </button>
                   )}
-                  {selectedOrder.status === 'claim_rejected' && selectedOrder.claimInfo && (
+                  {selectedOrder.status === 'claim_rejected' && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
