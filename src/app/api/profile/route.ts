@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest) {
 
     await connectDB();
     
-    const { name, phoneNumber, email } = await request.json();
+    const { name, phoneNumber, email, profileImageUrl } = await request.json();
 
     // ตรวจสอบว่าอีเมลซ้ำกับผู้ใช้อื่นหรือไม่
     if (email) {
@@ -76,7 +76,8 @@ export async function PUT(request: NextRequest) {
       { 
         ...(name && { name }),
         ...(phoneNumber && { phoneNumber }),
-        ...(email && { email })
+        ...(email && { email }),
+        ...(profileImageUrl !== undefined && { profileImageUrl })
       },
       { new: true, runValidators: true }
     ).select('-password');

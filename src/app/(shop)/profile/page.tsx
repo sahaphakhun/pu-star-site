@@ -30,7 +30,7 @@ interface Order {
   orderDate: string;
   items: OrderItem[];
   paymentMethod?: 'cod' | 'transfer';
-  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed';
+  status?: 'pending' | 'confirmed' | 'packing' | 'shipped' | 'delivered' | 'cancelled' | 'claimed' | 'claim_rejected';
   trackingNumber?: string;
   shippingProvider?: string;
   packingProofs?: Array<{
@@ -63,8 +63,10 @@ const ProfilePage = () => {
   const [profileData, setProfileData] = useState({
     name: '',
     phoneNumber: '',
-    email: ''
+    email: '',
+    profileImageUrl: ''
   });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   // Address states
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -153,7 +155,8 @@ const ProfilePage = () => {
     shipped: 'จัดส่งแล้ว',
     delivered: 'ส่งสำเร็จ',
     cancelled: 'ยกเลิก',
-    claimed: 'เคลมสินค้า'
+    claimed: 'เคลมสินค้า',
+    claim_rejected: 'เคลมถูกปฏิเสธ'
   };
 
   const statusColors = {
@@ -163,7 +166,8 @@ const ProfilePage = () => {
     shipped: 'bg-purple-100 text-purple-800',
     delivered: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
-    claimed: 'bg-pink-100 text-pink-800'
+    claimed: 'bg-pink-100 text-pink-800',
+    claim_rejected: 'bg-orange-100 text-orange-800'
   };
 
   const tabs = [
@@ -194,7 +198,8 @@ const ProfilePage = () => {
         setProfileData({
           name: data.data.name || '',
           phoneNumber: data.data.phoneNumber || '',
-          email: data.data.email || ''
+          email: data.data.email || '',
+          profileImageUrl: data.data.profileImageUrl || ''
         });
       }
     } catch (err) {
@@ -225,6 +230,53 @@ const ProfilePage = () => {
       }
     } catch (err) {
       console.error('Error fetching addresses:', err);
+    }
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    
+    // ตรวจสอบขนาดไฟล์ (จำกัดที่ 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('ขนาดไฟล์ต้องไม่เกิน 5MB');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+      formData.append('folder', 'profile-images');
+      formData.append('public_id', `profile-${user?.phoneNumber}-${Date.now()}`);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`การอัพโหลดรูปภาพล้มเหลว: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.secure_url) {
+        setProfileData(prev => ({ ...prev, profileImageUrl: data.secure_url }));
+        toast.success('อัพโหลดรูปโปรไฟล์สำเร็จ');
+      }
+    } catch (error) {
+      console.error('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ:', error);
+      toast.error('เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -374,8 +426,18 @@ const ProfilePage = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {customerLevel.icon}
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold relative overflow-hidden">
+                {profileData.profileImageUrl ? (
+                  <Image
+                    src={profileData.profileImageUrl}
+                    alt="รูปโปรไฟล์"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  customerLevel.icon
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">สวัสดี, {user?.name || 'ลูกค้า'}</h2>
@@ -460,6 +522,55 @@ const ProfilePage = () => {
                   >
                     {isEditing ? 'ยกเลิก' : 'แก้ไข'}
                   </button>
+                </div>
+
+                {/* Profile Image Section */}
+                <div className="flex flex-col items-center space-y-4 pb-6 border-b border-gray-200">
+                  <div className="relative">
+                    <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                      {profileData.profileImageUrl ? (
+                        <Image
+                          src={profileData.profileImageUrl}
+                          alt="รูปโปรไฟล์"
+                          width={128}
+                          height={128}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-gray-400 text-4xl">
+                          👤
+                        </div>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="absolute bottom-0 right-0">
+                        <label className="cursor-pointer bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors shadow-lg">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfileImageUpload}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+                          {isUploadingImage ? (
+                            <div className="w-6 h-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                          ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          )}
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isEditing && (
+                    <p className="text-sm text-gray-500 text-center">
+                      คลิกที่ไอคอนกล้องเพื่อเปลี่ยนรูปโปรไฟล์<br/>
+                      (ขนาดไฟล์ไม่เกิน 5MB)
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -692,12 +803,20 @@ const ProfilePage = () => {
                   >
                     ปิด
                   </button>
-                  {selectedOrder.status === 'delivered' && !selectedOrder.claimInfo && (
+                  {selectedOrder.status === 'delivered' && (!selectedOrder.claimInfo || !selectedOrder.claimInfo.claimDate) && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                     >
                       เคลมสินค้า
+                    </button>
+                  )}
+                  {selectedOrder.status === 'claim_rejected' && (
+                    <button
+                      onClick={() => setShowClaimModal(true)}
+                      className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      เคลมใหม่อีกครั้ง
                     </button>
                   )}
                 </div>

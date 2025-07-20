@@ -8,6 +8,7 @@ export interface IUser {
   password?: string; // รหัสผ่านเป็นตัวเลือก (กรณีใช้ OTP อย่างเดียว)
   role: 'user' | 'admin';
   isVerified: boolean; // เพิ่มสถานะการยืนยันตัวตน
+  profileImageUrl?: string; // รูปโปรไฟล์
   // เพิ่มฟิลด์สำหรับจัดการลูกค้า
   customerType?: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string; // ผู้รับผิดชอบ
@@ -70,6 +71,10 @@ const userSchema = new Schema<IUser>(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    profileImageUrl: {
+      type: String,
+      required: false,
     },
     // เพิ่มฟิลด์สำหรับจัดการลูกค้า
     customerType: {
