@@ -509,8 +509,10 @@ const AdminProductsPage = () => {
                   </div>
                 )}
                 {product.isAvailable === false && (
-                  <div className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">สินค้าหมด</span>
+                  <div className="absolute inset-0 bg-gray-900 bg-opacity-10 flex items-center justify-center">
+                    <span className="text-gray-900 font-bold text-lg bg-white bg-opacity-95 px-4 py-2 rounded-lg shadow-lg border border-gray-200">
+                      สินค้าหมด
+                    </span>
                   </div>
                 )}
               </div>
