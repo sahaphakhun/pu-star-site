@@ -42,6 +42,7 @@ const AdminClaimsPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [responseForm, setResponseForm] = useState({
     claimStatus: '',
     adminResponse: '',
@@ -50,12 +51,13 @@ const AdminClaimsPage = () => {
 
   const fetchClaimedOrders = async () => {
     try {
-      const response = await fetch('/api/orders?status=claimed');
+      const response = await fetch('/api/orders');
       if (response.ok) {
         const data = await response.json();
-        // กรองเฉพาะออเดอร์ที่มีข้อมูลการเคลม
+        // กรองเฉพาะออเดอร์ที่มีข้อมูลการเคลม (ทุกสถานะ)
         const claimedOrders = data.orders?.filter((order: Order) => 
-          order.claimInfo && order.claimInfo.claimDate
+          (order.claimInfo && order.claimInfo.claimDate) || 
+          ['claimed', 'claim_approved', 'claim_rejected'].includes(order.status)
         ) || [];
         setOrders(claimedOrders);
       }
@@ -91,12 +93,8 @@ const AdminClaimsPage = () => {
       if (response.ok && data.success) {
         toast.success(data.message);
         
-        // อัพเดตรายการออเดอร์
-        setOrders(prev => prev.map(order => 
-          order._id === selectedOrder._id 
-            ? { ...order, ...data.order, claimInfo: data.order.claimInfo }
-            : order
-        ));
+        // รีเฟรชข้อมูลจาก API เพื่อให้แน่ใจว่าได้ข้อมูลล่าสุด
+        refreshData();
         
         // ปิด modal และรีเซ็ตฟอร์ม
         setSelectedOrder(null);
@@ -116,10 +114,34 @@ const AdminClaimsPage = () => {
     fetchClaimedOrders();
   }, []);
 
+  // กรองออเดอร์ตามสถานะการเคลม
+  const filteredOrders = orders.filter(order => {
+    if (statusFilter === 'all') return true;
+    
+    if (statusFilter === 'pending') {
+      return order.status === 'claimed' || order.claimInfo?.claimStatus === 'pending';
+    }
+    
+    if (statusFilter === 'approved') {
+      return order.status === 'claim_approved' || order.claimInfo?.claimStatus === 'approved';
+    }
+    
+    if (statusFilter === 'rejected') {
+      return order.status === 'claim_rejected' || order.claimInfo?.claimStatus === 'rejected';
+    }
+    
+    return true;
+  });
+
   const statusLabels = {
     claimed: 'รอตอบกลับ',
     claim_approved: 'อนุมัติแล้ว',
     claim_rejected: 'ปฏิเสธแล้ว'
+  };
+
+  // ฟังก์ชันสำหรับรีเฟรชข้อมูลหลังจากตอบกลับ
+  const refreshData = () => {
+    fetchClaimedOrders();
   };
 
   const statusColors = {
@@ -202,7 +224,7 @@ const AdminClaimsPage = () => {
         </div>
 
         {/* Claims List */}
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
             <div className="text-center">
               <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
@@ -210,8 +232,17 @@ const AdminClaimsPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่มีการเคลม</h3>
-              <p className="text-gray-600">ยังไม่มีการเคลมสินค้าจากลูกค้า</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {statusFilter === 'all' ? 'ไม่มีการเคลม' : 
+                 statusFilter === 'pending' ? 'ไม่มีการเคลมที่รอตอบกลับ' :
+                 statusFilter === 'approved' ? 'ไม่มีการเคลมที่อนุมัติแล้ว' :
+                 'ไม่มีการเคลมที่ปฏิเสธแล้ว'}
+              </h3>
+              <p className="text-gray-600">
+                {statusFilter === 'all' ? 'ยังไม่มีการเคลมสินค้าจากลูกค้า' : 
+                 `ไม่มีการเคลมในสถานะ "${statusFilter === 'pending' ? 'รอตอบกลับ' : 
+                 statusFilter === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}"`}
+              </p>
             </div>
           </div>
         ) : (
@@ -241,7 +272,7 @@ const AdminClaimsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <motion.tr
                       key={order._id}
                       initial={{ opacity: 0 }}
