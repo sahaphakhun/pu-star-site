@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/models/UserPermission';
 
 interface Order {
   _id: string;
@@ -29,6 +31,7 @@ interface Notification {
 const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -221,18 +224,57 @@ const AdminSidebar: React.FC = () => {
     setShowNotifications(false);
   };
 
-  const menuItems = [
-    { label: 'ภาพรวม', href: '/admin', icon: '📊' },
-    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦' },
-    { label: 'จัดการการเคลม', href: '/admin/orders/claims', icon: '🚨' },
-    { label: 'ลูกค้า', href: '/admin/customers', icon: '👥' },
-    { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️' },
-    { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥' },
-    { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢' },
+  const allMenuItems = [
+    { label: 'ภาพรวม', href: '/admin', icon: '📊', permission: PERMISSIONS.DASHBOARD_VIEW },
+    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦', permission: PERMISSIONS.ORDERS_VIEW },
+    { label: 'จัดการการเคลม', href: '/admin/orders/claims', icon: '🚨', permission: PERMISSIONS.ORDERS_CLAIMS_VIEW },
+    { label: 'ลูกค้า', href: '/admin/customers', icon: '👥', permission: PERMISSIONS.CUSTOMERS_VIEW },
+    { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️', permission: PERMISSIONS.PRODUCTS_VIEW },
+    { label: 'จัดการสิทธิ์', href: '/admin/permissions', icon: '🔐', permission: PERMISSIONS.USERS_PERMISSIONS_MANAGE },
+    { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥', adminOnly: true },
+    { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢', permission: PERMISSIONS.NOTIFICATIONS_SEND },
   ];
 
+  // กรองเมนูตามสิทธิ์ของผู้ใช้
+  const menuItems = allMenuItems.filter(item => {
+    // ถ้ากำลังโหลดสิทธิ์ อย่าแสดงเมนูใดๆ เลย
+    if (permissionsLoading) return false;
+    
+    // ถ้าเป็นแอดมิน แสดงทุกเมนู
+    if (isAdmin) return true;
+    
+    // ถ้าเป็นเมนูเฉพาะแอดมิน และไม่ใช่แอดมิน ไม่แสดง
+    if (item.adminOnly && !isAdmin) return false;
+    
+    // ถ้ามี permission และผู้ใช้มีสิทธิ์นั้น ให้แสดง
+    if (item.permission && hasPermission(item.permission)) return true;
+    
+    // ถ้าไม่มี permission กำหนด (เช่น เมนูทั่วไป) ให้แสดง
+    if (!item.permission && !item.adminOnly) return true;
+    
+    return false;
+  });
+
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
-  const totalNotifications = pendingOrders.length + unreadNotificationsCount;
+  
+  // คำนวณการแจ้งเตือนที่แสดงตามสิทธิ์
+  const visiblePendingOrders = (isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) ? pendingOrders.length : 0;
+  const visibleNotifications = (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) ? unreadNotificationsCount : 0;
+  const totalNotifications = visiblePendingOrders + visibleNotifications;
+
+  // ถ้ากำลังโหลดสิทธิ์ แสดง loading state
+  if (permissionsLoading) {
+    return (
+      <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-2 text-sm text-gray-600">กำลังโหลด...</p>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
@@ -240,23 +282,24 @@ const AdminSidebar: React.FC = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>
           
-          {/* Notification Bell */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              
-              {/* Notification Badge */}
-              {totalNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                  {totalNotifications > 99 ? '99+' : totalNotifications}
-                </span>
-              )}
-            </button>
+          {/* Notification Bell - แสดงเฉพาะคนที่มีสิทธิ์ดูออเดอร์หรือการแจ้งเตือน */}
+          {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW) || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && (
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                
+                {/* Notification Badge */}
+                {totalNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {totalNotifications > 99 ? '99+' : totalNotifications}
+                  </span>
+                )}
+              </button>
 
             {/* Notification Dropdown */}
             <AnimatePresence>
@@ -270,13 +313,15 @@ const AdminSidebar: React.FC = () => {
                   <div className="p-4 border-b border-gray-200">
                     <h3 className="font-semibold text-gray-900">🔔 แจ้งเตือน</h3>
                     <p className="text-sm text-gray-600">
-                      ออเดอร์รอดำเนินการ: {pendingOrders.length} | ยังไม่อ่าน: {unreadNotificationsCount}
+                      {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && `ออเดอร์รอดำเนินการ: ${pendingOrders.length}`}
+                      {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && ' | '}
+                      {(isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && `ยังไม่อ่าน: ${unreadNotificationsCount}`}
                     </p>
                   </div>
                   
                   <div className="max-h-96 overflow-y-auto">
-                    {/* ออเดอร์รอดำเนินการ */}
-                    {pendingOrders.length > 0 && (
+                    {/* ออเดอร์รอดำเนินการ - แสดงเฉพาะคนที่มีสิทธิ์ดูออเดอร์ */}
+                    {pendingOrders.length > 0 && (isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (
                       <div className="p-3 border-b border-gray-100">
                         <h4 className="text-sm font-medium text-blue-600 mb-2">📦 ออเดอร์รอดำเนินการ</h4>
                         {pendingOrders.slice(0, 5).map((order) => (
@@ -301,8 +346,8 @@ const AdminSidebar: React.FC = () => {
                       </div>
                     )}
 
-                    {/* การแจ้งเตือนอื่น ๆ */}
-                    {notifications.length > 0 && (
+                    {/* การแจ้งเตือนอื่น ๆ - แสดงเฉพาะคนที่มีสิทธิ์ดูการแจ้งเตือน */}
+                    {notifications.length > 0 && (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && (
                       <div className="p-3">
                         <h4 className="text-sm font-medium text-red-600 mb-2">🚨 การแจ้งเตือน</h4>
                         {notifications.slice(0, 10).map((notification) => (
@@ -353,7 +398,8 @@ const AdminSidebar: React.FC = () => {
                       </div>
                     )}
 
-                    {pendingOrders.length === 0 && notifications.length === 0 && (
+                    {((isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) ? pendingOrders.length === 0 : true) && 
+                     ((isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) ? notifications.length === 0 : true) && (
                       <div className="p-8 text-center text-gray-500">
                         <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -365,7 +411,8 @@ const AdminSidebar: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

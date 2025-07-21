@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'react-hot-toast';
+import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/models/UserPermission';
 
 interface ProductWithId extends IProduct {
   _id: string;
@@ -22,6 +24,7 @@ interface ProductOption {
 }
 
 const AdminProductsPage = () => {
+  const { hasPermission, isAdmin } = usePermissions();
   const [products, setProducts] = useState<ProductWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -458,8 +461,9 @@ const AdminProductsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
+    <PermissionGate permission={PERMISSIONS.PRODUCTS_VIEW}>
+      <div className="min-h-screen bg-gray-50">
+        <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -468,17 +472,19 @@ const AdminProductsPage = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการสินค้า</h1>
             <p className="text-gray-600">เพิ่ม แก้ไข และจัดการสินค้าในร้านของคุณ</p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowForm(true)}
-            className="mt-4 md:mt-0 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>เพิ่มสินค้าใหม่</span>
-          </motion.button>
+          {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_CREATE)) && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowForm(true)}
+              className="mt-4 md:mt-0 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>เพิ่มสินค้าใหม่</span>
+            </motion.button>
+          )}
         </div>
 
         {/* Products Grid */}
@@ -565,18 +571,22 @@ const AdminProductsPage = () => {
                 )}
                 
                 <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEditProduct(product)}
-                    className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    แก้ไข
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product._id)}
-                    className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                  >
-                    ลบ
-                  </button>
+                  {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_EDIT)) && (
+                    <button
+                      onClick={() => handleEditProduct(product)}
+                      className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      แก้ไข
+                    </button>
+                  )}
+                  {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_DELETE)) && (
+                    <button
+                      onClick={() => handleDeleteProduct(product._id)}
+                      className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                    >
+                      ลบ
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -592,12 +602,14 @@ const AdminProductsPage = () => {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">ยังไม่มีสินค้า</h3>
             <p className="text-gray-600 mb-6">เริ่มต้นด้วยการเพิ่มสินค้าแรกของคุณ</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              เพิ่มสินค้าใหม่
-            </button>
+            {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_CREATE)) && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                เพิ่มสินค้าใหม่
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -983,7 +995,8 @@ const AdminProductsPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </PermissionGate>
   );
 };
 

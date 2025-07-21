@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import PackingImageGallery from '@/components/PackingImageGallery';
+import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/models/UserPermission';
 
 interface OrderItem {
   productId: string;
@@ -59,6 +61,7 @@ interface Order {
 }
 
 const AdminOrdersPage = () => {
+  const { hasPermission, isAdmin } = usePermissions();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -454,8 +457,9 @@ const AdminOrdersPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
+    <PermissionGate permission={PERMISSIONS.ORDERS_VIEW}>
+      <div className="min-h-screen bg-gray-50">
+        <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -465,18 +469,22 @@ const AdminOrdersPage = () => {
             <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อทั้งหมด</p>
           </div>
           <div className="flex gap-3">
-            <button 
-              onClick={() => setShowCreate(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-            >
-              + สร้างออเดอร์
-            </button>
-            <button 
-              onClick={() => exportToCSV(filteredAndSortedOrders)} 
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
-            >
-              📊 Export CSV
-            </button>
+            {(isAdmin || hasPermission(PERMISSIONS.ORDERS_CREATE)) && (
+              <button 
+                onClick={() => setShowCreate(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+              >
+                + สร้างออเดอร์
+              </button>
+            )}
+            {(isAdmin || hasPermission(PERMISSIONS.ORDERS_EXPORT)) && (
+              <button 
+                onClick={() => exportToCSV(filteredAndSortedOrders)} 
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
+              >
+                📊 Export CSV
+              </button>
+            )}
           </div>
         </div>
 
@@ -1158,7 +1166,8 @@ const AdminOrdersPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PermissionGate>
   );
 };
 

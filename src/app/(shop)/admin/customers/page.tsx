@@ -8,6 +8,8 @@ import {
   getCustomerTypeColor,
   prepareCustomerDataForExport 
 } from '@/utils/customerAnalytics';
+import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/models/UserPermission';
 
 interface Customer {
   _id: string;
@@ -40,6 +42,7 @@ interface CustomerStats {
 }
 
 const CustomerManagementPage: React.FC = () => {
+  const { hasPermission, isAdmin } = usePermissions();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -244,7 +247,8 @@ const CustomerManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <PermissionGate permission={PERMISSIONS.CUSTOMERS_VIEW}>
+      <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -252,18 +256,22 @@ const CustomerManagementPage: React.FC = () => {
           <p className="text-gray-600">ภาพรวมและจัดการข้อมูลลูกค้าทั้งหมด</p>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={handleUpdateCustomerStats}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            🔄 อัปเดตสถิติ
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            📊 ส่งออก CSV
-          </button>
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleUpdateCustomerStats}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              🔄 อัปเดตสถิติ
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (
+            <button
+              onClick={handleExportCSV}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              📊 ส่งออก CSV
+            </button>
+          )}
         </div>
       </div>
 
@@ -769,7 +777,8 @@ const CustomerManagementPage: React.FC = () => {
           </motion.div>
         </div>
       )}
-    </div>
+      </div>
+    </PermissionGate>
   );
 };
 
