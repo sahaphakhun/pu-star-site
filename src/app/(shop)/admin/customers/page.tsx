@@ -8,7 +8,8 @@ import {
   getCustomerTypeColor,
   prepareCustomerDataForExport 
 } from '@/utils/customerAnalytics';
-import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PermissionGate } from '@/components/PermissionGate';
+import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/models/UserPermission';
 
 interface Customer {

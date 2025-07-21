@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import PackingImageGallery from '@/components/PackingImageGallery';
-import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PermissionGate } from '@/components/PermissionGate';
+import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/models/UserPermission';
 
 interface OrderItem {

@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'react-hot-toast';
-import { PermissionGate, usePermissions } from '@/hooks/usePermissions';
+import { PermissionGate } from '@/components/PermissionGate';
+import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/models/UserPermission';
 
 interface ProductWithId extends IProduct {
