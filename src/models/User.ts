@@ -48,7 +48,6 @@ const userSchema = new Schema<IUser>(
     phoneNumber: {
       type: String,
       required: [true, 'ต้องระบุเบอร์โทรศัพท์'],
-      unique: true,
       trim: true,
       match: [
         /^\+?66\d{9}$/,
@@ -137,6 +136,7 @@ const userSchema = new Schema<IUser>(
 );
 
 // เพิ่มดัชนีสำหรับการค้นหา
+userSchema.index({ phoneNumber: 1 }, { unique: true });
 userSchema.index({ customerType: 1 });
 userSchema.index({ lastOrderDate: -1 });
 userSchema.index({ totalSpent: -1 });

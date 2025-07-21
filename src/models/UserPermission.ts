@@ -69,7 +69,6 @@ const userPermissionSchema = new Schema<IUserPermission>(
     phoneNumber: {
       type: String,
       required: [true, 'ต้องระบุเบอร์โทรศัพท์'],
-      unique: true, // ผู้ใช้หนึ่งคนมีได้แค่ record เดียว
       trim: true,
       match: [
         /^\+?66\d{9}$/,
@@ -110,8 +109,8 @@ const userPermissionSchema = new Schema<IUserPermission>(
   }
 );
 
-// เพิ่มดัชนีสำหรับการค้นหา
-userPermissionSchema.index({ phoneNumber: 1 });
+// เพิ่มดัชนีสำหรับการค้นหา (ผู้ใช้หนึ่งคนมีได้แค่ record เดียว)
+userPermissionSchema.index({ phoneNumber: 1 }, { unique: true });
 userPermissionSchema.index({ isActive: 1 });
 userPermissionSchema.index({ grantedAt: -1 });
 

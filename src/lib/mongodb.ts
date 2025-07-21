@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 
+// ตรวจสอบว่าไม่ได้รันในฝั่ง client side
+if (typeof window !== 'undefined') {
+  throw new Error('MongoDB connection should only be used on server side');
+}
+
 // รองรับได้หลายชื่อ เพื่อให้ทำงานได้ทั้งใน Railway, Vercel, Docker ฯลฯ
 const MONGODB_URI =
   (process.env.MONGODB_URI ||
@@ -7,14 +12,20 @@ const MONGODB_URI =
     process.env.DATABASE_URL ||
     process.env.MONGODB_URL) as string;
 
-// log เฉพาะใน dev เพื่อดีบัก
-if (process.env.NODE_ENV !== 'production') {
-  console.log('[DB] using connection string =', MONGODB_URI ? MONGODB_URI.slice(0, 30) + '...' : undefined);
+// log ใน production ด้วยเพื่อดีบัก Railway
+console.log('[DB] Environment variables check:');
+console.log('[DB] MONGODB_URI exists:', !!process.env.MONGODB_URI);
+console.log('[DB] MONGO_URL exists:', !!process.env.MONGO_URL);
+console.log('[DB] DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('[DB] MONGODB_URL exists:', !!process.env.MONGODB_URL);
+
+if (MONGODB_URI && process.env.NODE_ENV !== 'production') {
+  console.log('[DB] using connection string =', MONGODB_URI.slice(0, 30) + '...');
 }
 
 if (!MONGODB_URI) {
   throw new Error(
-    'กรุณากำหนดค่า MONGODB_URI ในไฟล์ .env หรือในตัวแปรสภาพแวดล้อม'
+    'กรุณากำหนดค่า MONGODB_URI, MONGO_URL, DATABASE_URL หรือ MONGODB_URL ในตัวแปรสภาพแวดล้อม Railway'
   );
 }
 
