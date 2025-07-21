@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createPermissionsContext, UserPermissionsContext } from '@/lib/permissions';
+import { createPermissionsContext, UserPermissionsContext } from '@/lib/permissions-client';
 
 /**
  * Hook สำหรับจัดการสิทธิ์ของผู้ใช้ใน React components

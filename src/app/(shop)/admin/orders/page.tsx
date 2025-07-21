@@ -7,7 +7,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import PackingImageGallery from '@/components/PackingImageGallery';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/models/UserPermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 interface OrderItem {
   productId: string;

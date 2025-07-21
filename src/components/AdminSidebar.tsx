@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/models/UserPermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 interface Order {
   _id: string;

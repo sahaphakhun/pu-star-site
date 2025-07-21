@@ -1,10 +1,5 @@
 import mongoose from 'mongoose';
 
-// ตรวจสอบว่าไม่ได้รันในฝั่ง client side
-if (typeof window !== 'undefined') {
-  throw new Error('MongoDB connection should only be used on server side');
-}
-
 // รองรับได้หลายชื่อ เพื่อให้ทำงานได้ทั้งใน Railway, Vercel, Docker ฯลฯ
 const MONGODB_URI =
   (process.env.MONGODB_URI ||

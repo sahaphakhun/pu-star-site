@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'react-hot-toast';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/models/UserPermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 interface ProductWithId extends IProduct {
   _id: string;

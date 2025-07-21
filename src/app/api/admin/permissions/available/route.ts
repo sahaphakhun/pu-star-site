@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PERMISSIONS, ALL_PERMISSIONS } from '@/models/UserPermission';
+import { PERMISSIONS, ALL_PERMISSIONS } from '@/constants/permissions';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 

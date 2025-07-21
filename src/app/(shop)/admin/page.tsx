@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/models/UserPermission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 interface Stats {
   totalOrders: number;
