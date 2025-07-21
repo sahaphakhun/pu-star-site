@@ -2,39 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import UserPermission from '@/models/UserPermission';
 import User from '@/models/User';
-import { getServerSession } from 'next-auth';
-
-// ฟังก์ชันตรวจสอบว่าเป็นแอดมินหรือไม่
-async function isAdmin(request: NextRequest) {
-  try {
-    // ตรวจสอบจาก session หรือ token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return false;
-    }
-
-    // ตรวจสอบจาก phone number ใน header (สำหรับการทดสอบ)
-    const adminPhone = request.headers.get('x-admin-phone');
-    if (adminPhone) {
-      await connectDB();
-      const admin = await User.findOne({ phoneNumber: adminPhone, role: 'admin' });
-      return !!admin;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Error checking admin status:', error);
-    return false;
-  }
-}
+import { verifyToken } from '@/lib/auth';
 
 // GET - ดูรายการผู้ใช้ที่มีสิทธิ์
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์แอดมิน
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' },
         { status: 403 }
       );
     }
@@ -109,9 +94,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์แอดมิน
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' },
         { status: 403 }
       );
     }

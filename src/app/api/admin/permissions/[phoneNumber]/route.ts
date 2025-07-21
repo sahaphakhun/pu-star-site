@@ -2,28 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import UserPermission from '@/models/UserPermission';
 import User from '@/models/User';
-
-// ฟังก์ชันตรวจสอบว่าเป็นแอดมินหรือไม่
-async function isAdmin(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return false;
-    }
-
-    const adminPhone = request.headers.get('x-admin-phone');
-    if (adminPhone) {
-      await connectDB();
-      const admin = await User.findOne({ phoneNumber: adminPhone, role: 'admin' });
-      return !!admin;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Error checking admin status:', error);
-    return false;
-  }
-}
+import { verifyToken } from '@/lib/auth';
 
 // GET - ดูสิทธิ์ของผู้ใช้เฉพาะ
 export async function GET(
@@ -31,16 +10,29 @@ export async function GET(
   { params }: { params: { phoneNumber: string } }
 ) {
   try {
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+
+    const phoneNumber = decodeURIComponent(params.phoneNumber);
+    
+    // ตรวจสอบสิทธิ์: แอดมินดูได้ทุกคน หรือผู้ใช้ดูของตัวเองได้
+    const isAdmin = authResult.decoded?.role === 'admin';
+    const isOwnData = authResult.decoded?.phoneNumber === phoneNumber;
+    
+    if (!isAdmin && !isOwnData) {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลของผู้ใช้นี้' },
         { status: 403 }
       );
     }
 
     await connectDB();
-
-    const phoneNumber = decodeURIComponent(params.phoneNumber);
     
     // ดึงข้อมูลสิทธิ์
     const permission = await UserPermission.findOne({ phoneNumber }).lean();
@@ -85,9 +77,18 @@ export async function PUT(
   { params }: { params: { phoneNumber: string } }
 ) {
   try {
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' },
         { status: 403 }
       );
     }
@@ -160,9 +161,18 @@ export async function DELETE(
   { params }: { params: { phoneNumber: string } }
 ) {
   try {
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' },
         { status: 403 }
       );
     }

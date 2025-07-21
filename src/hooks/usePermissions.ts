@@ -26,12 +26,7 @@ export function usePermissions() {
               setPermissions(['ADMIN_ALL_PERMISSIONS']);
             } else {
               // ดึงสิทธิ์เฉพาะของผู้ใช้
-              const permResponse = await fetch(`/api/admin/permissions/${encodeURIComponent(userData.user.phoneNumber)}`, {
-                headers: {
-                  'Authorization': 'Bearer admin-token',
-                  'x-admin-phone': userData.user.phoneNumber,
-                },
-              });
+              const permResponse = await fetch(`/api/admin/permissions/${encodeURIComponent(userData.user.phoneNumber)}`);
 
               if (permResponse.ok) {
                 const permData = await permResponse.json();

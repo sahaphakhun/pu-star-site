@@ -1,36 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PERMISSIONS, ALL_PERMISSIONS } from '@/constants/permissions';
-import { connectDB } from '@/lib/mongodb';
-import User from '@/models/User';
-
-// ฟังก์ชันตรวจสอบว่าเป็นแอดมินหรือไม่
-async function isAdmin(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return false;
-    }
-
-    const adminPhone = request.headers.get('x-admin-phone');
-    if (adminPhone) {
-      await connectDB();
-      const admin = await User.findOne({ phoneNumber: adminPhone, role: 'admin' });
-      return !!admin;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Error checking admin status:', error);
-    return false;
-  }
-}
+import { verifyToken } from '@/lib/auth';
 
 // GET - ดูรายการสิทธิ์ทั้งหมดที่มีในระบบ
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    const authResult = await verifyToken(request);
+    
+    if (!authResult.valid) {
       return NextResponse.json(
-        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง' },
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' },
+        { status: 401 }
+      );
+    }
+    
+    if (authResult.decoded?.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'ไม่มีสิทธิ์เข้าถึง - ต้องเป็นแอดมิน' },
         { status: 403 }
       );
     }
