@@ -52,7 +52,7 @@ export async function POST(
 
     // ส่ง SMS แจ้งลูกค้า
     try {
-      let customerMessage = `ได้รับใบเสนอราคาแล้ว!\n\n${quoteMessage}`;
+      let customerMessage = `ได้รับใบเสนอราคาแล้ว\n\n${quoteMessage}`;
       
       if (quoteFileUrl) {
         customerMessage += `\n\nดูไฟล์ใบเสนอราคา: ${quoteFileUrl}`;
