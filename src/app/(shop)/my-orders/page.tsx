@@ -566,8 +566,8 @@ const MyOrdersPage = () => {
                   </div>
                 )}
 
-                {/* Claim Info */}
-                {(selectedOrder.claimInfo || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
+                {/* Claim Info - แสดงเฉพาะเมื่อมีการเคลมและได้รับการอนุมัติหรือปฏิเสธแล้ว */}
+                {selectedOrder.claimInfo && (selectedOrder.claimInfo.claimStatus === 'approved' || selectedOrder.claimInfo.claimStatus === 'rejected' || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
                   <div className={`p-4 rounded-lg mb-6 border ${
                     selectedOrder.status === 'claim_approved' ? 'bg-green-50 border-green-200' :
                     selectedOrder.status === 'claim_rejected' ? 'bg-red-50 border-red-200' : 
@@ -857,4 +857,4 @@ const MyOrdersPage = () => {
   );
 };
 
-export default MyOrdersPage; 
+export default MyOrdersPage;

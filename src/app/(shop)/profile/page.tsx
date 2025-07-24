@@ -865,8 +865,97 @@ const ProfilePage = () => {
                   </button>
                 </div>
 
-                {/* Claim Info */}
-                {(selectedOrder.claimInfo || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
+                {/* Order Status and Shipping Info */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">ข้อมูลการจัดส่ง</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Order Status */}
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">สถานะออเดอร์</p>
+                      {selectedOrder.status && (
+                        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${statusColors[selectedOrder.status]}`}>
+                          {statusLabels[selectedOrder.status]}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Shipping Provider */}
+                    {selectedOrder.shippingProvider && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">ขนส่ง</p>
+                        <p className="font-medium text-gray-900">{selectedOrder.shippingProvider}</p>
+                      </div>
+                    )}
+                    
+                    {/* Tracking Number */}
+                    {selectedOrder.trackingNumber && (
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">เลขแทรค</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-mono text-gray-900 bg-white px-3 py-2 rounded border">{selectedOrder.trackingNumber}</p>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedOrder.trackingNumber || '');
+                              toast.success('คัดลอกเลขแทรคแล้ว');
+                            }}
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded transition-colors"
+                            title="คัดลอกเลขแทรค"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Packing Proofs from Admin */}
+                {selectedOrder.packingProofs && selectedOrder.packingProofs.length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      รูปภาพจากแอดมิน ({selectedOrder.packingProofs.length} รูป)
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {selectedOrder.packingProofs.map((proof, index) => (
+                        <div key={index} className="relative group">
+                          {proof.type === 'image' ? (
+                            <img
+                              src={proof.url}
+                              alt={`รูปภาพจากแอดมิน ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border border-blue-200 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(proof.url, '_blank')}
+                            />
+                          ) : (
+                            <video
+                              src={proof.url}
+                              className="w-full h-32 object-cover rounded-lg border border-blue-200 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(proof.url, '_blank')}
+                              muted
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                          </div>
+                          <div className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                            {new Date(proof.addedAt).toLocaleDateString('th-TH')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">💡 คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                  </div>
+                )}
+
+                {/* Claim Info - แสดงเฉพาะเมื่อมีการเคลมและได้รับการอนุมัติหรือปฏิเสธแล้ว */}
+                {selectedOrder.claimInfo && (selectedOrder.claimInfo.claimStatus === 'approved' || selectedOrder.claimInfo.claimStatus === 'rejected' || selectedOrder.status === 'claim_approved' || selectedOrder.status === 'claim_rejected') && (
                   <div className={`p-4 rounded-lg mb-6 border ${
                     selectedOrder.status === 'claim_approved' ? 'bg-green-50 border-green-200' :
                     selectedOrder.status === 'claim_rejected' ? 'bg-red-50 border-red-200' : 
@@ -1196,4 +1285,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;
