@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import ProfileImageUpload from '@/components/ProfileImageUpload';
@@ -925,9 +926,11 @@ const ProfilePage = () => {
                       {selectedOrder.packingProofs.map((proof, index) => (
                         <div key={index} className="relative group">
                           {proof.type === 'image' ? (
-                            <img
+                            <Image
                               src={proof.url}
                               alt={`รูปภาพจากแอดมิน ${index + 1}`}
+                              width={200}
+                              height={200}
                               className="w-full h-32 object-cover rounded-lg border border-blue-200 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => window.open(proof.url, '_blank')}
                             />
