@@ -48,6 +48,7 @@ interface Order {
     adminResponse?: string;
     responseDate?: string;
   };
+  updatedAt?: string; // Added for enhanced order status
 }
 
 const MyOrdersPage = () => {
@@ -317,6 +318,45 @@ const MyOrdersPage = () => {
                     </span>
                   </div>
                 )}
+
+                {/* Enhanced Tracking and Shipping Info */}
+                {(order.trackingNumber || order.shippingProvider) && (
+                  <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center text-purple-700 mb-1">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <span className="font-medium text-xs">ข้อมูลการจัดส่ง</span>
+                    </div>
+                    {order.shippingProvider && (
+                      <div className="text-xs text-purple-600 mb-1">
+                        <span className="font-medium">ขนส่ง:</span> {order.shippingProvider}
+                      </div>
+                    )}
+                    {order.trackingNumber && (
+                      <div className="text-xs text-purple-600">
+                        <span className="font-medium">เลขแทรค:</span> {order.trackingNumber}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Packing Images Preview */}
+                {order.packingProofs && order.packingProofs.length > 0 && (
+                  <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-green-700">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-medium text-xs">รูปแพ็คสินค้า</span>
+                      </div>
+                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                        {order.packingProofs.length} รูป
+                      </span>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="text-blue-600 font-bold text-lg mb-2">฿{order.totalAmount.toLocaleString()}</div>
                 
@@ -324,21 +364,14 @@ const MyOrdersPage = () => {
                   <p className="text-sm text-gray-600 line-clamp-1">{order.items.length} รายการ</p>
                   <div className="flex items-center gap-2">
                     {order.taxInvoice?.requestTaxInvoice && (
-                      <div className="flex items-center text-xs text-blue-600">
+                      <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
                         <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         ใบกำกับฯ
                       </div>
                     )}
-                    {order.trackingNumber && (
-                      <div className="flex items-center text-xs text-purple-600">
-                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        ติดตาม
-                      </div>
-                    )}
+                    
                     {/* ปุ่มเคลมสินค้า */}
                     {order.status === 'delivered' && (!order.claimInfo || !order.claimInfo.claimDate) && (
                       <button
@@ -353,17 +386,6 @@ const MyOrdersPage = () => {
                       </button>
                     )}
                     
-                    {/* Debug info - จะลบออกหลังแก้ไขเสร็จ */}
-                    {order.status === 'delivered' && (
-                      <div className="text-xs text-gray-500 mt-1 p-1 bg-yellow-50 rounded">
-                        <div>Status: {order.status}</div>
-                        <div>ClaimInfo: {order.claimInfo ? 'มี' : 'ไม่มี'}</div>
-                        {order.claimInfo && (
-                          <div>ClaimDate: {order.claimInfo.claimDate ? 'มี' : 'ไม่มี'}</div>
-                        )}
-                        <div>แสดงปุ่ม: {(!order.claimInfo || !order.claimInfo.claimDate) ? 'ควรแสดง' : 'ไม่แสดง'}</div>
-                      </div>
-                    )}
                     {order.status === 'claim_rejected' && (
                       <button
                         onClick={(e) => {
@@ -398,7 +420,7 @@ const MyOrdersPage = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
               <div className="p-6">
@@ -411,10 +433,35 @@ const MyOrdersPage = () => {
                   </button>
                 </div>
 
+                {/* Enhanced Order Status */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    สถานะออเดอร์
+                  </h3>
+                  <div className="bg-white p-3 rounded-lg border">
+                    <span className={`inline-flex px-3 py-2 text-sm font-medium rounded-full ${statusColors[selectedOrder.status!]}`}>
+                      {statusLabels[selectedOrder.status!]}
+                    </span>
+                    <p className="text-sm text-gray-600 mt-2">
+                      อัพเดตล่าสุด: {new Date(selectedOrder.updatedAt || selectedOrder.orderDate).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Asia/Bangkok'
+                      })}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Status Timeline */}
                 {selectedOrder.status && selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'claimed' && (
                   <div className="mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">สถานะออเดอร์</h3>
+                    <h3 className="font-semibold text-gray-900 mb-3">ความคืบหน้า</h3>
                     <div className="flex items-center justify-between">
                       {['pending', 'confirmed', 'packing', 'shipped', 'delivered'].map((status, index) => {
                         const isCompleted = getStatusProgress(selectedOrder.status!) > index;
@@ -441,46 +488,81 @@ const MyOrdersPage = () => {
                   </div>
                 )}
 
-                {/* Tracking Info */}
-                {selectedOrder.trackingNumber && (
-                  <div className="bg-purple-50 p-4 rounded-lg mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-2">ข้อมูลการจัดส่ง</h3>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-gray-600">เลขติดตาม</p>
-                        <p className="font-medium font-mono">{selectedOrder.trackingNumber}</p>
-                      </div>
+                {/* Enhanced Tracking Info */}
+                {(selectedOrder.trackingNumber || selectedOrder.shippingProvider) && (
+                  <div className="bg-purple-50 p-4 rounded-lg mb-6 border border-purple-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      ข้อมูลการจัดส่ง
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {selectedOrder.shippingProvider && (
-                        <div>
-                          <p className="text-sm text-gray-600">ขนส่ง</p>
-                          <p className="font-medium">{selectedOrder.shippingProvider}</p>
+                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                          <p className="text-sm text-gray-600 mb-1">บริษัทขนส่ง</p>
+                          <p className="font-bold text-purple-700 text-lg">{selectedOrder.shippingProvider}</p>
+                        </div>
+                      )}
+                      {selectedOrder.trackingNumber && (
+                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                          <p className="text-sm text-gray-600 mb-1">เลขติดตาม</p>
+                          <p className="font-bold text-purple-700 text-lg font-mono">{selectedOrder.trackingNumber}</p>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(selectedOrder.trackingNumber!)}
+                            className="mt-2 text-xs text-purple-600 hover:text-purple-800 flex items-center"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            คัดลอก
+                          </button>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Packing Images */}
+                {/* Enhanced Packing Images */}
                 {selectedOrder.packingProofs && selectedOrder.packingProofs.length > 0 && (
                   <div className="mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">รูปภาพแพ็คสินค้า</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      รูปภาพการแพ็คสินค้า
+                      <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                        {selectedOrder.packingProofs.length} รูป
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {selectedOrder.packingProofs.map((proof, index) => (
-                        <div key={index} className="relative">
+                        <div key={index} className="relative group">
                           <Image
                             src={proof.url}
                             alt={`รูปแพ็คสินค้า ${index + 1}`}
                             width={200}
                             height={200}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                            className="w-full h-32 object-cover rounded-lg border border-green-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
                             onClick={() => window.open(proof.url, '_blank')}
                           />
-                          <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                          <div className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
                             {new Date(proof.addedAt).toLocaleDateString('th-TH')}
                           </div>
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-gray-500 mt-2 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      คลิกที่รูปเพื่อดูขนาดเต็ม
+                    </p>
                   </div>
                 )}
 

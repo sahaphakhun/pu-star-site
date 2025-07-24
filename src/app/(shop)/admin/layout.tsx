@@ -11,7 +11,7 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
     <div className="min-h-screen flex bg-gray-50">
       <Toaster position="top-right" />
       <AdminSidebar />
-      <main className="flex-1 p-4 md:p-8 overflow-x-auto">{children}</main>
+      <main className="flex-1 pt-16 md:pt-8 p-4 md:p-8 overflow-x-auto">{children}</main>
     </div>
   );
 };

@@ -327,6 +327,95 @@ const ShopPage = () => {
     }
   };
 
+  const handleRequestQuote = async () => {
+    if (!isLoggedIn) {
+      router.push(`/login?returnUrl=${encodeURIComponent('/shop')}`);
+      return;
+    }
+    
+    if (!customerName || !customerPhone || !customerAddress) {
+      toast.error('กรุณากรอกชื่อ เบอร์โทรศัพท์ และที่อยู่');
+      return;
+    }
+    
+    const cartItems = Object.values(cart);
+    if (cartItems.length === 0) {
+      toast.error('กรุณาเลือกสินค้าก่อนขอใบเสนอราคา');
+      return;
+    }
+    
+    Swal.fire({
+      title: 'กำลังส่งคำขอใบเสนอราคา',
+      html: 'กรุณารอสักครู่...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+    
+    try {
+      const quoteData = {
+        customerName,
+        customerPhone,
+        customerAddress,
+        items: cartItems.map(item => ({
+          productId: item.product._id,
+          name: item.product.name,
+          price: item.unitPrice !== undefined ? item.unitPrice : item.product.price,
+          quantity: item.quantity,
+          selectedOptions: item.selectedOptions && Object.keys(item.selectedOptions).length > 0 ? item.selectedOptions : undefined,
+          unitLabel: item.unitLabel,
+          unitPrice: item.unitPrice
+        })),
+        totalAmount: calculateGrandTotal(),
+        taxInvoice: taxInvoiceData ? {
+          requestTaxInvoice: true,
+          companyName: taxInvoiceData.companyName,
+          taxId: taxInvoiceData.taxId,
+          companyAddress: taxInvoiceData.companyAddress || undefined,
+          companyPhone: taxInvoiceData.companyPhone || undefined,
+          companyEmail: taxInvoiceData.companyEmail || undefined
+        } : undefined
+      };
+      
+      const response = await fetch('/api/quote-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quoteData),
+      });
+      
+      if (response.ok) {
+        Swal.fire({
+          title: 'สำเร็จ!',
+          text: 'ส่งคำขอใบเสนอราคาเรียบร้อยแล้ว ทางเราจะติดต่อกลับภายใน 24 ชั่วโมง',
+          icon: 'success',
+          confirmButtonText: 'ตกลง'
+        });
+        setCart({});
+        setShowOrderForm(false);
+        setCustomerAddress('');
+        setTaxInvoiceData(null);
+        setSaveNewAddress(false);
+        setAddressLabel('');
+        setSelectedAddressId(null);
+        setShowNewAddress(false);
+        await fetchAddresses();
+      } else {
+        throw new Error('Failed to submit quote request');
+      }
+    } catch (error) {
+      console.error('เกิดข้อผิดพลาด:', error);
+      Swal.fire({
+        title: 'เกิดข้อผิดพลาด',
+        text: 'ไม่สามารถส่งคำขอใบเสนอราคาได้ กรุณาลองอีกครั้ง',
+        icon: 'error',
+        confirmButtonText: 'ตกลง'
+      });
+    }
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
@@ -1354,12 +1443,21 @@ const ShopPage = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    ยืนยันการสั่งซื้อ
-                  </button>
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={handleRequestQuote}
+                      className="flex-1 bg-white text-gray-700 border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      ขอใบเสนอราคา
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      ยืนยันการสั่งซื้อ
+                    </button>
+                  </div>
                 </form>
               </div>
             </motion.div>

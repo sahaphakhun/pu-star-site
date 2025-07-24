@@ -1114,26 +1114,77 @@ const AdminOrdersPage = () => {
                         </select>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">เลขพัสดุ</label>
-                        <input
-                          type="text"
-                          value={editForm.trackingNumber}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
-                          placeholder="ใส่เลขพัสดุ"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
+                      {/* Enhanced Shipping Information Section */}
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <h4 className="font-medium text-purple-900 mb-3 flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          </svg>
+                          ข้อมูลการจัดส่ง
+                        </h4>
+                        
+                        {/* Current Values Display */}
+                        {(selectedOrder.trackingNumber || selectedOrder.shippingProvider) && (
+                          <div className="mb-3 p-2 bg-white rounded border">
+                            <p className="text-xs text-gray-600 mb-1">ข้อมูลปัจจุบัน:</p>
+                            {selectedOrder.shippingProvider && (
+                              <p className="text-sm"><span className="font-medium">ขนส่ง:</span> {selectedOrder.shippingProvider}</p>
+                            )}
+                            {selectedOrder.trackingNumber && (
+                              <p className="text-sm"><span className="font-medium">เลขแทรค:</span> {selectedOrder.trackingNumber}</p>
+                            )}
+                          </div>
+                        )}
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">ผู้ส่ง/ขนส่ง</label>
-                        <input
-                          type="text"
-                          value={editForm.shippingProvider}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, shippingProvider: e.target.value }))}
-                          placeholder="เช่น Kerry, Flash Express"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                        <div className="grid grid-cols-1 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              บริษัทขนส่ง
+                              <span className="text-xs text-gray-500 ml-1">(เช่น Kerry Express, Flash Express, J&T Express, DHL)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={editForm.shippingProvider}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, shippingProvider: e.target.value }))}
+                              placeholder="ระบุชื่อบริษัทขนส่ง"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              list="shipping-providers"
+                            />
+                            <datalist id="shipping-providers">
+                              <option value="Kerry Express" />
+                              <option value="Flash Express" />
+                              <option value="J&T Express" />
+                              <option value="DHL" />
+                              <option value="Thailand Post" />
+                              <option value="Best Express" />
+                              <option value="Ninja Van" />
+                              <option value="SCG Express" />
+                            </datalist>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              หมายเลขติดตาม (Tracking Number)
+                              <span className="text-xs text-gray-500 ml-1">(เลขพัสดุสำหรับติดตาม)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={editForm.trackingNumber}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                              placeholder="ใส่เลขติดตามพัสดุ"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Quick Action Buttons */}
+                        {editForm.status === 'shipped' && (
+                          <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                            <p className="text-xs text-yellow-800 mb-2">
+                              💡 เมื่อเปลี่ยนสถานะเป็น "จัดส่งแล้ว" ควรระบุข้อมูลการจัดส่งด้วย
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

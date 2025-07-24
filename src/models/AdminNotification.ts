@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAdminNotification extends Document {
-  type: 'new_order' | 'claim_request' | 'general';
+  type: 'new_order' | 'claim_request' | 'quote_request' | 'general';
   title: string;
   message: string;
   relatedId?: string; // เช่น orderId สำหรับเชื่อมโยงกับออเดอร์
@@ -18,7 +18,7 @@ const adminNotificationSchema = new Schema<IAdminNotification>(
   {
     type: {
       type: String,
-      enum: ['new_order', 'claim_request', 'general'],
+      enum: ['new_order', 'claim_request', 'quote_request', 'general'],
       required: true
     },
     title: {

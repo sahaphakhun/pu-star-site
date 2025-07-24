@@ -20,7 +20,7 @@ interface Order {
 
 interface Notification {
   _id: string;
-  type: 'new_order' | 'claim_request' | 'general';
+  type: 'new_order' | 'claim_request' | 'quote_request' | 'general';
   title: string;
   message: string;
   relatedId?: string;
@@ -38,6 +38,7 @@ const AdminSidebar: React.FC = () => {
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -134,26 +135,48 @@ const AdminSidebar: React.FC = () => {
             if (newNotificationsCount > 0) {
               // หาการแจ้งเตือนใหม่ล่าสุด
               const latestNotification = data.notifications.find((n: Notification) => !n.isRead);
-              if (latestNotification && latestNotification.type === 'claim_request') {
-                // เล่นเสียงแจ้งเตือน
-                playNotificationSound();
-                
-                // แสดง toast notification สำหรับการเคลม
-                toast.error(`🚨 ${latestNotification.title}`, {
-                  duration: 10000,
-                  position: 'top-right',
-                  style: {
-                    background: '#EF4444',
-                    color: 'white',
-                    fontWeight: 'bold',
-                  },
-                });
-                
-                // ส่ง browser notification
-                sendBrowserNotification(
-                  latestNotification.title,
-                  latestNotification.message
-                );
+              if (latestNotification) {
+                if (latestNotification.type === 'claim_request') {
+                  // เล่นเสียงแจ้งเตือน
+                  playNotificationSound();
+                  
+                  // แสดง toast notification สำหรับการเคลม
+                  toast.error(`🚨 ${latestNotification.title}`, {
+                    duration: 10000,
+                    position: 'top-right',
+                    style: {
+                      background: '#EF4444',
+                      color: 'white',
+                      fontWeight: 'bold',
+                    },
+                  });
+                  
+                  // ส่ง browser notification
+                  sendBrowserNotification(
+                    latestNotification.title,
+                    latestNotification.message
+                  );
+                } else if (latestNotification.type === 'quote_request') {
+                  // เล่นเสียงแจ้งเตือน
+                  playNotificationSound();
+                  
+                  // แสดง toast notification สำหรับคำขอใบเสนอราคา
+                  toast.success(`💼 ${latestNotification.title}`, {
+                    duration: 8000,
+                    position: 'top-right',
+                    style: {
+                      background: '#3B82F6',
+                      color: 'white',
+                      fontWeight: 'bold',
+                    },
+                  });
+                  
+                  // ส่ง browser notification
+                  sendBrowserNotification(
+                    latestNotification.title,
+                    latestNotification.message
+                  );
+                }
               }
             }
           }
@@ -212,6 +235,8 @@ const AdminSidebar: React.FC = () => {
     // นำทางไปยังหน้าที่เกี่ยวข้อง
     if (notification.type === 'claim_request' && notification.relatedId) {
       router.push(`/admin/orders/claims`);
+    } else if (notification.type === 'quote_request' && notification.relatedId) {
+      router.push(`/admin/quote-requests?highlight=${notification.relatedId}`);
     } else if (notification.type === 'new_order' && notification.relatedId) {
       router.push(`/admin/orders?highlight=${notification.relatedId}`);
     }
@@ -228,6 +253,7 @@ const AdminSidebar: React.FC = () => {
     { label: 'ภาพรวม', href: '/admin', icon: '📊', permission: PERMISSIONS.DASHBOARD_VIEW },
     { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦', permission: PERMISSIONS.ORDERS_VIEW },
     { label: 'จัดการการเคลม', href: '/admin/orders/claims', icon: '🚨', permission: PERMISSIONS.ORDERS_CLAIMS_VIEW },
+    { label: 'จัดการใบเสนอราคา', href: '/admin/quote-requests', icon: '💼', permission: PERMISSIONS.ORDERS_VIEW },
     { label: 'ลูกค้า', href: '/admin/customers', icon: '👥', permission: PERMISSIONS.CUSTOMERS_VIEW },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️', permission: PERMISSIONS.PRODUCTS_VIEW },
     { label: 'จัดการสิทธิ์', href: '/admin/permissions', icon: '🔐', permission: PERMISSIONS.USERS_PERMISSIONS_MANAGE },
@@ -265,19 +291,171 @@ const AdminSidebar: React.FC = () => {
   // ถ้ากำลังโหลดสิทธิ์ แสดง loading state
   if (permissionsLoading) {
     return (
-      <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-600">กำลังโหลด...</p>
-          </div>
+      <>
+        {/* Mobile Menu Button */}
+        <div className="md:hidden fixed top-4 left-4 z-50">
+          <button className="bg-white p-2 rounded-lg shadow-lg border">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+          </button>
         </div>
-      </aside>
+        
+        {/* Desktop Sidebar */}
+        <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">กำลังโหลด...</p>
+            </div>
+          </div>
+        </aside>
+      </>
     );
   }
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
+    <>
+      {/* Mobile Menu Button */}
+      <div className="md:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="bg-white p-2 rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isMobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+          {/* Notification Badge for Mobile */}
+          {totalNotifications > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+              {totalNotifications > 99 ? '99+' : totalNotifications}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Sidebar */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.aside
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'tween', duration: 0.3 }}
+            className="md:hidden fixed left-0 top-0 w-64 h-screen bg-white border-r border-gray-200 z-50 overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>
+                
+                {/* Notification Bell - Mobile */}
+                {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW) || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowNotifications(!showNotifications)}
+                      className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      
+                      {totalNotifications > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                          {totalNotifications > 99 ? '99+' : totalNotifications}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Menu Items */}
+            <nav className="p-4">
+              <div className="space-y-2">
+                {menuItems.map((item, index) => (
+                  <Link
+                    key={index}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center space-x-3 w-full px-3 py-3 text-left rounded-lg transition-colors ${
+                      pathname === item.href
+                        ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-500'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </nav>
+
+            {/* Mobile Notification Dropdown */}
+            {showNotifications && (
+              <div className="p-4 border-t border-gray-200">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">🔔 แจ้งเตือน</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && `ออเดอร์รอดำเนินการ: ${pendingOrders.length}`}
+                    {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && ' | '}
+                    {(isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && `ยังไม่อ่าน: ${unreadNotificationsCount}`}
+                  </p>
+                  
+                  {/* Mobile Notifications List (simplified) */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {pendingOrders.slice(0, 3).map((order) => (
+                      <div
+                        key={order._id}
+                        onClick={() => {
+                          handleOrderClick(order._id);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="text-sm p-2 bg-white rounded cursor-pointer hover:bg-blue-50"
+                      >
+                        <p className="font-medium">ออเดอร์ #{order._id.slice(-8).toUpperCase()}</p>
+                        <p className="text-gray-600">฿{order.totalAmount.toLocaleString()}</p>
+                      </div>
+                    ))}
+                    
+                    {notifications.slice(0, 3).map((notification) => (
+                      <div
+                        key={notification._id}
+                        onClick={() => {
+                          handleNotificationClick(notification);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="text-sm p-2 bg-white rounded cursor-pointer hover:bg-blue-50"
+                      >
+                        <p className="font-medium">{notification.title}</p>
+                        <p className="text-gray-600 truncate">{notification.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>
@@ -436,6 +614,7 @@ const AdminSidebar: React.FC = () => {
         </ul>
       </nav>
     </aside>
+    </>
   );
 };
 
