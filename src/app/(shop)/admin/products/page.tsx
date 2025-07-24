@@ -503,7 +503,6 @@ const AdminProductsPage = () => {
                   src={product.imageUrl}
                   alt={product.name}
                   fill
-                  unoptimized={true}
                   className="object-cover"
                 />
                 {product.options && product.options.length > 0 && (
@@ -810,7 +809,6 @@ const AdminProductsPage = () => {
                               src={imageUrl}
                               alt="ตัวอย่างรูปภาพ"
                               fill
-                              unoptimized={true}
                               className="object-contain rounded-lg"
                             />
                           </div>
@@ -900,7 +898,6 @@ const AdminProductsPage = () => {
                                       src={value.imageUrl}
                                       alt={value.label}
                                       fill
-                                      unoptimized={true}
                                       className="object-cover rounded"
                                     />
                                   </div>
@@ -1004,4 +1001,4 @@ const AdminProductsPage = () => {
   );
 };
 
-export default AdminProductsPage;
+export default AdminProductsPage; 

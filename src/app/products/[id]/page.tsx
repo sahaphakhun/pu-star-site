@@ -165,7 +165,6 @@ export default function ProductDetail() {
                 src={product.imageUrl} 
                 alt={product.name} 
                 fill 
-                unoptimized={true}
                 className="object-cover"
               />
             </div>
@@ -288,4 +287,4 @@ export default function ProductDetail() {
       </div>
     </div>
   );
-}
+} 
