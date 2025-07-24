@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PermissionGate from '@/components/PermissionGate';
+import { PermissionGate } from '@/components/PermissionGate';
 import { PERMISSIONS } from '@/constants/permissions';
 import { toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
