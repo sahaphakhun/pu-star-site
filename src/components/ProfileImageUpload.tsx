@@ -86,6 +86,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
               width={128}
               height={128}
               className="w-full h-full object-cover"
+              unoptimized={true}
             />
           ) : (
             <div className="text-gray-400 text-4xl">
@@ -151,4 +152,4 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   );
 };
 
-export default ProfileImageUpload; 
+export default ProfileImageUpload;

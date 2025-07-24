@@ -197,6 +197,7 @@ const PackingImageGallery: React.FC<PackingImageGalleryProps> = ({
                   fill
                   className="object-cover cursor-pointer"
                   onClick={() => setSelectedImage(proof.url)}
+                  unoptimized={true}
                 />
                 {isAdmin && (
                   <button
@@ -240,6 +241,7 @@ const PackingImageGallery: React.FC<PackingImageGalleryProps> = ({
               width={800}
               height={600}
               className="max-w-full max-h-full object-contain"
+              unoptimized={true}
             />
           </div>
         </div>
@@ -248,4 +250,4 @@ const PackingImageGallery: React.FC<PackingImageGalleryProps> = ({
   );
 };
 
-export default PackingImageGallery; 
+export default PackingImageGallery;

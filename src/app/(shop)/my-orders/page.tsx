@@ -543,6 +543,7 @@ const MyOrdersPage = () => {
                             alt={`รูปแพ็คสินค้า ${index + 1}`}
                             width={200}
                             height={200}
+                            unoptimized={true}
                             className="w-full h-32 object-cover rounded-lg border border-green-200 cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
                             onClick={() => window.open(proof.url, '_blank')}
                           />

@@ -445,6 +445,7 @@ const AdminClaimsPage = () => {
                               src={imageUrl}
                               alt={`รูปภาพเคลม ${index + 1}`}
                               fill
+                              unoptimized={true}
                               className="object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => setSelectedImage(imageUrl)}
                             />
@@ -564,6 +565,7 @@ const AdminClaimsPage = () => {
                 alt="รูปภาพเคลม"
                 width={800}
                 height={600}
+                unoptimized={true}
                 className="object-contain max-w-full max-h-full"
               />
             </div>
@@ -574,4 +576,4 @@ const AdminClaimsPage = () => {
   );
 };
 
-export default AdminClaimsPage; 
+export default AdminClaimsPage;

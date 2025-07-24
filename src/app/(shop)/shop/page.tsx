@@ -700,6 +700,7 @@ const ShopPage = () => {
                     alt={product.name}
                     fill
                     className="object-cover"
+                    unoptimized={true}
                   />
                   {product.isAvailable === false && (
                     <>
@@ -889,6 +890,7 @@ const ShopPage = () => {
                     src={selectedProduct.imageUrl}
                     alt={selectedProduct.name}
                     fill
+                    unoptimized={true}
                     className="object-cover rounded-lg"
                   />
                   {selectedProduct.isAvailable === false && (
@@ -1468,4 +1470,4 @@ const ShopPage = () => {
   );
 };
 
-export default ShopPage; 
+export default ShopPage;

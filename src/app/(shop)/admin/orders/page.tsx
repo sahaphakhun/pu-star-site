@@ -1036,9 +1036,12 @@ const AdminOrdersPage = () => {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                               {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
                                 <div key={index} className="relative group">
-                                  <img
+                                  <Image
                                     src={imageUrl}
                                     alt={`รูปประกอบการเคลม ${index + 1}`}
+                                    width={200}
+                                    height={96}
+                                    unoptimized={true}
                                     className="w-full h-24 object-cover rounded-lg border border-red-200 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={() => window.open(imageUrl, '_blank')}
                                   />

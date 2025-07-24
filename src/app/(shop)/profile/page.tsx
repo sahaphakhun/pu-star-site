@@ -933,6 +933,7 @@ const ProfilePage = () => {
                               height={200}
                               className="w-full h-32 object-cover rounded-lg border border-blue-200 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => window.open(proof.url, '_blank')}
+                              unoptimized={true}
                             />
                           ) : (
                             <video
@@ -1017,11 +1018,14 @@ const ProfilePage = () => {
                           <div className="grid grid-cols-2 gap-3">
                             {selectedOrder.claimInfo.claimImages.map((imageUrl, index) => (
                               <div key={index} className="relative group">
-                                <img
+                                <Image
                                   src={imageUrl}
                                   alt={`รูปประกอบการเคลม ${index + 1}`}
+                                  width={200}
+                                  height={200}
                                   className="w-full h-32 object-cover rounded-lg border border-pink-200 cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => window.open(imageUrl, '_blank')}
+                                  unoptimized={true}
                                 />
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
                                   <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
