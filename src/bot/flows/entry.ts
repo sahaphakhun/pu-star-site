@@ -3,7 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions } from './order.flow';
+import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions, handleSavedAddressSelection, promptNewAddress } from './order.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
@@ -155,6 +155,19 @@ export async function handleEvent(event: MessagingEvent) {
       // รีเซ็ต paymentMethod แล้วถามใหม่ ไม่ว่ากำลังอยู่ขั้นไหน
       await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: undefined } });
       return askPayment(psid);
+    }
+    
+    // จัดการการเลือกที่อยู่ที่บันทึกไว้
+    if (payload.startsWith('SELECT_ADDR_')) {
+      const idx = parseInt(payload.replace('SELECT_ADDR_', ''), 10);
+      if (!isNaN(idx)) {
+        return handleSavedAddressSelection(psid, idx);
+      }
+    }
+    
+    // จัดการการเลือกกรอกที่อยู่ใหม่
+    if (payload === 'NEW_ADDRESS') {
+      return promptNewAddress(psid);
     }
 
     if (session.step === 'await_phone' && event.message.quick_reply && (event.message.quick_reply as any).phone_number) {
@@ -386,6 +399,11 @@ export async function handleEvent(event: MessagingEvent) {
     if (session.step === 'await_name_address') {
       return handleNameAddress(psid, event.message.text);
     }
+    
+    // ถ้าอยู่ในขั้นตอนรอที่อยู่ใหม่
+    if (session.step === 'await_new_address') {
+      return handleAddress(psid, event.message.text, (session.tempData as any)?.name);
+    }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
       await sendWelcome(psid);
@@ -446,4 +464,4 @@ async function notifyAdminsContact(userPsid: string) {
   } catch (err) {
     console.error('[notifyAdminsContact] error', err);
   }
-} 
+}

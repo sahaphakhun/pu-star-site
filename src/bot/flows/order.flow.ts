@@ -54,30 +54,93 @@ export async function handleAddress(psid: string, address: string, nameOverride?
 
   await sendTypingOn(psid);
 
-  // สรุปออเดอร์ พร้อมแสดงหน่วย
-  const itemsText = session.cart.map((c) => {
-    let itemText = `• ${c.name} x${c.quantity}`;
-    if (c.unitLabel) {
-      itemText += ` (${c.unitLabel})`;
-    }
-    if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
-      const optionsText = Object.entries(c.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ');
-      itemText += ` [${optionsText}]`;
-    }
-    return itemText;
-  }).join('\n');
-  const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const shippingFee = await computeShippingFee(session.cart);
-  const grand = total + shippingFee;
+  // ถ้ามีการส่ง address มาแล้ว แสดงว่าผู้ใช้เลือกที่อยู่แล้ว หรือกรอกที่อยู่ใหม่แล้ว
+  if (address) {
+    // สรุปออเดอร์ พร้อมแสดงหน่วย
+    const itemsText = session.cart.map((c) => {
+      let itemText = `• ${c.name} x${c.quantity}`;
+      if (c.unitLabel) {
+        itemText += ` (${c.unitLabel})`;
+      }
+      if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
+        const optionsText = Object.entries(c.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ');
+        itemText += ` [${optionsText}]`;
+      }
+      return itemText;
+    }).join('\n');
+    const total = session.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+    const shippingFee = await computeShippingFee(session.cart);
+    const grand = total + shippingFee;
 
-  callSendAPIAsync(psid, {
-    text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}\n🚚จัดส่งสินค้าทุกวันจันทร์-ศุกร์ ตัดรอบ16:00น. หลังตัดรอบจัดส่งวันถัดไป\nอย่าลืมสะสมแต้มและรีวิวให้ด้วยนะคะ`,
-    quick_replies: [
-      { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' }
-    ],
-  });
+    callSendAPIAsync(psid, {
+      text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}\n🚚จัดส่งสินค้าทุกวันจันทร์-ศุกร์ ตัดรอบ16:00น. หลังตัดรอบจัดส่งวันถัดไป\nอย่าลืมสะสมแต้มและรีวิวให้ด้วยนะคะ`,
+      quick_replies: [
+        { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' }
+      ],
+    });
 
-  await updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
+    await updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
+    return;
+  }
+
+  // ดึงที่อยู่ที่บันทึกไว้ (ถ้ามี)
+  try {
+    await connectDB();
+    const mu = await MessengerUser.findOne({ psid });
+    if (mu?.userId) {
+      // ถ้ามี userId แสดงว่าเป็นผู้ใช้ที่ลงทะเบียนแล้ว
+      // ดึงข้อมูลที่อยู่ที่บันทึกไว้
+      const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || '';
+      const origin = originEnv.startsWith('http') ? originEnv : `https://${originEnv.replace(/^https?:\/\//, '')}`;
+      const res = await fetch(`${origin.replace(/\/$/, '')}/api/auth/me`, {
+        headers: { Cookie: `userId=${mu.userId}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user.addresses && data.user.addresses.length > 0) {
+          // แสดงที่อยู่ที่บันทึกไว้ให้เลือก
+          const addressOptions = data.user.addresses.map((addr: any, idx: number) => {
+            let label = addr.label;
+            if (addr.isDefault) label += ' (ค่าเริ่มต้น)';
+            return {
+              content_type: 'text',
+              title: label.substring(0, 20),
+              payload: `SELECT_ADDR_${idx}`
+            };
+          });
+          
+          // เพิ่มตัวเลือกกรอกที่อยู่ใหม่
+          addressOptions.push({
+            content_type: 'text',
+            title: '📝 กรอกที่อยู่ใหม่',
+            payload: 'NEW_ADDRESS'
+          });
+          
+          // เก็บที่อยู่ทั้งหมดไว้ใน session
+          await updateSession(psid, { 
+            tempData: { 
+              ...session.tempData, 
+              savedAddresses: data.user.addresses,
+              name
+            } 
+          });
+          
+          callSendAPIAsync(psid, {
+            text: 'เลือกที่อยู่จัดส่ง:',
+            quick_replies: addressOptions.slice(0, 11) // จำกัดไม่เกิน 11 ตัวเลือก
+          });
+          
+          return;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching saved addresses:', error);
+  }
+  
+  // ถ้าไม่มีที่อยู่ที่บันทึกไว้ หรือไม่สามารถดึงข้อมูลได้ ให้ขอที่อยู่ใหม่
+  return promptNewAddress(psid);
 }
 
 export async function finalizeOrder(psid: string) {
@@ -136,7 +199,23 @@ export async function finalizeOrder(psid: string) {
       throw new Error(`API ${res.status}`);
     }
 
-    callSendAPIAsync(psid, { text: 'สั่งซื้อสำเร็จ ขอบคุณค่ะ 🎉' });
+    // ดึงข้อมูลคำสั่งซื้อที่สร้างเสร็จแล้ว
+    const orderResult = await res.json();
+    const orderId = orderResult._id ? orderResult._id.slice(-8).toUpperCase() : 'N/A';
+    
+    // แสดงข้อความยืนยันการสั่งซื้อพร้อมหมายเลขคำสั่งซื้อ
+    callSendAPIAsync(psid, { 
+      text: `🎉 สั่งซื้อสำเร็จ!\n\n📦 หมายเลขคำสั่งซื้อ: ${orderId}\n\nวิธีชำระเงิน: ${shipping.paymentMethod === 'transfer' ? 'โอนเงิน' : 'เก็บเงินปลายทาง'}\nยอดรวมทั้งสิ้น: ${grandTotal.toLocaleString()} บาท\n\nขอบคุณที่ใช้บริการค่ะ\nเราจะจัดส่งสินค้าให้เร็วที่สุด` 
+    });
+    
+    // ส่งข้อความเพิ่มเติมเกี่ยวกับการติดตามคำสั่งซื้อ
+    callSendAPIAsync(psid, {
+      text: 'คุณสามารถตรวจสอบสถานะคำสั่งซื้อได้ที่เว็บไซต์ของเรา หรือสอบถามเพิ่มเติมได้ที่แชทนี้',
+      quick_replies: [
+        { content_type: 'text', title: '🛍️ สั่งซื้อเพิ่ม', payload: 'SHOW_PRODUCTS' },
+        { content_type: 'text', title: '❓ ติดต่อพนักงาน', payload: 'CONTACT_STAFF' }
+      ]
+    });
   } catch (err) {
     console.error('[FinalizeOrder] fetch error', err);
     callSendAPIAsync(psid, { text: 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ กรุณาลองใหม่' });
@@ -146,28 +225,67 @@ export async function finalizeOrder(psid: string) {
   await updateSession(psid, { cart: [], step: 'browse', tempData: {} });
 }
 
+// ฟังก์ชันสำหรับจัดการการเลือกที่อยู่ที่บันทึกไว้
+export async function handleSavedAddressSelection(psid: string, addressIndex: number) {
+  const session = await getSession(psid);
+  const savedAddresses = (session.tempData as any)?.savedAddresses || [];
+  const selectedAddress = savedAddresses[addressIndex];
+  
+  if (!selectedAddress) {
+    return callSendAPIAsync(psid, { text: 'ไม่พบที่อยู่ที่เลือก กรุณาลองใหม่อีกครั้ง' });
+  }
+  
+  // สร้างข้อความที่อยู่ที่สมบูรณ์
+  const fullAddress = [
+    selectedAddress.address,
+    selectedAddress.subdistrict,
+    selectedAddress.district,
+    selectedAddress.province,
+    selectedAddress.postalCode
+  ].filter(Boolean).join(' ');
+  
+  // ใช้ที่อยู่ที่เลือก
+  return handleAddress(psid, fullAddress, (session.tempData as any)?.name);
+}
+
+// ฟังก์ชันสำหรับแจ้งให้ผู้ใช้กรอกที่อยู่ใหม่
+export async function promptNewAddress(psid: string) {
+  callSendAPIAsync(psid, { text: 'กรุณากรอกที่อยู่ใหม่ของคุณ' });
+  await updateSession(psid, { step: 'await_new_address' });
+}
+
 export async function askPayment(psid: string) {
   callSendAPIAsync(psid, {
     text: 'เลือกวิธีชำระเงินค่ะ',
     quick_replies: [
-      { content_type: 'text', title: 'โอนเงิน', payload: 'PAY_TRANSFER' },
-      { content_type: 'text', title: 'ปลายทาง', payload: 'PAY_COD' },
+      { content_type: 'text', title: '💳 โอนเงิน', payload: 'PAY_TRANSFER' },
+      { content_type: 'text', title: '💵 เก็บเงินปลายทาง (COD)', payload: 'PAY_COD' },
     ],
   });
   await updateSession(psid, { step: 'await_payment_method' });
 }
 
 export async function sendBankInfo(psid: string) {
+  // ส่งข้อความแบบมีการจัดรูปแบบที่ดีขึ้น
   callSendAPIAsync(psid, {
-    text: 'กรุณาโอนเงินตามรายละเอียด\nธนาคารกสิกรไทย\nเลขที่บัญชี 1943234902\nชื่อบัญชี บริษัท วินริช ไดนามิค จำกัด',
+    text: '📢 ข้อมูลการชำระเงิน\n\n🏦 ธนาคารกสิกรไทย\n📝 เลขที่บัญชี: 1943234902\n👤 ชื่อบัญชี: บริษัท วินริช ไดนามิค จำกัด\n\n💡 เมื่อโอนเงินเรียบร้อยแล้ว กรุณาส่งสลิปการโอนเงินเป็นรูปภาพในแชทนี้',
   });
+  
+  // ส่งข้อความพร้อมตัวเลือก
   callSendAPIAsync(psid, { 
     text: 'โอนเสร็จแล้ว โปรดอัปโหลดสลิปเป็นรูปภาพในแชทนี้ค่ะ',
     quick_replies: [
       { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' }
     ]
   });
-  await updateSession(psid, { step: 'await_slip' });
+  
+  await updateSession(psid, { 
+    step: 'await_slip',
+    tempData: {
+      ...(await getSession(psid)).tempData,
+      paymentMethod: 'transfer'
+    } 
+  });
 }
 
 // ยืนยัน COD ก่อนสร้างออเดอร์ เพื่อให้ผู้ใช้เปลี่ยนใจได้
@@ -176,14 +294,36 @@ export async function confirmCOD(psid:string){
   const total = session.cart.reduce((s,i)=>s+i.price*i.quantity,0);
   const shippingFee = await computeShippingFee(session.cart);
   const grand = total + shippingFee;
+  
+  // สรุปรายการสั่งซื้อแบบละเอียด
+  const itemsText = session.cart.map((c) => {
+    let itemText = `• ${c.name} x${c.quantity}`;
+    if (c.unitLabel) {
+      itemText += ` (${c.unitLabel})`;
+    }
+    if (c.selectedOptions && Object.keys(c.selectedOptions).length > 0) {
+      const optionsText = Object.entries(c.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ');
+      itemText += ` [${optionsText}]`;
+    }
+    return itemText;
+  }).join('\n');
+  
+  // ส่งข้อความสรุปคำสั่งซื้อแบบละเอียด
   callSendAPIAsync(psid, {
-    text:`ยืนยันการสั่งซื้อ (ชำระเงินปลายทาง)\nยอดรวม ${grand.toLocaleString()} บาท`,
+    text: `📋 สรุปคำสั่งซื้อ (เก็บเงินปลายทาง)\n\n${itemsText}\n\n💰 ราคาสินค้า: ${total.toLocaleString()} บาท\n🚚 ค่าจัดส่ง: ${shippingFee.toLocaleString()} บาท\n📊 รวมทั้งหมด: ${grand.toLocaleString()} บาท\n\nโปรดยืนยันการสั่งซื้อ`,
     quick_replies:[
       { content_type:'text', title:'ยืนยัน ✔️', payload:'COD_CONFIRM' },
       { content_type:'text', title:'เปลี่ยนวิธีชำระเงิน', payload:'CHANGE_PAYMENT' }
     ]
   });
-  await updateSession(psid, { step:'await_cod_confirm' });
+  
+  await updateSession(psid, { 
+    step:'await_cod_confirm',
+    tempData: {
+      ...(session.tempData || {}),
+      paymentMethod: 'cod'
+    } 
+  });
 }
 
 // แสดงตะกร้าสินค้าแบบสรุป พร้อมตัวเลือกจัดการ
@@ -293,4 +433,4 @@ export async function askColorOptions(psid: string, cartIdx: number) {
     })),
   });
   await updateSession(psid, { step: 'await_color' });
-} 
+}
