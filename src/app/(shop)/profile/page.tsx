@@ -87,7 +87,8 @@ const ProfilePage = () => {
   const router = useRouter();
 
   // States
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'tax-invoice' | 'quote-requests'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'quote-requests'>('profile');
+  const [profileSubTab, setProfileSubTab] = useState<'info' | 'addresses' | 'tax-invoice'>('info');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [quoteRequests, setQuoteRequests] = useState<QuoteRequest[]>([]);
@@ -216,7 +217,11 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
     { id: 'orders', label: 'คำสั่งซื้อ', icon: '📦' },
-    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '💼' },
+    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '💼' }
+  ];
+
+  const profileSubTabs = [
+    { id: 'info', label: 'ข้อมูลส่วนตัว', icon: '👤' },
     { id: 'addresses', label: 'ที่อยู่', icon: '📍' },
     { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '🧾' }
   ];
@@ -548,11 +553,6 @@ const ProfilePage = () => {
                       {quoteRequests.length}
                     </span>
                   )}
-                  {tab.id === 'addresses' && (
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                      {addresses.length}
-                    </span>
-                  )}
                 </button>
               ))}
             </nav>
@@ -567,18 +567,50 @@ const ProfilePage = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-gray-900">ข้อมูลส่วนตัว</h2>
-                  {!isEditing && (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span>แก้ไขข้อมูล</span>
-                    </button>
-                  )}
                 </div>
+
+                {/* Profile Sub Navigation */}
+                <div className="border-b border-gray-200">
+                  <nav className="flex space-x-8" aria-label="Profile Tabs">
+                    {profileSubTabs.map((subTab) => (
+                      <button
+                        key={subTab.id}
+                        onClick={() => setProfileSubTab(subTab.id as any)}
+                        className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm ${
+                          profileSubTab === subTab.id
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <span className="text-lg">{subTab.icon}</span>
+                        <span>{subTab.label}</span>
+                        {subTab.id === 'addresses' && (
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                            {addresses.length}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+
+                {/* Profile Sub Tab Content */}
+                {profileSubTab === 'info' && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-semibold text-gray-900">ข้อมูลส่วนตัว</h3>
+                      {!isEditing && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          <span>แก้ไขข้อมูล</span>
+                        </button>
+                      )}
+                    </div>
 
                 {/* Profile Image Section */}
                 <div className="pb-6 border-b border-gray-200">
@@ -701,6 +733,132 @@ const ProfilePage = () => {
                     </button>
                   </div>
                 )}
+                  </div>
+                )}
+
+                {/* Addresses Sub Tab */}
+                {profileSubTab === 'addresses' && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-semibold text-gray-900">ที่อยู่ของฉัน</h3>
+                      <button
+                        onClick={() => setShowAddressModal(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        + เพิ่มที่อยู่
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {addresses.map(address => (
+                        <div
+                          key={address._id}
+                          className="bg-gray-50 rounded-lg p-4 relative"
+                        >
+                          {address.isDefault && (
+                            <span className="absolute top-2 right-2 bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full">
+                              ค่าเริ่มต้น
+                            </span>
+                          )}
+                          
+                          <h3 className="font-medium text-gray-900 mb-2">{address.label}</h3>
+                          <p className="text-sm text-gray-600 mb-4">{address.address}</p>
+                          
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleDeleteAddress(address._id)}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              ลบ
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax Invoice Sub Tab */}
+                {profileSubTab === 'tax-invoice' && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-semibold text-gray-900">ข้อมูลใบกำกับภาษี</h3>
+                      {taxInvoiceInfo && !isEditingTaxInvoice && (
+                        <button
+                          onClick={() => setIsEditingTaxInvoice(true)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          แก้ไข
+                        </button>
+                      )}
+                    </div>
+
+                    {!taxInvoiceInfo && !isEditingTaxInvoice ? (
+                      <div className="text-center py-12">
+                        <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีข้อมูลใบกำกับภาษี</h3>
+                        <p className="text-gray-600 mb-4">บันทึกข้อมูลใบกำกับภาษีเพื่อใช้ในการสั่งซื้อครั้งต่อไป</p>
+                        <button
+                          onClick={() => setIsEditingTaxInvoice(true)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          เพิ่มข้อมูลใบกำกับภาษี
+                        </button>
+                      </div>
+                    ) : isEditingTaxInvoice ? (
+                      <div className="space-y-6">
+                        <TaxInvoiceForm
+                          onTaxInvoiceChange={handleUpdateTaxInvoice}
+                          className=""
+                          initialRequestTaxInvoice={true}
+                        />
+                        <div className="flex justify-end space-x-3">
+                          <button
+                            onClick={() => setIsEditingTaxInvoice(false)}
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                          >
+                            ยกเลิก
+                          </button>
+                        </div>
+                      </div>
+                    ) : taxInvoiceInfo && (
+                      <div className="bg-gray-50 rounded-lg p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อบริษัท/นิติบุคคล</label>
+                            <p className="text-gray-900 font-medium">{taxInvoiceInfo.companyName}</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี</label>
+                            <p className="text-gray-900 font-mono">{taxInvoiceInfo.taxId}</p>
+                          </div>
+                          {taxInvoiceInfo.companyAddress && (
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label>
+                              <p className="text-gray-900">{taxInvoiceInfo.companyAddress}</p>
+                            </div>
+                          )}
+                          {taxInvoiceInfo.companyPhone && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทร</label>
+                              <p className="text-gray-900">{taxInvoiceInfo.companyPhone}</p>
+                            </div>
+                          )}
+                          {taxInvoiceInfo.companyEmail && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
+                              <p className="text-gray-900">{taxInvoiceInfo.companyEmail}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -818,129 +976,7 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {/* Addresses Tab */}
-            {activeTab === 'addresses' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">ที่อยู่ของฉัน</h2>
-                  <button
-                    onClick={() => setShowAddressModal(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    + เพิ่มที่อยู่
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {addresses.map(address => (
-                    <div
-                      key={address._id}
-                      className="bg-gray-50 rounded-lg p-4 relative"
-                    >
-                      {address.isDefault && (
-                        <span className="absolute top-2 right-2 bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full">
-                          ค่าเริ่มต้น
-                        </span>
-                      )}
-                      
-                      <h3 className="font-medium text-gray-900 mb-2">{address.label}</h3>
-                      <p className="text-sm text-gray-600 mb-4">{address.address}</p>
-                      
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          onClick={() => handleDeleteAddress(address._id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          ลบ
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tax Invoice Tab */}
-            {activeTab === 'tax-invoice' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">ข้อมูลใบกำกับภาษี</h2>
-                  {taxInvoiceInfo && !isEditingTaxInvoice && (
-                    <button
-                      onClick={() => setIsEditingTaxInvoice(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      แก้ไข
-                    </button>
-                  )}
-                </div>
-
-                {!taxInvoiceInfo && !isEditingTaxInvoice ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีข้อมูลใบกำกับภาษี</h3>
-                    <p className="text-gray-600 mb-4">บันทึกข้อมูลใบกำกับภาษีเพื่อใช้ในการสั่งซื้อครั้งต่อไป</p>
-                    <button
-                      onClick={() => setIsEditingTaxInvoice(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      เพิ่มข้อมูลใบกำกับภาษี
-                    </button>
-                  </div>
-                ) : isEditingTaxInvoice ? (
-                  <div className="space-y-6">
-                    <TaxInvoiceForm
-                      onTaxInvoiceChange={handleUpdateTaxInvoice}
-                      className=""
-                      initialRequestTaxInvoice={true}
-                    />
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        onClick={() => setIsEditingTaxInvoice(false)}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                      >
-                        ยกเลิก
-                      </button>
-                    </div>
-                  </div>
-                ) : taxInvoiceInfo && (
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อบริษัท/นิติบุคคล</label>
-                        <p className="text-gray-900 font-medium">{taxInvoiceInfo.companyName}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี</label>
-                        <p className="text-gray-900 font-mono">{taxInvoiceInfo.taxId}</p>
-                      </div>
-                      {taxInvoiceInfo.companyAddress && (
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label>
-                          <p className="text-gray-900">{taxInvoiceInfo.companyAddress}</p>
-                        </div>
-                      )}
-                      {taxInvoiceInfo.companyPhone && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทร</label>
-                          <p className="text-gray-900">{taxInvoiceInfo.companyPhone}</p>
-                        </div>
-                      )}
-                      {taxInvoiceInfo.companyEmail && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
-                          <p className="text-gray-900">{taxInvoiceInfo.companyEmail}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
