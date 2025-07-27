@@ -535,21 +535,21 @@ const ProfilePage = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center md:space-x-2 md:flex-row flex-col py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <span className="text-lg">{tab.icon}</span>
-                  <span>{tab.label}</span>
+                  <span className="text-center text-xs md:text-sm">{tab.label}</span>
                   {tab.id === 'orders' && (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs md:ml-2">
                       {orders.length}
                     </span>
                   )}
                   {tab.id === 'quote-requests' && (
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs md:ml-2">
                       {quoteRequests.length}
                     </span>
                   )}
@@ -573,16 +573,16 @@ const ProfilePage = () => {
                       <button
                         key={subTab.id}
                         onClick={() => setProfileSubTab(subTab.id as any)}
-                        className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm ${
+                        className={`flex items-center md:space-x-2 md:flex-row flex-col py-3 px-1 border-b-2 font-medium text-sm ${
                           profileSubTab === subTab.id
                             ? 'border-blue-500 text-blue-600'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                       >
                         <span className="text-lg">{subTab.icon}</span>
-                        <span>{subTab.label}</span>
+                        <span className="text-center text-xs md:text-sm">{subTab.label}</span>
                         {subTab.id === 'addresses' && (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs md:ml-2">
                             {addresses.length}
                           </span>
                         )}
