@@ -1,9 +1,10 @@
-import { handleOrderPostback, showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
+import { showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
 import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions, handleSavedAddressSelection, promptNewAddress } from './order.flow';
+import { showMyOrders } from './orderHistory.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
@@ -292,6 +293,14 @@ export async function handleEvent(event: MessagingEvent) {
 
     if (payload === 'SHOP_ORDER') {
       return showCategories(psid);
+    }
+
+    if (payload === 'MY_ORDERS') {
+      return showMyOrders(psid);
+    }
+
+    if (payload === 'START_AUTH') {
+      return startAuth(psid);
     }
 
     if (payload === 'ASK_DETAILS') {

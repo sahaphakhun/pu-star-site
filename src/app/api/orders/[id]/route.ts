@@ -42,11 +42,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     await order.save();
 
-    // หากมีการใส่เลขพัสดุใหม่ ให้ส่ง SMS แจ้งลูกค้า
+    // หากมีการใส่เลขพัสดุใหม่ ให้ส่งการแจ้งเตือนผ่านทั้ง SMS และ Messenger
     if (body.trackingNumber && (!prevTracking || prevTracking !== body.trackingNumber)) {
       try {
         const orderNumber = order._id.toString().slice(-8).toUpperCase();
-        await sendShippingNotification(
+        
+        // Import ฟังก์ชันแบบ dynamic เพื่อหลีกเลี่ยง dependency issues
+        const { sendDualShippingNotification } = await import('@/app/notification/dualNotification');
+        
+        await sendDualShippingNotification(
           order.customerPhone,
           orderNumber,
           order.trackingNumber,
@@ -54,8 +58,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         );
         order.trackingSent = true;
         await order.save();
-      } catch (smsErr) {
-        console.error('ส่ง SMS แจ้งเตือนเลขพัสดุล้มเหลว:', smsErr);
+      } catch (notificationErr) {
+        console.error('ส่งการแจ้งเตือนเลขพัสดุล้มเหลว:', notificationErr);
+        
+        // Fallback ส่ง SMS อย่างเดียวถ้าระบบ dual notification มีปัญหา
+        try {
+          const orderNumber = order._id.toString().slice(-8).toUpperCase();
+          await sendShippingNotification(
+            order.customerPhone,
+            orderNumber,
+            order.trackingNumber,
+            order.shippingProvider || 'ขนส่ง'
+          );
+          order.trackingSent = true;
+          await order.save();
+        } catch (smsErr) {
+          console.error('ส่ง SMS แจ้งเตือนเลขพัสดุล้มเหลว:', smsErr);
+        }
       }
     }
 

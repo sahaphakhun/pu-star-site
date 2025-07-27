@@ -134,14 +134,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ส่ง SMS แจ้งเตือนลูกค้า
+    // ส่งการแจ้งเตือนผ่านทั้ง SMS และ Messenger
     try {
+      const orderNumber = order._id.toString().slice(-8).toUpperCase();
       const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
       const orderUrl = `${origin}/my-orders`;
-      const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${data.totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
-      await sendSMS(data.customerPhone, smsMessage);
-    } catch (smsErr) {
-      console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
+      
+      // Import ฟังก์ชันแบบ dynamic เพื่อหลีกเลี่ยง dependency issues
+      const { sendDualOrderConfirmation } = await import('@/app/notification/dualNotification');
+      
+      await sendDualOrderConfirmation(data.customerPhone, orderNumber, data.totalAmount);
+    } catch (notificationErr) {
+      console.error('ส่งการแจ้งเตือนล้มเหลว:', notificationErr);
+      
+      // Fallback ส่ง SMS อย่างเดียวถ้าระบบ dual notification มีปัญหา
+      try {
+        const orderNumber = order._id.toString().slice(-8).toUpperCase();
+        const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
+        const orderUrl = `${origin}/my-orders`;
+        const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${orderNumber} ยอดรวม ${data.totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
+        await sendSMS(data.customerPhone, smsMessage);
+      } catch (smsErr) {
+        console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
+      }
     }
 
     // แจ้งเตือนแอดมินทุกคน
