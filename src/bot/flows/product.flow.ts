@@ -26,12 +26,13 @@ async function getAllProducts(): Promise<IProduct[]> {
 
 // ส่งข้อความแนะนำตัวครั้งแรก
 export async function sendWelcome(psid: string) {
-  // เริ่มต้นด้วยข้อความต้อนรับและให้ผู้ใช้เลือกหัวข้อหลัก 3 ข้อ
+  // เริ่มต้นด้วยข้อความต้อนรับและให้ผู้ใช้เลือกหัวข้อหลัก 4 ข้อ
   sendTypingAndMessages(psid, {
     text: 'สวัสดีค่ะ ฉันคือ Next Star Bot 🤖\nกรุณาเลือกหัวข้อที่ต้องการค่ะ',
     quick_replies: [
       { content_type: 'text', title: 'สอบถามรายละเอียด', payload: 'Q_INQUIRY' },
-      { content_type: 'text', title: 'สั่งซื้อ', payload: 'Q_ORDER' },
+      { content_type: 'text', title: 'สั่งซื้อ', payload: 'Q_ORDER_WEBSITE' },
+      { content_type: 'text', title: 'รับการแจ้งเตือน', payload: 'Q_NOTIFICATION' },
       { content_type: 'text', title: 'ติดต่อแอดมิน', payload: 'Q_CONTACT_ADMIN' },
     ],
   });
@@ -120,7 +121,7 @@ export async function showProducts(psid: string, categorySlug?: string) {
         {
           type: 'web_url',
           title: 'ดูรายละเอียด',
-          url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://pu-star-site-production.up.railway.app').replace(/\/$/, '')}/products/${p._id}`,
+          url: `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://pu-star-site-production.up.railway.app').replace(/\/$/, '')}/products/${(p as any)._id}`,
           webview_height_ratio: 'tall',
         },
         {

@@ -265,6 +265,45 @@ export async function handleEvent(event: MessagingEvent) {
       await disableAIForUser(psid);
       return showCategories(psid);
     }
+    
+    // เมนูสั่งซื้อผ่านเว็บไซต์
+    if (payload === 'Q_ORDER_WEBSITE') {
+      await disableAIForUser(psid);
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pu-star-site-production.up.railway.app';
+      const shopUrl = `${siteUrl.replace(/\/$/, '')}/shop`;
+      return callSendAPI(psid, {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text: 'คลิกเพื่อเข้าสู่หน้าเว็บไซต์และสั่งซื้อสินค้าค่ะ',
+            buttons: [
+              {
+                type: 'web_url',
+                title: 'เข้าสู่หน้าสั่งซื้อ',
+                url: shopUrl,
+                webview_height_ratio: 'full',
+              },
+            ],
+          },
+        },
+        quick_replies: [
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        ],
+      });
+    }
+    
+    // เมนูรับการแจ้งเตือน
+    if (payload === 'Q_NOTIFICATION') {
+      await disableAIForUser(psid);
+      return callSendAPI(psid, {
+        text: 'เพื่อรับการแจ้งเตือนการสั่งซื้อ กรุณายืนยันตัวตนเพื่อเชื่อมต่อระบบแจ้งเตือนค่ะ',
+        quick_replies: [
+          { content_type: 'text', title: 'ยืนยันตัวตน', payload: 'START_AUTH' },
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        ],
+      });
+    }
     if (payload === 'SHOW_MENU') {
       await disableAIForUser(psid);
       return sendWelcome(psid);
