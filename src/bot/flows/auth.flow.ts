@@ -5,6 +5,7 @@ import MessengerUser from '@/models/MessengerUser';
 import User from '@/models/User';
 import Order from '@/models/Order';
 import { updateSession } from '../state';
+import { sendWelcome } from './product.flow';
 
 export async function startAuth(psid: string) {
   await sendTypingOn(psid);
@@ -55,30 +56,12 @@ export async function handleOtp(psid: string, otp: string) {
   mu.otpToken = undefined;
   mu.otpExpire = undefined;
   await mu.save();
-  await callSendAPI(psid, { text: 'ยืนยันตัวตนสำเร็จค่ะ' });
-
-  // ลองดึงที่อยู่เดิมจากออเดอร์ล่าสุด
-  const lastOrder = await Order.findOne({
-    $or: [
-      { userId: user._id },
-      { customerPhone: mu.phoneNumber },
-    ],
-    customerAddress: { $ne: '' },
-  }).sort({ createdAt: -1 }).lean();
-
-  if (lastOrder && lastOrder.customerAddress) {
-    await callSendAPI(psid, {
-      text: `พบบันทึกที่อยู่เดิมของคุณ:\n${lastOrder.customerAddress}\nต้องการใช้ที่อยู่เดิมหรือไม่คะ?`,
-      quick_replies: [
-        { content_type: 'text', title: 'ใช้ที่อยู่เดิม', payload: 'ADDR_USE_OLD' },
-        { content_type: 'text', title: 'ที่อยู่ใหม่', payload: 'ADDR_NEW' },
-      ],
-    });
-    await updateSession(psid, { step: 'confirm_old_address', tempData: { name: lastOrder.customerName, address: lastOrder.customerAddress } });
-    return;
-  }
-
-  // ถ้าไม่พบที่อยู่เดิม ให้ขอชื่อ+ที่อยู่ใหม่
-  await callSendAPI(psid, { text: 'กรุณาพิมพ์ชื่อและที่อยู่จัดส่ง เช่น:\nสมชาย ใจดี\n123/45 หมู่ 5 ต.บางรัก ...' });
-  await updateSession(psid, { step: 'await_name_address' });
+  
+  await callSendAPI(psid, { text: 'ยืนยันตัวตนสำเร็จแล้วค่ะ ตอนนี้คุณสามารถรับการแจ้งเตือนได้แล้วค่ะ' });
+  
+  // แสดงเมนูเริ่มต้นสี่เมนูเหมือนตอนเริ่มสนทนา
+  await sendWelcome(psid);
+  
+  // รีเซ็ต session
+  await updateSession(psid, { step: 'welcome' });
 } 
