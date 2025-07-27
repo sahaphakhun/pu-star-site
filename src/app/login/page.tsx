@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/';
+  const returnUrl = searchParams.get('returnUrl') || '/shop';
 
   const { isLoggedIn, login: setAuthUser } = useAuth();
 

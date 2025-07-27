@@ -564,10 +564,6 @@ const ProfilePage = () => {
           <div className="p-6">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-900">ข้อมูลส่วนตัว</h2>
-                </div>
 
                 {/* Profile Sub Navigation */}
                 <div className="border-b border-gray-200">
