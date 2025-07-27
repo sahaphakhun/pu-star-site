@@ -564,6 +564,7 @@ const ProfilePage = () => {
           <div className="p-6">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
+              <div className="space-y-6">
 
                 {/* Profile Sub Navigation */}
                 <div className="border-b border-gray-200">
