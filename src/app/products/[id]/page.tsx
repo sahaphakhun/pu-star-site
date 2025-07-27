@@ -3,6 +3,8 @@ import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import toast, { Toaster } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 interface Product {
   _id: string;
@@ -124,11 +126,48 @@ export default function ProductDetail() {
 
       localStorage.setItem('cart', JSON.stringify(existingCart));
       
-      alert('เพิ่มสินค้าลงตะกร้าแล้ว!');
+      // แสดง toast แสดงความสำเร็จพร้อมแอนิเมชัน
+      toast.success(
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-bounce">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium">เพิ่มลงตะกร้าสำเร็จ! 🛒</p>
+            <p className="text-sm text-gray-600">{product.name} จำนวน {quantity} ชิ้น</p>
+          </div>
+        </div>,
+        {
+          duration: 3000,
+          position: 'bottom-right',
+          style: {
+            background: '#f0fdf4',
+            color: '#16a34a',
+            border: '1px solid #bbf7d0',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          },
+        }
+      );
+      
+      // เพิ่มแอนิเมชันการสั่นของปุ่ม
+      const button = document.querySelector('.add-to-cart-btn');
+      if (button) {
+        button.classList.add('animate-pulse');
+        setTimeout(() => {
+          button.classList.remove('animate-pulse');
+        }, 1000);
+      }
       
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า');
+      toast.error('เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า', {
+        duration: 3000,
+        position: 'bottom-right',
+      });
     } finally {
       setAddingToCart(false);
     }
@@ -265,13 +304,27 @@ export default function ProductDetail() {
             </div>
 
             {/* ปุ่มเพิ่มลงตะกร้า */}
-            <button
+            <motion.button
               onClick={handleAddToCart}
               disabled={addingToCart}
-              className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="add-to-cart-btn w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {addingToCart ? 'กำลังเพิ่ม...' : 'เพิ่มลงตะกร้า'}
-            </button>
+              {addingToCart ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>กำลังเพิ่ม...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                  </svg>
+                  <span>เพิ่มลงตะกร้า</span>
+                </div>
+              )}
+            </motion.button>
 
             {/* ปุ่มอื่นๆ */}
             <div className="mt-6 flex space-x-4">
@@ -285,6 +338,7 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 } 

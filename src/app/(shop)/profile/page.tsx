@@ -59,16 +59,41 @@ interface Order {
   };
 }
 
+interface QuoteRequest {
+  _id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: 'pending' | 'quoted' | 'approved' | 'rejected';
+  requestDate: string;
+  quoteMessage?: string;
+  quoteFileUrl?: string;
+  quotedBy?: string;
+  quotedAt?: string;
+  taxInvoice?: {
+    requestTaxInvoice: boolean;
+    companyName?: string;
+    taxId?: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  };
+}
+
 const ProfilePage = () => {
   const { isLoggedIn, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // States
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'tax-invoice'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'tax-invoice' | 'quote-requests'>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [quoteRequests, setQuoteRequests] = useState<QuoteRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedQuoteRequest, setSelectedQuoteRequest] = useState<QuoteRequest | null>(null);
   
   // Profile editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -191,6 +216,7 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
     { id: 'orders', label: 'คำสั่งซื้อ', icon: '📦' },
+    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '💼' },
     { id: 'addresses', label: 'ที่อยู่', icon: '📍' },
     { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '🧾' }
   ];
@@ -207,6 +233,7 @@ const ProfilePage = () => {
       fetchOrders();
       fetchAddresses();
       fetchTaxInvoiceInfo();
+      fetchQuoteRequests();
     }
   }, [isLoggedIn, user]);
 
@@ -262,6 +289,18 @@ const ProfilePage = () => {
       }
     } catch (err) {
       console.error('Error fetching tax invoice info:', err);
+    }
+  };
+
+  const fetchQuoteRequests = async () => {
+    try {
+      const res = await fetch('/api/quote-requests/my-quotes');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setQuoteRequests(data);
+      }
+    } catch (err) {
+      console.error('Error fetching quote requests:', err);
     }
   };
 
@@ -504,6 +543,11 @@ const ProfilePage = () => {
                       {orders.length}
                     </span>
                   )}
+                  {tab.id === 'quote-requests' && (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                      {quoteRequests.length}
+                    </span>
+                  )}
                   {tab.id === 'addresses' && (
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
                       {addresses.length}
@@ -711,6 +755,69 @@ const ProfilePage = () => {
               </div>
             )}
 
+            {/* Quote Requests Tab */}
+            {activeTab === 'quote-requests' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">ประวัติการขอใบเสนอราคา</h2>
+                  <p className="text-sm text-gray-500">{quoteRequests.length} รายการ</p>
+                </div>
+
+                {quoteRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีการขอใบเสนอราคา</h3>
+                    <p className="text-gray-600">ไปที่หน้าเลือกสินค้าเพื่อขอใบเสนอราคา</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {quoteRequests.map(quote => (
+                      <motion.div
+                        key={quote._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all duration-300 cursor-pointer"
+                        onClick={() => setSelectedQuoteRequest(quote)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-gray-900">#{quote._id.slice(-8).toUpperCase()}</span>
+                          <span className="text-sm text-gray-500">{new Date(quote.requestDate).toLocaleDateString('th-TH')}</span>
+                        </div>
+                        
+                        <div className="mb-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            quote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            quote.status === 'quoted' ? 'bg-blue-100 text-blue-800' :
+                            quote.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {quote.status === 'pending' ? 'รอดำเนินการ' :
+                             quote.status === 'quoted' ? 'ได้รับใบเสนอราคาแล้ว' :
+                             quote.status === 'approved' ? 'อนุมัติแล้ว' :
+                             'ปฏิเสธ'}
+                          </span>
+                        </div>
+                        
+                        <div className="text-purple-600 font-bold text-lg mb-2">฿{quote.totalAmount.toLocaleString()}</div>
+                        <p className="text-sm text-gray-600">{quote.items.length} รายการ</p>
+                        
+                        {quote.status === 'quoted' && (
+                          <div className="mt-2 text-xs text-blue-600">
+                            💼 ใบเสนอราคาพร้อมแล้ว
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Addresses Tab */}
             {activeTab === 'addresses' && (
               <div className="space-y-6">
@@ -837,6 +944,204 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Quote Request Detail Modal */}
+      <AnimatePresence>
+        {selectedQuoteRequest && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedQuoteRequest(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    การขอใบเสนอราคา #{selectedQuoteRequest._id.slice(-8).toUpperCase()}
+                  </h2>
+                  <button onClick={() => setSelectedQuoteRequest(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Quote Status */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">ข้อมูลการขอใบเสนอราคา</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">สถานะ</p>
+                      <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                        selectedQuoteRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedQuoteRequest.status === 'quoted' ? 'bg-blue-100 text-blue-800' :
+                        selectedQuoteRequest.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedQuoteRequest.status === 'pending' ? 'รอดำเนินการ' :
+                         selectedQuoteRequest.status === 'quoted' ? 'ได้รับใบเสนอราคาแล้ว' :
+                         selectedQuoteRequest.status === 'approved' ? 'อนุมัติแล้ว' :
+                         'ปฏิเสธ'}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">วันที่ขอ</p>
+                      <p className="font-medium text-gray-900">
+                        {new Date(selectedQuoteRequest.requestDate).toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'Asia/Bangkok'
+                        })}
+                      </p>
+                    </div>
+
+                    {selectedQuoteRequest.quotedAt && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">วันที่ได้รับใบเสนอราคา</p>
+                        <p className="font-medium text-gray-900">
+                          {new Date(selectedQuoteRequest.quotedAt).toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Asia/Bangkok'
+                          })}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">ชื่อผู้ติดต่อ</p>
+                      <p className="font-medium text-gray-900">{selectedQuoteRequest.customerName}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">เบอร์โทร</p>
+                      <p className="font-medium text-gray-900">{selectedQuoteRequest.customerPhone}</p>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-600 mb-1">ที่อยู่จัดส่ง</p>
+                      <p className="font-medium text-gray-900">{selectedQuoteRequest.customerAddress}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quote Message from Admin */}
+                {selectedQuoteRequest.quoteMessage && (
+                  <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      ข้อความจากแอดมิน
+                    </h3>
+                    <div className="bg-white p-3 rounded border border-blue-200">
+                      <p className="text-gray-900">{selectedQuoteRequest.quoteMessage}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quote File */}
+                {selectedQuoteRequest.quoteFileUrl && (
+                  <div className="bg-green-50 rounded-lg p-4 mb-6 border border-green-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      ไฟล์ใบเสนอราคา
+                    </h3>
+                    <button
+                      onClick={() => window.open(selectedQuoteRequest.quoteFileUrl, '_blank')}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>ดาวน์โหลดใบเสนอราคา</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Items List */}
+                <div className="space-y-4 mb-6">
+                  <h3 className="font-semibold text-gray-900">รายการสินค้า</h3>
+                  {selectedQuoteRequest.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-start bg-gray-50 p-3 rounded-lg">
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                          <p className="text-sm text-gray-600">
+                            {Object.entries(item.selectedOptions).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                          </p>
+                        )}
+                        {item.unitLabel && (
+                          <p className="text-sm text-gray-600">หน่วย: {item.unitLabel}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">฿{item.price.toLocaleString()}</p>
+                        <p className="text-sm text-gray-600">x{item.quantity}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tax Invoice Info */}
+                {selectedQuoteRequest.taxInvoice?.requestTaxInvoice && (
+                  <div className="bg-yellow-50 rounded-lg p-4 mb-6 border border-yellow-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      ข้อมูลใบกำกับภาษี
+                    </h3>
+                    <div className="bg-white p-3 rounded border border-yellow-200 space-y-2">
+                      {selectedQuoteRequest.taxInvoice.companyName && (
+                        <p><span className="font-medium">ชื่อบริษัท:</span> {selectedQuoteRequest.taxInvoice.companyName}</p>
+                      )}
+                      {selectedQuoteRequest.taxInvoice.taxId && (
+                        <p><span className="font-medium">เลขประจำตัวผู้เสียภาษี:</span> {selectedQuoteRequest.taxInvoice.taxId}</p>
+                      )}
+                      {selectedQuoteRequest.taxInvoice.companyAddress && (
+                        <p><span className="font-medium">ที่อยู่:</span> {selectedQuoteRequest.taxInvoice.companyAddress}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                  <span className="text-lg font-semibold">ยอดรวม</span>
+                  <span className="text-xl font-bold text-purple-600">฿{selectedQuoteRequest.totalAmount.toLocaleString()}</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={() => setSelectedQuoteRequest(null)}
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    ปิด
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Order Detail Modal */}
       <AnimatePresence>

@@ -187,10 +187,36 @@ const ShopPage = () => {
       return newCart;
     });
     
-    toast.success(`เพิ่ม ${product.name} ${quantity} ชิ้น ลงตะกร้าแล้ว`, {
-      position: 'bottom-right',
-      duration: 2000,
-    });
+    // แสดง toast แสดงความสำเร็จพร้อมแอนิเมชัน
+    toast.success(
+      <div className="flex items-center space-x-3">
+        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center animate-bounce">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <p className="font-medium text-gray-900">เพิ่มลงตะกร้าสำเร็จ! 🛒</p>
+          <p className="text-sm text-gray-600">{product.name} {quantity} ชิ้น</p>
+          {unit?.label && <p className="text-xs text-blue-600">หน่วย: {unit.label}</p>}
+        </div>
+      </div>,
+      {
+        duration: 3000,
+        position: 'bottom-right',
+        style: {
+          background: '#f0fdf4',
+          color: '#16a34a',
+          border: '1px solid #bbf7d0',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        },
+      }
+    );
+
+    // แอนิเมชันลูกบอลบินเข้าตะกร้า
+    createCartAnimation(product);
   };
 
   const getQuantityForProduct = (productId: string) => {
@@ -202,6 +228,75 @@ const ShopPage = () => {
       ...prev,
       [productId]: Math.max(1, quantity)
     }));
+  };
+
+  // แอนิเมชันลูกบอลบินเข้าตะกร้า
+  const createCartAnimation = (product: ProductWithId) => {
+    // สร้าง element ลูกบอลแอนิเมชัน
+    const animationElement = document.createElement('div');
+    animationElement.innerHTML = `
+      <div style="
+        position: fixed;
+        z-index: 9999;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(45deg, #3B82F6, #1D4ED8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        pointer-events: none;
+      ">
+        🛒
+      </div>
+    `;
+
+    document.body.appendChild(animationElement);
+    const ball = animationElement.firstElementChild as HTMLElement;
+
+    // หาตำแหน่งของ cart icon (ถ้ามี)
+    const cartIcon = document.querySelector('.cart-icon') || document.querySelector('[data-cart-icon]') || document.querySelector('.cart-button');
+    const cartRect = cartIcon?.getBoundingClientRect();
+
+    // ตำแหน่งเริ่มต้น (กลางหน้าจอ)
+    const startX = window.innerWidth / 2;
+    const startY = window.innerHeight / 2;
+
+    // ตำแหน่งปลายทาง (cart icon หรือมุมขวาบน)
+    const endX = cartRect ? cartRect.left + cartRect.width / 2 : window.innerWidth - 80;
+    const endY = cartRect ? cartRect.top + cartRect.height / 2 : 80;
+
+    // ตั้งตำแหน่งเริ่มต้น
+    ball.style.left = startX + 'px';
+    ball.style.top = startY + 'px';
+    ball.style.transform = 'scale(1.2)';
+
+    // เริ่มแอนิเมชัน
+    setTimeout(() => {
+      ball.style.left = endX + 'px';
+      ball.style.top = endY + 'px';
+      ball.style.transform = 'scale(0.8)';
+      ball.style.opacity = '0.8';
+    }, 50);
+
+    // ลบ element หลังจากแอนิเมชันเสร็จ
+    setTimeout(() => {
+      if (animationElement && document.body.contains(animationElement)) {
+        document.body.removeChild(animationElement);
+      }
+      
+      // เพิ่มเอฟเฟกต์ปุ๊บๆ ที่ cart icon
+      if (cartIcon) {
+        cartIcon.classList.add('animate-bounce');
+        setTimeout(() => {
+          cartIcon.classList.remove('animate-bounce');
+        }, 1000);
+      }
+    }, 900);
   };
 
   const openProductModal = (product: ProductWithId) => {
@@ -768,7 +863,7 @@ const ShopPage = () => {
                     </div>
                   </div>
                   
-                  <button
+                  <motion.button
                     onClick={() => {
                       if (product.isAvailable === false) {
                         toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
@@ -781,19 +876,39 @@ const ShopPage = () => {
                       }
                     }}
                     disabled={product.isAvailable === false}
-                    className={`w-full py-2 px-4 rounded-lg transition-colors text-sm font-medium ${
+                    className={`w-full py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium ${
                       product.isAvailable === false 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
                     }`}
+                    whileHover={{ scale: product.isAvailable ? 1.02 : 1 }}
+                    whileTap={{ scale: product.isAvailable ? 0.98 : 1 }}
                   >
                     {product.isAvailable === false 
-                      ? 'สินค้าหมด' 
-                      : (product.options && product.options.length > 0) || (product.units && product.units.length > 0) 
-                        ? 'เลือกตัวเลือก' 
-                        : `เพิ่มลงตะกร้า (${getQuantityForProduct(product._id)} ชิ้น)`
+                      ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span>สินค้าหมด</span>
+                        </div>
+                      ) : (product.options && product.options.length > 0) || (product.units && product.units.length > 0) ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                          </svg>
+                          <span>เลือกตัวเลือก</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                          </svg>
+                          <span>เพิ่มลงตะกร้า ({getQuantityForProduct(product._id)} ชิ้น)</span>
+                        </div>
+                      )
                     }
-                  </button>
+                  </motion.button>
                 </div>
               </motion.div>
             ))}
@@ -834,7 +949,7 @@ const ShopPage = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               onClick={() => setShowCart(true)}
-              className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+              className="cart-icon fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 z-10"
             >
               <div className="relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1041,20 +1156,35 @@ const ShopPage = () => {
                   </div>
                 </div>
 
-                <button
+                <motion.button
                   onClick={addToCartWithOptions}
                   disabled={selectedProduct.isAvailable === false}
-                  className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                     selectedProduct.isAvailable === false 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
                   }`}
+                  whileHover={{ scale: selectedProduct.isAvailable ? 1.02 : 1 }}
+                  whileTap={{ scale: selectedProduct.isAvailable ? 0.98 : 1 }}
                 >
                   {selectedProduct.isAvailable === false 
-                    ? 'สินค้าหมด' 
-                    : `เพิ่มลงตะกร้า (${modalQuantity} ชิ้น)`
+                    ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>สินค้าหมด</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                        </svg>
+                        <span>เพิ่มลงตะกร้า ({modalQuantity} ชิ้น)</span>
+                      </div>
+                    )
                   }
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
