@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import AddressForm from "@/components/AddressForm";
+import DeliveryMethodSelector, { DeliveryMethod } from "@/components/DeliveryMethodSelector";
+import { DeliveryLocation } from "@/schemas/order";
 
 // Address interface for the new format
 interface Address {
@@ -53,6 +55,8 @@ export default function CartPage() {
       isDefault: false
     } as Address,
     paymentMethod: 'cod' as 'cod' | 'transfer',
+    deliveryMethod: 'standard' as DeliveryMethod,
+    deliveryLocation: undefined as DeliveryLocation | undefined,
     shippingFee: 0,
     discount: 0
   });
@@ -148,6 +152,8 @@ export default function CartPage() {
         customerPhone: orderForm.customerPhone,
         customerAddress: formatAddressForAPI(orderForm.customerAddress),
         paymentMethod: orderForm.paymentMethod,
+        deliveryMethod: orderForm.deliveryMethod,
+        ...(orderForm.deliveryLocation && { deliveryLocation: orderForm.deliveryLocation }),
         items: cart.map(item => ({
           productId: item.productId,
           name: item.name,
@@ -193,6 +199,8 @@ export default function CartPage() {
             isDefault: false
           } as Address,
           paymentMethod: 'cod',
+          deliveryMethod: 'standard',
+          deliveryLocation: undefined,
           shippingFee: 0,
           discount: 0
         });
@@ -488,6 +496,22 @@ export default function CartPage() {
                       customerPhone: address.phone || orderForm.customerPhone
                     })}
                     initialAddress={orderForm.customerAddress}
+                  />
+                </div>
+
+                {/* Delivery Method */}
+                <div>
+                  <DeliveryMethodSelector
+                    selectedMethod={orderForm.deliveryMethod}
+                    deliveryLocation={orderForm.deliveryLocation}
+                    onMethodChange={(method) => setOrderForm({
+                      ...orderForm,
+                      deliveryMethod: method
+                    })}
+                    onLocationChange={(location) => setOrderForm({
+                      ...orderForm,
+                      deliveryLocation: location
+                    })}
                   />
                 </div>
 

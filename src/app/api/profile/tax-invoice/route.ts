@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await verifyToken(request);
     
-    if (!authResult.valid) {
+    if (!authResult.valid || !authResult.decoded) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     }
 
@@ -41,7 +41,7 @@ export async function PUT(request: NextRequest) {
   try {
     const authResult = await verifyToken(request);
     
-    if (!authResult.valid) {
+    if (!authResult.valid || !authResult.decoded) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     }
 
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
       taxId,
       companyAddress: companyAddress || '',
       companyPhone: companyPhone || '',
-      companyEmail: companyEmail || ''
+      companyEmail: companyEmail
     };
 
     await user.save();

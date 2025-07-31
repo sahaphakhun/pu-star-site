@@ -3,7 +3,7 @@ import { callSendAPI } from '@/utils/messenger';
 import { getSession, clearSession, updateSession, removeFromCart } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
-import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions, handleSavedAddressSelection, promptNewAddress } from './order.flow';
+import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions, handleSavedAddressSelection, promptNewAddress, handleDeliveryMethod, handleLalamoveLocation, handleCoordinatesText } from './order.flow';
 import { showMyOrders } from './orderHistory.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
@@ -130,6 +130,34 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload === 'ORDER_CANCEL') {
       await clearSession(psid);
       return callSendAPI(psid, { text: 'ยกเลิกคำสั่งซื้อแล้วค่ะ' });
+    }
+
+    // Delivery method selection
+    if (payload === 'DELIVERY_STANDARD') {
+      if (session.step === 'ask_delivery_method') {
+        return handleDeliveryMethod(psid, 'standard');
+      }
+    }
+
+    if (payload === 'DELIVERY_LALAMOVE') {
+      if (session.step === 'ask_delivery_method') {
+        return handleDeliveryMethod(psid, 'lalamove');
+      }
+    }
+
+    // Payment method selection (updated payloads)
+    if (payload === 'PAYMENT_COD') {
+      if (session.step === 'ask_payment') {
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'cod' } });
+        return confirmCOD(psid);
+      }
+    }
+
+    if (payload === 'PAYMENT_TRANSFER') {
+      if (session.step === 'ask_payment') {
+        await updateSession(psid, { tempData: { ...(session.tempData || {}), paymentMethod: 'transfer' } });
+        return sendBankInfo(psid);
+      }
     }
 
     if (payload === 'PAY_TRANSFER') {
@@ -382,6 +410,17 @@ export async function handleEvent(event: MessagingEvent) {
     }
   }
 
+  // รับ location สำหรับ Lalamove
+  if (event.message && session.step === 'ask_lalamove_location' && event.message.attachments && event.message.attachments.length > 0) {
+    const attachment = event.message.attachments[0];
+    if (attachment.type === 'location' && attachment.payload) {
+      const coordinates = attachment.payload.coordinates;
+      if (coordinates && coordinates.lat && coordinates.long) {
+        return handleLalamoveLocation(psid, coordinates.lat, coordinates.long);
+      }
+    }
+  }
+
   // รับสลิปเป็นรูปภาพ
   if (event.message && session.step === 'await_slip' && event.message.attachments && event.message.attachments.length > 0) {
     const img = event.message.attachments[0];
@@ -451,6 +490,11 @@ export async function handleEvent(event: MessagingEvent) {
     // ถ้าอยู่ในขั้นตอนรอที่อยู่ใหม่
     if (session.step === 'await_new_address') {
       return handleAddress(psid, event.message.text, (session.tempData as any)?.name);
+    }
+
+    // ถ้าอยู่ในขั้นตอนรอ coordinates สำหรับ Lalamove
+    if (session.step === 'ask_lalamove_location') {
+      return handleCoordinatesText(psid, event.message.text);
     }
 
     if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {

@@ -10,6 +10,12 @@ export const orderItemSchema = z.object({
   unitPrice: z.number().min(0).optional(),
 });
 
+export const deliveryLocationSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  mapDescription: z.string().optional(),
+});
+
 export const taxInvoiceSchema = z.object({
   requestTaxInvoice: z.boolean().default(false),
   companyName: z.string().optional(),
@@ -29,8 +35,11 @@ export const orderInputSchema = z.object({
   shippingFee: z.number().min(0).default(0).optional(),
   discount: z.number().min(0).default(0).optional(),
   totalAmount: z.number().min(0),
+  deliveryMethod: z.enum(['standard', 'lalamove']).default('standard').optional(),
+  deliveryLocation: deliveryLocationSchema.optional(),
   taxInvoice: taxInvoiceSchema.optional(),
 });
 
+export type DeliveryLocation = z.infer<typeof deliveryLocationSchema>;
 export type TaxInvoice = z.infer<typeof taxInvoiceSchema>;
 export type OrderInput = z.infer<typeof orderInputSchema>; 

@@ -11,6 +11,12 @@ import { transformImage } from '@utils/image';
 interface ShippingInfo {
   name: string;
   address: string;
+  deliveryMethod?: 'standard' | 'lalamove';
+  deliveryLocation?: {
+    latitude: number;
+    longitude: number;
+    mapDescription?: string;
+  };
 }
 
 export async function startCheckout(psid: string) {
@@ -72,14 +78,16 @@ export async function handleAddress(psid: string, address: string, nameOverride?
     const shippingFee = await computeShippingFee(session.cart);
     const grand = total + shippingFee;
 
+    // ถามเลือกช่องทางการส่ง
     callSendAPIAsync(psid, {
-      text: `สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\nชื่อ: ${name}\nที่อยู่: ${address}\n🚚จัดส่งสินค้าทุกวันจันทร์-ศุกร์ ตัดรอบ16:00น. หลังตัดรอบจัดส่งวันถัดไป\nอย่าลืมสะสมแต้มและรีวิวให้ด้วยนะคะ`,
+      text: `📦 สรุปคำสั่งซื้อ\n${itemsText}\nยอดสินค้า ${total.toLocaleString()} บาท\nค่าส่ง ${shippingFee.toLocaleString()} บาท\nรวมทั้งหมด ${grand.toLocaleString()} บาท\n\nชื่อ: ${name}\nที่อยู่: ${address}\n\n🚚 กรุณาเลือกช่องทางการส่ง:`,
       quick_replies: [
-        { content_type: 'text', title: 'ยืนยัน ✔️', payload: 'ORDER_CONFIRM' }
+        { content_type: 'text', title: '📦 การส่งปกติ', payload: 'DELIVERY_STANDARD' },
+        { content_type: 'text', title: '🏍️ Lalamove ส่งด่วน', payload: 'DELIVERY_LALAMOVE' }
       ],
     });
 
-    await updateSession(psid, { step: 'ask_payment', tempData: { ...shipping } });
+    await updateSession(psid, { step: 'ask_delivery_method', tempData: { ...shipping } });
     return;
   }
 
@@ -143,6 +151,82 @@ export async function handleAddress(psid: string, address: string, nameOverride?
   return promptNewAddress(psid);
 }
 
+// จัดการการเลือก delivery method
+export async function handleDeliveryMethod(psid: string, method: 'standard' | 'lalamove') {
+  const session = await getSession(psid);
+  const shipping = session.tempData as any as ShippingInfo;
+  shipping.deliveryMethod = method;
+
+  if (method === 'lalamove') {
+    // ถาม location สำหรับ Lalamove
+    callSendAPIAsync(psid, {
+      text: `🏍️ เลือก Lalamove ส่งด่วน (กทม.-ปริมณฑล)\n\n📍 กรุณาส่งตำแหน่งปักหมุดของคุณเพื่อให้ Lalamove รับของได้อย่างแม่นยำ\n\nคุณสามารถ:\n1️⃣ แชร์ตำแหน่งปัจจุบัน (กดปุ่ม + แล้วเลือก Location)\n2️⃣ หรือพิมพ์พิกัด เช่น "13.756331, 100.501765 สำนักงานใหญ่"`,
+      quick_replies: [
+        { content_type: 'location' }
+      ]
+    });
+    await updateSession(psid, { step: 'ask_lalamove_location', tempData: shipping });
+  } else {
+    // การส่งปกติ ไปต่อที่ payment method
+    shipping.deliveryMethod = 'standard';
+    callSendAPIAsync(psid, {
+      text: `📦 เลือกการส่งปกติ\n\n💰 กรุณาเลือกวิธีการชำระเงิน:`,
+      quick_replies: [
+        { content_type: 'text', title: '💵 เก็บเงินปลายทาง', payload: 'PAYMENT_COD' },
+        { content_type: 'text', title: '🏦 โอนเงิน', payload: 'PAYMENT_TRANSFER' }
+      ]
+    });
+    await updateSession(psid, { step: 'ask_payment', tempData: shipping });
+  }
+}
+
+// จัดการ location สำหรับ Lalamove
+export async function handleLalamoveLocation(psid: string, latitude: number, longitude: number, description?: string) {
+  const session = await getSession(psid);
+  const shipping = session.tempData as any as ShippingInfo;
+  
+  shipping.deliveryLocation = {
+    latitude,
+    longitude,
+    mapDescription: description || 'ตำแหน่งที่เลือก'
+  };
+
+  callSendAPIAsync(psid, {
+    text: `📍 ตำแหน่งที่รับ: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}\n${description ? `📝 ${description}` : ''}\n\n💰 กรุณาเลือกวิธีการชำระเงิน:`,
+    quick_replies: [
+      { content_type: 'text', title: '💵 เก็บเงินปลายทาง', payload: 'PAYMENT_COD' },
+      { content_type: 'text', title: '🏦 โอนเงิน', payload: 'PAYMENT_TRANSFER' }
+    ]
+  });
+
+  await updateSession(psid, { step: 'ask_payment', tempData: shipping });
+}
+
+// จัดการ text input สำหรับ coordinates
+export async function handleCoordinatesText(psid: string, text: string) {
+  // Parse coordinates from text like "13.756331, 100.501765" or "13.756331, 100.501765 description"
+  const coordPattern = /(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\s*(.*)/;
+  const match = text.match(coordPattern);
+  
+  if (match) {
+    const latitude = parseFloat(match[1]);
+    const longitude = parseFloat(match[2]);
+    const description = match[3].trim() || 'ตำแหน่งที่ระบุ';
+    
+    if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+      await handleLalamoveLocation(psid, latitude, longitude, description);
+      return;
+    }
+  }
+  
+  callSendAPIAsync(psid, {
+    text: `❌ รูปแบบพิกัดไม่ถูกต้อง\n\nกรุณาพิมพ์ในรูปแบบ: "latitude, longitude คำอธิบาย"\nเช่น: "13.756331, 100.501765 สำนักงาน"\n\nหรือแชร์ตำแหน่งปัจจุบันของคุณ`,
+    quick_replies: [
+      { content_type: 'location' }
+    ]
+  });
+}
+
 export async function finalizeOrder(psid: string) {
   console.log('[FinalizeOrder] start for', psid);
   await connectDB();
@@ -172,6 +256,7 @@ export async function finalizeOrder(psid: string) {
     customerName: shipping.name,
     customerPhone: mu?.phoneNumber || '000',
     customerAddress: shipping.address,
+    deliveryMethod: shipping.deliveryMethod || 'standard',
     items,
     shippingFee,
     discount: 0,
@@ -180,6 +265,7 @@ export async function finalizeOrder(psid: string) {
   if (mu?.userId) payload.userId = mu.userId;
   if (shipping.paymentMethod) payload.paymentMethod = shipping.paymentMethod;
   if (shipping.slipUrl) payload.slipUrl = shipping.slipUrl;
+  if (shipping.deliveryLocation) payload.deliveryLocation = shipping.deliveryLocation;
 
   console.log('[FinalizeOrder] payload', JSON.stringify(payload));
 

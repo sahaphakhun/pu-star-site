@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
+import DeliveryMethodSelector, { DeliveryMethod } from '@/components/DeliveryMethodSelector';
+import { DeliveryLocation } from '@/schemas/order';
 
 // Address interface for the new format
 interface Address {
@@ -62,6 +64,8 @@ const ShopPage = () => {
     isDefault: false
   });
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer'>('cod');
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('standard');
+  const [deliveryLocation, setDeliveryLocation] = useState<DeliveryLocation | undefined>(undefined);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreview, setSlipPreview] = useState<string | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -827,6 +831,8 @@ const ShopPage = () => {
         customerPhone,
         customerAddress: formatAddressForAPI(customerAddress),
         paymentMethod,
+        deliveryMethod,
+        ...(deliveryLocation && { deliveryLocation }),
         ...(paymentMethod === 'transfer' && slipUrl ? { slipUrl } : {}),
         items: cartItems.map(item => ({
           productId: item.product._id,
@@ -882,6 +888,8 @@ const ShopPage = () => {
         });
         setSlipFile(null);
         setSlipPreview(null);
+        setDeliveryMethod('standard');
+        setDeliveryLocation(undefined);
         setTaxInvoiceData(null);
         setSaveNewAddress(false);
         setAddressLabel('');
@@ -1846,6 +1854,16 @@ const ShopPage = () => {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Delivery Method */}
+                  <div>
+                    <DeliveryMethodSelector
+                      selectedMethod={deliveryMethod}
+                      deliveryLocation={deliveryLocation}
+                      onMethodChange={setDeliveryMethod}
+                      onLocationChange={setDeliveryLocation}
+                    />
                   </div>
 
                   <div>

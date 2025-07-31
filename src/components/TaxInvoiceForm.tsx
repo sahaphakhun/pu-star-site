@@ -7,7 +7,7 @@ interface TaxInvoiceInfo {
   taxId: string;
   companyAddress?: string;
   companyPhone?: string;
-  companyEmail?: string;
+  companyEmail: string;
 }
 
 interface TaxInvoiceFormProps {
@@ -79,6 +79,16 @@ const TaxInvoiceForm: React.FC<TaxInvoiceFormProps> = ({
   const handleUseSavedTaxInfo = () => {
     setUseCustomTaxInfo(false);
     if (savedTaxInfo) {
+      // ตรวจสอบว่าข้อมูลที่บันทึกไว้มีอีเมลหรือไม่
+      if (!savedTaxInfo.companyEmail) {
+        // ถ้าไม่มีอีเมล ให้เปลี่ยนไปใช้ custom form เพื่อให้ผู้ใช้กรอกอีเมล
+        setUseCustomTaxInfo(true);
+        setCustomTaxInfo({
+          ...savedTaxInfo,
+          companyEmail: ''
+        });
+        return;
+      }
       onTaxInvoiceChange(savedTaxInfo);
     }
   };
@@ -165,6 +175,9 @@ const TaxInvoiceForm: React.FC<TaxInvoiceFormProps> = ({
                     <div className="text-sm text-gray-600">เลขประจำตัวผู้เสียภาษี: {savedTaxInfo.taxId}</div>
                     {savedTaxInfo.companyAddress && (
                       <div className="text-sm text-gray-600">{savedTaxInfo.companyAddress}</div>
+                    )}
+                    {savedTaxInfo.companyEmail && (
+                      <div className="text-sm text-gray-600">อีเมล: {savedTaxInfo.companyEmail}</div>
                     )}
                   </div>
                 </div>

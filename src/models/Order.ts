@@ -34,6 +34,12 @@ export interface IClaimInfo {
   responseDate?: Date;
 }
 
+export interface IDeliveryLocation {
+  latitude: number;
+  longitude: number;
+  mapDescription?: string;
+}
+
 export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
@@ -52,6 +58,8 @@ export interface IOrder extends Document {
   trackingNumber?: string;
   shippingProvider?: string;
   trackingSent?: boolean;
+  deliveryMethod?: 'standard' | 'lalamove';
+  deliveryLocation?: IDeliveryLocation;
   packingProofs?: IPackingProof[];
   taxInvoice?: ITaxInvoice;
   claimInfo?: IClaimInfo;
@@ -150,6 +158,16 @@ const orderSchema = new Schema<IOrder>(
     trackingSent: {
       type: Boolean,
       default: false
+    },
+    deliveryMethod: {
+      type: String,
+      enum: ['standard', 'lalamove'],
+      default: 'standard'
+    },
+    deliveryLocation: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      mapDescription: { type: String }
     },
     packingProofs: {
       type: [
