@@ -127,8 +127,8 @@ const ProfilePage = () => {
 
   // Mock customer level data
   const calculateCustomerLevel = () => {
-    const totalSpent = user?.totalSpent || 0;
-    const totalOrders = user?.totalOrders || 0;
+    const totalSpent = (user as any)?.totalSpent || 0;
+    const totalOrders = (user as any)?.totalOrders || 0;
     
     if (totalSpent >= 100000 || totalOrders >= 50) {
       return {
@@ -477,79 +477,92 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-2 px-2 sm:px-3">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">โปรไฟล์</h1>
-          <p className="text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>
+        <div className="mb-3">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">👤 โปรไฟล์</h1>
+          <p className="text-xs sm:text-sm text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>
         </div>
 
-        {/* Customer Level Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex items-center justify-between">
+        {/* Customer Level Card - Ultra Compact */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 mb-3">
+          <div className="space-y-2">
+            {/* Greeting - Compact */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">สวัสดี, {user?.name || 'ลูกค้า'}</h2>
-              <div className="flex items-center space-x-3">
-                <span className={`px-4 py-2 rounded-full text-sm font-medium flex items-center space-x-2 ${customerLevel.color}`}>
-                  <span className="text-lg">{customerLevel.icon}</span>
+              <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-1">สวัสดี, {user?.name || 'ลูกค้า'} 👋</h2>
+            </div>
+            
+            {/* Level and Stats in One Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${customerLevel.color}`}>
+                  <span className="text-sm mr-1">{customerLevel.icon}</span>
                   <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
                 </span>
-                <span className="text-sm bg-green-100 text-green-800 px-3 py-2 rounded-full font-medium">
+                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-medium">
                   ส่วนลด {customerLevel.discount}%
                 </span>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="mb-3">
-                <p className="text-sm text-gray-500 mb-1">
-                  {customerLevel.pointsToNext > 0 ? 
-                    `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
-                    'ถึงระดับสูงสุดแล้ว'
-                  }
-                </p>
-                <div className="w-40 bg-gray-200 rounded-full h-3">
-                  <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: `${customerLevel.pointsToNext > 0 ? 
-                        (customerLevel.currentPoints / (customerLevel.currentPoints + customerLevel.pointsToNext)) * 100 : 
-                        100}%` 
-                    }}
-                  ></div>
+              
+              {/* Compact Stats */}
+              <div className="flex items-center gap-3 text-xs">
+                <div className="text-center">
+                  <p className="text-gray-500">ยอดซื้อ</p>
+                  <p className="font-bold text-blue-600">฿{((user as any)?.totalSpent || 0).toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500">ออเดอร์</p>
+                  <p className="font-bold text-purple-600">{(user as any)?.totalOrders || 0}</p>
                 </div>
               </div>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p className="font-medium">ยอดซื้อรวม: <span className="text-blue-600">฿{(user?.totalSpent || 0).toLocaleString()}</span></p>
-                <p className="font-medium">ออเดอร์ทั้งหมด: <span className="text-purple-600">{user?.totalOrders || 0} รายการ</span></p>
+            </div>
+
+            {/* Progress Bar - Slim */}
+            <div className="space-y-1">
+              <p className="text-xs text-gray-500">
+                {customerLevel.pointsToNext > 0 ? 
+                  `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
+                  'ถึงระดับสูงสุดแล้ว'
+                }
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 h-1.5 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${customerLevel.pointsToNext > 0 ? 
+                      (customerLevel.currentPoints / (customerLevel.currentPoints + customerLevel.pointsToNext)) * 100 : 
+                      100}%` 
+                  }}
+                ></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs - Mobile Enhanced */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+        {/* Tabs - Ultra Compact */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-3">
           <div className="border-b border-gray-200">
-            <nav className="grid grid-cols-3 md:flex md:space-x-8 px-2 md:px-6" aria-label="Tabs">
+            <nav className="grid grid-cols-3 sm:flex sm:space-x-2 px-1 sm:px-2" aria-label="Tabs">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center justify-center md:justify-start md:space-x-2 md:flex-row flex-col py-4 md:py-4 px-2 md:px-3 border-b-2 font-medium text-sm md:text-base transition-all duration-200 touch-manipulation ${
+                  className={`flex items-center justify-center sm:justify-start sm:space-x-1 flex-col sm:flex-row py-2 sm:py-2.5 px-1 sm:px-2 border-b-2 font-medium text-xs transition-all duration-200 touch-manipulation ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600 bg-blue-50'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <span className="text-lg md:text-xl mb-1 md:mb-0">{tab.icon}</span>
+                  <span className="text-sm mb-0.5 sm:mb-0">{tab.icon}</span>
                   <span className="text-center leading-tight font-medium">{tab.label}</span>
                   {tab.id === 'orders' && (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0 font-semibold">
+                    <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
                       {orders.length}
                     </span>
                   )}
                   {tab.id === 'quote-requests' && (
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0 font-semibold">
+                    <span className="bg-purple-100 text-purple-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
                       {quoteRequests.length}
                     </span>
                   )}
@@ -560,29 +573,29 @@ const ProfilePage = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+          <div className="p-3">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <div className="space-y-6">
+              <div className="space-y-3">
 
-                {/* Profile Sub Navigation - Mobile Enhanced */}
+                {/* Profile Sub Navigation - Ultra Compact */}
                 <div className="border-b border-gray-200">
-                  <nav className="grid grid-cols-3 md:flex md:space-x-8" aria-label="Profile Tabs">
+                  <nav className="grid grid-cols-3 sm:flex sm:space-x-2" aria-label="Profile Tabs">
                     {profileSubTabs.map((subTab) => (
                       <button
                         key={subTab.id}
                         onClick={() => setProfileSubTab(subTab.id as any)}
-                        className={`flex items-center justify-center md:justify-start md:space-x-2 md:flex-row flex-col py-3 md:py-3 px-2 border-b-2 font-medium text-sm md:text-sm transition-all duration-200 touch-manipulation ${
+                        className={`flex items-center justify-center sm:justify-start sm:space-x-1 flex-col sm:flex-row py-2 px-1 border-b-2 font-medium text-xs transition-all duration-200 touch-manipulation ${
                           profileSubTab === subTab.id
                             ? 'border-blue-500 text-blue-600 bg-blue-50'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <span className="text-base md:text-lg mb-1 md:mb-0">{subTab.icon}</span>
+                        <span className="text-sm mb-0.5 sm:mb-0">{subTab.icon}</span>
                         <span className="text-center leading-tight font-medium">{subTab.label}</span>
                         {subTab.id === 'addresses' && (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0 font-semibold">
+                          <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
                             {addresses.length}
                           </span>
                         )}
@@ -593,15 +606,15 @@ const ProfilePage = () => {
 
                 {/* Profile Sub Tab Content */}
                 {profileSubTab === 'info' && (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-semibold text-gray-900">ข้อมูลส่วนตัว</h3>
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">ข้อมูลส่วนตัว</h3>
                       {!isEditing && (
                         <button
                           onClick={() => setIsEditing(true)}
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center justify-center space-x-1 text-xs touch-manipulation"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                           <span>แก้ไขข้อมูล</span>
@@ -610,9 +623,9 @@ const ProfilePage = () => {
                     </div>
 
                 {/* Profile Image Section */}
-                <div className="pb-6 border-b border-gray-200">
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">รูปโปรไฟล์</h3>
+                <div className="pb-3 border-b border-gray-200">
+                  <div className="text-center mb-2">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1">📷 รูปโปรไฟล์</h4>
                   </div>
                   
                   <ProfileImageUpload
@@ -623,11 +636,11 @@ const ProfilePage = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         <span>ชื่อ</span>
@@ -638,20 +651,20 @@ const ProfilePage = () => {
                         type="text"
                         value={profileData.name}
                         onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm touch-manipulation"
                         placeholder="กรุณาใส่ชื่อของคุณ"
                       />
                     ) : (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-gray-900 font-medium">{profileData.name || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-900 font-medium text-sm">{profileData.name || 'ไม่ระบุ'}</p>
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
                         <span>เบอร์โทรศัพท์</span>
@@ -662,20 +675,20 @@ const ProfilePage = () => {
                         type="tel"
                         value={profileData.phoneNumber}
                         onChange={(e) => setProfileData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm touch-manipulation"
                         placeholder="เช่น 0812345678"
                       />
                     ) : (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-gray-900 font-medium">{profileData.phoneNumber || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-900 font-medium text-sm">{profileData.phoneNumber || 'ไม่ระบุ'}</p>
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                         </svg>
                         <span>อีเมล</span>
@@ -686,28 +699,28 @@ const ProfilePage = () => {
                         type="email"
                         value={profileData.email}
                         onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm touch-manipulation"
                         placeholder="เช่น example@email.com"
                       />
                     ) : (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-gray-900 font-medium">{profileData.email || 'ไม่ระบุ'}</p>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-900 font-medium text-sm">{profileData.email || 'ไม่ระบุ'}</p>
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      <span className="flex items-center space-x-1">
+                        <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                         </svg>
                         <span>ระดับลูกค้า</span>
                       </span>
                     </label>
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3">
-                      <span className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${customerLevel.color}`}>
-                        <span className="text-lg">{customerLevel.icon}</span>
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded p-2">
+                      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${customerLevel.color}`}>
+                        <span className="text-sm">{customerLevel.icon}</span>
                         <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
                       </span>
                     </div>
@@ -715,16 +728,16 @@ const ProfilePage = () => {
                 </div>
 
                 {isEditing && (
-                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-3 border-t border-gray-200">
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all duration-200 font-medium"
+                      className="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-all duration-200 font-medium text-xs touch-manipulation"
                     >
                       ยกเลิก
                     </button>
                     <button
                       onClick={handleUpdateProfile}
-                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                      className="px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md text-xs touch-manipulation"
                     >
                       บันทึกข้อมูล
                     </button>
@@ -861,36 +874,38 @@ const ProfilePage = () => {
 
             {/* Orders Tab */}
             {activeTab === 'orders' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">คำสั่งซื้อของฉัน</h2>
-                  <p className="text-sm text-gray-500">{orders.length} รายการ</p>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <h2 className="text-sm sm:text-base font-semibold text-gray-900">🛒 คำสั่งซื้อของฉัน</h2>
+                  <p className="text-xs text-gray-500">{orders.length} รายการ</p>
                 </div>
 
                 {orders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีคำสั่งซื้อ</h3>
-                    <p className="text-gray-600">เริ่มต้นการช้อปปิ้งกับเราได้เลย</p>
+                  <div className="text-center py-6">
+                    <div className="text-4xl mb-3">🛒</div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">ยังไม่มีคำสั่งซื้อ</h3>
+                    <p className="text-xs text-gray-600 mb-3">เริ่มต้นการช้อปปิ้งกับเราได้เลย</p>
+                    <button
+                      onClick={() => window.location.href = '/shop'}
+                      className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition-colors text-xs touch-manipulation"
+                    >
+                      เริ่มช้อปปิ้ง
+                    </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {orders.map(order => (
                       <motion.div
                         key={order._id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -5 }}
-                        className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all duration-300 cursor-pointer"
+                        whileHover={{ y: -2 }}
+                        className="bg-gray-50 rounded-lg p-3 sm:p-4 hover:shadow-md transition-all duration-300 cursor-pointer touch-manipulation"
                         onClick={() => setSelectedOrder(order)}
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <span className="font-medium text-gray-900">#{order._id.slice(-8).toUpperCase()}</span>
-                          <span className="text-sm text-gray-500">{new Date(order.orderDate).toLocaleDateString('th-TH')}</span>
+                          <span className="font-medium text-gray-900 text-sm">#{order._id.slice(-8).toUpperCase()}</span>
+                          <span className="text-xs text-gray-500">{new Date(order.orderDate).toLocaleDateString('th-TH')}</span>
                         </div>
                         
                         {order.status && (
@@ -901,8 +916,8 @@ const ProfilePage = () => {
                           </div>
                         )}
                         
-                        <div className="text-blue-600 font-bold text-lg mb-2">฿{order.totalAmount.toLocaleString()}</div>
-                        <p className="text-sm text-gray-600">{order.items.length} รายการ</p>
+                        <div className="text-blue-600 font-bold text-base sm:text-lg mb-1">฿{order.totalAmount.toLocaleString()}</div>
+                        <p className="text-xs sm:text-sm text-gray-600">{order.items.length} รายการ</p>
                       </motion.div>
                     ))}
                   </div>
@@ -912,36 +927,38 @@ const ProfilePage = () => {
 
             {/* Quote Requests Tab */}
             {activeTab === 'quote-requests' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">ประวัติการขอใบเสนอราคา</h2>
-                  <p className="text-sm text-gray-500">{quoteRequests.length} รายการ</p>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <h2 className="text-sm sm:text-base font-semibold text-gray-900">📄 ประวัติการขอใบเสนอราคา</h2>
+                  <p className="text-xs text-gray-500">{quoteRequests.length} รายการ</p>
                 </div>
 
                 {quoteRequests.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 text-gray-300">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีการขอใบเสนอราคา</h3>
-                    <p className="text-gray-600">ไปที่หน้าเลือกสินค้าเพื่อขอใบเสนอราคา</p>
+                  <div className="text-center py-6">
+                    <div className="text-4xl mb-3">📄</div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">ยังไม่มีการขอใบเสนอราคา</h3>
+                    <p className="text-xs text-gray-600 mb-3">ไปที่หน้าเลือกสินค้าเพื่อขอใบเสนอราคา</p>
+                    <button
+                      onClick={() => window.location.href = '/shop'}
+                      className="bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 transition-colors text-xs touch-manipulation"
+                    >
+                      ขอใบเสนอราคา
+                    </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {quoteRequests.map(quote => (
                       <motion.div
                         key={quote._id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -5 }}
-                        className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all duration-300 cursor-pointer"
+                        whileHover={{ y: -2 }}
+                        className="bg-gray-50 rounded-lg p-3 sm:p-4 hover:shadow-md transition-all duration-300 cursor-pointer touch-manipulation"
                         onClick={() => setSelectedQuoteRequest(quote)}
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <span className="font-medium text-gray-900">#{quote._id.slice(-8).toUpperCase()}</span>
-                          <span className="text-sm text-gray-500">{new Date(quote.requestDate).toLocaleDateString('th-TH')}</span>
+                          <span className="font-medium text-gray-900 text-sm">#{quote._id.slice(-8).toUpperCase()}</span>
+                          <span className="text-xs text-gray-500">{new Date(quote.requestDate).toLocaleDateString('th-TH')}</span>
                         </div>
                         
                         <div className="mb-2">
@@ -958,11 +975,11 @@ const ProfilePage = () => {
                           </span>
                         </div>
                         
-                        <div className="text-purple-600 font-bold text-lg mb-2">฿{quote.totalAmount.toLocaleString()}</div>
-                        <p className="text-sm text-gray-600">{quote.items.length} รายการ</p>
+                        <div className="text-purple-600 font-bold text-base sm:text-lg mb-1">฿{quote.totalAmount.toLocaleString()}</div>
+                        <p className="text-xs sm:text-sm text-gray-600">{quote.items.length} รายการ</p>
                         
                         {quote.status === 'quoted' && (
-                          <div className="mt-2 text-xs text-blue-600">
+                          <div className="mt-1 text-xs text-blue-600">
                             📋 ใบเสนอราคาพร้อมแล้ว
                           </div>
                         )}
@@ -985,22 +1002,25 @@ const ProfilePage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={() => setSelectedQuoteRequest(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-lg sm:rounded-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    การขอใบเสนอราคา #{selectedQuoteRequest._id.slice(-8).toUpperCase()}
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-start mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 pr-2">
+                    📄 ใบเสนอราคา #{selectedQuoteRequest._id.slice(-8).toUpperCase()}
                   </h2>
-                  <button onClick={() => setSelectedQuoteRequest(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <button 
+                    onClick={() => setSelectedQuoteRequest(null)} 
+                    className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0 touch-manipulation"
+                  >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -1162,12 +1182,12 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex gap-3">
                   <button
                     onClick={() => setSelectedQuoteRequest(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ปิด
+                    ❌ ปิด
                   </button>
                 </div>
               </div>
@@ -1183,37 +1203,40 @@ const ProfilePage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={() => setSelectedOrder(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-lg max-w-xl w-full max-h-[95vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    คำสั่งซื้อ #{selectedOrder._id.slice(-8).toUpperCase()}
+              <div className="p-3">
+                <div className="flex justify-between items-start mb-3">
+                  <h2 className="text-sm font-bold text-gray-900 pr-2">
+                    🛒 คำสั่งซื้อ #{selectedOrder._id.slice(-8).toUpperCase()}
                   </h2>
-                  <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button 
+                    onClick={() => setSelectedOrder(null)} 
+                    className="p-1.5 hover:bg-gray-100 rounded flex-shrink-0 touch-manipulation"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
 
                 {/* Order Status and Shipping Info */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">ข้อมูลการจัดส่ง</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded p-3 mb-3">
+                  <h3 className="text-xs font-semibold text-gray-900 mb-2">ข้อมูลการจัดส่ง</h3>
+                  <div className="grid grid-cols-1 gap-2">
                     {/* Order Status */}
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">สถานะออเดอร์</p>
+                      <p className="text-xs text-gray-600 mb-1">สถานะออเดอร์</p>
                       {selectedOrder.status && (
-                        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${statusColors[selectedOrder.status]}`}>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selectedOrder.status]}`}>
                           {statusLabels[selectedOrder.status]}
                         </span>
                       )}
@@ -1222,8 +1245,8 @@ const ProfilePage = () => {
                     {/* Shipping Provider */}
                     {selectedOrder.shippingProvider && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">ขนส่ง</p>
-                        <p className="font-medium text-gray-900">{selectedOrder.shippingProvider}</p>
+                        <p className="text-xs text-gray-600 mb-1">ขนส่ง</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedOrder.shippingProvider}</p>
                       </div>
                     )}
                     
@@ -1403,27 +1426,27 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ปิด
+                    ❌ ปิด
                   </button>
                   {selectedOrder.status === 'delivered' && (!selectedOrder.claimInfo || !selectedOrder.claimInfo.claimDate) && (
                     <button
                       onClick={() => setShowClaimModal(true)}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                      className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base touch-manipulation"
                     >
-                      เคลมสินค้า
+                      ⚠️ เคลมสินค้า
                     </button>
                   )}
                   {selectedOrder.status === 'claim_rejected' && (
                     <button
                       onClick={() => setShowClaimModal(true)}
-                      className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                      className="flex-1 bg-orange-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base touch-manipulation"
                     >
-                      เคลมใหม่อีกครั้ง
+                      🔄 เคลมใหม่อีกครั้ง
                     </button>
                   )}
                 </div>
@@ -1447,13 +1470,16 @@ const ProfilePage = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl max-w-md w-full"
+              className="bg-white rounded-lg sm:rounded-xl max-w-md w-full"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">เพิ่มที่อยู่ใหม่</h2>
-                  <button onClick={() => setShowAddressModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-start mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 pr-2">📍 เพิ่มที่อยู่ใหม่</h2>
+                  <button 
+                    onClick={() => setShowAddressModal(false)} 
+                    className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0 touch-manipulation"
+                  >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -1496,18 +1522,18 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => setShowAddressModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ยกเลิก
+                    ❌ ยกเลิก
                   </button>
                   <button
                     onClick={handleAddAddress}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    เพิ่มที่อยู่
+                    ✅ เพิ่มที่อยู่
                   </button>
                 </div>
               </div>
@@ -1580,19 +1606,19 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => setShowClaimModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ยกเลิก
+                    ❌ ยกเลิก
                   </button>
                   <button
                     onClick={handleClaim}
                     disabled={!claimData.reason.trim()}
-                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ส่งคำขอเคลม
+                    ⚠️ ส่งคำขอเคลม
                   </button>
                 </div>
               </div>
