@@ -10,12 +10,33 @@ import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import ProfileImageUpload from '@/components/ProfileImageUpload';
 import PackingImageGallery from '@/components/PackingImageGallery';
 
-interface Address {
-  _id: string;
+// Legacy address format from API
+interface LegacyAddress {
+  _id?: string;
   label: string;
-  address: string;
+  address: string; // Old format - single string
   isDefault: boolean;
 }
+
+// New address format
+interface NewAddress {
+  _id?: string;
+  label: string;
+  name: string;
+  phone: string;
+  province: string;
+  district: string;
+  subDistrict: string;
+  postalCode: string;
+  houseNumber: string;
+  lane: string;
+  moo: string;
+  road: string;
+  isDefault: boolean;
+}
+
+// Combined type for backward compatibility
+type Address = LegacyAddress | NewAddress;
 
 interface TaxInvoiceInfo {
   companyName: string;
@@ -109,8 +130,17 @@ const ProfilePage = () => {
   // Address states
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [newAddress, setNewAddress] = useState({
+    label: '',
     name: '',
-    address: '',
+    phone: '',
+    province: '',
+    district: '',
+    subDistrict: '',
+    postalCode: '',
+    houseNumber: '',
+    lane: '',
+    moo: '',
+    road: '',
     isDefault: false
   });
   
@@ -372,10 +402,27 @@ const ProfilePage = () => {
   };
 
   const handleAddAddress = async () => {
-    if (!newAddress.name.trim() || !newAddress.address.trim()) {
-      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+    // Validate required fields
+    if (!newAddress.label.trim() || !newAddress.name.trim() || !newAddress.phone.trim() || 
+        !newAddress.province.trim() || !newAddress.houseNumber.trim()) {
+      toast.error('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ชื่อที่อยู่, ชื่อ, เบอร์, จังหวัด, บ้านเลขที่)');
       return;
     }
+
+    // Helper function to format address for API
+    const formatAddressForAPI = (address: typeof newAddress): string => {
+      const parts = [
+        address.houseNumber,
+        address.lane ? `ซ.${address.lane}` : '',
+        address.moo ? `หมู่ ${address.moo}` : '',
+        address.road ? `ถ.${address.road}` : '',
+        address.subDistrict ? `ต.${address.subDistrict}` : '',
+        address.district ? `อ.${address.district}` : '',
+        address.province,
+        address.postalCode
+      ].filter(Boolean);
+      return parts.join(' ');
+    };
 
     try {
       const response = await fetch('/api/profile/addresses', {
@@ -384,8 +431,8 @@ const ProfilePage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          label: newAddress.name,
-          address: newAddress.address,
+          label: newAddress.label,
+          address: formatAddressForAPI(newAddress),
           isDefault: newAddress.isDefault
         }),
       });
@@ -394,7 +441,20 @@ const ProfilePage = () => {
 
       if (data.success) {
         setAddresses(data.data || []);
-        setNewAddress({ name: '', address: '', isDefault: false });
+        setNewAddress({
+          label: '',
+          name: '',
+          phone: '',
+          province: '',
+          district: '',
+          subDistrict: '',
+          postalCode: '',
+          houseNumber: '',
+          lane: '',
+          moo: '',
+          road: '',
+          isDefault: false
+        });
         setShowAddressModal(false);
         toast.success('เพิ่มที่อยู่สำเร็จ');
       } else {
@@ -772,11 +832,24 @@ const ProfilePage = () => {
                           )}
                           
                           <h3 className="font-medium text-gray-900 mb-2">{address.label}</h3>
-                          <p className="text-sm text-gray-600 mb-4">{address.address}</p>
+                          <p className="text-sm text-gray-600 mb-4">
+                            {'address' in address ? address.address : 
+                              [
+                                address.houseNumber,
+                                address.lane ? `ซ.${address.lane}` : '',
+                                address.moo ? `หมู่ ${address.moo}` : '',
+                                address.road ? `ถ.${address.road}` : '',
+                                address.subDistrict ? `ต.${address.subDistrict}` : '',
+                                address.district ? `อ.${address.district}` : '',
+                                address.province,
+                                address.postalCode
+                              ].filter(Boolean).join(' ')
+                            }
+                          </p>
                           
                           <div className="flex justify-end space-x-2">
                             <button
-                              onClick={() => handleDeleteAddress(address._id)}
+                              onClick={() => handleDeleteAddress(address._id!)}
                               className="text-red-600 hover:text-red-800 text-sm"
                             >
                               ลบ
@@ -1491,22 +1564,105 @@ const ProfilePage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อที่อยู่</label>
                     <input
                       type="text"
-                      value={newAddress.name}
-                      onChange={(e) => setNewAddress(prev => ({ ...prev, name: e.target.value }))}
+                      value={newAddress.label}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, label: e.target.value }))}
                       placeholder="เช่น บ้าน, ที่ทำงาน"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  
+
+                  {/* 1. ชื่อ */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่</label>
-                    <textarea
-                      value={newAddress.address}
-                      onChange={(e) => setNewAddress(prev => ({ ...prev, address: e.target.value }))}
-                      rows={3}
-                      placeholder="ที่อยู่ละเอียด"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ</label>
+                    <input
+                      type="text"
+                      value={newAddress.name}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="ชื่อ-นามสกุล"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                  </div>
+
+                  {/* 2. เบอร์ */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">2. เบอร์โทรศัพท์</label>
+                    <input
+                      type="tel"
+                      value={newAddress.phone}
+                      onChange={(e) => setNewAddress(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="เบอร์โทรศัพท์"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* 3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newAddress.province}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, province: e.target.value }))}
+                        placeholder="จังหวัด"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.district}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, district: e.target.value }))}
+                        placeholder="เขต/อำเภอ"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.subDistrict}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, subDistrict: e.target.value }))}
+                        placeholder="แขวง/ตำบล"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.postalCode}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, postalCode: e.target.value }))}
+                        placeholder="รหัสไปรษณี"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4. บ้านเลขที่, ซอย, หมู่, ถนน */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">4. บ้านเลขที่, ซอย, หมู่, ถนน</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newAddress.houseNumber}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, houseNumber: e.target.value }))}
+                        placeholder="บ้านเลขที่"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.lane}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, lane: e.target.value }))}
+                        placeholder="ซอย"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.moo}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, moo: e.target.value }))}
+                        placeholder="หมู่"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={newAddress.road}
+                        onChange={(e) => setNewAddress(prev => ({ ...prev, road: e.target.value }))}
+                        placeholder="ถนน"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                   
                   <div>

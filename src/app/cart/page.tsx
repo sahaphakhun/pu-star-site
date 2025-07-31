@@ -4,6 +4,23 @@ import Link from "next/link";
 import Image from "next/image";
 import AddressForm from "@/components/AddressForm";
 
+// Address interface for the new format
+interface Address {
+  _id?: string;
+  label: string;
+  name: string;
+  phone: string;
+  province: string;
+  district: string;
+  subDistrict: string;
+  postalCode: string;
+  houseNumber: string;
+  lane: string;
+  moo: string;
+  road: string;
+  isDefault: boolean;
+}
+
 interface CartItem {
   productId: string;
   name: string;
@@ -21,7 +38,20 @@ export default function CartPage() {
   const [orderForm, setOrderForm] = useState({
     customerName: '',
     customerPhone: '',
-    customerAddress: '',
+    customerAddress: {
+      label: '',
+      name: '',
+      phone: '',
+      province: '',
+      district: '',
+      subDistrict: '',
+      postalCode: '',
+      houseNumber: '',
+      lane: '',
+      moo: '',
+      road: '',
+      isDefault: false
+    } as Address,
     paymentMethod: 'cod' as 'cod' | 'transfer',
     shippingFee: 0,
     discount: 0
@@ -86,8 +116,28 @@ export default function CartPage() {
       alert('กรุณากรอกเบอร์โทรศัพท์');
       return;
     }
-    if (!orderForm.customerAddress.trim()) {
-      alert('กรุณากรอกที่อยู่');
+    // Helper function to format address for API
+    const formatAddressForAPI = (address: Address): string => {
+      const parts = [
+        address.houseNumber,
+        address.lane ? `ซ.${address.lane}` : '',
+        address.moo ? `หมู่ ${address.moo}` : '',
+        address.road ? `ถ.${address.road}` : '',
+        address.subDistrict ? `ต.${address.subDistrict}` : '',
+        address.district ? `อ.${address.district}` : '',
+        address.province,
+        address.postalCode
+      ].filter(Boolean);
+      return parts.join(' ');
+    };
+
+    // Validate address - check if essential fields are filled
+    const isAddressValid = (address: Address): boolean => {
+      return !!(address.name && address.phone && address.province && address.houseNumber);
+    };
+
+    if (!isAddressValid(orderForm.customerAddress)) {
+      alert('กรุณากรอกชื่อ เบอร์โทรศัพท์ จังหวัด และบ้านเลขที่');
       return;
     }
 
@@ -96,7 +146,7 @@ export default function CartPage() {
       const orderData = {
         customerName: orderForm.customerName,
         customerPhone: orderForm.customerPhone,
-        customerAddress: orderForm.customerAddress,
+        customerAddress: formatAddressForAPI(orderForm.customerAddress),
         paymentMethod: orderForm.paymentMethod,
         items: cart.map(item => ({
           productId: item.productId,
@@ -128,7 +178,20 @@ export default function CartPage() {
         setOrderForm({
           customerName: '',
           customerPhone: '',
-          customerAddress: '',
+          customerAddress: {
+            label: '',
+            name: '',
+            phone: '',
+            province: '',
+            district: '',
+            subDistrict: '',
+            postalCode: '',
+            houseNumber: '',
+            lane: '',
+            moo: '',
+            road: '',
+            isDefault: false
+          } as Address,
           paymentMethod: 'cod',
           shippingFee: 0,
           discount: 0
@@ -379,7 +442,14 @@ export default function CartPage() {
                       <input
                         type="text"
                         value={orderForm.customerName}
-                        onChange={(e) => setOrderForm({...orderForm, customerName: e.target.value})}
+                        onChange={(e) => setOrderForm({
+                          ...orderForm, 
+                          customerName: e.target.value,
+                          customerAddress: {
+                            ...orderForm.customerAddress,
+                            name: e.target.value
+                          }
+                        })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="กรอกชื่อ-นามสกุล"
                       />
@@ -392,7 +462,14 @@ export default function CartPage() {
                       <input
                         type="tel"
                         value={orderForm.customerPhone}
-                        onChange={(e) => setOrderForm({...orderForm, customerPhone: e.target.value})}
+                        onChange={(e) => setOrderForm({
+                          ...orderForm, 
+                          customerPhone: e.target.value,
+                          customerAddress: {
+                            ...orderForm.customerAddress,
+                            phone: e.target.value
+                          }
+                        })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="กรอกเบอร์โทรศัพท์"
                       />
@@ -403,7 +480,13 @@ export default function CartPage() {
                 {/* Address Form */}
                 <div>
                   <AddressForm
-                    onAddressChange={(address) => setOrderForm({...orderForm, customerAddress: address})}
+                    onAddressChange={(address) => setOrderForm({
+                      ...orderForm, 
+                      customerAddress: address,
+                      // Sync name and phone from address form
+                      customerName: address.name || orderForm.customerName,
+                      customerPhone: address.phone || orderForm.customerPhone
+                    })}
                     initialAddress={orderForm.customerAddress}
                   />
                 </div>

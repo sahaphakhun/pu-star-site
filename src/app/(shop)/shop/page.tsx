@@ -10,6 +10,23 @@ import { Toaster, toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 
+// Address interface for the new format
+interface Address {
+  _id?: string;
+  label: string;
+  name: string;
+  phone: string;
+  province: string;
+  district: string;
+  subDistrict: string;
+  postalCode: string;
+  houseNumber: string;
+  lane: string;
+  moo: string;
+  road: string;
+  isDefault: boolean;
+}
+
 interface ProductWithId extends IProduct {
   _id: string;
 }
@@ -30,7 +47,20 @@ const ShopPage = () => {
   const [cart, setCart] = useState<{[key: string]: CartItem}>({});
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerAddress, setCustomerAddress] = useState<Address>({
+    label: '',
+    name: '',
+    phone: '',
+    province: '',
+    district: '',
+    subDistrict: '',
+    postalCode: '',
+    houseNumber: '',
+    lane: '',
+    moo: '',
+    road: '',
+    isDefault: false
+  });
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer'>('cod');
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreview, setSlipPreview] = useState<string | null>(null);
@@ -55,16 +85,35 @@ const ShopPage = () => {
     companyEmail?: string;
   } | null>(null);
 
-  const [addresses, setAddresses] = useState([]);
+  const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
   const [addressLabel, setAddressLabel] = useState('');
 
+  // Helper function to update customer address fields
+  const updateCustomerAddressField = (field: keyof Address, value: string) => {
+    setCustomerAddress(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Helper function to validate address object
+  const isAddressValid = (address: Address): boolean => {
+    return !!(address.name && address.phone && address.province && address.houseNumber);
+  };
+
   useEffect(() => {
     if (isLoggedIn && user) {
       setCustomerName(user.name);
       setCustomerPhone(user.phoneNumber);
+      // Sync with address form
+      setCustomerAddress(prev => ({
+        ...prev,
+        name: user.name || '',
+        phone: user.phoneNumber || ''
+      }));
     }
   }, [isLoggedIn, user]);
 
@@ -80,7 +129,27 @@ const ShopPage = () => {
           const def = data.data.find((a:any) => a.isDefault) || data.data[0];
           if (def) {
             setSelectedAddressId(def._id || null);
-            setCustomerAddress(def.address);
+            // Check if it's old format (string) or new format (object)
+            if (typeof def.address === 'string') {
+              // Convert legacy address to new format
+              setCustomerAddress({
+                _id: def._id,
+                label: def.label || '',
+                name: customerName,
+                phone: customerPhone,
+                province: '',
+                district: '',
+                subDistrict: '',
+                postalCode: '',
+                houseNumber: def.address,
+                lane: '',
+                moo: '',
+                road: '',
+                isDefault: def.isDefault || false
+              });
+            } else {
+              setCustomerAddress(def.address || customerAddress);
+            }
             setShowNewAddress(false);
           }
         }
@@ -100,11 +169,31 @@ const ShopPage = () => {
     if (selectedAddressId && addresses.length > 0) {
       const addr = addresses.find((a:any) => (a._id || '') === selectedAddressId);
       if (addr) {
-        setCustomerAddress(addr.address);
+        // Check if it's old format (string) or new format (object)
+        if (typeof addr.address === 'string') {
+          // Convert legacy address to new format
+          setCustomerAddress({
+            _id: addr._id,
+            label: addr.label || '',
+            name: customerName,
+            phone: customerPhone,
+            province: '',
+            district: '',
+            subDistrict: '',
+            postalCode: '',
+            houseNumber: addr.address,
+            lane: '',
+            moo: '',
+            road: '',
+            isDefault: addr.isDefault || false
+          });
+        } else {
+          setCustomerAddress(addr.address || customerAddress);
+        }
         setShowNewAddress(false);
       }
     }
-  }, [selectedAddressId]);
+  }, [selectedAddressId, customerName, customerPhone]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -525,9 +614,22 @@ const ShopPage = () => {
         });
 
         setCart({});
-        setShowOrderForm(false);
-        setCustomerAddress('');
-        setTaxInvoiceData(null);
+              setShowOrderForm(false);
+      setCustomerAddress({
+        label: '',
+        name: '',
+        phone: '',
+        province: '',
+        district: '',
+        subDistrict: '',
+        postalCode: '',
+        houseNumber: '',
+        lane: '',
+        moo: '',
+        road: '',
+        isDefault: false
+      });
+      setTaxInvoiceData(null);
         setSaveNewAddress(false);
         setAddressLabel('');
         setSelectedAddressId(null);
@@ -668,8 +770,23 @@ const ShopPage = () => {
         slipUrl = data.secure_url;
       }
       
+      // Helper function to format address for API
+      const formatAddressForAPI = (address: Address): string => {
+        const parts = [
+          address.houseNumber,
+          address.lane ? `ซ.${address.lane}` : '',
+          address.moo ? `หมู่ ${address.moo}` : '',
+          address.road ? `ถ.${address.road}` : '',
+          address.subDistrict ? `ต.${address.subDistrict}` : '',
+          address.district ? `อ.${address.district}` : '',
+          address.province,
+          address.postalCode
+        ].filter(Boolean);
+        return parts.join(' ');
+      };
+
       // เพิ่ม logic บันทึกที่อยู่ใหม่
-      if (saveNewAddress && customerAddress) {
+      if (saveNewAddress && isAddressValid(customerAddress)) {
         try {
           const response = await fetch('/api/profile/addresses', {
             method: 'POST',
@@ -677,7 +794,7 @@ const ShopPage = () => {
             credentials: 'include',
             body: JSON.stringify({ 
               label: addressLabel || 'ที่อยู่ใหม่', 
-              address: customerAddress, 
+              address: formatAddressForAPI(customerAddress), 
               isDefault: addresses.length === 0 
             })
           });
@@ -708,7 +825,7 @@ const ShopPage = () => {
       const orderData = {
         customerName,
         customerPhone,
-        customerAddress,
+        customerAddress: formatAddressForAPI(customerAddress),
         paymentMethod,
         ...(paymentMethod === 'transfer' && slipUrl ? { slipUrl } : {}),
         items: cartItems.map(item => ({
@@ -749,7 +866,20 @@ const ShopPage = () => {
         });
         setCart({});
         setShowOrderForm(false);
-        setCustomerAddress('');
+        setCustomerAddress({
+          label: '',
+          name: '',
+          phone: '',
+          province: '',
+          district: '',
+          subDistrict: '',
+          postalCode: '',
+          houseNumber: '',
+          lane: '',
+          moo: '',
+          road: '',
+          isDefault: false
+        });
         setSlipFile(null);
         setSlipPreview(null);
         setTaxInvoiceData(null);
@@ -1475,7 +1605,13 @@ const ShopPage = () => {
                     <input
                       type="text"
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        setCustomerAddress(prev => ({
+                          ...prev,
+                          name: e.target.value
+                        }));
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
@@ -1486,7 +1622,13 @@ const ShopPage = () => {
                     <input
                       type="tel"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value);
+                        setCustomerAddress(prev => ({
+                          ...prev,
+                          phone: e.target.value
+                        }));
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
@@ -1514,7 +1656,15 @@ const ShopPage = () => {
                                   <span className="font-medium text-gray-900">{a.label || 'ที่อยู่'}</span>
                                   {a.isDefault && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">ค่าเริ่มต้น</span>}
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">{a.address}</p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {typeof a.address === 'string' ? a.address : 
+                                    [a.address.houseNumber, a.address.lane ? `ซ.${a.address.lane}` : '', 
+                                     a.address.moo ? `หมู่ ${a.address.moo}` : '', a.address.road ? `ถ.${a.address.road}` : '',
+                                     a.address.subDistrict ? `ต.${a.address.subDistrict}` : '', 
+                                     a.address.district ? `อ.${a.address.district}` : '', 
+                                     a.address.province, a.address.postalCode].filter(Boolean).join(' ')
+                                  }
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -1522,7 +1672,24 @@ const ShopPage = () => {
                         <button 
                           type="button" 
                           className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium"
-                          onClick={() => { setShowNewAddress(true); setSelectedAddressId(null); setCustomerAddress(''); }}
+                          onClick={() => { 
+                            setShowNewAddress(true); 
+                            setSelectedAddressId(null); 
+                            setCustomerAddress({
+                              label: '',
+                              name: customerName,
+                              phone: customerPhone,
+                              province: '',
+                              district: '',
+                              subDistrict: '',
+                              postalCode: '',
+                              houseNumber: '',
+                              lane: '',
+                              moo: '',
+                              road: '',
+                              isDefault: false
+                            }); 
+                          }}
                         >
                           + เพิ่มที่อยู่ใหม่
                         </button>
@@ -1537,14 +1704,110 @@ const ShopPage = () => {
                           onChange={e => setAddressLabel(e.target.value)}
                           value={addressLabel}
                         />
-                        <textarea
-                          value={customerAddress}
-                          onChange={(e) => setCustomerAddress(e.target.value)}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="ที่อยู่จัดส่งเต็มรูปแบบ"
-                          required
-                        />
+                        {/* 1. ชื่อ */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ</label>
+                          <input
+                            type="text"
+                            value={customerAddress.name}
+                            onChange={(e) => {
+                              updateCustomerAddressField('name', e.target.value);
+                              setCustomerName(e.target.value);
+                            }}
+                            placeholder="ชื่อ-นามสกุล"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+
+                        {/* 2. เบอร์ */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">2. เบอร์โทรศัพท์</label>
+                          <input
+                            type="tel"
+                            value={customerAddress.phone}
+                            onChange={(e) => {
+                              updateCustomerAddressField('phone', e.target.value);
+                              setCustomerPhone(e.target.value);
+                            }}
+                            placeholder="เบอร์โทรศัพท์"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+
+                        {/* 3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={customerAddress.province}
+                              onChange={(e) => updateCustomerAddressField('province', e.target.value)}
+                              placeholder="จังหวัด"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              required
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.district}
+                              onChange={(e) => updateCustomerAddressField('district', e.target.value)}
+                              placeholder="เขต/อำเภอ"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              required
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.subDistrict}
+                              onChange={(e) => updateCustomerAddressField('subDistrict', e.target.value)}
+                              placeholder="แขวง/ตำบล"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.postalCode}
+                              onChange={(e) => updateCustomerAddressField('postalCode', e.target.value)}
+                              placeholder="รหัสไปรษณี"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 4. บ้านเลขที่, ซอย, หมู่, ถนน */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">4. บ้านเลขที่, ซอย, หมู่, ถนน</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={customerAddress.houseNumber}
+                              onChange={(e) => updateCustomerAddressField('houseNumber', e.target.value)}
+                              placeholder="บ้านเลขที่"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              required
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.lane}
+                              onChange={(e) => updateCustomerAddressField('lane', e.target.value)}
+                              placeholder="ซอย"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.moo}
+                              onChange={(e) => updateCustomerAddressField('moo', e.target.value)}
+                              placeholder="หมู่"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <input
+                              type="text"
+                              value={customerAddress.road}
+                              onChange={(e) => updateCustomerAddressField('road', e.target.value)}
+                              placeholder="ถนน"
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
                         <div className="flex items-center justify-between">
                           <label className="flex items-center space-x-2">
                             <input 
@@ -1559,7 +1822,23 @@ const ShopPage = () => {
                             <button 
                               type="button" 
                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                              onClick={() => { setShowNewAddress(false); setCustomerAddress(''); }}
+                              onClick={() => { 
+                                setShowNewAddress(false); 
+                                setCustomerAddress({
+                                  label: '',
+                                  name: customerName,
+                                  phone: customerPhone,
+                                  province: '',
+                                  district: '',
+                                  subDistrict: '',
+                                  postalCode: '',
+                                  houseNumber: '',
+                                  lane: '',
+                                  moo: '',
+                                  road: '',
+                                  isDefault: false
+                                }); 
+                              }}
                             >
                               ← เลือกจากที่อยู่เดิม
                             </button>

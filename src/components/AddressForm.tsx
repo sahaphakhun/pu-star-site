@@ -2,27 +2,61 @@
 
 import React, { useState, useEffect } from 'react';
 
-interface Address {
+// Legacy address format
+interface LegacyAddress {
   _id?: string;
   label: string;
-  address: string;
+  address: string; // Old format - single string
   isDefault: boolean;
 }
 
+// New address format
+interface Address {
+  _id?: string;
+  label: string;
+  name: string;
+  phone: string;
+  province: string;
+  district: string;
+  subDistrict: string;
+  postalCode: string;
+  houseNumber: string;
+  lane: string;
+  moo: string;
+  road: string;
+  isDefault: boolean;
+}
+
+// Combined type for backward compatibility
+type AddressData = LegacyAddress | Address;
+
 interface AddressFormProps {
-  onAddressChange: (address: string) => void;
-  initialAddress?: string;
+  onAddressChange: (address: Address) => void;
+  initialAddress?: Address;
   className?: string;
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({ 
   onAddressChange, 
-  initialAddress = '', 
+  initialAddress = {
+    label: '',
+    name: '',
+    phone: '',
+    province: '',
+    district: '',
+    subDistrict: '',
+    postalCode: '',
+    houseNumber: '',
+    lane: '',
+    moo: '',
+    road: '',
+    isDefault: false
+  }, 
   className = '' 
 }) => {
-  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<AddressData[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [customAddress, setCustomAddress] = useState(initialAddress);
+  const [customAddress, setCustomAddress] = useState<Address>(initialAddress);
   const [useCustomAddress, setUseCustomAddress] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -31,16 +65,57 @@ const AddressForm: React.FC<AddressFormProps> = ({
     fetchSavedAddresses();
   }, []);
 
+  // Helper functions for type checking and conversion
+  const isLegacyAddress = (address: AddressData): address is LegacyAddress => {
+    return 'address' in address && typeof address.address === 'string';
+  };
+
+  const parseAddressString = (legacyAddr: LegacyAddress): Address => {
+    // แปลง address string เก่าเป็น format ใหม่
+    return {
+      _id: legacyAddr._id,
+      label: legacyAddr.label,
+      name: '',
+      phone: '',
+      province: '',
+      district: '',
+      subDistrict: '',
+      postalCode: '',
+      houseNumber: legacyAddr.address, // วางที่อยู่เก่าไว้ในฟิลด์บ้านเลขที่ก่อน
+      lane: '',
+      moo: '',
+      road: '',
+      isDefault: legacyAddr.isDefault
+    };
+  };
+
+  const formatAddressString = (address: Address): string => {
+    // รวมข้อมูลที่อยู่เป็น string สำหรับแสดงผล
+    const parts = [
+      address.houseNumber,
+      address.lane ? `ซ.${address.lane}` : '',
+      address.moo ? `หมู่ ${address.moo}` : '',
+      address.road ? `ถ.${address.road}` : '',
+      address.subDistrict ? `ต.${address.subDistrict}` : '',
+      address.district ? `อ.${address.district}` : '',
+      address.province,
+      address.postalCode
+    ].filter(Boolean);
+    return parts.join(' ');
+  };
+
   // ตั้งค่าที่อยู่เริ่มต้น
   useEffect(() => {
     if (savedAddresses.length > 0 && !useCustomAddress) {
       const defaultAddress = savedAddresses.find(addr => addr.isDefault);
-      if (defaultAddress) {
-        setSelectedAddressId(defaultAddress._id || '');
-        onAddressChange(defaultAddress.address);
-      } else if (savedAddresses.length > 0) {
-        setSelectedAddressId(savedAddresses[0]._id || '');
-        onAddressChange(savedAddresses[0].address);
+      const targetAddress = defaultAddress || savedAddresses[0];
+      if (targetAddress) {
+        setSelectedAddressId(targetAddress._id || '');
+        // Convert to new format if needed
+        const addressToSend = isLegacyAddress(targetAddress) 
+          ? parseAddressString(targetAddress)
+          : targetAddress;
+        onAddressChange(addressToSend);
       }
     }
   }, [savedAddresses, useCustomAddress, onAddressChange]);
@@ -52,7 +127,11 @@ const AddressForm: React.FC<AddressFormProps> = ({
     } else {
       const selectedAddress = savedAddresses.find(addr => addr._id === selectedAddressId);
       if (selectedAddress) {
-        onAddressChange(selectedAddress.address);
+        // Convert to new format if needed
+        const addressToSend = isLegacyAddress(selectedAddress) 
+          ? parseAddressString(selectedAddress)
+          : selectedAddress;
+        onAddressChange(addressToSend);
       }
     }
   }, [selectedAddressId, customAddress, useCustomAddress, savedAddresses, onAddressChange]);
@@ -78,10 +157,12 @@ const AddressForm: React.FC<AddressFormProps> = ({
     setUseCustomAddress(false);
   };
 
-  const handleCustomAddressChange = (address: string) => {
-    setCustomAddress(address);
+  const handleCustomAddressChange = (field: keyof Address, value: string) => {
+    const updatedAddress = { ...customAddress, [field]: value };
+    setCustomAddress(updatedAddress);
     setUseCustomAddress(true);
     setSelectedAddressId('');
+    onAddressChange(updatedAddress);
   };
 
   const handleUseCustomToggle = () => {
@@ -92,7 +173,10 @@ const AddressForm: React.FC<AddressFormProps> = ({
       // กลับไปใช้ที่อยู่ที่บันทึกไว้
       const defaultAddress = savedAddresses.find(addr => addr.isDefault) || savedAddresses[0];
       setSelectedAddressId(defaultAddress._id || '');
-      onAddressChange(defaultAddress.address);
+      const addressToSend = isLegacyAddress(defaultAddress) 
+        ? parseAddressString(defaultAddress)
+        : defaultAddress;
+      onAddressChange(addressToSend);
     } else {
       // ใช้ที่อยู่ที่กรอกเอง
       onAddressChange(customAddress);
@@ -149,7 +233,9 @@ const AddressForm: React.FC<AddressFormProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mt-1 ml-6">{address.address}</p>
+                      <p className="text-sm text-gray-600 mt-1 ml-6">
+                        {isLegacyAddress(address) ? address.address : formatAddressString(address)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -173,18 +259,151 @@ const AddressForm: React.FC<AddressFormProps> = ({
             </label>
           </div>
           
-          <textarea
-            value={customAddress}
-            onChange={(e) => handleCustomAddressChange(e.target.value)}
-            placeholder="กรอกที่อยู่จัดส่งครบถ้วน..."
-            rows={3}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              useCustomAddress 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 bg-gray-50'
-            }`}
-            disabled={!useCustomAddress}
-          />
+          <div className="space-y-4">
+            {/* 1. ชื่อ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ</label>
+              <input
+                type="text"
+                value={customAddress.name}
+                onChange={(e) => handleCustomAddressChange('name', e.target.value)}
+                placeholder="ชื่อ-นามสกุล"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  useCustomAddress 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 bg-gray-50'
+                }`}
+                disabled={!useCustomAddress}
+              />
+            </div>
+
+            {/* 2. เบอร์ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">2. เบอร์โทรศัพท์</label>
+              <input
+                type="tel"
+                value={customAddress.phone}
+                onChange={(e) => handleCustomAddressChange('phone', e.target.value)}
+                placeholder="เบอร์โทรศัพท์"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  useCustomAddress 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 bg-gray-50'
+                }`}
+                disabled={!useCustomAddress}
+              />
+            </div>
+
+            {/* 3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={customAddress.province}
+                  onChange={(e) => handleCustomAddressChange('province', e.target.value)}
+                  placeholder="จังหวัด"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.district}
+                  onChange={(e) => handleCustomAddressChange('district', e.target.value)}
+                  placeholder="เขต/อำเภอ"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.subDistrict}
+                  onChange={(e) => handleCustomAddressChange('subDistrict', e.target.value)}
+                  placeholder="แขวง/ตำบล"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.postalCode}
+                  onChange={(e) => handleCustomAddressChange('postalCode', e.target.value)}
+                  placeholder="รหัสไปรษณี"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+              </div>
+            </div>
+
+            {/* 4. บ้านเลขที่, ซอย, หมู่, ถนน */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">4. บ้านเลขที่, ซอย, หมู่, ถนน</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={customAddress.houseNumber}
+                  onChange={(e) => handleCustomAddressChange('houseNumber', e.target.value)}
+                  placeholder="บ้านเลขที่"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.lane}
+                  onChange={(e) => handleCustomAddressChange('lane', e.target.value)}
+                  placeholder="ซอย"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.moo}
+                  onChange={(e) => handleCustomAddressChange('moo', e.target.value)}
+                  placeholder="หมู่"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+                <input
+                  type="text"
+                  value={customAddress.road}
+                  onChange={(e) => handleCustomAddressChange('road', e.target.value)}
+                  placeholder="ถนน"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    useCustomAddress 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  }`}
+                  disabled={!useCustomAddress}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
 

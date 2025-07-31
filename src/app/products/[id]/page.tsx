@@ -1,5 +1,5 @@
 "use client";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,6 +30,7 @@ interface Product {
 
 export default function ProductDetail() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,7 +196,24 @@ export default function ProductDetail() {
 
   return (
     <div className="max-w-4xl mx-auto py-4 sm:py-8 px-4">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden relative">
+        {/* ปุ่มปิด */}
+        <button
+          onClick={() => router.push('/shop')}
+          className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors duration-200 shadow-lg"
+          aria-label="ปิดหน้ารายละเอียดสินค้า"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <div className="flex flex-col lg:flex-row">
           {/* รูปภาพสินค้า - Mobile Enhanced */}
           <div className="lg:w-1/2">
