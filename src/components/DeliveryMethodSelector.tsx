@@ -26,26 +26,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
   );
   const [showMap, setShowMap] = useState(false);
 
-  const handleGetCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLocation = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            mapDescription: 'ตำแหน่งปัจจุบัน'
-          };
-          setMapLocation(newLocation);
-          onLocationChange(newLocation);
-        },
-        (error) => {
-          alert('ไม่สามารถดึงตำแหน่งปัจจุบันได้: ' + error.message);
-        }
-      );
-    } else {
-      alert('เบราว์เซอร์ไม่รองรับการระบุตำแหน่ง');
-    }
-  };
+
 
   const handleManualInput = () => {
     const lat = prompt('กรอกพิกัด Latitude:', mapLocation.latitude.toString());
@@ -98,27 +79,19 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             type="button"
-            onClick={handleGetCurrentLocation}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            🎯 ใช้ตำแหน่งปัจจุบัน
-          </button>
-          <button
-            type="button"
             onClick={handleManualInput}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
             📝 กรอกพิกัดเอง
           </button>
+          <button
+            type="button"
+            onClick={() => setShowMap(!showMap)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {showMap ? '📍 ซ่อนแผนที่' : '🗺️ เลื่อนแผนที่เพื่อปักหมุด'}
+          </button>
         </div>
-        
-        <button
-          type="button"
-          onClick={() => setShowMap(!showMap)}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          {showMap ? '📍 ซ่อนแผนที่' : '🗺️ เลื่อนแผนที่เพื่อปักหมุด'}
-        </button>
       </div>
 
       {/* Interactive Map */}
@@ -133,8 +106,10 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
       )}
 
       <div className="text-xs text-gray-500">
-        💡 เคล็ดลับ: คุณสามารถใช้ปุ่ม "เลื่อนแผนที่เพื่อปักหมุด" เพื่อเลือกตำแหน่งแบบ interactive<br/>
-        📱 หรือใช้ Google Maps → กดค้างที่ตำแหน่ง → คัดลอกพิกัด แล้วกรอกเอง
+        💡 เคล็ดลับ: <br/>
+        🗺️ ใช้ปุ่ม "เลื่อนแผนที่เพื่อปักหมุด" เพื่อเลือกตำแหน่งแบบ interactive (แนะนำ!)<br/>
+        📝 หรือกรอกพิกัดเอง (หาได้จาก Google Maps → กดค้างที่ตำแหน่ง → คัดลอกพิกัด)<br/>
+        ✨ กดยืนยันเพื่อดูเอนิเมชันสวยๆ!
       </div>
     </div>
   );

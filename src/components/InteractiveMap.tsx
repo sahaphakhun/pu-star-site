@@ -3,6 +3,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DeliveryLocation } from '@/schemas/order';
 
+// เพิ่ม CSS animation สำหรับเอฟเฟกต์
+const injectStyles = () => {
+  if (typeof window !== 'undefined' && !document.querySelector('#map-animations')) {
+    const style = document.createElement('style');
+    style.id = 'map-animations';
+    style.textContent = `
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+      }
+      @keyframes rainbow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .rainbow-bg {
+        animation: rainbow 2s ease infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
+
 interface InteractiveMapProps {
   location: DeliveryLocation;
   onLocationChange: (location: DeliveryLocation) => void;
@@ -54,9 +78,13 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState(location);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    
+    // เพิ่ม CSS animations
+    injectStyles();
 
     const initMap = async () => {
       if (!mapRef.current) return;
@@ -164,11 +192,50 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   }, [location.latitude, location.longitude]);
 
-  const confirmLocation = () => {
-    onLocationChange({
-      ...currentLocation,
-      mapDescription: `ยืนยันตำแหน่ง: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
-    });
+  const confirmLocation = async () => {
+    setIsConfirming(true);
+    
+    // เอฟเฟกต์บนแผนที่: zoom in เล็กน้อย และ flash marker
+    if (mapInstanceRef.current && markerRef.current) {
+      const currentZoom = mapInstanceRef.current.getZoom();
+      mapInstanceRef.current.setZoom(currentZoom + 1, { animate: true });
+      
+      // เอฟเฟกต์ bounce marker
+      const marker = markerRef.current;
+      const originalIcon = marker.getIcon();
+      
+      // สร้าง icon พิเศษสำหรับเอฟเฟกต์
+      const L = await loadLeaflet();
+      if (L) {
+        const flashIcon = L.divIcon({
+          className: 'flash-marker',
+          html: '<div style="width: 30px; height: 30px; background: #10b981; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); animation: pulse 0.6s ease-in-out;"></div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        });
+        
+        marker.setIcon(flashIcon);
+        
+        // กลับไปใช้ icon เดิมหลัง 600ms
+        setTimeout(() => {
+          marker.setIcon(originalIcon);
+          mapInstanceRef.current.setZoom(currentZoom, { animate: true });
+        }, 600);
+      }
+    }
+    
+    // เอนิเมชันแวบ 1.2 วินาที
+    setTimeout(() => {
+      onLocationChange({
+        ...currentLocation,
+        mapDescription: `✅ ยืนยันตำแหน่ง: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
+      });
+      
+      // เอฟเฟกต์แสดงความสำเร็จ
+      setTimeout(() => {
+        setIsConfirming(false);
+      }, 400);
+    }, 1200);
   };
 
   if (error) {
@@ -220,9 +287,24 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
       <button
         type="button"
         onClick={confirmLocation}
-        className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium"
+        disabled={isConfirming}
+        className={`w-full px-4 py-3 rounded-lg font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 ${
+          isConfirming 
+            ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 bg-[length:200%_200%] rainbow-bg animate-pulse text-white cursor-not-allowed shadow-lg' 
+            : 'bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95 hover:shadow-lg text-white transform transition-transform'
+        }`}
       >
-        ✅ ยืนยันตำแหน่งนี้
+        {isConfirming ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            </svg>
+            🎯 กำลังยืนยันตำแหน่ง...
+          </span>
+        ) : (
+          '✅ ยืนยันตำแหน่งนี้'
+        )}
       </button>
     </div>
   );
