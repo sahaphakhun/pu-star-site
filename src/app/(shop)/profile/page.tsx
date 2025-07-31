@@ -125,10 +125,10 @@ const ProfilePage = () => {
   const [taxInvoiceInfo, setTaxInvoiceInfo] = useState<TaxInvoiceInfo | null>(null);
   const [isEditingTaxInvoice, setIsEditingTaxInvoice] = useState(false);
 
-  // Mock customer level data
+  // Calculate real customer data from orders
   const calculateCustomerLevel = () => {
-    const totalSpent = (user as any)?.totalSpent || 0;
-    const totalOrders = (user as any)?.totalOrders || 0;
+    const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalOrders = orders.length;
     
     if (totalSpent >= 100000 || totalOrders >= 50) {
       return {
@@ -486,7 +486,7 @@ const ProfilePage = () => {
         </div>
 
         {/* Customer Level Card - Ultra Compact */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 mb-3">
+        <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-blue-100 p-3 mb-3">
           <div className="space-y-2">
             {/* Greeting - Compact */}
             <div>
@@ -508,12 +508,12 @@ const ProfilePage = () => {
               {/* Compact Stats */}
               <div className="flex items-center gap-3 text-xs">
                 <div className="text-center">
-                  <p className="text-gray-500">ยอดซื้อ</p>
-                  <p className="font-bold text-blue-600">฿{((user as any)?.totalSpent || 0).toLocaleString()}</p>
+                  <p className="text-gray-600">ยอดซื้อ</p>
+                  <p className="font-bold text-blue-600">฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-gray-500">ออเดอร์</p>
-                  <p className="font-bold text-purple-600">{(user as any)?.totalOrders || 0}</p>
+                  <p className="text-gray-600">ออเดอร์</p>
+                  <p className="font-bold text-purple-600">{orders.length}</p>
                 </div>
               </div>
             </div>
