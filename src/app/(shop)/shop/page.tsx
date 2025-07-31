@@ -482,12 +482,48 @@ const ShopPage = () => {
       });
       
       if (response.ok) {
+        // เก็บข้อมูลสำหรับสร้างออเดอร์
+        const quoteOrderData = {
+          customerName,
+          customerPhone,
+          customerAddress,
+          paymentMethod,
+          items: cartItems.map(item => ({
+            productId: item.product._id,
+            name: item.product.name,
+            price: item.unitPrice !== undefined ? item.unitPrice : item.product.price,
+            quantity: item.quantity,
+            selectedOptions: item.selectedOptions && Object.keys(item.selectedOptions).length > 0 ? item.selectedOptions : undefined,
+            unitLabel: item.unitLabel,
+            unitPrice: item.unitPrice
+          })),
+          shippingFee: calculateShippingFee(),
+          totalAmount: calculateGrandTotal(),
+          taxInvoice: taxInvoiceData ? {
+            requestTaxInvoice: true,
+            companyName: taxInvoiceData.companyName,
+            taxId: taxInvoiceData.taxId,
+            companyAddress: taxInvoiceData.companyAddress || undefined,
+            companyPhone: taxInvoiceData.companyPhone || undefined,
+            companyEmail: taxInvoiceData.companyEmail || undefined
+          } : undefined
+        };
+
         Swal.fire({
           title: 'สำเร็จ!',
-          text: 'ส่งคำขอใบเสนอราคาเรียบร้อยแล้ว ทางเราจะติดต่อกลับภายใน 24 ชั่วโมง',
+          text: 'ส่งคำขอใบเสนอราคาเรียบร้อยแล้ว ต้องการสั่งซื้อทันทีหรือไม่?',
           icon: 'success',
-          confirmButtonText: 'ตกลง'
+          showCancelButton: true,
+          confirmButtonText: 'ยืนยันคำสั่งซื้อ',
+          cancelButtonText: 'ปิด',
+          confirmButtonColor: '#3b82f6',
+          cancelButtonColor: '#6b7280'
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await handleCreateOrderFromQuote(quoteOrderData);
+          }
         });
+
         setCart({});
         setShowOrderForm(false);
         setCustomerAddress('');
@@ -505,6 +541,77 @@ const ShopPage = () => {
       Swal.fire({
         title: 'เกิดข้อผิดพลาด',
         text: 'ไม่สามารถส่งคำขอใบเสนอราคาได้ กรุณาลองอีกครั้ง',
+        icon: 'error',
+        confirmButtonText: 'ตกลง'
+      });
+    }
+  };
+
+  const handleCreateOrderFromQuote = async (quoteOrderData: any) => {
+    try {
+      Swal.fire({
+        title: 'กำลังสร้างคำสั่งซื้อ',
+        html: 'กรุณารอสักครู่...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      let slipUrl = '';
+      
+      // ถ้าเป็นการโอนเงินและมีไฟล์สลิป
+      if (quoteOrderData.paymentMethod === 'transfer' && slipFile) {
+        const formData = new FormData();
+        formData.append('file', slipFile);
+        formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        slipUrl = data.secure_url;
+      }
+
+      // สร้างข้อมูลออเดอร์
+      const orderData = {
+        ...quoteOrderData,
+        ...(quoteOrderData.paymentMethod === 'transfer' && slipUrl ? { slipUrl } : {}),
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (response.ok) {
+        Swal.fire({
+          title: 'สำเร็จ!',
+          text: 'สร้างคำสั่งซื้อเรียบร้อยแล้ว',
+          icon: 'success',
+          confirmButtonText: 'ตกลง'
+        });
+        
+        // รีเซ็ตฟอร์ม
+        setSlipFile(null);
+        setSlipPreview(null);
+        setTaxInvoiceData(null);
+        setSaveNewAddress(false);
+        setAddressLabel('');
+        setSelectedAddressId(null);
+        setShowNewAddress(false);
+        await fetchAddresses();
+      } else {
+        throw new Error('Failed to create order');
+      }
+    } catch (error) {
+      console.error('เกิดข้อผิดพลาด:', error);
+      Swal.fire({
+        title: 'เกิดข้อผิดพลาด',
+        text: 'ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาลองอีกครั้ง',
         icon: 'error',
         confirmButtonText: 'ตกลง'
       });
@@ -707,6 +814,10 @@ const ShopPage = () => {
     return Object.values(cart).reduce((total, item) => total + item.quantity, 0);
   };
 
+  const handleProductClick = (productId: string) => {
+    router.push(`/products/${productId}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -787,7 +898,8 @@ const ShopPage = () => {
                 key={product._id}
                 whileHover={{ y: -5 }}
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl"
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl cursor-pointer"
+                onClick={() => handleProductClick(product._id)}
               >
                 <div className="relative aspect-square">
                   <Image
@@ -835,11 +947,14 @@ const ShopPage = () => {
                     </span>
                   </div>
 
-                  <div className="mb-3">
+                  <div className="mb-3" onClick={(e) => e.stopPropagation()}>
                     <label className="block text-xs font-medium text-gray-700 mb-1">จำนวน</label>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) - 1)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuantityForProduct(product._id, getQuantityForProduct(product._id) - 1);
+                        }}
                         disabled={product.isAvailable === false}
                         className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -849,12 +964,16 @@ const ShopPage = () => {
                         type="number"
                         value={getQuantityForProduct(product._id)}
                         onChange={(e) => setQuantityForProduct(product._id, parseInt(e.target.value) || 1)}
+                        onClick={(e) => e.stopPropagation()}
                         disabled={product.isAvailable === false}
                         className="w-16 text-center border border-gray-300 rounded-lg py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         min="1"
                       />
                       <button
-                        onClick={() => setQuantityForProduct(product._id, getQuantityForProduct(product._id) + 1)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuantityForProduct(product._id, getQuantityForProduct(product._id) + 1);
+                        }}
                         disabled={product.isAvailable === false}
                         className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -864,7 +983,8 @@ const ShopPage = () => {
                   </div>
                   
                   <motion.button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (product.isAvailable === false) {
                         toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
                         return;

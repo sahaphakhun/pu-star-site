@@ -1,8 +1,8 @@
 import React from 'react';
 
 export const metadata = {
-  title: 'นโยบายความเป็นส่วนตัว | Next Star Innovations',
-  description: 'นโยบายความเป็นส่วนตัวสำหรับผู้ใช้เว็บไซต์และลูกค้า Next Star Innovations',
+  title: 'นโยบายความเป็นส่วนตัว | WINRICH DYNAMIC',
+  description: 'นโยบายความเป็นส่วนตัวสำหรับผู้ใช้เว็บไซต์และลูกค้า WINRICH DYNAMIC',
 };
 
 export default function PrivacyPolicyPage() {
@@ -11,9 +11,9 @@ export default function PrivacyPolicyPage() {
       <h1>นโยบายความเป็นส่วนตัว (Privacy Policy)</h1>
 
       <p>
-        บริษัท Next Star Innovations (&quot;บริษัท&quot; หรือ &quot;เรา&quot;) ให้ความสำคัญกับความเป็นส่วนตัวและการคุ้มครองข้อมูลส่วนบุคคลของท่าน
+        บริษัท WINRICH DYNAMIC (&quot;บริษัท&quot; หรือ &quot;เรา&quot;) ให้ความสำคัญกับความเป็นส่วนตัวและการคุ้มครองข้อมูลส่วนบุคคลของท่าน
         เอกสารฉบับนี้อธิบายถึงวิธีการที่เราเก็บ ใช้ เปิดเผย และปกป้องข้อมูลส่วนบุคคลเมื่อท่านใช้เว็บไซต์
-        <a href="https://www.nextstarinnovations.com">www.nextstarinnovations.com</a> และช่องทางออนไลน์อื่น ๆ ของเรา (รวมถึงบอท Facebook Messenger)
+        <a href="https://www.winrichdynamic.com">www.winrichdynamic.com</a> และช่องทางออนไลน์อื่น ๆ ของเรา (รวมถึงบอท Facebook Messenger)
       </p>
 
       <h2>1. ข้อมูลที่เราเก็บรวบรวม</h2>
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
       <h2>6. ช่องทางการติดต่อ</h2>
       <p>
         หากท่านมีคำถามข้อสงสัยเกี่ยวกับนโยบายความเป็นส่วนตัวนี้ สามารถติดต่อได้ที่<br />
-        อีเมล: <a href="mailto:contact@nextstarinnovations.com">contact@nextstarinnovations.com</a><br />
+        อีเมล: <a href="mailto:contact@winrichdynamic.com">contact@winrichdynamic.com</a><br />
         โทร: 02-123-4567
       </p>
 

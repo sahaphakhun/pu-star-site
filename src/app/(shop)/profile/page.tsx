@@ -138,7 +138,7 @@ const ProfilePage = () => {
         nextLevel: 6,
         pointsToNext: 0,
         currentPoints: totalSpent,
-        icon: '👑',
+        icon: '⭐',
         color: 'bg-purple-100 text-purple-800'
       };
     } else if (totalSpent >= 50000 || totalOrders >= 25) {
@@ -149,7 +149,7 @@ const ProfilePage = () => {
         nextLevel: 5,
         pointsToNext: 100000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '💎',
+        icon: '💠',
         color: 'bg-blue-100 text-blue-800'
       };
     } else if (totalSpent >= 20000 || totalOrders >= 10) {
@@ -160,7 +160,7 @@ const ProfilePage = () => {
         nextLevel: 4,
         pointsToNext: 50000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '🏆',
+        icon: '🟡',
         color: 'bg-yellow-100 text-yellow-800'
       };
     } else if (totalSpent >= 5000 || totalOrders >= 3) {
@@ -171,7 +171,7 @@ const ProfilePage = () => {
         nextLevel: 3,
         pointsToNext: 20000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '⭐',
+        icon: '⚪',
         color: 'bg-gray-100 text-gray-800'
       };
     } else {
@@ -182,7 +182,7 @@ const ProfilePage = () => {
         nextLevel: 2,
         pointsToNext: 5000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '🆕',
+        icon: '🔵',
         color: 'bg-green-100 text-green-800'
       };
     }
@@ -216,14 +216,14 @@ const ProfilePage = () => {
 
   const tabs = [
     { id: 'profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
-    { id: 'orders', label: 'คำสั่งซื้อ', icon: '📦' },
-    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '💼' }
+    { id: 'orders', label: 'คำสั่งซื้อ', icon: '🛒' },
+    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '📄' }
   ];
 
   const profileSubTabs = [
     { id: 'info', label: 'ข้อมูลส่วนตัว', icon: '👤' },
     { id: 'addresses', label: 'ที่อยู่', icon: '📍' },
-    { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '🧾' }
+    { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '📄' }
   ];
 
   useEffect(() => {
@@ -530,26 +530,26 @@ const ProfilePage = () => {
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
           <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            <nav className="grid grid-cols-3 md:flex md:space-x-8 px-3 md:px-6" aria-label="Tabs">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center md:space-x-2 md:flex-row flex-col py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center justify-center md:justify-start md:space-x-2 md:flex-row flex-col py-3 md:py-4 px-1 md:px-2 border-b-2 font-medium text-xs md:text-sm ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span className="text-center text-xs md:text-sm">{tab.label}</span>
+                  <span className="text-sm md:text-lg mb-1 md:mb-0">{tab.icon}</span>
+                  <span className="text-center leading-tight">{tab.label}</span>
                   {tab.id === 'orders' && (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs md:ml-2">
+                    <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0">
                       {orders.length}
                     </span>
                   )}
                   {tab.id === 'quote-requests' && (
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs md:ml-2">
+                    <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0">
                       {quoteRequests.length}
                     </span>
                   )}
@@ -568,21 +568,21 @@ const ProfilePage = () => {
 
                 {/* Profile Sub Navigation */}
                 <div className="border-b border-gray-200">
-                  <nav className="flex space-x-8" aria-label="Profile Tabs">
+                  <nav className="grid grid-cols-3 md:flex md:space-x-8" aria-label="Profile Tabs">
                     {profileSubTabs.map((subTab) => (
                       <button
                         key={subTab.id}
                         onClick={() => setProfileSubTab(subTab.id as any)}
-                        className={`flex items-center md:space-x-2 md:flex-row flex-col py-3 px-1 border-b-2 font-medium text-sm ${
+                        className={`flex items-center justify-center md:justify-start md:space-x-2 md:flex-row flex-col py-2.5 md:py-3 px-1 border-b-2 font-medium text-xs md:text-sm ${
                           profileSubTab === subTab.id
                             ? 'border-blue-500 text-blue-600'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                       >
-                        <span className="text-lg">{subTab.icon}</span>
-                        <span className="text-center text-xs md:text-sm">{subTab.label}</span>
+                        <span className="text-sm md:text-lg mb-1 md:mb-0">{subTab.icon}</span>
+                        <span className="text-center leading-tight">{subTab.label}</span>
                         {subTab.id === 'addresses' && (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs md:ml-2">
+                          <span className="bg-green-100 text-green-800 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs md:ml-2 mt-1 md:mt-0">
                             {addresses.length}
                           </span>
                         )}
@@ -963,7 +963,7 @@ const ProfilePage = () => {
                         
                         {quote.status === 'quoted' && (
                           <div className="mt-2 text-xs text-blue-600">
-                            💼 ใบเสนอราคาพร้อมแล้ว
+                            📋 ใบเสนอราคาพร้อมแล้ว
                           </div>
                         )}
                       </motion.div>

@@ -6,7 +6,7 @@ export default function ContactInfoPage() {
       {/* หัวข้อหน้า */}
       <section className="text-center mb-4">
         <h1 className="text-3xl md:text-4xl font-bold text-primary">ข้อมูลติดต่อ</h1>
-        <p className="text-gray-600 mt-2">รายละเอียดช่องทางการติดต่อ Next Star Innovation ประเทศไทย</p>
+        <p className="text-gray-600 mt-2">รายละเอียดช่องทางการติดต่อ WINRICH DYNAMIC ประเทศไทย</p>
       </section>
 
       {/* สำนักงานใหญ่ */}

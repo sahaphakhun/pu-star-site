@@ -20,26 +20,26 @@ export default function ContactPage() {
               <h3 className="font-bold text-primary mb-2">สำนักงานใหญ่ (จีน)</h3>
               <p className="text-gray-700">Dongfeng East Road, Qingxi Town, Dongguan City, Guangdong Province, China</p>
               <p className="text-gray-700 mt-1">โทรศัพท์: 0769-82010650, 0769-81289105</p>
-              <p className="text-gray-700">อีเมล: ccy@pustar.com, hjq@pustar.com</p>
+              <p className="text-gray-700">อีเมล: ccy@winrich.com, hjq@winrich.com</p>
             </div>
             
             <div>
               <h3 className="font-bold text-primary mb-2">สำนักงานไทย</h3>
               <p className="text-gray-700">123/456 อาคารพูสตาร์ ชั้น 15 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</p>
               <p className="text-gray-700 mt-1">โทรศัพท์: 02-123-4567</p>
-              <p className="text-gray-700">อีเมล: info@pustar-thailand.com</p>
+              <p className="text-gray-700">อีเมล: info@winrich-thailand.com</p>
             </div>
             
             <div>
               <h3 className="font-bold text-primary mb-2">ฝ่ายขายและการตลาด</h3>
               <p className="text-gray-700">โทรศัพท์: 02-123-4568</p>
-              <p className="text-gray-700">อีเมล: sales@pustar-thailand.com</p>
+              <p className="text-gray-700">อีเมล: sales@winrich-thailand.com</p>
             </div>
             
             <div>
               <h3 className="font-bold text-primary mb-2">ฝ่ายเทคนิคและบริการลูกค้า</h3>
               <p className="text-gray-700">โทรศัพท์: 02-123-4569</p>
-              <p className="text-gray-700">อีเมล: support@pustar-thailand.com</p>
+              <p className="text-gray-700">อีเมล: support@winrich-thailand.com</p>
             </div>
             
             <div>

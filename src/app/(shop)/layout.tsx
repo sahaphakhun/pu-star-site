@@ -32,7 +32,7 @@ export default function ShopLayout({ children }: LayoutProps) {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           {/* Logo / Brand */}
           <Link href="/shop" className="text-xl font-semibold text-blue-600">
-            ร้านค้าออนไลน์
+            WINRICH
           </Link>
 
           {/* Desktop navigation */}

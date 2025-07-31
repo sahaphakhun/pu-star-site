@@ -1,7 +1,7 @@
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center bg-gradient-to-br from-indigo-50 to-blue-50 px-4">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-blue-700 mb-4">ยินดีต้อนรับสู่ Next Star Innovations</h1>
+      <h1 className="text-4xl md:text-5xl font-extrabold text-blue-700 mb-4">ยินดีต้อนรับสู่ WINRICH DYNAMIC</h1>
       <p className="text-gray-700 max-w-xl mb-8">
        ...........
       </p>
