@@ -156,34 +156,47 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - Mobile Enhanced */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">ตะกร้าสินค้า</h1>
-          {cart.length > 0 && (
-            <p className="text-sm text-gray-500 mt-1">
-              {getTotalItems()} รายการ
-            </p>
-          )}
+        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">🛒 ตะกร้าสินค้า</h1>
+              {cart.length > 0 && (
+                <p className="text-sm sm:text-base text-gray-500 mt-1">
+                  {getTotalItems()} รายการ • ฿{getTotalPrice().toLocaleString()}
+                </p>
+              )}
+            </div>
+            {cart.length > 0 && (
+              <button
+                onClick={clearCart}
+                className="text-red-600 hover:text-red-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                🗑️ ล้างทั้งหมด
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         {cart.length === 0 ? (
-          /* ตะกร้าว่าง */
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-24 w-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v5a2 2 0 11-4 0v-5m4 0V9a2 2 0 10-4 0v4.01" />
-              </svg>
+          /* ตะกร้าว่าง - Mobile Enhanced */
+          <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 text-center mx-4 sm:mx-0">
+            <div className="text-gray-400 mb-6">
+              <div className="text-6xl sm:text-8xl mb-4">🛒</div>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">ตะกร้าสินค้าว่าง</h2>
-            <p className="text-gray-500 mb-6">ยังไม่มีสินค้าในตะกร้า เลือกสินค้าที่ต้องการซื้อได้เลย</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">ตะกร้าสินค้าว่าง</h2>
+            <p className="text-base sm:text-lg text-gray-500 mb-8 leading-relaxed">
+              ยังไม่มีสินค้าในตะกร้า<br className="sm:hidden" />
+              เลือกสินค้าที่ต้องการซื้อได้เลย
+            </p>
             <Link
-              href="/"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              href="/shop"
+              className="inline-block bg-blue-600 text-white px-8 py-4 sm:px-6 sm:py-3 rounded-xl font-semibold text-lg sm:text-base hover:bg-blue-700 hover:shadow-lg transition-all duration-200"
             >
-              เลือกซื้อสินค้า
+              🏪 เลือกซื้อสินค้า
             </Link>
           </div>
         ) : (

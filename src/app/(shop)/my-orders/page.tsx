@@ -251,32 +251,55 @@ const MyOrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 text-center md:text-left">คำสั่งซื้อของฉัน</h1>
-        <div className="flex flex-col items-end space-y-2">
-          {lastUpdateTime && (
-            <div className="text-xs text-gray-500">
-              อัพเดตล่าสุด: {lastUpdateTime.toLocaleTimeString('th-TH')}
-            </div>
-          )}
-          <button
-            onClick={() => {
-              setLoading(true);
-              fetchOrders();
-            }}
-            disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span className="hidden sm:inline">{loading ? 'กำลังโหลด...' : 'รีเฟรช'}</span>
-          </button>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📦 คำสั่งซื้อของฉัน</h1>
+            {orders.length > 0 && (
+              <p className="text-sm sm:text-base text-gray-500 mt-1">
+                ทั้งหมด {orders.length} รายการ
+              </p>
+            )}
+          </div>
+          
+          <div className="flex flex-col sm:items-end space-y-2">
+            {lastUpdateTime && (
+              <div className="text-xs text-gray-500">
+                🕐 อัพเดตล่าสุด: {lastUpdateTime.toLocaleTimeString('th-TH')}
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setLoading(true);
+                fetchOrders();
+              }}
+              disabled={loading}
+              className="flex items-center justify-center space-x-2 px-6 py-3 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-xl sm:rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-base sm:text-sm"
+            >
+              <svg className={`w-5 h-5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{loading ? 'กำลังโหลด...' : '🔄 รีเฟรช'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-center text-gray-600">คุณยังไม่มีประวัติการสั่งซื้อ</p>
+        <div className="bg-white rounded-xl shadow-sm p-8 sm:p-12 text-center mx-4 sm:mx-0">
+          <div className="text-6xl sm:text-8xl mb-6">📦</div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">ยังไม่มีประวัติการสั่งซื้อ</h2>
+          <p className="text-base sm:text-lg text-gray-500 mb-8 leading-relaxed">
+            เริ่มต้นการช้อปปิ้งและสั่งซื้อสินค้า<br className="sm:hidden" />
+            เพื่อดูประวัติคำสั่งซื้อของคุณที่นี่
+          </p>
+          <a
+            href="/shop"
+            className="inline-block bg-blue-600 text-white px-8 py-4 sm:px-6 sm:py-3 rounded-xl font-semibold text-lg sm:text-base hover:bg-blue-700 hover:shadow-lg transition-all duration-200"
+          >
+            🛒 เริ่มช้อปปิ้ง
+          </a>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {orders.map(order => (

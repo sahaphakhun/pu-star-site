@@ -129,58 +129,65 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6">
+        {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900">เข้าสู่ระบบ</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">เข้าสู่ระบบ</h1>
+          <p className="text-sm sm:text-base text-gray-600 px-2">
             เข้าสู่ระบบด้วยเบอร์โทรศัพท์ของคุณ
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded relative" role="alert">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-4 rounded-lg text-sm sm:text-base" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
 
         {!isOtpSent ? (
-          <form className="mt-8 space-y-6" onSubmit={handleSendOTP}>
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label htmlFor="phone-number" className="sr-only">
-                  เบอร์โทรศัพท์
-                </label>
-                <input
-                  id="phone-number"
-                  name="phoneNumber"
-                  type="tel"
-                  required
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.trim())}
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="เบอร์โทรศัพท์"
-                />
-              </div>
+          /* Phone Number Form */
+          <form className="space-y-6" onSubmit={handleSendOTP}>
+            <div>
+              <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-2">
+                เบอร์โทรศัพท์
+              </label>
+              <input
+                id="phone-number"
+                name="phoneNumber"
+                type="tel"
+                required
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.trim())}
+                className="w-full px-4 py-4 sm:py-3 text-lg sm:text-base border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="กรอกเบอร์โทรศัพท์"
+                autoComplete="tel"
+              />
             </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`${
-                  loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
-                } w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-              >
-                {loading ? 'กำลังส่งรหัส...' : 'ส่งรหัส OTP'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${
+                loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
+              } w-full flex justify-center py-4 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg sm:text-base font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:cursor-not-allowed`}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>กำลังส่งรหัส...</span>
+                </div>
+              ) : (
+                '📱 ส่งรหัส OTP'
+              )}
+            </button>
           </form>
         ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleVerifyOTP}>
-            <div className="rounded-md shadow-sm">
-              <label htmlFor="otp" className="sr-only">
-                รหัส OTP
+          /* OTP Verification Form */
+          <form className="space-y-6" onSubmit={handleVerifyOTP}>
+            <div>
+              <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                รหัส OTP (6 หลัก)
               </label>
               <input
                 id="otp"
@@ -189,44 +196,60 @@ const LoginForm = () => {
                 required
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="รหัส OTP"
+                className="w-full px-4 py-4 sm:py-3 text-xl sm:text-lg text-center tracking-widest border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono"
+                placeholder="000000"
                 maxLength={6}
+                autoComplete="one-time-code"
+                inputMode="numeric"
               />
+              <p className="mt-2 text-xs text-gray-500 text-center">
+                กรุณากรอกรหัส OTP ที่ส่งไปยังเบอร์ {phoneNumber}
+              </p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <button
-                  type="button"
-                  className={`font-medium ${
-                    countdown > 0
-                      ? 'text-gray-400 cursor-not-allowed'
-                      : 'text-blue-600 hover:text-blue-500'
-                  }`}
-                  onClick={handleSendOTP}
-                  disabled={countdown > 0}
-                >
-                  {countdown > 0 ? `ส่งรหัสอีกครั้งใน ${countdown} วินาที` : 'ส่งรหัสอีกครั้ง'}
-                </button>
-              </div>
-            </div>
-
-            <div>
+            <div className="text-center">
               <button
-                type="submit"
-                disabled={loading}
-                className={`${
-                  loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
-                } w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                type="button"
+                className={`text-sm font-medium ${
+                  countdown > 0
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-blue-600 hover:text-blue-500'
+                } transition-colors`}
+                onClick={handleSendOTP}
+                disabled={countdown > 0}
               >
-                {loading ? 'กำลังยืนยัน...' : 'ยืนยันรหัส OTP'}
+                {countdown > 0 ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>ส่งรหัสอีกครั้งใน {countdown} วินาที</span>
+                  </div>
+                ) : (
+                  '🔄 ส่งรหัสอีกครั้ง'
+                )}
               </button>
             </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${
+                loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
+              } w-full flex justify-center py-4 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg sm:text-base font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:cursor-not-allowed`}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>กำลังยืนยัน...</span>
+                </div>
+              ) : (
+                '✅ ยืนยันรหัส OTP'
+              )}
+            </button>
           </form>
         )}
 
-        <div className="mt-6">
+        {/* Footer */}
+        <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300" />
@@ -239,8 +262,8 @@ const LoginForm = () => {
           </div>
 
           <div className="mt-6">
-            <Link href="/shop" className="block w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              กลับไปที่หน้าหลัก
+            <Link href="/shop" className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              🏠 กลับไปที่หน้าหลัก
             </Link>
           </div>
         </div>

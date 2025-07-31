@@ -194,12 +194,12 @@ export default function ProductDetail() {
   const totalPrice = selectedPrice * quantity;
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-4 sm:py-8 px-4">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="md:flex">
-          {/* รูปภาพสินค้า */}
-          <div className="md:w-1/2">
-            <div className="relative h-96 md:h-full">
+        <div className="flex flex-col lg:flex-row">
+          {/* รูปภาพสินค้า - Mobile Enhanced */}
+          <div className="lg:w-1/2">
+            <div className="relative h-64 sm:h-80 lg:h-full">
               <Image 
                 src={product.imageUrl} 
                 alt={product.name} 
@@ -209,16 +209,16 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* ข้อมูลสินค้า */}
-          <div className="md:w-1/2 p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
+          {/* ข้อมูลสินค้า - Mobile Enhanced */}
+          <div className="lg:w-1/2 p-4 sm:p-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">{product.name}</h1>
             
             {product.category && (
-              <p className="text-sm text-gray-500 mb-2">หมวดหมู่: {product.category}</p>
+              <p className="text-sm sm:text-base text-gray-500 mb-3">📂 หมวดหมู่: {product.category}</p>
             )}
             
-            <div className="text-2xl font-bold text-blue-600 mb-6">
-              ฿{selectedPrice.toLocaleString()} {selectedUnit !== 'หน่วย' ? `/ ${selectedUnit}` : ''}
+            <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+              💰 ฿{selectedPrice.toLocaleString()} {selectedUnit !== 'หน่วย' ? `/ ${selectedUnit}` : ''}
             </div>
 
             <div className="mb-6">
