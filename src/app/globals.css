@@ -13,15 +13,6 @@
   --touch-target-min: 44px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #ffffff;
@@ -57,64 +48,6 @@ body {
   min-height: var(--touch-target-min);
   min-width: var(--touch-target-min);
 }
-
-/* Improved focus states for mobile */
-.focus-mobile {
-  @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none;
-}
-
-/* Mobile-friendly button styles */
-.btn-mobile {
-  @apply px-6 py-4 sm:px-4 sm:py-3 text-base sm:text-sm font-semibold rounded-xl sm:rounded-lg transition-all duration-200 touch-manipulation;
-}
-
-.btn-primary {
-  @apply btn-mobile bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg focus-mobile;
-}
-
-.btn-secondary {
-  @apply btn-mobile bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 hover:shadow-md focus-mobile;
-}
-
-/* Mobile-first form controls */
-.form-input {
-  @apply w-full px-4 py-4 sm:py-3 text-lg sm:text-base border border-gray-300 rounded-xl sm:rounded-lg focus-mobile transition-all;
-}
-
-.form-select {
-  @apply form-input appearance-none bg-white;
-}
-
-/* Mobile-friendly cards */
-.card-mobile {
-  @apply bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100;
-}
-
-/* Responsive spacing utilities */
-.space-mobile {
-  @apply space-y-4 sm:space-y-6;
-}
-
-.gap-mobile {
-  @apply gap-3 sm:gap-4 lg:gap-6;
-}
-
-/* Mobile navigation improvements */
-.nav-mobile {
-  @apply py-4 px-6 text-base transition-all duration-200 border-l-4 border-transparent hover:border-blue-300 hover:bg-blue-50;
-}
-
-.nav-mobile.active {
-  @apply border-blue-600 bg-blue-50 text-blue-600 font-medium;
-}
-
-/* Typography scale optimized for mobile */
-.text-mobile-xs { @apply text-xs sm:text-sm; }
-.text-mobile-sm { @apply text-sm sm:text-base; }
-.text-mobile-base { @apply text-base sm:text-lg; }
-.text-mobile-lg { @apply text-lg sm:text-xl; }
-.text-mobile-xl { @apply text-xl sm:text-2xl; }
-.text-mobile-2xl { @apply text-2xl sm:text-3xl; }
 
 /* Mobile-optimized animations */
 @media (prefers-reduced-motion: no-preference) {
