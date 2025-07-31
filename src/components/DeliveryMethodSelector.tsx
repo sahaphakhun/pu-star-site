@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DeliveryLocation } from '@/schemas/order';
+import InteractiveMap from './InteractiveMap';
 
 export type DeliveryMethod = 'standard' | 'lalamove';
 
@@ -21,8 +22,9 @@ interface MapPickerProps {
 // Component สำหรับเลือกตำแหน่งจากแผนที่
 const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => {
   const [mapLocation, setMapLocation] = useState<DeliveryLocation>(
-    location || { latitude: 13.7563, longitude: 100.5018, mapDescription: '' }
+    location || { latitude: 13.7563, longitude: 100.5018, mapDescription: 'ตำแหน่งเริ่มต้น (กรุงเทพฯ)' }
   );
+  const [showMap, setShowMap] = useState(false);
 
   const handleGetCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -61,6 +63,11 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
     }
   };
 
+  const handleMapLocationChange = (newLocation: DeliveryLocation) => {
+    setMapLocation(newLocation);
+    onLocationChange(newLocation);
+  };
+
   useEffect(() => {
     if (location) {
       setMapLocation(location);
@@ -68,14 +75,8 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
   }, [location]);
 
   return (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
       <h4 className="font-medium text-blue-900 mb-3">📍 ปักหมุดตำแหน่งสำหรับ Lalamove</h4>
-      
-      {/* TODO: ในอนาคตสามารถเพิ่ม Google Maps integration ได้ที่นี่
-          <div className="mb-4 h-64 bg-gray-200 rounded border">
-            <GoogleMap />
-          </div>
-      */}
       
       {/* แสดงตำแหน่งปัจจุบัน */}
       <div className="mb-4 p-3 bg-white rounded border">
@@ -93,27 +94,47 @@ const MapPicker: React.FC<MapPickerProps> = ({ location, onLocationChange }) => 
       </div>
 
       {/* ปุ่มสำหรับเลือกตำแหน่ง */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={handleGetCurrentLocation}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            🎯 ใช้ตำแหน่งปัจจุบัน
+          </button>
+          <button
+            type="button"
+            onClick={handleManualInput}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            📝 กรอกพิกัดเอง
+          </button>
+        </div>
+        
         <button
           type="button"
-          onClick={handleGetCurrentLocation}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onClick={() => setShowMap(!showMap)}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
-          🎯 ใช้ตำแหน่งปัจจุบัน
-        </button>
-        <button
-          type="button"
-          onClick={handleManualInput}
-          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
-          📝 กรอกพิกัดเอง
+          {showMap ? '📍 ซ่อนแผนที่' : '🗺️ เลื่อนแผนที่เพื่อปักหมุด'}
         </button>
       </div>
 
-      <div className="mt-3 text-xs text-gray-500">
-        💡 เคล็ดลับ: คุณสามารถใช้ Google Maps เพื่อค้นหาพิกัดของสถานที่ที่ต้องการได้<br/>
-        📱 บนมือถือ: เปิด Google Maps → กดค้างที่ตำแหน่ง → คัดลอกพิกัด<br/>
-        💻 บนคอมพิวเตอร์: เปิด Google Maps → คลิกขวาที่ตำแหน่ง → คัดลอกพิกัด
+      {/* Interactive Map */}
+      {showMap && (
+        <div className="mb-4">
+          <InteractiveMap
+            location={mapLocation}
+            onLocationChange={handleMapLocationChange}
+            height="400px"
+          />
+        </div>
+      )}
+
+      <div className="text-xs text-gray-500">
+        💡 เคล็ดลับ: คุณสามารถใช้ปุ่ม "เลื่อนแผนที่เพื่อปักหมุด" เพื่อเลือกตำแหน่งแบบ interactive<br/>
+        📱 หรือใช้ Google Maps → กดค้างที่ตำแหน่ง → คัดลอกพิกัด แล้วกรอกเอง
       </div>
     </div>
   );
