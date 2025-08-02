@@ -92,7 +92,7 @@ const AdminSidebar: React.FC = () => {
             playNotificationSound();
             
             // แสดง toast notification
-            toast.success(`🔔 มีออเดอร์ใหม่ ${newOrdersCount} รายการ!`, {
+            toast.success(`มีออเดอร์ใหม่ ${newOrdersCount} รายการ!`, {
               duration: 8000,
               position: 'top-right',
               style: {
@@ -161,7 +161,7 @@ const AdminSidebar: React.FC = () => {
                   playNotificationSound();
                   
                   // แสดง toast notification สำหรับคำขอใบเสนอราคา
-                  toast.success(`💼 ${latestNotification.title}`, {
+                  toast.success(`${latestNotification.title}`, {
                     duration: 8000,
                     position: 'top-right',
                     style: {
@@ -250,16 +250,16 @@ const AdminSidebar: React.FC = () => {
   };
 
   const allMenuItems = [
-    { label: 'ภาพรวม', href: '/admin', icon: '📊', permission: PERMISSIONS.DASHBOARD_VIEW },
-    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: '📦', permission: PERMISSIONS.ORDERS_VIEW },
+    { label: 'ภาพรวม', href: '/admin', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>, permission: PERMISSIONS.DASHBOARD_VIEW },
+    { label: 'จัดการออเดอร์', href: '/admin/orders', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>, permission: PERMISSIONS.ORDERS_VIEW },
     { label: 'จัดการการเคลม', href: '/admin/orders/claims', icon: '🚨', permission: PERMISSIONS.ORDERS_CLAIMS_VIEW },
-    { label: 'จัดการใบเสนอราคา', href: '/admin/quote-requests', icon: '💼', permission: PERMISSIONS.ORDERS_VIEW },
+    { label: 'จัดการใบเสนอราคา', href: '/admin/quote-requests', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>, permission: PERMISSIONS.ORDERS_VIEW },
     { label: 'ลูกค้า', href: '/admin/customers', icon: '👥', permission: PERMISSIONS.CUSTOMERS_VIEW },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️', permission: PERMISSIONS.PRODUCTS_VIEW },
     { label: 'จัดการหมวดหมู่', href: '/admin/categories', icon: '🏷️', permission: PERMISSIONS.PRODUCTS_VIEW },
     { label: 'จัดการสิทธิ์', href: '/admin/permissions', icon: '🔐', permission: PERMISSIONS.USERS_PERMISSIONS_MANAGE },
     { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥', adminOnly: true },
-    { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢', permission: PERMISSIONS.NOTIFICATIONS_SEND },
+    { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>, permission: PERMISSIONS.NOTIFICATIONS_SEND },
   ];
 
   // กรองเมนูตามสิทธิ์ของผู้ใช้
@@ -411,7 +411,12 @@ const AdminSidebar: React.FC = () => {
             {showNotifications && (
               <div className="p-4 border-t border-gray-200">
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">🔔 แจ้งเตือน</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.343 12.344l7.083 7.083c.047.047.135.103.211.103.076 0 .164-.056.211-.103l7.083-7.083a.75.75 0 000-1.061L11.25 3.602a.75.75 0 00-1.061 0L2.508 11.283a.75.75 0 000 1.061zM7 14h.01" />
+            </svg>
+            แจ้งเตือน
+          </h3>
                   <p className="text-sm text-gray-600 mb-4">
                     {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && `ออเดอร์รอดำเนินการ: ${pendingOrders.length}`}
                     {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && ' | '}
@@ -490,7 +495,12 @@ const AdminSidebar: React.FC = () => {
                   className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-60 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                 >
                   <div className="p-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-900">🔔 แจ้งเตือน</h3>
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.343 12.344l7.083 7.083c.047.047.135.103.211.103.076 0 .164-.056.211-.103l7.083-7.083a.75.75 0 000-1.061L11.25 3.602a.75.75 0 00-1.061 0L2.508 11.283a.75.75 0 000 1.061zM7 14h.01" />
+          </svg>
+          แจ้งเตือน
+        </h3>
                     <p className="text-sm text-gray-600">
                       {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && `ออเดอร์รอดำเนินการ: ${pendingOrders.length}`}
                       {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (isAdmin || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && ' | '}
@@ -502,7 +512,12 @@ const AdminSidebar: React.FC = () => {
                     {/* ออเดอร์รอดำเนินการ - แสดงเฉพาะคนที่มีสิทธิ์ดูออเดอร์ */}
                     {pendingOrders.length > 0 && (isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW)) && (
                       <div className="p-3 border-b border-gray-100">
-                        <h4 className="text-sm font-medium text-blue-600 mb-2">📦 ออเดอร์รอดำเนินการ</h4>
+                        <h4 className="text-sm font-medium text-blue-600 mb-2 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              ออเดอร์รอดำเนินการ
+            </h4>
                         {pendingOrders.slice(0, 5).map((order) => (
                           <div
                             key={order._id}
@@ -518,7 +533,15 @@ const AdminSidebar: React.FC = () => {
                               </p>
                             </div>
                             <div className="text-xs text-blue-600">
-                              {order.paymentMethod === 'cod' ? '💰' : '🏦'}
+                              {order.paymentMethod === 'cod' ? (
+                    <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  )}
                             </div>
                           </div>
                         ))}

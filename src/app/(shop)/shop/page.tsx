@@ -322,7 +322,12 @@ const ShopPage = () => {
           </svg>
         </div>
         <div>
-          <p className="font-medium text-gray-900">เพิ่มลงตะกร้าสำเร็จ! 🛒</p>
+                          <p className="font-medium text-gray-900 flex items-center gap-1">
+                  เพิ่มลงตะกร้าสำเร็จ!
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                  </svg>
+                </p>
           <p className="text-sm text-gray-600">{product.name} {quantity} ชิ้น</p>
           {unit?.label && <p className="text-xs text-blue-600">หน่วย: {unit.label}</p>}
         </div>
@@ -377,7 +382,9 @@ const ShopPage = () => {
         transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         pointer-events: none;
       ">
-        🛒
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                  </svg>
       </div>
     `;
 
@@ -1089,7 +1096,21 @@ const ShopPage = () => {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                      {product.isAvailable !== false ? (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          พร้อมขาย
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          สินค้าหมด
+                        </span>
+                      )}
                     </span>
                   </div>
 
@@ -1295,7 +1316,21 @@ const ShopPage = () => {
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {selectedProduct.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                    {selectedProduct.isAvailable !== false ? (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      พร้อมขาย
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      สินค้าหมด
+                    </span>
+                  )}
                   </span>
                 </div>
 

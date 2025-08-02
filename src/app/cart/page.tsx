@@ -232,7 +232,12 @@ export default function CartPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-3 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">🛒 ตะกร้าสินค้า</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <svg className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+          </svg>
+          ตะกร้าสินค้า
+        </h1>
               {cart.length > 0 && (
                 <p className="text-sm sm:text-base text-gray-500 mt-1">
                   {getTotalItems()} รายการ • ฿{getTotalPrice().toLocaleString()}
@@ -253,7 +258,11 @@ export default function CartPage() {
           /* ตะกร้าว่าง - Mobile Enhanced */
           <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 text-center mx-4 sm:mx-0">
             <div className="text-gray-400 mb-6">
-              <div className="text-6xl sm:text-8xl mb-4">🛒</div>
+              <div className="text-gray-400 mb-4">
+          <svg className="w-20 h-20 sm:w-24 sm:h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+          </svg>
+        </div>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">ตะกร้าสินค้าว่าง</h2>
             <p className="text-base sm:text-lg text-gray-500 mb-8 leading-relaxed">
@@ -264,7 +273,10 @@ export default function CartPage() {
               href="/shop"
               className="inline-block bg-blue-600 text-white px-8 py-4 sm:px-6 sm:py-3 rounded-xl font-semibold text-lg sm:text-base hover:bg-blue-700 hover:shadow-lg transition-all duration-200"
             >
-              🏪 เลือกซื้อสินค้า
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          เลือกซื้อสินค้า
             </Link>
           </div>
         ) : (

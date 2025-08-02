@@ -133,7 +133,7 @@ const AdminClaimsPage = () => {
     return true;
   });
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     claimed: 'รอตอบกลับ',
     claim_approved: 'อนุมัติแล้ว',
     claim_rejected: 'ปฏิเสธแล้ว'
@@ -144,7 +144,7 @@ const AdminClaimsPage = () => {
     fetchClaimedOrders();
   };
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     claimed: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     claim_approved: 'bg-green-100 text-green-800 border-green-200',
     claim_rejected: 'bg-red-100 text-red-800 border-red-200'
@@ -427,8 +427,29 @@ const AdminClaimsPage = () => {
                           selectedOrder.claimInfo?.claimStatus === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
                           'bg-red-100 text-red-800 border border-red-200'
                         }`}>
-                          {selectedOrder.claimInfo?.claimStatus === 'pending' ? '⏳ รอดำเนินการ' :
-                           selectedOrder.claimInfo?.claimStatus === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                          {selectedOrder.claimInfo?.claimStatus === 'pending' ? (
+                            <span className="inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              รอดำเนินการ
+                            </span>
+                          ) :
+                           selectedOrder.claimInfo?.claimStatus === 'approved' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            อนุมัติแล้ว
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            ไม่อนุมัติ
+                          </span>
+                        )}
                         </span>
                       </div>
                     </div>

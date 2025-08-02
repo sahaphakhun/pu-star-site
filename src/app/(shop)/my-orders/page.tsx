@@ -111,7 +111,7 @@ const MyOrdersPage = () => {
         
         // Debug: แสดงข้อมูล orders ที่ส่งสำเร็จ
         const deliveredOrders = data.filter(order => order.status === 'delivered');
-        console.log('🚚 Orders ที่ส่งสำเร็จ:', deliveredOrders.map(order => ({
+        console.log('Orders ที่ส่งสำเร็จ:', deliveredOrders.map(order => ({
           id: order._id.slice(-8),
           status: order.status,
           claimInfo: order.claimInfo,
@@ -254,7 +254,12 @@ const MyOrdersPage = () => {
       <div className="mb-3">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📦 คำสั่งซื้อของฉัน</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <svg className="w-8 h-8 sm:w-9 sm:h-9 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          คำสั่งซื้อของฉัน
+        </h1>
             {orders.length > 0 && (
               <p className="text-sm sm:text-base text-gray-500 mt-1">
                 ทั้งหมด {orders.length} รายการ
@@ -279,7 +284,16 @@ const MyOrdersPage = () => {
               <svg className={`w-5 h-5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <span>{loading ? 'กำลังโหลด...' : '🔄 รีเฟรช'}</span>
+              <span className="flex items-center gap-1">
+            {loading ? 'กำลังโหลด...' : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                รีเฟรช
+              </>
+            )}
+          </span>
             </button>
           </div>
         </div>
@@ -287,7 +301,11 @@ const MyOrdersPage = () => {
 
       {orders.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-8 sm:p-12 text-center mx-4 sm:mx-0">
-          <div className="text-6xl sm:text-8xl mb-6">📦</div>
+          <div className="text-gray-400 mb-6">
+          <svg className="w-20 h-20 sm:w-24 sm:h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">ยังไม่มีประวัติการสั่งซื้อ</h2>
           <p className="text-base sm:text-lg text-gray-500 mb-8 leading-relaxed">
             เริ่มต้นการช้อปปิ้งและสั่งซื้อสินค้า<br className="sm:hidden" />
@@ -297,7 +315,10 @@ const MyOrdersPage = () => {
             href="/shop"
             className="inline-block bg-blue-600 text-white px-8 py-4 sm:px-6 sm:py-3 rounded-xl font-semibold text-lg sm:text-base hover:bg-blue-700 hover:shadow-lg transition-all duration-200"
           >
-            🛒 เริ่มช้อปปิ้ง
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+          </svg>
+          เริ่มช้อปปิ้ง
           </a>
         </div>
       ) : (
@@ -637,8 +658,29 @@ const MyOrdersPage = () => {
                           (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? 'bg-green-100 text-green-800 border border-green-200' :
                           'bg-red-100 text-red-800 border border-red-200'
                         }`}>
-                          {(selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? '⏳ รอดำเนินการ' :
-                           (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                          {(selectedOrder.claimInfo?.claimStatus === 'pending' || selectedOrder.status === 'claimed') ? (
+                            <span className="inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              รอดำเนินการ
+                            </span>
+                          ) :
+                           (selectedOrder.claimInfo?.claimStatus === 'approved' || selectedOrder.status === 'claim_approved') ? (
+                            <span className="inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              อนุมัติแล้ว
+                            </span>
+                           ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              ไม่อนุมัติ
+                            </span>
+                           )}
                         </span>
                       </div>
                       

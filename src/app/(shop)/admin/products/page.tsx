@@ -574,7 +574,21 @@ const AdminProductsPage = () => {
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}
+                                          {product.isAvailable !== false ? (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          พร้อมขาย
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          สินค้าหมด
+                        </span>
+                      )}
                   </span>
                 </div>
 
@@ -785,7 +799,10 @@ const AdminProductsPage = () => {
                         </select>
                         {categories.length === 0 && (
                           <p className="text-xs text-yellow-600 mt-1">
-                            ⚠️ ยังไม่มีหมวดหมู่ กรุณาเพิ่มหมวดหมู่ก่อนเพิ่มสินค้า
+                            <svg className="w-4 h-4 mr-1 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              ยังไม่มีหมวดหมู่ กรุณาเพิ่มหมวดหมู่ก่อนเพิ่มสินค้า
                           </p>
                         )}
                       </div>
@@ -801,7 +818,12 @@ const AdminProductsPage = () => {
                               onChange={() => setIsAvailable(true)}
                               className="mr-2"
                             />
-                            <span className="text-green-600">✅ พร้อมขาย</span>
+                            <span className="text-green-600 inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      พร้อมขาย
+                    </span>
                           </label>
                           <label className="flex items-center">
                             <input
@@ -811,7 +833,12 @@ const AdminProductsPage = () => {
                               onChange={() => setIsAvailable(false)}
                               className="mr-2"
                             />
-                            <span className="text-red-600">❌ สินค้าหมด</span>
+                            <span className="text-red-600 inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      สินค้าหมด
+                    </span>
                           </label>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">

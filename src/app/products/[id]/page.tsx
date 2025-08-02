@@ -136,7 +136,12 @@ export default function ProductDetail() {
             </svg>
           </div>
           <div>
-            <p className="font-medium">เพิ่มลงตะกร้าสำเร็จ! 🛒</p>
+                            <p className="font-medium flex items-center gap-1">
+                  เพิ่มลงตะกร้าสำเร็จ!
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                  </svg>
+                </p>
             <p className="text-sm text-gray-600">{product.name} จำนวน {quantity} ชิ้น</p>
           </div>
         </div>,
@@ -232,11 +237,21 @@ export default function ProductDetail() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">{product.name}</h1>
             
             {product.category && (
-              <p className="text-sm sm:text-base text-gray-500 mb-3">📂 หมวดหมู่: {product.category}</p>
+              <p className="text-sm sm:text-base text-gray-500 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              หมวดหมู่: {product.category}
+            </p>
             )}
             
             <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-4 sm:mb-6 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
-              💰 ฿{selectedPrice.toLocaleString()} {selectedUnit !== 'หน่วย' ? `/ ${selectedUnit}` : ''}
+                              <span className="flex items-center gap-1">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  ฿{selectedPrice.toLocaleString()} {selectedUnit !== 'หน่วย' ? `/ ${selectedUnit}` : ''}
+                </span>
             </div>
 
             <div className="mb-6">

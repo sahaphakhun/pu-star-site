@@ -272,7 +272,21 @@ const AdminCategoriesPage = () => {
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {category.isActive ? '✅ ใช้งาน' : '❌ ปิดใช้งาน'}
+                          {category.isActive ? (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      ใช้งาน
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      ปิดใช้งาน
+                    </span>
+                  )}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -415,7 +429,12 @@ const AdminCategoriesPage = () => {
                             onChange={() => setIsActive(true)}
                             className="mr-2"
                           />
-                          <span className="text-green-600">✅ ใช้งาน</span>
+                          <span className="text-green-600 inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      ใช้งาน
+                    </span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -425,7 +444,12 @@ const AdminCategoriesPage = () => {
                             onChange={() => setIsActive(false)}
                             className="mr-2"
                           />
-                          <span className="text-red-600">❌ ปิดใช้งาน</span>
+                          <span className="text-red-600 inline-flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      ปิดใช้งาน
+                    </span>
                         </label>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
