@@ -161,7 +161,11 @@ const TargetCustomersPage: React.FC = () => {
         </div>
         <div className="flex items-center space-x-2">
           <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-            🎯 {totalCustomers.toLocaleString()} ลูกค้าเป้าหมาย
+            <svg className="w-5 h-5 mr-1 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {totalCustomers.toLocaleString()} ลูกค้าเป้าหมาย
           </div>
         </div>
       </div>
@@ -281,7 +285,10 @@ const TargetCustomersPage: React.FC = () => {
               onClick={resetFilters}
               className="text-gray-600 hover:text-gray-800 text-sm"
             >
-              🔄 รีเซ็ตตัวกรอง
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              รีเซ็ตตัวกรอง
             </button>
           </div>
         </div>
@@ -328,7 +335,12 @@ const TargetCustomersPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span className="text-yellow-800 font-bold text-sm">🎯</span>
+                        <span className="text-yellow-800 font-bold text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{customer.name}</div>
@@ -493,7 +505,13 @@ const TargetCustomersPage: React.FC = () => {
               </div>
               
               <div className="mt-6 bg-yellow-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-yellow-800 mb-2">🎯 เหตุผลที่เป็นลูกค้าเป้าหมาย</h3>
+                <h3 className="text-sm font-medium text-yellow-800 mb-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  เหตุผลที่เป็นลูกค้าเป้าหมาย
+                </h3>
                 <ul className="text-sm text-yellow-700 space-y-1">
                   {(selectedCustomer.totalSpent || 0) > 20000 && (
                     <li>• ยอดซื้อสูงกว่า 20,000 บาท</li>

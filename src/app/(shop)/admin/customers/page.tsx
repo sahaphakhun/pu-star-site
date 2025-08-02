@@ -74,8 +74,8 @@ const CustomerManagementPage: React.FC = () => {
   const tabs = [
     { id: 'all', label: 'ทั้งหมด', icon: '👥', color: 'text-gray-600' },
     { id: 'new', label: 'ลูกค้าใหม่', icon: '🆕', color: 'text-green-600' },
-    { id: 'regular', label: 'ลูกค้าประจำ', icon: '⭐', color: 'text-blue-600' },
-    { id: 'target', label: 'ลูกค้าเป้าหมาย', icon: '🎯', color: 'text-yellow-600' },
+    { id: 'regular', label: 'ลูกค้าประจำ', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" /></svg>, color: 'text-blue-600' },
+    { id: 'target', label: 'ลูกค้าเป้าหมาย', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>, color: 'text-yellow-600' },
     { id: 'inactive', label: 'ลูกค้าห่างหาย', icon: '😴', color: 'text-gray-600' },
   ];
 
@@ -262,7 +262,10 @@ const CustomerManagementPage: React.FC = () => {
               onClick={handleUpdateCustomerStats}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
             >
-              🔄 อัปเดตสถิติ
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              อัปเดตสถิติ
             </button>
           )}
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (
@@ -270,7 +273,10 @@ const CustomerManagementPage: React.FC = () => {
               onClick={handleExportCSV}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              📊 ส่งออก CSV
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              ส่งออก CSV
             </button>
           )}
         </div>
@@ -463,7 +469,10 @@ const CustomerManagementPage: React.FC = () => {
             onClick={resetFilters}
             className="text-gray-600 hover:text-gray-800 text-sm"
           >
-            🔄 รีเซ็ตตัวกรอง
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              รีเซ็ตตัวกรอง
           </button>
           <div className="flex items-center space-x-4">
             <p className="text-sm text-gray-600">
@@ -526,7 +535,12 @@ const CustomerManagementPage: React.FC = () => {
                     <div className="flex items-center">
                       {activeTab === 'target' && (
                         <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-yellow-800 font-bold text-sm">🎯</span>
+                          <span className="text-yellow-800 font-bold text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
                         </div>
                       )}
                       <div>
@@ -705,7 +719,13 @@ const CustomerManagementPage: React.FC = () => {
               {/* Special info for target customers */}
               {selectedCustomer.customerType === 'target' && (
                 <div className="mt-6 bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-yellow-800 mb-2">🎯 เหตุผลที่เป็นลูกค้าเป้าหมาย</h3>
+                  <h3 className="text-sm font-medium text-yellow-800 mb-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  เหตุผลที่เป็นลูกค้าเป้าหมาย
+                </h3>
                   <ul className="text-sm text-yellow-700 space-y-1">
                     {(selectedCustomer.totalSpent || 0) > 20000 && (
                       <li>• ยอดซื้อสูงกว่า 20,000 บาท</li>
