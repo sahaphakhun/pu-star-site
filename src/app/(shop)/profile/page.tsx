@@ -576,11 +576,14 @@ const ProfilePage = () => {
 
         {/* Quick Menu Grid - Minimal Design */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
-          <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3">
               {/* ข้อมูลส่วนตัว */}
               <button
-                onClick={() => setActiveTab('profile')}
+                onClick={() => {
+                  setActiveTab('profile');
+                  setProfileSubTab('info');
+                }}
                 className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation ${
                   activeTab === 'profile' && profileSubTab === 'info'
                     ? 'bg-blue-50 text-blue-600 shadow-sm'
@@ -598,7 +601,7 @@ const ProfilePage = () => {
               {/* คำสั่งซื้อ */}
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
                   activeTab === 'orders'
                     ? 'bg-blue-50 text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
@@ -620,7 +623,7 @@ const ProfilePage = () => {
               {/* ใบเสนอราคา */}
               <button
                 onClick={() => setActiveTab('quote-requests')}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
                   activeTab === 'quote-requests'
                     ? 'bg-blue-50 text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
@@ -645,7 +648,7 @@ const ProfilePage = () => {
                   setActiveTab('profile');
                   setProfileSubTab('addresses');
                 }}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation relative col-start-2 md:col-start-auto xl:col-start-auto ${
                   activeTab === 'profile' && profileSubTab === 'addresses'
                     ? 'bg-blue-50 text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
@@ -671,7 +674,7 @@ const ProfilePage = () => {
                   setActiveTab('profile');
                   setProfileSubTab('tax-invoice');
                 }}
-                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation col-start-3 md:col-start-auto xl:col-start-auto ${
                   activeTab === 'profile' && profileSubTab === 'tax-invoice'
                     ? 'bg-blue-50 text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
