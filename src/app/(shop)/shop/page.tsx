@@ -11,7 +11,6 @@ import Swal from 'sweetalert2';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import DeliveryMethodSelector, { DeliveryMethod } from '@/components/DeliveryMethodSelector';
 import { DeliveryLocation } from '@/schemas/order';
-import AppHeader from '@/components/AppHeader';
 
 // Address interface for the new format
 interface Address {
@@ -982,7 +981,6 @@ const ShopPage = () => {
       <Toaster />
       
       <div className="container mx-auto px-4 py-8">
-        <AppHeader showSearch={true} />
         {/* Products Grid */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">

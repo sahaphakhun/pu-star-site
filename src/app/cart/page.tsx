@@ -5,7 +5,6 @@ import Image from "next/image";
 import AddressForm from "@/components/AddressForm";
 import DeliveryMethodSelector, { DeliveryMethod } from "@/components/DeliveryMethodSelector";
 import { DeliveryLocation } from "@/schemas/order";
-import AppHeader from "@/components/AppHeader";
 
 // Address interface for the new format
 interface Address {
@@ -228,9 +227,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <AppHeader showSearch={true} />
-        
+      <div className="max-w-4xl mx-auto px-4 py-6">        
         {/* Page Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6 p-4">
           <div className="flex items-center justify-between">

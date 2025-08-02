@@ -9,7 +9,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import ProfileImageUpload from '@/components/ProfileImageUpload';
 import PackingImageGallery from '@/components/PackingImageGallery';
-import AppHeader from '@/components/AppHeader';
 
 // Legacy address format from API
 interface LegacyAddress {
@@ -540,65 +539,46 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-2 sm:px-3">
       <div className="max-w-5xl mx-auto">
-        <AppHeader showSearch={true} />
-
         {/* Page Header */}
         <div className="mb-3">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">👤 โปรไฟล์</h1>
           <p className="text-xs sm:text-sm text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>
         </div>
 
-        {/* Customer Level Card - Ultra Compact */}
-        <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-blue-100 p-3 mb-3">
-          <div className="space-y-2">
-            {/* Greeting - Compact */}
+        {/* Profile Card */}
+        <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 mb-3 text-white">
+          <div className="flex justify-between items-start mb-4">
+            {/* Left - User Name */}
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-gray-900 mb-1">สวัสดี, {user?.name || 'ลูกค้า'} 👋</h2>
+              <h2 className="text-2xl font-bold mb-1">{user?.name || 'อนัญพร จินดา'}</h2>
             </div>
             
-            {/* Level and Stats in One Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${customerLevel.color}`}>
-                  <span className="text-sm mr-1">{customerLevel.icon}</span>
-                  <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
-                </span>
-                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-medium">
-                  ส่วนลด {customerLevel.discount}%
-                </span>
+            {/* Right - Level Badge */}
+            <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded-full border border-gray-200">
+              <span className="text-sm font-medium">ระดับ {customerLevel.level} – {customerLevel.title}</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-end">
+            {/* Left Bottom - Stats */}
+            <div className="space-y-2">
+              <div>
+                <p className="text-white text-opacity-90 text-sm">ยอดรวมการสั่งซื้อ : ฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
               </div>
-              
-              {/* Compact Stats */}
-              <div className="flex items-center gap-3 text-xs">
-                <div className="text-center">
-                  <p className="text-gray-600">ยอดซื้อ</p>
-                  <p className="font-bold text-blue-600">฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-600">ออเดอร์</p>
-                  <p className="font-bold text-purple-600">{orders.length}</p>
-                </div>
+              <div>
+                <p className="text-white text-opacity-90 text-sm">ออเดอร์ทั้งหมด : {orders.length}</p>
               </div>
             </div>
-
-            {/* Progress Bar - Slim */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">
+            
+            {/* Right Bottom - Progress */}
+            <div className="text-right">
+              <p className="text-white text-opacity-90 text-sm mb-1">
                 {customerLevel.pointsToNext > 0 ? 
                   `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
                   'ถึงระดับสูงสุดแล้ว'
                 }
               </p>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 h-1.5 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${customerLevel.pointsToNext > 0 ? 
-                      (customerLevel.currentPoints / (customerLevel.currentPoints + customerLevel.pointsToNext)) * 100 : 
-                      100}%` 
-                  }}
-                ></div>
-              </div>
+              <div className="h-px bg-white bg-opacity-40"></div>
             </div>
           </div>
         </div>
