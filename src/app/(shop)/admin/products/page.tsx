@@ -24,6 +24,14 @@ interface ProductOption {
   values: OptionValue[];
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  displayOrder: number;
+}
+
 const AdminProductsPage = () => {
   const { hasPermission, isAdmin } = usePermissions();
   const [products, setProducts] = useState<ProductWithId[]>([]);
@@ -35,6 +43,7 @@ const AdminProductsPage = () => {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('ทั่วไป');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
@@ -56,9 +65,28 @@ const AdminProductsPage = () => {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch('/api/categories');
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error('ไม่สามารถดึงข้อมูลหมวดหมู่ได้:', error);
+      // หาก API หมวดหมู่ล้มเหลว ใช้ข้อมูลเริ่มต้น
+      setCategories([
+        { _id: '1', name: 'ทั่วไป', isActive: true, displayOrder: 0 },
+        { _id: '2', name: 'กาวและซีลแลนท์', isActive: true, displayOrder: 1 },
+        { _id: '3', name: 'เครื่องมือ', isActive: true, displayOrder: 2 },
+        { _id: '4', name: 'อะไหล่', isActive: true, displayOrder: 3 },
+        { _id: '5', name: 'วัสดุก่อสร้าง', isActive: true, displayOrder: 4 },
+      ]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchCategories();
+  }, [fetchProducts, fetchCategories]);
 
   const resetForm = () => {
     setName('');
@@ -67,7 +95,7 @@ const AdminProductsPage = () => {
     setUnits([]);
     setDescription('');
     setImageUrl('');
-    setCategory('ทั่วไป');
+    setCategory(categories.length > 0 ? categories[0].name : 'ทั่วไป');
     setOptions([]);
     setEditMode(false);
     setCurrentProductId(null);
@@ -749,12 +777,17 @@ const AdminProductsPage = () => {
                           onChange={(e) => setCategory(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                          <option value="ทั่วไป">ทั่วไป</option>
-                          <option value="กาวและซีลแลนท์">กาวและซีลแลนท์</option>
-                          <option value="เครื่องมือ">เครื่องมือ</option>
-                          <option value="อะไหล่">อะไหล่</option>
-                          <option value="วัสดุก่อสร้าง">วัสดุก่อสร้าง</option>
+                          {categories.map((cat) => (
+                            <option key={cat._id} value={cat.name}>
+                              {cat.name}
+                            </option>
+                          ))}
                         </select>
+                        {categories.length === 0 && (
+                          <p className="text-xs text-yellow-600 mt-1">
+                            ⚠️ ยังไม่มีหมวดหมู่ กรุณาเพิ่มหมวดหมู่ก่อนเพิ่มสินค้า
+                          </p>
+                        )}
                       </div>
 
                       <div>

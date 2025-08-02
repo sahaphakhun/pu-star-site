@@ -256,6 +256,7 @@ const AdminSidebar: React.FC = () => {
     { label: 'จัดการใบเสนอราคา', href: '/admin/quote-requests', icon: '💼', permission: PERMISSIONS.ORDERS_VIEW },
     { label: 'ลูกค้า', href: '/admin/customers', icon: '👥', permission: PERMISSIONS.CUSTOMERS_VIEW },
     { label: 'จัดการสินค้า', href: '/admin/products', icon: '🛍️', permission: PERMISSIONS.PRODUCTS_VIEW },
+    { label: 'จัดการหมวดหมู่', href: '/admin/categories', icon: '🏷️', permission: PERMISSIONS.PRODUCTS_VIEW },
     { label: 'จัดการสิทธิ์', href: '/admin/permissions', icon: '🔐', permission: PERMISSIONS.USERS_PERMISSIONS_MANAGE },
     { label: 'จัดการแอดมิน', href: '/admin/admins', icon: '👥', adminOnly: true },
     { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: '📢', permission: PERMISSIONS.NOTIFICATIONS_SEND },

@@ -214,14 +214,29 @@ const ShopPage = () => {
       const response = await fetch(`/api/products?_t=${Date.now()}`);
       const data: ProductWithId[] = await response.json();
       setProducts(data);
-      const cats = Array.from(new Set(data.map((p: any) => p.category || 'ทั่วไป')));
-      setCategories(['ทั้งหมด', ...cats]);
       setLoading(false);
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
       setLoading(false);
     }
   }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch('/api/categories');
+      const data = await response.json();
+      // เพิ่ม "ทั้งหมด" เป็นตัวเลือกแรก และเรียงตาม displayOrder
+      const activeCategories = data
+        .filter((cat: any) => cat.isActive)
+        .sort((a: any, b: any) => a.displayOrder - b.displayOrder);
+      setCategories(['ทั้งหมด', ...activeCategories.map((cat: any) => cat.name)]);
+    } catch (error) {
+      console.error('ไม่สามารถดึงข้อมูลหมวดหมู่ได้:', error);
+      // หาก API หมวดหมู่ล้มเหลว ใช้การสร้างจากสินค้าแบบเดิม
+      const cats = Array.from(new Set(products.map((p: any) => p.category || 'ทั่วไป')));
+      setCategories(['ทั้งหมด', ...cats]);
+    }
+  }, [products]);
 
   useEffect(() => {
     try {
@@ -238,8 +253,17 @@ const ShopPage = () => {
       .then(data=>{
         if(data) setShippingSetting(data);
       }).catch(()=>{});
+    
+    // ดึงข้อมูลสินค้าก่อน แล้วค่อยดึงหมวดหมู่
     fetchProducts();
   }, [fetchProducts]);
+
+  // ดึงหมวดหมู่หลังจากที่ได้สินค้าแล้ว
+  useEffect(() => {
+    if (products.length > 0 || !loading) {
+      fetchCategories();
+    }
+  }, [products, loading, fetchCategories]);
 
   useEffect(() => {
     try {
@@ -983,14 +1007,12 @@ const ShopPage = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Products Grid */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">สินค้าทั้งหมด</h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 md:mb-0">สินค้าทั้งหมด</h2>
           </div>
           
-
-          
           {/* Sticky Categories - Mobile Enhanced */}
-          <div className="sticky top-0 bg-gray-50 z-20 py-4 mb-6 -mx-4 px-4 shadow-sm">
+          <div className="sticky top-16 bg-gray-50 z-10 py-3 mb-4 -mx-4 px-4 shadow-sm">
             <div className="flex overflow-x-auto space-x-3 scrollbar-hide pb-2">
               {categories.map((cat) => (
                 <button
