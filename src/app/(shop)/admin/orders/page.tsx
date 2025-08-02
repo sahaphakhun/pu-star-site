@@ -464,7 +464,7 @@ const AdminOrdersPage = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการออเดอร์</h1>
             <p className="text-gray-600">ติดตามและจัดการคำสั่งซื้อทั้งหมด</p>

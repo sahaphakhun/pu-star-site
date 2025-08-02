@@ -167,7 +167,7 @@ const AdminClaimsPage = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-3">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการการเคลม</h1>
           <p className="text-gray-600">ตรวจสอบและตอบกลับการเคลมสินค้าจากลูกค้า</p>
         </div>

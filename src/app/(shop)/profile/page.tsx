@@ -244,17 +244,7 @@ const ProfilePage = () => {
     claim_rejected: 'bg-orange-100 text-orange-800'
   };
 
-  const tabs = [
-    { id: 'profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
-    { id: 'orders', label: 'คำสั่งซื้อ', icon: '🛒' },
-    { id: 'quote-requests', label: 'ใบเสนอราคา', icon: '📄' }
-  ];
 
-  const profileSubTabs = [
-    { id: 'info', label: 'ข้อมูลส่วนตัว', icon: '👤' },
-    { id: 'addresses', label: 'ที่อยู่', icon: '📍' },
-    { id: 'tax-invoice', label: 'ใบกำกับภาษี', icon: '📄' }
-  ];
 
   useEffect(() => {
     if (!authLoading && !isLoggedIn) {
@@ -541,7 +531,7 @@ const ProfilePage = () => {
       <div className="max-w-5xl mx-auto">
         {/* Page Header */}
         <div className="mb-3">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">👤 โปรไฟล์</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-0">👤 โปรไฟล์</h1>
           <p className="text-xs sm:text-sm text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>
         </div>
 
@@ -584,35 +574,117 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Tabs - Ultra Compact */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-3">
-          <div className="border-b border-gray-200">
-            <nav className="grid grid-cols-3 sm:flex sm:space-x-2 px-1 sm:px-2" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center justify-center sm:justify-start sm:space-x-1 flex-col sm:flex-row py-2 sm:py-2.5 px-1 sm:px-2 border-b-2 font-medium text-xs transition-all duration-200 touch-manipulation ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-sm mb-0.5 sm:mb-0">{tab.icon}</span>
-                  <span className="text-center leading-tight font-medium">{tab.label}</span>
-                  {tab.id === 'orders' && (
-                    <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
-                      {orders.length}
-                    </span>
-                  )}
-                  {tab.id === 'quote-requests' && (
-                    <span className="bg-purple-100 text-purple-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
-                      {quoteRequests.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
+        {/* Quick Menu Grid - Minimal Design */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
+          <div className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+              {/* ข้อมูลส่วนตัว */}
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                  activeTab === 'profile' && profileSubTab === 'info'
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-center">ข้อมูลส่วนตัว</span>
+              </button>
+
+              {/* คำสั่งซื้อ */}
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                  activeTab === 'orders'
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                  </svg>
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-center">ค่าสั่งซื้อ</span>
+                {orders.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs sm:text-sm w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-semibold">
+                    {orders.length}
+                  </span>
+                )}
+              </button>
+
+              {/* ใบเสนอราคา */}
+              <button
+                onClick={() => setActiveTab('quote-requests')}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                  activeTab === 'quote-requests'
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-center">ใบเสนอราคา</span>
+                {quoteRequests.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs sm:text-sm w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-semibold">
+                    {quoteRequests.length}
+                  </span>
+                )}
+              </button>
+
+              {/* ที่อยู่ */}
+              <button
+                onClick={() => {
+                  setActiveTab('profile');
+                  setProfileSubTab('addresses');
+                }}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 touch-manipulation relative ${
+                  activeTab === 'profile' && profileSubTab === 'addresses'
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-center">ที่อยู่</span>
+                {addresses.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs sm:text-sm w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-semibold">
+                    {addresses.length}
+                  </span>
+                )}
+              </button>
+
+              {/* ใบกำกับภาษี */}
+              <button
+                onClick={() => {
+                  setActiveTab('profile');
+                  setProfileSubTab('tax-invoice');
+                }}
+                className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                  activeTab === 'profile' && profileSubTab === 'tax-invoice'
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <span className="text-xs sm:text-sm font-medium text-center">ใบกำกับภาษี</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -622,33 +694,7 @@ const ProfilePage = () => {
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="space-y-3">
-
-                {/* Profile Sub Navigation - Ultra Compact */}
-                <div className="border-b border-gray-200">
-                  <nav className="grid grid-cols-3 sm:flex sm:space-x-2" aria-label="Profile Tabs">
-                    {profileSubTabs.map((subTab) => (
-                      <button
-                        key={subTab.id}
-                        onClick={() => setProfileSubTab(subTab.id as any)}
-                        className={`flex items-center justify-center sm:justify-start sm:space-x-1 flex-col sm:flex-row py-2 px-1 border-b-2 font-medium text-xs transition-all duration-200 touch-manipulation ${
-                          profileSubTab === subTab.id
-                            ? 'border-blue-500 text-blue-600 bg-blue-50'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="text-sm mb-0.5 sm:mb-0">{subTab.icon}</span>
-                        <span className="text-center leading-tight font-medium">{subTab.label}</span>
-                        {subTab.id === 'addresses' && (
-                          <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded-full text-xs sm:ml-1 mt-0.5 sm:mt-0 font-semibold">
-                            {addresses.length}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-
-                {/* Profile Sub Tab Content */}
+                {/* Profile Content */}
                 {profileSubTab === 'info' && (
                   <div className="space-y-3">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">

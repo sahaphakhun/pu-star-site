@@ -229,7 +229,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-6">        
         {/* Page Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6 p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-3 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">🛒 ตะกร้าสินค้า</h1>

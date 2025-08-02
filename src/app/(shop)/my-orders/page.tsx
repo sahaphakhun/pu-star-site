@@ -251,7 +251,7 @@ const MyOrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-6 lg:px-8">
-      <div className="mb-6">
+      <div className="mb-3">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📦 คำสั่งซื้อของฉัน</h1>

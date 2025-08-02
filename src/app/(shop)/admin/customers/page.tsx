@@ -251,7 +251,7 @@ const CustomerManagementPage: React.FC = () => {
     <PermissionGate permission={PERMISSIONS.CUSTOMERS_VIEW}>
       <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">จัดการลูกค้า</h1>
           <p className="text-gray-600">ภาพรวมและจัดการข้อมูลลูกค้าทั้งหมด</p>

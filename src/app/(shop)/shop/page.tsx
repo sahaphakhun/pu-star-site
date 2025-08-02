@@ -983,7 +983,7 @@ const ShopPage = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Products Grid */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
             <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">สินค้าทั้งหมด</h2>
           </div>
           
