@@ -11,6 +11,7 @@ import Swal from 'sweetalert2';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import DeliveryMethodSelector, { DeliveryMethod } from '@/components/DeliveryMethodSelector';
 import { DeliveryLocation } from '@/schemas/order';
+import AppHeader from '@/components/AppHeader';
 
 // Address interface for the new format
 interface Address {
@@ -107,6 +108,15 @@ const ShopPage = () => {
   const isAddressValid = (address: Address): boolean => {
     return !!(address.name && address.phone && address.province && address.houseNumber);
   };
+
+  // Handle URL search parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -971,39 +981,15 @@ const ShopPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Toaster />
       
-
       <div className="container mx-auto px-4 py-8">
+        <AppHeader showSearch={true} />
         {/* Products Grid */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">สินค้าทั้งหมด</h2>
           </div>
           
-          {/* Search Bar - Mobile Enhanced */}
-          <div className="mb-6">
-            <div className="relative max-w-full">
-              <input
-                type="text"
-                placeholder="🔍 ค้นหาสินค้า..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-4 sm:py-3 pl-12 text-lg sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white shadow-sm"
-              />
-              <svg
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 sm:h-5 sm:w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
+
           
           {/* Sticky Categories - Mobile Enhanced */}
           <div className="sticky top-0 bg-gray-50 z-20 py-4 mb-6 -mx-4 px-4 shadow-sm">

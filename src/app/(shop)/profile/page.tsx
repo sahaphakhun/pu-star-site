@@ -9,6 +9,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import ProfileImageUpload from '@/components/ProfileImageUpload';
 import PackingImageGallery from '@/components/PackingImageGallery';
+import AppHeader from '@/components/AppHeader';
 
 // Legacy address format from API
 interface LegacyAddress {
@@ -539,7 +540,9 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-2 sm:px-3">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
+        <AppHeader showSearch={true} />
+
+        {/* Page Header */}
         <div className="mb-3">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">👤 โปรไฟล์</h1>
           <p className="text-xs sm:text-sm text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>

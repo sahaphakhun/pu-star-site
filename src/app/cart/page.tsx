@@ -5,6 +5,7 @@ import Image from "next/image";
 import AddressForm from "@/components/AddressForm";
 import DeliveryMethodSelector, { DeliveryMethod } from "@/components/DeliveryMethodSelector";
 import { DeliveryLocation } from "@/schemas/order";
+import AppHeader from "@/components/AppHeader";
 
 // Address interface for the new format
 interface Address {
@@ -227,9 +228,11 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Mobile Enhanced */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <AppHeader showSearch={true} />
+        
+        {/* Page Header */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">🛒 ตะกร้าสินค้า</h1>
@@ -249,9 +252,6 @@ export default function CartPage() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
         {cart.length === 0 ? (
           /* ตะกร้าว่าง - Mobile Enhanced */
           <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 text-center mx-4 sm:mx-0">
