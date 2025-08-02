@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AppHeaderProps {
   showSearch?: boolean;
@@ -49,10 +50,7 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
   // เมนูตามสิทธิ์ผู้ใช้
   const menuItems = [
     { href: '/shop', label: 'หน้าร้าน', icon: '🏪', show: true },
-    { href: '/cart', label: 'ตะกร้าสินค้า', icon: '🛒', show: true },
     { href: '/profile', label: 'ข้อมูลส่วนตัว', icon: '👤', show: isLoggedIn },
-    { href: '/profile?tab=orders', label: 'คำสั่งซื้อของฉัน', icon: '📦', show: isLoggedIn },
-    { href: '/profile?tab=quote-requests', label: 'ใบเสนอราคา', icon: '📄', show: isLoggedIn },
     { href: '/admin', label: 'ระบบแอดมิน', icon: '⚙️', show: isLoggedIn && user?.role === 'admin' },
     { href: '/contact', label: 'ติดต่อเรา', icon: '📞', show: true },
     { href: '/articles', label: 'บทความ', icon: '📖', show: true },
@@ -162,9 +160,28 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
       )}
 
              {/* Menu Overlay */}
-       {isMenuOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setIsMenuOpen(false)}>
-           <div className="bg-white w-80 h-full shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+       <AnimatePresence>
+         {isMenuOpen && (
+           <motion.div 
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             transition={{ duration: 0.2 }}
+             className="fixed inset-0 bg-black bg-opacity-30 z-50 backdrop-blur-sm" 
+             onClick={() => setIsMenuOpen(false)}
+           >
+             <motion.div 
+               initial={{ x: '100%' }}
+               animate={{ x: 0 }}
+               exit={{ x: '100%' }}
+               transition={{ 
+                 type: 'spring', 
+                 stiffness: 300, 
+                 damping: 30 
+               }}
+               className="bg-white w-80 h-full shadow-xl overflow-y-auto ml-auto"
+               onClick={e => e.stopPropagation()}
+             >
              {/* Header */}
              <div className="flex justify-between items-center p-6 border-b border-gray-200">
                <div>
@@ -250,9 +267,10 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
                  </div>
                </div>
              </div>
-           </div>
-         </div>
-       )}
+           </motion.div>
+         </motion.div>
+         )}
+       </AnimatePresence>
     </>
   );
 }
