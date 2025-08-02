@@ -168,7 +168,7 @@ const ProfilePage = () => {
         nextLevel: 6,
         pointsToNext: 0,
         currentPoints: totalSpent,
-        icon: '⭐',
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
         color: 'bg-purple-100 text-purple-800'
       };
     } else if (totalSpent >= 50000 || totalOrders >= 25) {
@@ -179,7 +179,7 @@ const ProfilePage = () => {
         nextLevel: 5,
         pointsToNext: 100000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '💠',
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z"/></svg>,
         color: 'bg-blue-100 text-blue-800'
       };
     } else if (totalSpent >= 20000 || totalOrders >= 10) {
@@ -190,7 +190,7 @@ const ProfilePage = () => {
         nextLevel: 4,
         pointsToNext: 50000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '🟡',
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>,
         color: 'bg-yellow-100 text-yellow-800'
       };
     } else if (totalSpent >= 5000 || totalOrders >= 3) {
@@ -201,7 +201,7 @@ const ProfilePage = () => {
         nextLevel: 3,
         pointsToNext: 20000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '⚪',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>,
         color: 'bg-gray-100 text-gray-800'
       };
     } else {
@@ -212,7 +212,7 @@ const ProfilePage = () => {
         nextLevel: 2,
         pointsToNext: 5000 - totalSpent,
         currentPoints: totalSpent,
-        icon: '🔵',
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>,
         color: 'bg-green-100 text-green-800'
       };
     }
@@ -531,7 +531,12 @@ const ProfilePage = () => {
       <div className="max-w-5xl mx-auto">
         {/* Page Header */}
         <div className="mb-3">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-0">👤 โปรไฟล์</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-0 flex items-center gap-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            โปรไฟล์
+          </h1>
           <p className="text-xs sm:text-sm text-gray-600">จัดการข้อมูลส่วนตัวและคำสั่งซื้อของคุณ</p>
         </div>
 
@@ -813,7 +818,7 @@ const ProfilePage = () => {
                     </label>
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded p-2">
                       <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${customerLevel.color}`}>
-                        <span className="text-sm">{customerLevel.icon}</span>
+                        <span className="flex items-center">{customerLevel.icon}</span>
                         <span>ระดับ {customerLevel.level} - {customerLevel.title}</span>
                       </span>
                     </div>
@@ -982,13 +987,22 @@ const ProfilePage = () => {
             {activeTab === 'orders' && (
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                  <h2 className="text-sm sm:text-base font-semibold text-gray-900">🛒 คำสั่งซื้อของฉัน</h2>
+                  <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                    </svg>
+                    คำสั่งซื้อของฉัน
+                  </h2>
                   <p className="text-xs text-gray-500">{orders.length} รายการ</p>
                 </div>
 
                 {orders.length === 0 ? (
                   <div className="text-center py-6">
-                    <div className="text-4xl mb-3">🛒</div>
+                    <div className="text-gray-400 mb-3">
+                      <svg className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                      </svg>
+                    </div>
                     <h3 className="text-sm font-medium text-gray-900 mb-1">ยังไม่มีคำสั่งซื้อ</h3>
                     <p className="text-xs text-gray-600 mb-3">เริ่มต้นการช้อปปิ้งกับเราได้เลย</p>
                     <button
@@ -1035,13 +1049,22 @@ const ProfilePage = () => {
             {activeTab === 'quote-requests' && (
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                  <h2 className="text-sm sm:text-base font-semibold text-gray-900">📄 ประวัติการขอใบเสนอราคา</h2>
+                  <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    ประวัติการขอใบเสนอราคา
+                  </h2>
                   <p className="text-xs text-gray-500">{quoteRequests.length} รายการ</p>
                 </div>
 
                 {quoteRequests.length === 0 ? (
                   <div className="text-center py-6">
-                    <div className="text-4xl mb-3">📄</div>
+                    <div className="text-gray-400 mb-3">
+                      <svg className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
                     <h3 className="text-sm font-medium text-gray-900 mb-1">ยังไม่มีการขอใบเสนอราคา</h3>
                     <p className="text-xs text-gray-600 mb-3">ไปที่หน้าเลือกสินค้าเพื่อขอใบเสนอราคา</p>
                     <button
@@ -1085,8 +1108,11 @@ const ProfilePage = () => {
                         <p className="text-xs sm:text-sm text-gray-600">{quote.items.length} รายการ</p>
                         
                         {quote.status === 'quoted' && (
-                          <div className="mt-1 text-xs text-blue-600">
-                            📋 ใบเสนอราคาพร้อมแล้ว
+                          <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            ใบเสนอราคาพร้อมแล้ว
                           </div>
                         )}
                       </motion.div>
@@ -1293,7 +1319,10 @@ const ProfilePage = () => {
                     onClick={() => setSelectedQuoteRequest(null)}
                     className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ❌ ปิด
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    ปิด
                   </button>
                 </div>
               </div>
@@ -1321,8 +1350,11 @@ const ProfilePage = () => {
             >
               <div className="p-3">
                 <div className="flex justify-between items-start mb-3">
-                  <h2 className="text-sm font-bold text-gray-900 pr-2">
-                    🛒 คำสั่งซื้อ #{selectedOrder._id.slice(-8).toUpperCase()}
+                  <h2 className="text-sm font-bold text-gray-900 pr-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+                    </svg>
+                    คำสั่งซื้อ #{selectedOrder._id.slice(-8).toUpperCase()}
                   </h2>
                   <button 
                     onClick={() => setSelectedOrder(null)} 
@@ -1537,14 +1569,20 @@ const ProfilePage = () => {
                     onClick={() => setSelectedOrder(null)}
                     className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ❌ ปิด
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    ปิด
                   </button>
                   {selectedOrder.status === 'delivered' && (!selectedOrder.claimInfo || !selectedOrder.claimInfo.claimDate) && (
                     <button
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base touch-manipulation"
                     >
-                      ⚠️ เคลมสินค้า
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      เคลมสินค้า
                     </button>
                   )}
                   {selectedOrder.status === 'claim_rejected' && (
@@ -1552,7 +1590,10 @@ const ProfilePage = () => {
                       onClick={() => setShowClaimModal(true)}
                       className="flex-1 bg-orange-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base touch-manipulation"
                     >
-                      🔄 เคลมใหม่อีกครั้ง
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      เคลมใหม่อีกครั้ง
                     </button>
                   )}
                 </div>
@@ -1722,7 +1763,10 @@ const ProfilePage = () => {
                     onClick={handleAddAddress}
                     className="flex-1 bg-blue-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ✅ เพิ่มที่อยู่
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    เพิ่มที่อยู่
                   </button>
                 </div>
               </div>
@@ -1807,7 +1851,10 @@ const ProfilePage = () => {
                     disabled={!claimData.reason.trim()}
                     className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base touch-manipulation"
                   >
-                    ⚠️ ส่งคำขอเคลม
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    ส่งคำขอเคลม
                   </button>
                 </div>
               </div>
