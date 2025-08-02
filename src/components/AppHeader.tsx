@@ -80,7 +80,7 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
             {/* Company Name */}
             <div className="flex flex-col">
               <div className="text-lg font-bold text-slate-800 leading-tight">WINRICH</div>
-              <div className="text-sm font-medium text-slate-600 leading-tight">DYNAMIC</div>
+              <div className="text-sm font-medium text-slate-600 leading-tight text-center">DYNAMIC</div>
             </div>
           </div>
 

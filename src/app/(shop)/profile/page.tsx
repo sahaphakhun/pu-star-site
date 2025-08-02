@@ -547,38 +547,39 @@ const ProfilePage = () => {
 
         {/* Profile Card */}
         <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 mb-3 text-white">
-          <div className="flex justify-between items-start mb-4">
-            {/* Left - User Name */}
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-1">{user?.name || 'อนัญพร จินดา'}</h2>
-            </div>
-            
-            {/* Right - Level Badge */}
-            <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded-full border border-gray-200">
-              <span className="text-xs sm:text-sm font-medium">ระดับ {customerLevel.level} – {customerLevel.title}</span>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-end">
-            {/* Left Bottom - Stats */}
-            <div className="space-y-2">
-              <div>
-                <p className="text-white text-opacity-90 text-xs sm:text-sm">ยอดรวมการสั่งซื้อ : ฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-white text-opacity-90 text-xs sm:text-sm">ออเดอร์ทั้งหมด : {orders.length}</p>
+          <div className="flex gap-6">
+            {/* Left Section - 65% */}
+            <div className="flex-1" style={{ flex: '0 0 65%' }}>
+              {/* User Name */}
+              <h2 className="text-xl sm:text-2xl font-bold mb-4">{user?.name || 'อนัญพร จินดา'}</h2>
+              
+              {/* Stats */}
+              <div className="space-y-2">
+                <div>
+                  <p className="text-white text-opacity-90 text-xs sm:text-sm">ยอดรวมการสั่งซื้อ : ฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-white text-opacity-90 text-xs sm:text-sm">ออเดอร์ทั้งหมด : {orders.length}</p>
+                </div>
               </div>
             </div>
             
-            {/* Right Bottom - Progress */}
-            <div className="text-right">
-              <p className="text-white text-opacity-90 text-xs sm:text-sm mb-1">
-                {customerLevel.pointsToNext > 0 ? 
-                  `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
-                  'ถึงระดับสูงสุดแล้ว'
-                }
-              </p>
-              <div className="h-px bg-white bg-opacity-40"></div>
+            {/* Right Section - 35% */}
+            <div className="flex-1 flex flex-col justify-center items-center" style={{ flex: '0 0 35%' }}>
+              {/* Level Badge */}
+              <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-2 rounded-full border border-gray-200 mb-3 text-center">
+                <span className="text-xs sm:text-sm font-medium">ระดับ {customerLevel.level} – {customerLevel.title}</span>
+              </div>
+              
+              {/* Progress Goal */}
+              <div className="text-center">
+                <p className="text-white text-opacity-90 text-xs sm:text-sm">
+                  {customerLevel.pointsToNext > 0 ? 
+                    `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
+                    'ถึงระดับสูงสุดแล้ว'
+                  }
+                </p>
+              </div>
             </div>
           </div>
         </div>
