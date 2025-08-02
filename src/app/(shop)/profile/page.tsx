@@ -550,12 +550,12 @@ const ProfilePage = () => {
           <div className="flex justify-between items-start mb-4">
             {/* Left - User Name */}
             <div>
-              <h2 className="text-2xl font-bold mb-1">{user?.name || 'อนัญพร จินดา'}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-1">{user?.name || 'อนัญพร จินดา'}</h2>
             </div>
             
             {/* Right - Level Badge */}
             <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded-full border border-gray-200">
-              <span className="text-sm font-medium">ระดับ {customerLevel.level} – {customerLevel.title}</span>
+              <span className="text-xs sm:text-sm font-medium">ระดับ {customerLevel.level} – {customerLevel.title}</span>
             </div>
           </div>
           
@@ -563,16 +563,16 @@ const ProfilePage = () => {
             {/* Left Bottom - Stats */}
             <div className="space-y-2">
               <div>
-                <p className="text-white text-opacity-90 text-sm">ยอดรวมการสั่งซื้อ : ฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
+                <p className="text-white text-opacity-90 text-xs sm:text-sm">ยอดรวมการสั่งซื้อ : ฿{orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-white text-opacity-90 text-sm">ออเดอร์ทั้งหมด : {orders.length}</p>
+                <p className="text-white text-opacity-90 text-xs sm:text-sm">ออเดอร์ทั้งหมด : {orders.length}</p>
               </div>
             </div>
             
             {/* Right Bottom - Progress */}
             <div className="text-right">
-              <p className="text-white text-opacity-90 text-sm mb-1">
+              <p className="text-white text-opacity-90 text-xs sm:text-sm mb-1">
                 {customerLevel.pointsToNext > 0 ? 
                   `ไปอีก ฿${customerLevel.pointsToNext.toLocaleString()} ถึงระดับ ${customerLevel.nextLevel}` :
                   'ถึงระดับสูงสุดแล้ว'
