@@ -176,7 +176,10 @@ const ShippingManagementPage = () => {
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
             >
-              📦 ทั้งหมด ({stats.total})
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              ทั้งหมด ({stats.total})
             </button>
             <button
               onClick={() => setStatusFilter('shipped')}
@@ -186,7 +189,10 @@ const ShippingManagementPage = () => {
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
             >
-              🚚 รอยืนยันผล ({stats.shipped})
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              รอยืนยันผล ({stats.shipped})
             </button>
             <button
               onClick={() => setStatusFilter('failed')}
@@ -196,7 +202,10 @@ const ShippingManagementPage = () => {
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
             >
-              ❌ ส่งไม่สำเร็จ ({stats.failed})
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              ส่งไม่สำเร็จ ({stats.failed})
             </button>
           </div>
         </div>
@@ -321,7 +330,21 @@ const ShippingManagementPage = () => {
                           ? 'bg-orange-100 text-orange-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {order.status === 'shipped' ? '🚚 จัดส่งแล้ว' : '❌ ส่งไม่สำเร็จ'}
+                        {order.status === 'shipped' ? (
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  จัดส่งแล้ว
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  ส่งไม่สำเร็จ
+                </span>
+              )}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -448,7 +471,10 @@ const ShippingManagementPage = () => {
                   <h3 className="font-semibold text-gray-900 mb-3">อัพเดทสถานะการจัดส่ง</h3>
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
                     <p className="text-sm text-yellow-800">
-                      📦 ออเดอร์นี้ได้จัดส่งออกไปแล้ว กรุณาอัพเดทสถานะหลังจากได้ยืนยันผลการจัดส่ง
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            ออเดอร์นี้ได้จัดส่งออกไปแล้ว กรุณาอัพเดทสถานะหลังจากได้ยืนยันผลการจัดส่ง
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -481,7 +507,10 @@ const ShippingManagementPage = () => {
                   <h3 className="font-semibold text-gray-900 mb-3">การดำเนินการ</h3>
                   <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
                     <p className="text-sm text-red-800">
-                      ❌ ออเดอร์นี้ส่งไม่สำเร็จ สามารถเปลี่ยนกลับเป็นสถานะอื่นได้หากต้องการ
+                      <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            ออเดอร์นี้ส่งไม่สำเร็จ สามารถเปลี่ยนกลับเป็นสถานะอื่นได้หากต้องการ
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">

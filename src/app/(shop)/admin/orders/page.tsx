@@ -122,11 +122,11 @@ const AdminOrdersPage = () => {
     pending: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     confirmed: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
     ready: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
-    shipped: '🚚',
-    delivered: '🎉',
+    shipped: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    delivered: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     cancelled: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
-    claimed: '🔁',
-    failed: '💥',
+    claimed: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+    failed: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" /></svg>,
     claim_approved: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
     claim_rejected: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
   };
@@ -483,7 +483,10 @@ const AdminOrdersPage = () => {
                 onClick={() => exportToCSV(filteredAndSortedOrders)} 
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
               >
-                📊 Export CSV
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Export CSV
               </button>
             )}
           </div>
@@ -500,7 +503,10 @@ const AdminOrdersPage = () => {
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
             >
-              📋 ทั้งหมด ({stats.total})
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              ทั้งหมด ({stats.total})
             </button>
             
             {Object.entries(statusLabels).map(([status, label]) => (
@@ -682,7 +688,10 @@ const AdminOrdersPage = () => {
                               </span>
                               {order.taxInvoice?.requestTaxInvoice && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mt-1">
-                                  🧾 ใบกำกับฯ
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    ใบกำกับฯ
                                 </span>
                               )}
                             </div>
@@ -719,7 +728,11 @@ const AdminOrdersPage = () => {
                               </span>
                               {order.packingProofs && order.packingProofs.length > 0 && (
                                 <span className="text-xs text-blue-600">
-                                  📷 {order.packingProofs.length}
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {order.packingProofs.length}
                                 </span>
                               )}
                             </div>
@@ -805,7 +818,13 @@ const AdminOrdersPage = () => {
                           <div className="text-sm text-gray-500">
                             {order.items.length} รายการ
                             {order.packingProofs && order.packingProofs.length > 0 && (
-                              <span className="text-blue-600 ml-2">📷 {order.packingProofs.length}</span>
+                              <span className="text-blue-600 ml-2 inline-flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {order.packingProofs.length}
+                </span>
                             )}
                           </div>
                         </div>
@@ -896,7 +915,9 @@ const AdminOrdersPage = () => {
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
               
@@ -921,7 +942,21 @@ const AdminOrdersPage = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700">การชำระเงิน</label>
                         <p className="text-gray-900">
-                          {selectedOrder.paymentMethod === 'cod' ? '💰 เก็บเงินปลายทาง' : '🏦 โอนเงิน'}
+                          {selectedOrder.paymentMethod === 'cod' ? (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    เก็บเงินปลายทาง
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    โอนเงิน
+                  </span>
+                )}
                         </p>
                       </div>
                       <div>
@@ -1018,7 +1053,10 @@ const AdminOrdersPage = () => {
                         <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
                         </svg>
-                        🚨 ข้อมูลการเคลม
+                        <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    ข้อมูลการเคลม
                       </h3>
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1042,8 +1080,29 @@ const AdminOrdersPage = () => {
                               selectedOrder.claimInfo.claimStatus === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
                               'bg-red-100 text-red-800 border border-red-200'
                             }`}>
-                              {selectedOrder.claimInfo.claimStatus === 'pending' ? '⏳ รอดำเนินการ' :
-                               selectedOrder.claimInfo.claimStatus === 'approved' ? '✅ อนุมัติแล้ว' : '❌ ไม่อนุมัติ'}
+                              {selectedOrder.claimInfo.claimStatus === 'pending' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            รอดำเนินการ
+                          </span>
+                        ) :
+                               selectedOrder.claimInfo.claimStatus === 'approved' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            อนุมัติแล้ว
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            ไม่อนุมัติ
+                          </span>
+                        )}
                             </span>
                           </div>
                         </div>
@@ -1078,7 +1137,12 @@ const AdminOrdersPage = () => {
                                 </div>
                               ))}
                             </div>
-                            <p className="text-xs text-gray-500 mt-2">💡 คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  คลิกที่รูปเพื่อดูขนาดเต็ม
+                </p>
                           </div>
                         )}
 
@@ -1209,7 +1273,10 @@ const AdminOrdersPage = () => {
                         {editForm.status === 'shipped' && (
                           <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
                             <p className="text-xs text-yellow-800 mb-2">
-                              💡 เมื่อเปลี่ยนสถานะเป็น "จัดส่งแล้ว" ควรระบุข้อมูลการจัดส่งด้วย
+                              <svg className="w-4 h-4 mr-1 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            เมื่อเปลี่ยนสถานะเป็น "จัดส่งแล้ว" ควรระบุข้อมูลการจัดส่งด้วย
                             </p>
                           </div>
                         )}

@@ -72,11 +72,11 @@ const CustomerManagementPage: React.FC = () => {
   const [totalCustomers, setTotalCustomers] = useState(0);
 
   const tabs = [
-    { id: 'all', label: 'ทั้งหมด', icon: '👥', color: 'text-gray-600' },
-    { id: 'new', label: 'ลูกค้าใหม่', icon: '🆕', color: 'text-green-600' },
+    { id: 'all', label: 'ทั้งหมด', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, color: 'text-gray-600' },
+    { id: 'new', label: 'ลูกค้าใหม่', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, color: 'text-green-600' },
     { id: 'regular', label: 'ลูกค้าประจำ', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" /></svg>, color: 'text-blue-600' },
     { id: 'target', label: 'ลูกค้าเป้าหมาย', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>, color: 'text-yellow-600' },
-    { id: 'inactive', label: 'ลูกค้าห่างหาย', icon: '😴', color: 'text-gray-600' },
+    { id: 'inactive', label: 'ลูกค้าห่างหาย', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, color: 'text-gray-600' },
   ];
 
   const fetchCustomers = async () => {
@@ -352,7 +352,12 @@ const CustomerManagementPage: React.FC = () => {
       {/* Top Customers for Target Tab */}
       {activeTab === 'target' && customers.length > 0 && (
         <div className="bg-white p-4 rounded-lg shadow border mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 ลูกค้าเป้าหมายยอดเยี่ยม</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                  ลูกค้าเป้าหมายยอดเยี่ยม
+                </h3>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {customers.slice(0, 5).map((customer, index) => (
               <div key={customer._id} className="text-center">
@@ -658,7 +663,9 @@ const CustomerManagementPage: React.FC = () => {
                   onClick={() => setShowDetailModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               
@@ -760,7 +767,9 @@ const CustomerManagementPage: React.FC = () => {
                   onClick={() => setShowAssignModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               

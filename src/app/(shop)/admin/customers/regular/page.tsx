@@ -158,11 +158,11 @@ const RegularCustomersPage: React.FC = () => {
     const daysSinceOrder = getDaysSinceLastOrder(customer.lastOrderDate);
     const totalOrders = customer.totalOrders || 0;
     
-    if (totalOrders > 15) return { label: 'ภักดีมาก', color: 'bg-purple-100 text-purple-800', icon: '👑' };
-    if (totalOrders > 10) return { label: 'ภักดี', color: 'bg-blue-100 text-blue-800', icon: '⭐' };
-    if (daysSinceOrder < 30) return { label: 'ใช้งานล่าสุด', color: 'bg-green-100 text-green-800', icon: '🔥' };
-    if (daysSinceOrder < 60) return { label: 'ปกติ', color: 'bg-gray-100 text-gray-800', icon: '👤' };
-    return { label: 'ควรติดตาม', color: 'bg-yellow-100 text-yellow-800', icon: '⚠️' };
+    if (totalOrders > 15) return { label: 'ภักดีมาก', color: 'bg-purple-100 text-purple-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l1.5 4.5L12 5l5.5 2.5L19 3v18l-7-3-7 3V3z" /></svg> };
+    if (totalOrders > 10) return { label: 'ภักดี', color: 'bg-blue-100 text-blue-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" /></svg> };
+    if (daysSinceOrder < 30) return { label: 'ใช้งานล่าสุด', color: 'bg-green-100 text-green-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> };
+    if (daysSinceOrder < 60) return { label: 'ปกติ', color: 'bg-gray-100 text-gray-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> };
+    return { label: 'ควรติดตาม', color: 'bg-yellow-100 text-yellow-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" /></svg> };
   };
 
   if (loading && customers.length === 0) {
@@ -183,7 +183,10 @@ const RegularCustomersPage: React.FC = () => {
         </div>
         <div className="flex items-center space-x-2">
           <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-            ⭐ {totalCustomers.toLocaleString()} ลูกค้าประจำ
+            <svg className="w-5 h-5 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" />
+          </svg>
+          {totalCustomers.toLocaleString()} ลูกค้าประจำ
           </div>
         </div>
       </div>
@@ -226,7 +229,12 @@ const RegularCustomersPage: React.FC = () => {
       {/* Top Performers */}
       {stats.topPerformers.length > 0 && (
         <div className="bg-white p-4 rounded-lg shadow border mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 ลูกค้าประจำยอดเยี่ยม</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                  ลูกค้าประจำยอดเยี่ยม
+                </h3>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {stats.topPerformers.map((customer, index) => (
               <div key={customer._id} className="text-center">
@@ -236,7 +244,23 @@ const RegularCustomersPage: React.FC = () => {
                   index === 2 ? 'bg-orange-100 text-orange-800' :
                   'bg-blue-100 text-blue-800'
                 }`}>
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '⭐'}
+                  {index === 0 ? (
+                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                ) : index === 1 ? (
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                ) : index === 2 ? (
+                  <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" />
+                  </svg>
+                )}
                 </div>
                 <p className="text-sm font-medium text-gray-900">{customer.name}</p>
                 <p className="text-xs text-gray-500">{customer.phoneNumber}</p>
@@ -253,7 +277,11 @@ const RegularCustomersPage: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">🎁 โปรแกรมความภักดี</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl mb-2">🏆</div>
+                            <div className="text-gray-400 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                </div>
             <h4 className="font-medium text-gray-900">ส่งรางวัลพิเศษ</h4>
             <p className="text-sm text-gray-600 mb-3">ส่งรางวัลให้ลูกค้าภักดี</p>
             <button 
@@ -269,7 +297,11 @@ const RegularCustomersPage: React.FC = () => {
             </button>
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl mb-2">📊</div>
+                            <div className="text-gray-400 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
             <h4 className="font-medium text-gray-900">รายงานความภักดี</h4>
             <p className="text-sm text-gray-600 mb-3">ดูรายงานพฤติกรรมลูกค้า</p>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
@@ -277,7 +309,11 @@ const RegularCustomersPage: React.FC = () => {
             </button>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl mb-2">📞</div>
+                            <div className="text-gray-400 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
             <h4 className="font-medium text-gray-900">ติดตามลูกค้า</h4>
             <p className="text-sm text-gray-600 mb-3">ติดตามลูกค้าที่ไม่ได้ซื้อ</p>
             <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
@@ -346,7 +382,10 @@ const RegularCustomersPage: React.FC = () => {
             onClick={resetFilters}
             className="text-gray-600 hover:text-gray-800 text-sm"
           >
-            🔄 รีเซ็ตตัวกรอง
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              รีเซ็ตตัวกรอง
           </button>
           <p className="text-sm text-gray-600">
             แสดง {customers.length} จาก {totalCustomers.toLocaleString()} รายการ
@@ -394,7 +433,11 @@ const RegularCustomersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-800 font-bold text-sm">⭐</span>
+                          <span className="text-blue-800 font-bold text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" />
+                  </svg>
+                </span>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{customer.name}</div>
@@ -511,7 +554,9 @@ const RegularCustomersPage: React.FC = () => {
                   onClick={() => setShowDetailModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               
@@ -570,7 +615,12 @@ const RegularCustomersPage: React.FC = () => {
               </div>
               
               <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">⭐ ข้อมูลความภักดี</h3>
+                <h3 className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.691h4.915c.971 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.928 10.1c-.783-.57-.383-1.81.588-1.81h4.915a1 1 0 00.95-.691l1.519-4.674z" />
+                  </svg>
+                  ข้อมูลความภักดี
+                </h3>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• ลูกค้าประจำที่ซื้อสม่ำเสมอ</li>
                   <li>• ควรได้รับการดูแลและโปรโมชั่นพิเศษ</li>
@@ -601,7 +651,9 @@ const RegularCustomersPage: React.FC = () => {
                   onClick={() => setShowLoyaltyModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               

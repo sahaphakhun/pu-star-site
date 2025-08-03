@@ -301,7 +301,10 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">ออเดอร์ล่าสุด</h2>
             <Link href="/admin/orders" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-              ดูทั้งหมด →
+                              ดูทั้งหมด
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
             </Link>
           </div>
         

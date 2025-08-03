@@ -182,10 +182,10 @@ const InactiveCustomersPage: React.FC = () => {
   };
 
   const getInactiveLevel = (daysSinceOrder: number) => {
-    if (daysSinceOrder <= 90) return { label: 'เพิ่งห่างหาย', color: 'bg-yellow-100 text-yellow-800', icon: '⚠️' };
-    if (daysSinceOrder <= 180) return { label: 'ห่างหายปานกลาง', color: 'bg-orange-100 text-orange-800', icon: '🔔' };
-    if (daysSinceOrder <= 365) return { label: 'ห่างหายนาน', color: 'bg-red-100 text-red-800', icon: '🚨' };
-    return { label: 'ห่างหายมากกว่า 1 ปี', color: 'bg-gray-100 text-gray-800', icon: '💀' };
+    if (daysSinceOrder <= 90) return { label: 'เพิ่งห่างหาย', color: 'bg-yellow-100 text-yellow-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" /></svg> };
+    if (daysSinceOrder <= 180) return { label: 'ห่างหายปานกลาง', color: 'bg-orange-100 text-orange-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.343 12.344l7.083 7.083c.047.047.135.103.211.103.076 0 .164-.056.211-.103l7.083-7.083a.75.75 0 000-1.061L11.25 3.602a.75.75 0 00-1.061 0L2.508 11.283a.75.75 0 000 1.061zM7 14h.01" /></svg> };
+    if (daysSinceOrder <= 365) return { label: 'ห่างหายนาน', color: 'bg-red-100 text-red-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" /></svg> };
+    return { label: 'ห่างหายมากกว่า 1 ปี', color: 'bg-gray-100 text-gray-800', icon: <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" /></svg> };
   };
 
   const toggleCustomerSelection = (customerId: string) => {
@@ -222,7 +222,10 @@ const InactiveCustomersPage: React.FC = () => {
         </div>
         <div className="flex items-center space-x-2">
           <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
-            😴 {totalCustomers.toLocaleString()} ลูกค้าห่างหาย
+            <svg className="w-5 h-5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {totalCustomers.toLocaleString()} ลูกค้าห่างหาย
           </div>
         </div>
       </div>
@@ -252,7 +255,12 @@ const InactiveCustomersPage: React.FC = () => {
 
       {/* Potential Revenue */}
       <div className="bg-white p-4 rounded-lg shadow border mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">💰 รายได้ที่อาจสูญเสีย</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  รายได้ที่อาจสูญเสีย
+                </h3>
         <p className="text-2xl font-bold text-red-600">฿{stats.potentialRevenue.toLocaleString()}</p>
         <p className="text-sm text-gray-600">ค่าเฉลี่ยต่อออเดอร์รวมของลูกค้าที่ห่างหาย</p>
       </div>
@@ -260,13 +268,22 @@ const InactiveCustomersPage: React.FC = () => {
       {/* Risk Customers */}
       {stats.riskCustomers.length > 0 && (
         <div className="bg-white p-4 rounded-lg shadow border mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🚨 ลูกค้าเสี่ยงสูง</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  ลูกค้าเสี่ยงสูง
+                </h3>
           <p className="text-sm text-gray-600 mb-4">ลูกค้าที่เคยซื้อมากแต่ห่างหายไป</p>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {stats.riskCustomers.map((customer, index) => (
               <div key={customer._id} className="text-center p-3 bg-red-50 rounded-lg">
                 <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-red-800 font-bold text-sm">🚨</span>
+                  <span className="text-red-800 font-bold text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </span>
                 </div>
                 <p className="text-sm font-medium text-gray-900">{customer.name}</p>
                 <p className="text-xs text-gray-500">{customer.phoneNumber}</p>
@@ -283,10 +300,20 @@ const InactiveCustomersPage: React.FC = () => {
 
       {/* Win-Back Actions */}
       <div className="bg-white p-4 rounded-lg shadow border mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 การดึงกลับลูกค้า</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  การดึงกลับลูกค้า
+                </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl mb-2">📧</div>
+                            <div className="text-gray-400 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
             <h4 className="font-medium text-gray-900">ส่งข้อความดึงกลับ</h4>
             <p className="text-sm text-gray-600 mb-3">ส่งข้อความพิเศษให้ลูกค้าห่างหาย</p>
             <button 
@@ -315,7 +342,11 @@ const InactiveCustomersPage: React.FC = () => {
             </button>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl mb-2">📞</div>
+                            <div className="text-gray-400 mb-2">
+                  <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
             <h4 className="font-medium text-gray-900">โทรติดตาม</h4>
             <p className="text-sm text-gray-600 mb-3">โทรติดตามลูกค้าเสี่ยงสูง</p>
             <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
@@ -384,7 +415,10 @@ const InactiveCustomersPage: React.FC = () => {
             onClick={resetFilters}
             className="text-gray-600 hover:text-gray-800 text-sm"
           >
-            🔄 รีเซ็ตตัวกรอง
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              รีเซ็ตตัวกรอง
           </button>
           <p className="text-sm text-gray-600">
             แสดง {customers.length} จาก {totalCustomers.toLocaleString()} รายการ
@@ -448,7 +482,11 @@ const InactiveCustomersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-red-800 font-bold text-sm">😴</span>
+                          <span className="text-red-800 font-bold text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{customer.name}</div>
@@ -562,7 +600,9 @@ const InactiveCustomersPage: React.FC = () => {
                   onClick={() => setShowDetailModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               
@@ -627,7 +667,12 @@ const InactiveCustomersPage: React.FC = () => {
               </div>
               
               <div className="mt-6 bg-red-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-red-800 mb-2">😴 สถานะห่างหาย</h3>
+                <h3 className="text-sm font-medium text-red-800 mb-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  สถานะห่างหาย
+                </h3>
                 <ul className="text-sm text-red-700 space-y-1">
                   <li>• ลูกค้าไม่ได้สั่งซื้อมากกว่า 90 วัน</li>
                   <li>• ควรติดตามและส่งโปรโมชั่นพิเศษ</li>
@@ -658,7 +703,9 @@ const InactiveCustomersPage: React.FC = () => {
                   onClick={() => setShowWinBackModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
               </div>
               

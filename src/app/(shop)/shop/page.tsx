@@ -976,7 +976,7 @@ const ShopPage = () => {
         const u = item.product.units.find((un) => un.label === item.unitLabel);
         return u?.shippingFee ?? 0;
       }
-      // ไม่มีหน่วย → ใช้ shippingFee ของสินค้า
+              // ไม่มีหน่วย > ใช้ shippingFee ของสินค้า
       return (item.product as any).shippingFee ?? 0;
     });
 
@@ -1889,7 +1889,10 @@ const ShopPage = () => {
                                 }); 
                               }}
                             >
-                              ← เลือกจากที่อยู่เดิม
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            เลือกจากที่อยู่เดิม
                             </button>
                           )}
                         </div>

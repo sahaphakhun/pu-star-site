@@ -228,7 +228,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     setTimeout(() => {
       onLocationChange({
         ...currentLocation,
-        mapDescription: `✅ ยืนยันตำแหน่ง: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
+        mapDescription: `ยืนยันตำแหน่ง: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
       });
       
       // เอฟเฟกต์แสดงความสำเร็จ
@@ -241,7 +241,12 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
   if (error) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-800">❌ {error}</p>
+        <p className="text-red-800 flex items-center gap-1">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          {error}
+        </p>
         <p className="text-sm text-red-600 mt-1">กรุณาใช้การกรอกพิกัดด้วยมือแทน</p>
       </div>
     );
@@ -268,14 +273,23 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {!isLoading && (
           <div className="absolute top-2 left-2 bg-white px-3 py-1 rounded-lg shadow-md">
             <p className="text-xs text-gray-600 font-medium">
-              📍 {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
             </p>
           </div>
         )}
       </div>
 
       <div className="bg-blue-50 p-3 rounded-lg">
-        <h5 className="font-medium text-blue-900 mb-2">💡 วิธีใช้งาน:</h5>
+        <h5 className="font-medium text-blue-900 mb-2 flex items-center gap-1">
+          <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          วิธีใช้งาน:
+        </h5>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• เลื่อนแผนที่เพื่อหาตำแหน่งที่ต้องการ</li>
           <li>• คลิกที่แผนที่เพื่อวางหมุด</li>
@@ -300,10 +314,14 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
             </svg>
-            🎯 กำลังยืนยันตำแหน่ง...
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          กำลังยืนยันตำแหน่ง...
           </span>
         ) : (
-          '✅ ยืนยันตำแหน่งนี้'
+                      'ยืนยันตำแหน่งนี้'
         )}
       </button>
     </div>
