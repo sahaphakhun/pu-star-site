@@ -302,7 +302,8 @@ const CustomerManagementPage: React.FC = () => {
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow border mb-6">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+          {/* Desktop: แสดงแท็บแบบเดิม */}
+          <nav className="hidden md:flex space-x-8 px-6" aria-label="Tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -329,6 +330,59 @@ const CustomerManagementPage: React.FC = () => {
               </button>
             ))}
           </nav>
+
+          {/* Mobile: แสดง dropdown */}
+          <div className="md:hidden px-6 py-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่ลูกค้า</label>
+            <div className="relative">
+              <select
+                value={activeTab}
+                onChange={(e) => handleTabChange(e.target.value as any)}
+                className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-10"
+              >
+                {tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label}
+                    {stats && ` (${
+                      tab.id === 'all' ? stats.totalCustomers :
+                      tab.id === 'new' ? stats.newCustomers :
+                      tab.id === 'regular' ? stats.regularCustomers :
+                      tab.id === 'target' ? stats.targetCustomers :
+                      tab.id === 'inactive' ? stats.inactiveCustomers : 0
+                    })`}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            
+            {/* แสดงสถิติของแท็บที่เลือกในมือถือ */}
+            {stats && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">
+                      {tabs.find(tab => tab.id === activeTab)?.icon}
+                    </span>
+                    <span className="font-medium text-gray-900">
+                      {tabs.find(tab => tab.id === activeTab)?.label}
+                    </span>
+                  </div>
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 text-sm font-semibold rounded-full">
+                    {activeTab === 'all' ? stats.totalCustomers :
+                     activeTab === 'new' ? stats.newCustomers :
+                     activeTab === 'regular' ? stats.regularCustomers :
+                     activeTab === 'target' ? stats.targetCustomers :
+                     activeTab === 'inactive' ? stats.inactiveCustomers : 0} คน
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
