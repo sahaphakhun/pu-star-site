@@ -116,6 +116,27 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedQuoteRequest, setSelectedQuoteRequest] = useState<QuoteRequest | null>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [currentQuoteForOrder, setCurrentQuoteForOrder] = useState<QuoteRequest | null>(null);
+  const [orderFormData, setOrderFormData] = useState({
+    customerName: '',
+    customerPhone: '',
+    customerAddress: '',
+    paymentMethod: 'bank_transfer' as 'bank_transfer' | 'cash_on_delivery',
+    deliveryAddress: {
+      label: '',
+      name: '',
+      phone: '',
+      province: '',
+      district: '',
+      subDistrict: '',
+      postalCode: '',
+      houseNumber: '',
+      lane: '',
+      moo: '',
+      road: ''
+    }
+  });
   
   // Profile editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -475,6 +496,127 @@ const ProfilePage = () => {
         console.error('Error deleting address:', error);
         toast.error('เกิดข้อผิดพลาดในการลบที่อยู่');
       }
+    }
+  };
+
+  const handleCreateOrderFromQuote = async () => {
+    if (!currentQuoteForOrder || !showOrderForm) {
+      toast.error('ไม่พบข้อมูลใบเสนอราคา');
+      return;
+    }
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    const requiredFields = {
+      customerName: orderFormData.customerName,
+      customerPhone: orderFormData.customerPhone,
+      'ชื่อผู้รับ': orderFormData.deliveryAddress.name,
+      'เบอร์โทรผู้รับ': orderFormData.deliveryAddress.phone,
+      'บ้านเลขที่': orderFormData.deliveryAddress.houseNumber,
+      'จังหวัด': orderFormData.deliveryAddress.province,
+      'อำเภอ/เขต': orderFormData.deliveryAddress.district,
+      'ตำบล/แขวง': orderFormData.deliveryAddress.subDistrict,
+      'รหัสไปรษณีย์': orderFormData.deliveryAddress.postalCode
+    };
+
+    for (const [field, value] of Object.entries(requiredFields)) {
+      if (!value || value.trim() === '') {
+        toast.error(`กรุณากรอก${field}`);
+        return;
+      }
+    }
+
+    try {
+      // สร้างที่อยู่จัดส่งแบบเต็ม
+      const fullAddress = [
+        orderFormData.deliveryAddress.houseNumber,
+        orderFormData.deliveryAddress.moo ? `หมู่ ${orderFormData.deliveryAddress.moo}` : '',
+        orderFormData.deliveryAddress.lane ? `ซอย ${orderFormData.deliveryAddress.lane}` : '',
+        orderFormData.deliveryAddress.road ? `ถนน ${orderFormData.deliveryAddress.road}` : '',
+        orderFormData.deliveryAddress.subDistrict,
+        orderFormData.deliveryAddress.district,
+        orderFormData.deliveryAddress.province,
+        orderFormData.deliveryAddress.postalCode
+      ].filter(Boolean).join(' ');
+
+      // เตรียมข้อมูลออเดอร์
+      const orderData = {
+        customerName: orderFormData.customerName,
+        customerPhone: orderFormData.customerPhone,
+        customerAddress: fullAddress,
+        paymentMethod: orderFormData.paymentMethod,
+        items: currentQuoteForOrder.items.map(item => ({
+          productId: item.productId || 'quote-item',
+          name: item.name,
+          price: item.unitPrice || item.price,
+          quantity: item.quantity,
+          selectedOptions: item.selectedOptions,
+          unitLabel: item.unitLabel,
+          unitPrice: item.unitPrice || item.price
+        })),
+        totalAmount: currentQuoteForOrder.totalAmount,
+        shippingFee: 0, // ค่าจัดส่งจะคำนวณภายหลัง
+        taxInvoice: currentQuoteForOrder.taxInvoice,
+        fromQuoteRequest: true,
+        quoteRequestId: currentQuoteForOrder._id,
+        deliveryAddress: {
+          name: orderFormData.deliveryAddress.name,
+          phone: orderFormData.deliveryAddress.phone,
+          address: fullAddress
+        }
+      };
+
+      toast.loading('กำลังสร้างคำสั่งซื้อ...');
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.dismiss();
+        toast.success('สร้างคำสั่งซื้อสำเร็จ!');
+        
+        // ปิด modal และรีเซ็ตข้อมูล
+        setShowOrderForm(false);
+        setOrderFormData({
+          customerName: '',
+          customerPhone: '',
+          customerAddress: '',
+          paymentMethod: 'bank_transfer',
+          deliveryAddress: {
+            label: '',
+            name: '',
+            phone: '',
+            province: '',
+            district: '',
+            subDistrict: '',
+            postalCode: '',
+            houseNumber: '',
+            lane: '',
+            moo: '',
+            road: ''
+          }
+        });
+        
+        // รีเฟรชข้อมูลออเดอร์
+        fetchOrders();
+        
+        // เปลี่ยนไปแท็บออเดอร์
+        setActiveTab('orders');
+        
+      } else {
+        toast.dismiss();
+        toast.error(result.error || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error creating order from quote:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     }
   };
 
@@ -1325,14 +1467,383 @@ const ProfilePage = () => {
                 {/* Action Buttons */}
                 <div className="mt-4 sm:mt-6 flex gap-3">
                   <button
+                    onClick={() => {
+                      // เก็บข้อมูลใบเสนอราคาสำหรับสร้างออเดอร์
+                      setCurrentQuoteForOrder(selectedQuoteRequest);
+                      
+                      // เตรียมข้อมูลสำหรับฟอร์มสั่งซื้อ
+                      setOrderFormData({
+                        customerName: selectedQuoteRequest.customerName,
+                        customerPhone: selectedQuoteRequest.customerPhone,
+                        customerAddress: selectedQuoteRequest.customerAddress,
+                        paymentMethod: 'bank_transfer',
+                        deliveryAddress: {
+                          label: 'บ้าน',
+                          name: selectedQuoteRequest.customerName,
+                          phone: selectedQuoteRequest.customerPhone,
+                          province: '',
+                          district: '',
+                          subDistrict: '',
+                          postalCode: '',
+                          houseNumber: '',
+                          lane: '',
+                          moo: '',
+                          road: ''
+                        }
+                      });
+                      setShowOrderForm(true);
+                      setSelectedQuoteRequest(null);
+                    }}
+                    className="flex-1 bg-green-600 text-white px-4 py-2.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base touch-manipulation"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                    </svg>
+                    สั่งซื้อ
+                  </button>
+                  <button
                     onClick={() => setSelectedQuoteRequest(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
+                    className="bg-gray-200 text-gray-700 px-4 py-2.5 sm:py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base touch-manipulation"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     ปิด
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Order Form Modal (from Quote Request) */}
+      <AnimatePresence>
+        {showOrderForm && currentQuoteForOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4"
+            onClick={() => setShowOrderForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-start mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 pr-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                    </svg>
+                    สั่งซื้อสินค้า
+                  </h2>
+                  <button 
+                    onClick={() => setShowOrderForm(false)} 
+                    className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0 touch-manipulation"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column - Order Summary */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">รายการสินค้า</h3>
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {currentQuoteForOrder.items.map((item, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{item.name}</h4>
+                            {item.selectedOptions && Object.entries(item.selectedOptions).map(([key, value]) => (
+                              <p key={key} className="text-sm text-gray-600">{key}: {value}</p>
+                            ))}
+                            <p className="text-sm text-gray-600">
+                              จำนวน: {item.quantity} {item.unitLabel || 'ชิ้น'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900">
+                              ฿{((item.unitPrice || item.price) * item.quantity).toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              ฿{(item.unitPrice || item.price).toLocaleString()}/{item.unitLabel || 'ชิ้น'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-purple-50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">ยอดรวมทั้งสิ้น</span>
+                        <span className="text-xl font-bold text-purple-600">
+                          ฿{currentQuoteForOrder.totalAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column - Order Form */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">ข้อมูลการจัดส่ง</h3>
+                    
+                    {/* Customer Info */}
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้สั่ง</label>
+                        <input
+                          type="text"
+                          value={orderFormData.customerName}
+                          onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="กรอกชื่อผู้สั่ง"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                        <input
+                          type="tel"
+                          value={orderFormData.customerPhone}
+                          onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="กรอกเบอร์โทรศัพท์"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Delivery Address */}
+                    <div className="space-y-4 mb-6">
+                      <h4 className="font-medium text-gray-900">ที่อยู่จัดส่ง</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้รับ</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.name}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, name: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="ชื่อผู้รับสินค้า"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรผู้รับ</label>
+                          <input
+                            type="tel"
+                            value={orderFormData.deliveryAddress.phone}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, phone: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="เบอร์โทรผู้รับ"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">บ้านเลขที่</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.houseNumber}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, houseNumber: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="บ้านเลขที่"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">หมู่ที่</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.moo}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, moo: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="หมู่ที่ (ถ้ามี)"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ซอย/ตรอก</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.lane}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, lane: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="ซอย/ตรอก (ถ้ามี)"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ถนน</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.road}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, road: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="ถนน (ถ้ามี)"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">จังหวัด</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.province}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, province: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="จังหวัด"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">อำเภอ/เขต</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.district}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, district: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="อำเภอ/เขต"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">ตำบล/แขวง</label>
+                          <input
+                            type="text"
+                            value={orderFormData.deliveryAddress.subDistrict}
+                            onChange={(e) => setOrderFormData(prev => ({ 
+                              ...prev, 
+                              deliveryAddress: { ...prev.deliveryAddress, subDistrict: e.target.value }
+                            }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="ตำบล/แขวง"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">รหัสไปรษณีย์</label>
+                        <input
+                          type="text"
+                          value={orderFormData.deliveryAddress.postalCode}
+                          onChange={(e) => setOrderFormData(prev => ({ 
+                            ...prev, 
+                            deliveryAddress: { ...prev.deliveryAddress, postalCode: e.target.value }
+                          }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="รหัสไปรษณีย์"
+                          pattern="[0-9]{5}"
+                          maxLength={5}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">วิธีการชำระเงิน</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="bank_transfer"
+                            checked={orderFormData.paymentMethod === 'bank_transfer'}
+                            onChange={(e) => setOrderFormData(prev => ({ ...prev, paymentMethod: e.target.value as 'bank_transfer' | 'cash_on_delivery' }))}
+                            className="mr-3"
+                          />
+                          <div>
+                            <p className="font-medium">โอนเงินผ่านธนาคาร</p>
+                            <p className="text-sm text-gray-600">โอนเงินเข้าบัญชีธนาคารของเรา</p>
+                          </div>
+                        </label>
+                        
+                        <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="cash_on_delivery"
+                            checked={orderFormData.paymentMethod === 'cash_on_delivery'}
+                            onChange={(e) => setOrderFormData(prev => ({ ...prev, paymentMethod: e.target.value as 'bank_transfer' | 'cash_on_delivery' }))}
+                            className="mr-3"
+                          />
+                          <div>
+                            <p className="font-medium">เก็บเงินปลายทาง</p>
+                            <p className="text-sm text-gray-600">ชำระเงินเมื่อได้รับสินค้า</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowOrderForm(false)}
+                        className="flex-1 bg-gray-200 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        onClick={async () => {
+                          // Handle order submission
+                          await handleCreateOrderFromQuote();
+                        }}
+                        className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                        disabled={
+                          !orderFormData.customerName ||
+                          !orderFormData.customerPhone ||
+                          !orderFormData.deliveryAddress.name ||
+                          !orderFormData.deliveryAddress.phone ||
+                          !orderFormData.deliveryAddress.houseNumber ||
+                          !orderFormData.deliveryAddress.province ||
+                          !orderFormData.deliveryAddress.district ||
+                          !orderFormData.deliveryAddress.subDistrict ||
+                          !orderFormData.deliveryAddress.postalCode
+                        }
+                      >
+                        ยืนยันการสั่งซื้อ
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>

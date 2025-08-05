@@ -70,6 +70,9 @@ const CustomerManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCustomers, setTotalCustomers] = useState(0);
+  
+  // Mobile dropdown state
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const tabs = [
     { id: 'all', label: 'ทั้งหมด', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, color: 'text-gray-600' },
@@ -128,6 +131,20 @@ const CustomerManagementPage: React.FC = () => {
   useEffect(() => {
     fetchCustomers();
   }, [currentPage, searchTerm, activeTab, assignedToFilter, dateRange, sortBy, sortOrder, minSpent, maxSpent]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdownId && !(event.target as Element).closest('.relative')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
 
   const handleTabChange = (tabId: 'all' | 'new' | 'regular' | 'target' | 'inactive') => {
     setActiveTab(tabId);
@@ -505,30 +522,30 @@ const CustomerManagementPage: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ลูกค้า
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ประเภท
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden sm:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ออเดอร์
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ยอดซื้อ
                 </th>
                 {activeTab === 'target' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ค่าเฉลี่ย/ออเดอร์
                   </th>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden md:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ผู้รับผิดชอบ
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   วันที่สั่งซื้อล่าสุด
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   การกระทำ
                 </th>
               </tr>
@@ -536,10 +553,10 @@ const CustomerManagementPage: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {customers.map((customer) => (
                 <tr key={customer._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       {activeTab === 'target' && (
-                        <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                        <div className="hidden sm:flex flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full items-center justify-center mr-3">
                           <span className="text-yellow-800 font-bold text-sm">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -548,32 +565,95 @@ const CustomerManagementPage: React.FC = () => {
                 </span>
                         </div>
                       )}
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{customer.name || 'ไม่ระบุชื่อ'}</div>
-                        <div className="text-sm text-gray-500">{customer.phoneNumber || 'ไม่ระบุเบอร์โทร'}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-gray-900 truncate">{customer.name || 'ไม่ระบุชื่อ'}</div>
+                        <div className="text-sm text-gray-500 truncate">{customer.phoneNumber || 'ไม่ระบุเบอร์โทร'}</div>
                         {customer.email && (
-                          <div className="text-sm text-gray-500">{customer.email}</div>
+                          <div className="hidden md:block text-sm text-gray-500 truncate">{customer.email}</div>
                         )}
+                        {/* แสดงข้อมูลเพิ่มเติมในมือถือ */}
+                        <div className="sm:hidden mt-1 space-y-1">
+                          <div className="text-xs text-gray-500">
+                            ออเดอร์: {customer.totalOrders || 0} ครั้ง
+                          </div>
+                          {customer.assignedTo && (
+                            <div className="text-xs">
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                                {customer.assignedTo}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
+                    {/* Desktop: แสดง badge ปกติ */}
+                    <span className={`hidden md:inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
                       {getCustomerTypeLabel(customer.customerType)}
                     </span>
+                    
+                    {/* Mobile: แสดงเป็น dropdown/select */}
+                    <div className="md:hidden relative">
+                      <button
+                        onClick={() => {
+                          const dropdownId = `customer-type-${customer._id}`;
+                          setOpenDropdownId(openDropdownId === dropdownId ? null : dropdownId);
+                        }}
+                        className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      >
+                        {getCustomerTypeLabel(customer.customerType)}
+                        <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {/* Dropdown menu */}
+                      <div
+                        className={`${openDropdownId === `customer-type-${customer._id}` ? 'block' : 'hidden'} absolute z-10 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg`}
+                      >
+                        <div className="py-1">
+                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">ประเภทลูกค้า</div>
+                          <div className="px-3 py-2">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
+                              {getCustomerTypeLabel(customer.customerType)}
+                            </span>
+                          </div>
+                          {customer.assignedTo && (
+                            <>
+                              <div className="px-3 py-1 text-xs text-gray-500 font-medium border-t">ผู้รับผิดชอบ</div>
+                              <div className="px-3 py-2">
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                                  {customer.assignedTo}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                          {customer.totalOrders > 0 && (
+                            <>
+                              <div className="px-3 py-1 text-xs text-gray-500 font-medium border-t">ข้อมูលเพิ่มเติม</div>
+                              <div className="px-3 py-2 text-xs text-gray-700">
+                                <div>ออเดอร์: {customer.totalOrders} ครั้ง</div>
+                                <div>ยอดซื้อ: ฿{(customer.totalSpent || 0).toLocaleString()}</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden sm:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="font-medium">{customer.totalOrders || 0} ครั้ง</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="font-bold text-green-600">฿{(customer.totalSpent || 0).toLocaleString()}</div>
                   </td>
                   {activeTab === 'target' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="font-medium">฿{Math.round(customer.averageOrderValue || 0).toLocaleString()}</div>
                     </td>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden md:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {customer.assignedTo ? (
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
                         {customer.assignedTo}
@@ -582,34 +662,69 @@ const CustomerManagementPage: React.FC = () => {
                       <span className="text-gray-400">ไม่ได้กำหนด</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {customer.lastOrderDate ? 
                       new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : 
                       <span className="text-gray-400">ไม่เคยสั่งซื้อ</span>
                     }
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => {
-                        setSelectedCustomer(customer);
-                        setShowDetailModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      ดูรายละเอียด
-                    </button>
-                    {(activeTab === 'target' || activeTab === 'all') && (
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {/* Desktop: แสดงปุ่มแบบข้อความ */}
+                    <div className="hidden md:block">
                       <button
                         onClick={() => {
                           setSelectedCustomer(customer);
-                          setAssignedTo(customer.assignedTo || '');
-                          setShowAssignModal(true);
+                          setShowDetailModal(true);
                         }}
-                        className="text-green-600 hover:text-green-900"
+                        className="text-blue-600 hover:text-blue-900 mr-3"
                       >
-                        กำหนดผู้รับผิดชอบ
+                        ดูรายละเอียด
                       </button>
-                    )}
+                      {(activeTab === 'target' || activeTab === 'all') && (
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setAssignedTo(customer.assignedTo || '');
+                            setShowAssignModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          กำหนดผู้รับผิดชอบ
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Mobile: แสดงปุ่มแบบไอคอน */}
+                    <div className="md:hidden flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setShowDetailModal(true);
+                        }}
+                        className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full"
+                        title="ดูรายละเอียด"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      {(activeTab === 'target' || activeTab === 'all') && (
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setAssignedTo(customer.assignedTo || '');
+                            setShowAssignModal(true);
+                          }}
+                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-full"
+                          title="กำหนดผู้รับผิดชอบ"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
