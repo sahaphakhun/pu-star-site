@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       const createdCategories = await Category.insertMany(defaultCategories);
       
       // ส่งข้อมูลที่สร้างใหม่พร้อม productCount = 0
-      const categoriesWithCount = createdCategories.map(category => ({
+      const categoriesWithCount = createdCategories.map((category: any) => ({
         ...category.toObject(),
         productCount: 0
       }));
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     // นับจำนวนสินค้าในแต่ละหมวดหมู่
     const categoriesWithCount = await Promise.all(
-      categories.map(async (category) => {
+      categories.map(async (category: any) => {
         const productCount = await Product.countDocuments({ 
           category: category.name 
         });
