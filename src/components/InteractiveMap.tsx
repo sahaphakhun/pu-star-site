@@ -362,28 +362,33 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
       {/* ปุ่มควบคุมและช่องค้นหา */}
       <div className="space-y-3">
         {/* ช่องค้นหาสถานที่ */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ค้นหาชื่อสถานที่ (เช่น เซ็นทรัลเวิลด์, สยามพารากอน)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              onKeyPress={(e) => e.key === 'Enter' && searchPlace()}
-            />
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="ค้นหาชื่อสถานที่ (เช่น เซ็นทรัลเวิลด์, สยามพารากอน)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                onKeyPress={(e) => e.key === 'Enter' && searchPlace()}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={searchPlace}
+              disabled={!searchTerm.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              ค้นหา
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={searchPlace}
-            disabled={!searchTerm.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            ค้นหา
-          </button>
+          <p className="text-xs text-gray-500">
+            * รองรับเฉพาะสถานที่ที่มีชื่อเสียง เช่น ห้างสรรพสินค้า โรงพยาบาล มหาวิทยาลัย
+          </p>
         </div>
 
         {/* ปุ่มหาตำแหน่งปัจจุบัน */}
