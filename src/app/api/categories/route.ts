@@ -16,13 +16,37 @@ export async function GET(request: NextRequest) {
       .select('name description displayOrder')
       .lean();
     
-    return NextResponse.json(categories);
+    // ถ้าไม่มีหมวดหมู่ ส่งข้อมูลเริ่มต้น
+    if (!categories || categories.length === 0) {
+      const defaultCategories = [
+        { _id: '1', name: 'ทั่วไป', description: 'สินค้าทั่วไป', displayOrder: 0 },
+        { _id: '2', name: 'กาวและซีลแลนท์', description: 'กาว ซีลแลนท์ และวัสดุยึดติด', displayOrder: 1 },
+        { _id: '3', name: 'เครื่องมือ', description: 'เครื่องมือช่างและอุปกรณ์', displayOrder: 2 },
+        { _id: '4', name: 'อะไหล่', description: 'อะไหล่และชิ้นส่วน', displayOrder: 3 },
+        { _id: '5', name: 'วัสดุก่อสร้าง', description: 'วัสดุก่อสร้างและซ่อมแซม', displayOrder: 4 },
+      ];
+      
+      console.log('No categories found, returning defaults');
+      return NextResponse.json(defaultCategories);
+    }
+    
+    // ตรวจสอบว่า categories เป็น array
+    const result = Array.isArray(categories) ? categories : [];
+    
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: 'ไม่สามารถดึงข้อมูลหมวดหมู่ได้' },
-      { status: 500 }
-    );
+    
+    // ส่งข้อมูลเริ่มต้นในกรณี error แทนการส่ง 500
+    const defaultCategories = [
+      { _id: '1', name: 'ทั่วไป', description: 'สินค้าทั่วไป', displayOrder: 0 },
+      { _id: '2', name: 'กาวและซีลแลนท์', description: 'กาว ซีลแลนท์ และวัสดุยึดติด', displayOrder: 1 },
+      { _id: '3', name: 'เครื่องมือ', description: 'เครื่องมือช่างและอุปกรณ์', displayOrder: 2 },
+      { _id: '4', name: 'อะไหล่', description: 'อะไหล่และชิ้นส่วน', displayOrder: 3 },
+      { _id: '5', name: 'วัสดุก่อสร้าง', description: 'วัสดุก่อสร้างและซ่อมแซม', displayOrder: 4 },
+    ];
+    
+    return NextResponse.json(defaultCategories);
   }
 }
 

@@ -76,8 +76,20 @@ const AdminProductsPage = () => {
   const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch('/api/categories');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
-      setCategories(data);
+      
+      // ตรวจสอบว่า data เป็น array หรือไม่
+      if (Array.isArray(data)) {
+        setCategories(data);
+      } else {
+        console.error('Categories API returned non-array data:', data);
+        throw new Error('Invalid data format from categories API');
+      }
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลหมวดหมู่ได้:', error);
       // หาก API หมวดหมู่ล้มเหลว ใช้ข้อมูลเริ่มต้น
@@ -88,6 +100,9 @@ const AdminProductsPage = () => {
         { _id: '4', name: 'อะไหล่', isActive: true, displayOrder: 3 },
         { _id: '5', name: 'วัสดุก่อสร้าง', isActive: true, displayOrder: 4 },
       ]);
+      
+      // แสดง toast error
+      toast.error('ไม่สามารถดึงข้อมูลหมวดหมู่ได้ ใช้ข้อมูลเริ่มต้น');
     }
   }, []);
 

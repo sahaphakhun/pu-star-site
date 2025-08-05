@@ -8,7 +8,8 @@
     "start": "next start -p $PORT",
     "lint": "next lint",
     "migrate:units": "node scripts/migrate-products-add-units.js",
-    "check:orders": "node scripts/check-order-status.js"
+    "check:orders": "node scripts/check-order-status.js",
+    "seed:categories": "node scripts/seed-categories.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
