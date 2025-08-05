@@ -79,6 +79,8 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState(location);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -192,6 +194,109 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   }, [location.latitude, location.longitude]);
 
+  // ฟังก์ชันหาตำแหน่งปัจจุบัน
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            mapDescription: `ตำแหน่งปัจจุบัน: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`
+          };
+          
+          // อัปเดตแผนที่
+          if (mapInstanceRef.current && markerRef.current) {
+            const newLatLng = [newLocation.latitude, newLocation.longitude];
+            mapInstanceRef.current.setView(newLatLng, 16, { animate: true });
+            markerRef.current.setLatLng(newLatLng);
+          }
+          
+          setCurrentLocation(newLocation);
+          onLocationChange(newLocation);
+          setIsGettingLocation(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          let errorMessage = 'ไม่สามารถเข้าถึงตำแหน่งได้';
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'ข้อมูลตำแหน่งไม่พร้อมใช้งาน';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'หมดเวลาในการค้นหาตำแหน่ง';
+              break;
+          }
+          
+          alert(errorMessage);
+          setIsGettingLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 นาที
+        }
+      );
+    } else {
+      alert('เบราว์เซอร์ไม่สนับสนุนการระบุตำแหน่ง');
+      setIsGettingLocation(false);
+    }
+  };
+
+  // ฟังก์ชันค้นหาสถานที่
+  const searchPlace = async () => {
+    if (!searchTerm.trim()) {
+      alert('กรุณากรอกชื่อสถานที่ที่ต้องการค้นหา');
+      return;
+    }
+
+    try {
+      // ใช้ Nominatim API สำหรับค้นหาสถานที่
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm + ' Thailand')}&limit=5&countrycodes=th`
+      );
+      
+      if (!response.ok) {
+        throw new Error('ไม่สามารถค้นหาสถานที่ได้');
+      }
+      
+      const results = await response.json();
+      
+      if (results.length === 0) {
+        alert('ไม่พบสถานที่ที่ค้นหา กรุณาลองใหม่อีกครั้ง');
+        return;
+      }
+      
+      // ใช้ผลลัพธ์แรก
+      const place = results[0];
+      const newLocation = {
+        latitude: parseFloat(place.lat),
+        longitude: parseFloat(place.lon),
+        mapDescription: `สถานที่: ${place.display_name}`
+      };
+      
+      // อัปเดตแผนที่
+      if (mapInstanceRef.current && markerRef.current) {
+        const newLatLng = [newLocation.latitude, newLocation.longitude];
+        mapInstanceRef.current.setView(newLatLng, 16, { animate: true });
+        markerRef.current.setLatLng(newLatLng);
+      }
+      
+      setCurrentLocation(newLocation);
+      onLocationChange(newLocation);
+      
+    } catch (error) {
+      console.error('Error searching place:', error);
+      alert('เกิดข้อผิดพลาดในการค้นหาสถานที่');
+    }
+  };
+
   const confirmLocation = async () => {
     setIsConfirming(true);
     
@@ -254,6 +359,57 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   return (
     <div className="space-y-3">
+      {/* ปุ่มควบคุมและช่องค้นหา */}
+      <div className="space-y-3">
+        {/* ช่องค้นหาสถานที่ */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ค้นหาชื่อสถานที่ (เช่น เซ็นทรัลเวิลด์, สยามพารากอน)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              onKeyPress={(e) => e.key === 'Enter' && searchPlace()}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={searchPlace}
+            disabled={!searchTerm.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            ค้นหา
+          </button>
+        </div>
+
+        {/* ปุ่มหาตำแหน่งปัจจุบัน */}
+        <button
+          type="button"
+          onClick={getCurrentLocation}
+          disabled={isGettingLocation}
+          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+        >
+          {isGettingLocation ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              กำลังหาตำแหน่งปัจจุบัน...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              ไปยังตำแหน่งปัจจุบันของฉัน
+            </>
+          )}
+        </button>
+      </div>
+
       <div className="relative">
         <div 
           ref={mapRef} 
@@ -272,31 +428,18 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         
         {!isLoading && (
           <div className="absolute top-2 left-2 bg-white px-3 py-1 rounded-lg shadow-md">
-            <p className="text-xs text-gray-600 font-medium">
+            <p className="text-xs text-gray-600 font-medium flex items-center">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
             </p>
           </div>
         )}
       </div>
 
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <h5 className="font-medium text-blue-900 mb-2 flex items-center gap-1">
-          <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          วิธีใช้งาน:
-        </h5>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• เลื่อนแผนที่เพื่อหาตำแหน่งที่ต้องการ</li>
-          <li>• คลิกที่แผนที่เพื่อวางหมุด</li>
-          <li>• ลากหมุดเพื่อปรับตำแหน่ง</li>
-          <li>• กดปุ่มยืนยันเมื่อพอใจกับตำแหน่ง</li>
-        </ul>
-      </div>
+
 
       <button
         type="button"
