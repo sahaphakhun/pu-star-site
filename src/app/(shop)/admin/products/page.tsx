@@ -51,6 +51,14 @@ const AdminProductsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [uploadingOptionImage, setUploadingOptionImage] = useState<{optIdx: number, valIdx: number} | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
+  
+  // WMS Configuration States
+  const [wmsEnabled, setWmsEnabled] = useState(false);
+  const [wmsProductCode, setWmsProductCode] = useState('');
+  const [wmsLotGen, setWmsLotGen] = useState('');
+  const [wmsLocationBin, setWmsLocationBin] = useState('');
+  const [wmsLotMfg, setWmsLotMfg] = useState('');
+  const [wmsAdminUsername, setWmsAdminUsername] = useState('');
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -101,6 +109,14 @@ const AdminProductsPage = () => {
     setCurrentProductId(null);
     setShowForm(false);
     setIsAvailable(true);
+    
+    // Reset WMS fields
+    setWmsEnabled(false);
+    setWmsProductCode('');
+    setWmsLotGen('');
+    setWmsLocationBin('');
+    setWmsLotMfg('');
+    setWmsAdminUsername('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -180,6 +196,27 @@ const AdminProductsPage = () => {
       productData.options = cleanedOptions;
     }
 
+    // WMS Configuration validation and setup
+    if (wmsEnabled) {
+      if (!wmsProductCode.trim() || !wmsLotGen.trim() || !wmsLocationBin.trim() || !wmsAdminUsername.trim()) {
+        toast.error('กรุณากรอกข้อมูล WMS ให้ครบถ้วน (รหัสสินค้า, Lot Generate, Location Bin, และ Admin Username)');
+        return;
+      }
+      
+      productData.wmsConfig = {
+        productCode: wmsProductCode.trim(),
+        lotGen: wmsLotGen.trim(),
+        locationBin: wmsLocationBin.trim(),
+        lotMfg: wmsLotMfg.trim() || undefined,
+        adminUsername: wmsAdminUsername.trim(),
+        isEnabled: true
+      };
+    } else {
+      productData.wmsConfig = {
+        isEnabled: false
+      };
+    }
+
     try {
       setIsUploading(true);
 
@@ -249,6 +286,23 @@ const AdminProductsPage = () => {
       setUnits(product.units.map((u) => ({ label: u.label, price: u.price.toString(), shippingFee: (u as any).shippingFee?.toString() || '' })));
     } else {
       setUnits([]);
+    }
+
+    // Load WMS configuration
+    if (product.wmsConfig) {
+      setWmsEnabled(product.wmsConfig.isEnabled || false);
+      setWmsProductCode(product.wmsConfig.productCode || '');
+      setWmsLotGen(product.wmsConfig.lotGen || '');
+      setWmsLocationBin(product.wmsConfig.locationBin || '');
+      setWmsLotMfg(product.wmsConfig.lotMfg || '');
+      setWmsAdminUsername(product.wmsConfig.adminUsername || '');
+    } else {
+      setWmsEnabled(false);
+      setWmsProductCode('');
+      setWmsLotGen('');
+      setWmsLocationBin('');
+      setWmsLotMfg('');
+      setWmsAdminUsername('');
     }
   };
 
@@ -1042,6 +1096,97 @@ const AdminProductsPage = () => {
                         </motion.div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* WMS Configuration Section */}
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">การตั้งค่า WMS Thailand</h3>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={wmsEnabled}
+                          onChange={(e) => setWmsEnabled(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-gray-700">เปิดใช้งาน WMS</span>
+                      </label>
+                    </div>
+                    
+                    {wmsEnabled && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            รหัสสินค้า (Product Code) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={wmsProductCode}
+                            onChange={(e) => setWmsProductCode(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="เช่น P001"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Lot Generate <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={wmsLotGen}
+                            onChange={(e) => setWmsLotGen(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="เช่น LOT202407001"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Location Bin <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={wmsLocationBin}
+                            onChange={(e) => setWmsLocationBin(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="เช่น BIN-A1"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Lot Manufacturing (ไม่บังคับ)
+                          </label>
+                          <input
+                            type="text"
+                            value={wmsLotMfg}
+                            onChange={(e) => setWmsLotMfg(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="เช่น MFG-XYZ"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Admin Username <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={wmsAdminUsername}
+                            onChange={(e) => setWmsAdminUsername(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="ชื่อผู้ใช้แอดมินใน WMS"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!wmsEnabled && (
+                      <p className="text-sm text-gray-500 italic">
+                        เปิดใช้งาน WMS เพื่อตรวจสอบสต็อกสินค้าอัตโนมัติผ่านระบบ WMS Thailand
+                      </p>
+                    )}
                   </div>
 
                   {/* Submit Buttons */}

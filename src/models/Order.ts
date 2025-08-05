@@ -63,6 +63,21 @@ export interface IOrder extends Document {
   packingProofs?: IPackingProof[];
   taxInvoice?: ITaxInvoice;
   claimInfo?: IClaimInfo;
+  wmsData?: {
+    stockCheckStatus: 'pending' | 'checked' | 'insufficient' | 'error';
+    stockCheckResults?: {
+      productId: string;
+      productCode: string;
+      requestedQuantity: number;
+      availableQuantity: number;
+      status: 'available' | 'insufficient' | 'not_found' | 'error';
+      message?: string;
+    }[];
+    lastStockCheck?: Date;
+    pickingOrderNumber?: string;
+    pickingStatus?: 'pending' | 'completed' | 'incomplete' | 'not_found' | 'error';
+    lastPickingCheck?: Date;
+  };
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -194,6 +209,32 @@ const orderSchema = new Schema<IOrder>(
       claimStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
       adminResponse: { type: String },
       responseDate: { type: Date }
+    },
+    wmsData: {
+      stockCheckStatus: { 
+        type: String, 
+        enum: ['pending', 'checked', 'insufficient', 'error'],
+        default: 'pending'
+      },
+      stockCheckResults: [{
+        productId: { type: String, required: true },
+        productCode: { type: String, required: true },
+        requestedQuantity: { type: Number, required: true, min: 0 },
+        availableQuantity: { type: Number, required: true, min: 0 },
+        status: { 
+          type: String, 
+          enum: ['available', 'insufficient', 'not_found', 'error'],
+          required: true 
+        },
+        message: { type: String }
+      }],
+      lastStockCheck: { type: Date },
+      pickingOrderNumber: { type: String, trim: true },
+      pickingStatus: { 
+        type: String, 
+        enum: ['pending', 'completed', 'incomplete', 'not_found', 'error']
+      },
+      lastPickingCheck: { type: Date }
     }
   },
   { 

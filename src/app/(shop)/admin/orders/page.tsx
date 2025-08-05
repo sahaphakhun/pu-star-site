@@ -131,6 +131,46 @@ const AdminOrdersPage = () => {
     claim_rejected: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
   };
 
+  // WMS Status Colors and Labels
+  const wmsStockStatusColors = {
+    pending: 'bg-gray-100 text-gray-800 border-gray-200',
+    checked: 'bg-green-100 text-green-800 border-green-200',
+    insufficient: 'bg-red-100 text-red-800 border-red-200',
+    error: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  };
+
+  const wmsStockStatusLabels = {
+    pending: 'รอตรวจสอบ',
+    checked: 'สต็อกเพียงพอ',
+    insufficient: 'สต็อกไม่เพียงพอ',
+    error: 'เกิดข้อผิดพลาด'
+  };
+
+  // Function to check WMS stock for an order
+  const checkWMSStock = async (orderId: string) => {
+    try {
+      const response = await fetch('/api/wms/stock-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`ตรวจสอบสต็อก WMS เรียบร้อย: ${result.message}`);
+        fetchOrders(); // Refresh orders list
+      } else {
+        const error = await response.json();
+        toast.error(`เกิดข้อผิดพลาด: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error checking WMS stock:', error);
+      toast.error('เกิดข้อผิดพลาดในการตรวจสอบสต็อก WMS');
+    }
+  };
+
   // ฟังก์ชันคำนวณหาเวลาหลัง cutoff ล่าสุด
   const getLatestCutoffDate = (cutoffTimeStr: string) => {
     const now = new Date();
@@ -666,6 +706,9 @@ const AdminOrdersPage = () => {
                           สถานะ
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          WMS
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           จัดการ
                         </th>
                       </tr>
@@ -744,6 +787,21 @@ const AdminOrdersPage = () => {
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status]}`}>
                               {statusIcons[order.status]} {statusLabels[order.status]}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col space-y-1">
+                              {order.wmsData?.stockCheckStatus && (
+                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${wmsStockStatusColors[order.wmsData.stockCheckStatus]}`}>
+                                  {wmsStockStatusLabels[order.wmsData.stockCheckStatus]}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => checkWMSStock(order._id)}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                ตรวจสอบสต็อก
+                              </button>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button

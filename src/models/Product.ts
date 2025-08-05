@@ -22,6 +22,14 @@ export interface IProduct extends Document {
     shippingFee?: number;
     unitPrice?: number;
   }[];
+  wmsConfig?: {
+    productCode: string;
+    lotGen: string;
+    locationBin: string;
+    lotMfg?: string;
+    adminUsername: string;
+    isEnabled: boolean;
+  };
   isAvailable?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -78,6 +86,17 @@ const productSchema = new Schema<IProduct>(
           ],
         },
       ],
+      required: false,
+    },
+    wmsConfig: {
+      type: {
+        productCode: { type: String, required: true, trim: true },
+        lotGen: { type: String, required: true, trim: true },
+        locationBin: { type: String, required: true, trim: true },
+        lotMfg: { type: String, required: false, trim: true },
+        adminUsername: { type: String, required: true, trim: true },
+        isEnabled: { type: Boolean, required: true, default: false }
+      },
       required: false,
     },
     shippingFee: {

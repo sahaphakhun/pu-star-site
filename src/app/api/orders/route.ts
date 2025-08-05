@@ -106,6 +106,38 @@ export async function POST(request: NextRequest) {
       ...(userId && { userId })
     });
 
+    // ตรวจสอบสต็อกผ่าน WMS อัตโนมัติหลังจากสร้างออเดอร์
+    try {
+      const stockCheckResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/wms/stock-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: order._id.toString()
+        })
+      });
+
+      if (stockCheckResponse.ok) {
+        const stockResult = await stockCheckResponse.json();
+        console.log('WMS Stock Check Result:', stockResult);
+        
+        // ถ้าสต็อกไม่เพียงพอ ให้เปลี่ยนสถานะออเดอร์เป็น pending และแจ้งเตือน
+        if (stockResult.overallStatus === 'insufficient') {
+          await Order.findByIdAndUpdate(order._id, {
+            status: 'pending',
+            'wmsData.stockCheckStatus': 'insufficient'
+          });
+          console.warn('Order created but stock insufficient:', order._id);
+        }
+      } else {
+        console.error('Failed to check stock via WMS:', await stockCheckResponse.text());
+      }
+    } catch (error) {
+      console.error('Error checking stock via WMS:', error);
+      // ไม่ให้ error ในการตรวจสอบสต็อกไปกระทบการสร้างออเดอร์
+    }
+
     // อัปเดตชื่อผู้ใช้จากออเดอร์หากยังไม่ได้ตั้งชื่อ
     if (userId && data.customerName) {
       try {
