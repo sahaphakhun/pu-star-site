@@ -180,6 +180,10 @@ const ProfilePage = () => {
   const [taxInvoiceInfo, setTaxInvoiceInfo] = useState<TaxInvoiceInfo | null>(null);
   const [isEditingTaxInvoice, setIsEditingTaxInvoice] = useState(false);
 
+  // States สำหรับการเลือกที่อยู่ในฟอร์มใบเสนอราคา
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddress, setShowNewAddress] = useState(false);
+
   // Calculate real customer data from orders
   const calculateCustomerLevel = () => {
     const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -503,7 +507,68 @@ const ProfilePage = () => {
     }
   };
 
+  // ฟังก์ชันตรวจสอบข้อมูลการจัดส่ง
+  const validateDeliveryInfo = () => {
+    // ตรวจสอบชื่อและเบอร์โทร
+    if (!orderFormData.deliveryAddress.name.trim()) {
+      toast.error('กรุณากรอกชื่อ-นามสกุล');
+      return false;
+    }
+    
+    if (!orderFormData.deliveryAddress.phone.trim()) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์');
+      return false;
+    }
+
+    // ตรวจสอบที่อยู่
+    if (selectedAddressId) {
+      // ใช้ที่อยู่ที่บันทึกไว้ - ไม่ต้องตรวจสอบเพิ่มเติม
+      return true;
+    } else {
+      // กรอกที่อยู่ใหม่ - ต้องตรวจสอบข้อมูลที่จำเป็น
+      const { province, district, houseNumber, postalCode } = orderFormData.deliveryAddress;
+      
+      if (!province.trim()) {
+        toast.error('กรุณากรอกจังหวัด');
+        return false;
+      }
+      
+      if (!district.trim()) {
+        toast.error('กรุณากรอกเขต/อำเภอ');
+        return false;
+      }
+      
+      if (!houseNumber.trim()) {
+        toast.error('กรุณากรอกบ้านเลขที่');
+        return false;
+      }
+      
+      if (!postalCode.trim()) {
+        toast.error('กรุณากรอกรหัสไปรษณี');
+        return false;
+      }
+      
+      // ตรวจสอบรูปแบบรหัสไปรษณี
+      if (!/^\d{5}$/.test(postalCode)) {
+        toast.error('รหัสไปรษณีต้องเป็นตัวเลข 5 หลัก');
+        return false;
+      }
+    }
+
+    // ตรวจสอบการเลือกวิธีจัดส่งสำหรับ Lalamove
+    if (orderFormData.deliveryMethod === 'lalamove' && !orderFormData.deliveryLocation) {
+      toast.error('กรุณาเลือกตำแหน่งสำหรับการจัดส่งด้วย Lalamove');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleCreateOrderFromQuote = async () => {
+    // ตรวจสอบข้อมูลก่อนส่ง
+    if (!validateDeliveryInfo()) {
+      return;
+    }
     if (!currentQuoteForOrder || !showOrderForm) {
       toast.error('ไม่พบข้อมูลใบเสนอราคา');
       return;
@@ -1477,6 +1542,10 @@ const ProfilePage = () => {
                       // เก็บข้อมูลใบเสนอราคาสำหรับสร้างออเดอร์
                       setCurrentQuoteForOrder(selectedQuoteRequest);
                       
+                      // รีเซ็ต state การเลือกที่อยู่
+                      setSelectedAddressId(null);
+                      setShowNewAddress(addresses.length === 0);
+
                       // เตรียมข้อมูลสำหรับฟอร์มสั่งซื้อ
                       setOrderFormData({
                         customerName: selectedQuoteRequest.customerName,
@@ -1602,7 +1671,95 @@ const ProfilePage = () => {
                   <div>
                     <h3 className="text-lg font-semibold mb-4">ข้อมูลการจัดส่ง</h3>
                     
+                    {/* การเลือกที่อยู่ที่บันทึกไว้ */}
+                    {addresses.length > 0 && !showNewAddress && (
+                      <div className="mb-4 space-y-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">เลือกที่อยู่ที่บันทึกไว้</label>
+                        {addresses.map((address: any) => (
+                          <div key={address._id} className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                            selectedAddressId === address._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          }`} onClick={() => { 
+                            setSelectedAddressId(address._id); 
+                            setShowNewAddress(false);
+                            
+                            // อัปเดตข้อมูลฟอร์ม
+                            if (typeof address.address === 'string') {
+                              // Legacy format
+                              setOrderFormData(prev => ({
+                                ...prev,
+                                customerName: address.name || prev.customerName,
+                                customerPhone: address.phone || prev.customerPhone,
+                                customerAddress: address.address,
+                                deliveryAddress: {
+                                  ...prev.deliveryAddress,
+                                  label: address.label || 'ที่อยู่',
+                                  name: address.name || prev.deliveryAddress.name,
+                                  phone: address.phone || prev.deliveryAddress.phone
+                                }
+                              }));
+                            } else {
+                              // New format
+                              setOrderFormData(prev => ({
+                                ...prev,
+                                customerName: address.name || prev.customerName,
+                                customerPhone: address.phone || prev.customerPhone,
+                                deliveryAddress: {
+                                  label: address.label || 'ที่อยู่',
+                                  name: address.name || prev.deliveryAddress.name,
+                                  phone: address.phone || prev.deliveryAddress.phone,
+                                  province: address.province || '',
+                                  district: address.district || '',
+                                  subDistrict: address.subDistrict || '',
+                                  postalCode: address.postalCode || '',
+                                  houseNumber: address.houseNumber || '',
+                                  lane: address.lane || '',
+                                  moo: address.moo || '',
+                                  road: address.road || ''
+                                }
+                              }));
+                            }
+                          }}>
+                            <div className="flex items-start space-x-3">
+                              <input
+                                type="radio"
+                                name="address"
+                                checked={selectedAddressId === address._id}
+                                onChange={() => {}}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-medium text-gray-900">{address.label || 'ที่อยู่'}</span>
+                                  {address.isDefault && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">ค่าเริ่มต้น</span>}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {typeof address.address === 'string' ? address.address : 
+                                    [address.houseNumber, address.lane ? `ซ.${address.lane}` : '', 
+                                     address.moo ? `หมู่ ${address.moo}` : '', address.road ? `ถ.${address.road}` : '',
+                                     address.subDistrict ? `ต.${address.subDistrict}` : '', 
+                                     address.district ? `อ.${address.district}` : '', 
+                                     address.province, address.postalCode].filter(Boolean).join(' ')
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <button 
+                          type="button" 
+                          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium"
+                          onClick={() => { 
+                            setShowNewAddress(true); 
+                            setSelectedAddressId(null);
+                          }}
+                        >
+                          + กรอกที่อยู่ใหม่
+                        </button>
+                      </div>
+                    )}
+                    
                     {/* Address Form - ใช้รูปแบบเดียวกับหน้า shop */}
+                    {(showNewAddress || addresses.length === 0) && (
                     <div className="space-y-4 mb-6">
                       
                       {/* 1. ชื่อ */}
@@ -1743,7 +1900,27 @@ const ProfilePage = () => {
                           />
                         </div>
                       </div>
+                      
+                      {/* ปุ่มกลับไปเลือกที่อยู่เดิม */}
+                      {addresses.length > 0 && (
+                        <div className="flex justify-end">
+                          <button 
+                            type="button" 
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                            onClick={() => { 
+                              setShowNewAddress(false); 
+                              setSelectedAddressId(null);
+                            }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            เลือกจากที่อยู่เดิม
+                          </button>
+                        </div>
+                      )}
                     </div>
+                    )}
 
                     {/* Delivery Method */}
                     <div className="mb-6">
