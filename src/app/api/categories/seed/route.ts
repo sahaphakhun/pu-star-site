@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 import Category from '@/models/Category';
 
 const defaultCategories = [
@@ -12,7 +12,7 @@ const defaultCategories = [
 
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase();
+    await connectDB();
 
     // ตรวจสอบว่ามี categories อยู่แล้วหรือไม่
     const existingCategories = await Category.find({});
