@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 import Category from '@/models/Category';
 import Product from '@/models/Product';
 import { categoryUpdateSchema } from '@/schemas/category';
-import { auth } from '@/lib/auth';
+import { verifyAuth } from '@/lib/auth';
 import { PERMISSIONS } from '@/constants/permissions';
 
 // GET: ดึงข้อมูลหมวดหมู่ตาม ID
@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await connectToDatabase();
+    await connectDB();
     
     const category = await Category.findById(params.id).lean();
     if (!category) {
@@ -36,19 +36,19 @@ export async function PUT(
 ) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await auth(request);
+    const session = await verifyAuth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'ไม่ได้รับอนุญาต' }, { status: 401 });
     }
 
-    if (!session.user.isAdmin && !session.user.permissions?.includes(PERMISSIONS.PRODUCTS_EDIT)) {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ในการแก้ไขหมวดหมู่' }, { status: 403 });
     }
 
     const body = await request.json();
     const validatedData = categoryUpdateSchema.parse(body);
 
-    await connectToDatabase();
+    await connectDB();
 
     // ตรวจสอบว่าหมวดหมู่มีอยู่จริง
     const existingCategory = await Category.findById(params.id);
@@ -99,16 +99,16 @@ export async function DELETE(
 ) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await auth(request);
+    const session = await verifyAuth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'ไม่ได้รับอนุญาต' }, { status: 401 });
     }
 
-    if (!session.user.isAdmin && !session.user.permissions?.includes(PERMISSIONS.PRODUCTS_DELETE)) {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ในการลบหมวดหมู่' }, { status: 403 });
     }
 
-    await connectToDatabase();
+    await connectDB();
 
     // ตรวจสอบว่าหมวดหมู่มีอยู่จริง
     const category = await Category.findById(params.id);
