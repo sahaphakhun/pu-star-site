@@ -37,7 +37,7 @@ export default async function RelatedArticles({
     });
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles?${queryParams}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/articles?${queryParams}`,
       { 
         next: { revalidate: 300 } // Cache for 5 minutes
       }

@@ -394,7 +394,7 @@ export default function CreateArticlePage() {
                     value={featuredImage}
                     onChange={(e) => setFeaturedImage(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/image.jpg"
+                    placeholder="https://www.winrichdynamic.com/image.jpg"
                   />
                 </div>
               </div>
@@ -587,7 +587,7 @@ export default function CreateArticlePage() {
                     value={seo.ogImage || ''}
                     onChange={(e) => setSeo(prev => ({ ...prev, ogImage: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/og-image.jpg"
+                    placeholder="https://www.winrichdynamic.com/og-image.jpg"
                   />
                 </div>
               </div>

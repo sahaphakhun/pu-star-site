@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     .sort({ updatedAt: -1 })
     .lean();
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://pustar.co.th';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com';
     
     // สร้าง XML sitemap
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

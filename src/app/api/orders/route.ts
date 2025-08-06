@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบสต็อกผ่าน WMS อัตโนมัติหลังจากสร้างออเดอร์
     try {
-      const stockCheckResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/wms/stock-check`, {
+      const stockCheckResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://www.winrichdynamic.com'}/api/wms/stock-check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

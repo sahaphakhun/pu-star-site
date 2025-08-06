@@ -18,7 +18,7 @@ export function startAutoCartClearScheduler() {
       console.log('[SCHEDULER] Triggering auto cart clear at 00:00');
       
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/worker/clear-carts`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/worker/clear-carts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

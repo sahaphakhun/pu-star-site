@@ -96,7 +96,7 @@ db.products.find({}).limit(5)
 ```env
 MONGODB_URI=mongodb+srv://...
 JWT_SECRET=your-secret
-NEXTAUTH_URL=https://your-app.up.railway.app
+NEXTAUTH_URL=https://www.winrichdynamic.com
 NEXTAUTH_SECRET=your-nextauth-secret
 
 # WMS Configuration

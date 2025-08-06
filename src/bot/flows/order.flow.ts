@@ -98,7 +98,7 @@ export async function handleAddress(psid: string, address: string, nameOverride?
     if (mu?.userId) {
       // ถ้ามี userId แสดงว่าเป็นผู้ใช้ที่ลงทะเบียนแล้ว
       // ดึงข้อมูลที่อยู่ที่บันทึกไว้
-      const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || '';
+      const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.winrichdynamic.com';
       const origin = originEnv.startsWith('http') ? originEnv : `https://${originEnv.replace(/^https?:\/\//, '')}`;
       const res = await fetch(`${origin.replace(/\/$/, '')}/api/auth/me`, {
         headers: { Cookie: `userId=${mu.userId}` }
@@ -271,7 +271,7 @@ export async function finalizeOrder(psid: string) {
 
   try {
     // สร้าง absolute URL ให้ถูกต้อง (Node fetch ไม่รองรับ relative path)
-    const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || '';
+    const originEnv = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.winrichdynamic.com';
     const origin = originEnv.startsWith('http') ? originEnv : `https://${originEnv.replace(/^https?:\/\//, '')}`;
     const res = await fetch(`${origin.replace(/\/$/, '')}/api/orders`, {
       method: 'POST',

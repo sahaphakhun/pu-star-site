@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   const { slug } = await params;
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/articles/${slug}`, {
       next: { revalidate: 60 } // Revalidate every minute
     });
 
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     const data = await response.json();
     const article: IArticle = data.data.article;
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com';
     
     return {
       title: article.seo.title,
@@ -84,7 +84,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   let navigation: { previous: IArticle | null; next: IArticle | null } = { previous: null, next: null };
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/articles/${slug}`, {
       next: { revalidate: 60 } // Revalidate every minute
     });
 
@@ -124,7 +124,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     "@type": "Article",
     "headline": article.title,
     "description": article.excerpt,
-    "image": article.featuredImage ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${article.featuredImage}` : undefined,
+            "image": article.featuredImage ? `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}${article.featuredImage}` : undefined,
     "author": {
       "@type": "Person",
       "name": article.author.name,
@@ -135,14 +135,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
       "name": "PU STAR",
       "logo": {
         "@type": "ImageObject",
-        "url": `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/logo.jpg`
+                  "url": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/logo.jpg`
       }
     },
     "datePublished": article.publishedAt,
     "dateModified": article.updatedAt,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/articles/${article.slug}`
+              "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/articles/${article.slug}`
     },
     "articleSection": article.category.name,
     "keywords": article.tags.join(', '),

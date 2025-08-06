@@ -297,7 +297,7 @@ export async function handleEvent(event: MessagingEvent) {
     // เมนูสั่งซื้อผ่านเว็บไซต์
     if (payload === 'Q_ORDER_WEBSITE') {
       await disableAIForUser(psid);
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pu-star-site-production.up.railway.app';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.winrichdynamic.com';
       const shopUrl = `${siteUrl.replace(/\/$/, '')}/shop`;
       return callSendAPI(psid, {
         attachment: {

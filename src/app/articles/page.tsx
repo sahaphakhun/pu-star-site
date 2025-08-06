@@ -48,7 +48,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
       ...(search && { search })
     });
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles?${queryParams}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/articles?${queryParams}`, {
       next: { revalidate: 300 }
     });
 
@@ -60,7 +60,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
     }
 
     // ดึงข้อมูลแท็กทั้งหมด
-    const tagsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/tags?limit=100`, {
+    const tagsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/api/tags?limit=100`, {
       next: { revalidate: 600 }
     });
 

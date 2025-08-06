@@ -657,7 +657,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
                     value={seo.canonicalUrl || ''}
                     onChange={(e) => setSeo(prev => ({ ...prev, canonicalUrl: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="https://example.com/articles/slug"
+                    placeholder="https://www.winrichdynamic.com/articles/slug"
                   />
                 </div>
               </div>

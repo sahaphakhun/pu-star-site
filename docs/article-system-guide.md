@@ -120,7 +120,7 @@ src/
 MONGODB_URI=mongodb://...
 
 # Base URL
-NEXT_PUBLIC_BASE_URL=https://yourdomain.com
+NEXT_PUBLIC_BASE_URL=https://www.winrichdynamic.com
 
 # Image Upload (ถ้าใช้ Cloudinary)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
