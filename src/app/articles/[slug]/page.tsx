@@ -1,244 +1,435 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Metadata } from 'next';
+import ArticleRenderer from '@/components/ArticleRenderer';
+import { IArticle } from '@/models/Article';
 
-// สมมติข้อมูลบทความ (ในอนาคตสามารถดึงจาก API หรือ CMS)
-const articlesData = [
-  {
-    id: "1",
-    title: "วิธีเลือกซีลแลนท์ให้เหมาะกับงาน",
-    slug: "how-to-choose-sealant",
-    category: "คู่มือการใช้งาน",
-    imageSrc: "/blog-sealant.jpg",
-    excerpt: "แนะนำการเลือกใช้ซีลแลนท์แต่ละประเภทให้เหมาะกับงานก่อสร้างและตกแต่งบ้าน...",
-    publishDate: "25 มิถุนายน 2023",
-    author: "ทีมงาน PU STAR",
-    authorImage: "/author-profile.jpg",
-    content: `
-      <p class="mb-4">ซีลแลนท์เป็นวัสดุสำคัญในงานก่อสร้างและตกแต่งบ้าน ที่ช่วยป้องกันการรั่วซึมของน้ำและอากาศ รวมถึงช่วยในการยึดติด แต่ซีลแลนท์มีหลายประเภทที่มีคุณสมบัติแตกต่างกัน การเลือกใช้ให้เหมาะกับงานจึงเป็นสิ่งสำคัญ</p>
-      
-      <h2 class="text-2xl font-bold text-primary mt-8 mb-4">ประเภทของซีลแลนท์</h2>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">1. ซิลิโคนซีลแลนท์ (Silicone Sealant)</h3>
-      <p class="mb-4">เป็นซีลแลนท์ที่มีความยืดหยุ่นสูง ทนต่อความร้อนและรังสี UV ได้ดี ไม่เป็นพิษเมื่อแห้งตัว นิยมใช้ในงานต่อไปนี้:</p>
-      <ul class="list-disc pl-6 mb-4">
-        <li>งานยาแนวกระจก อลูมิเนียม และวัสดุที่ไม่มีรูพรุน</li>
-        <li>ห้องน้ำ ห้องครัว เนื่องจากทนความชื้นได้ดี</li>
-        <li>งานภายนอกอาคารที่สัมผัสแสงแดดโดยตรง</li>
-      </ul>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">2. อะคริลิคซีลแลนท์ (Acrylic Sealant)</h3>
-      <p class="mb-4">เป็นซีลแลนท์ที่มีราคาถูก ทาสีทับได้ แต่ความยืดหยุ่นน้อยกว่าซิลิโคน เหมาะกับ:</p>
-      <ul class="list-disc pl-6 mb-4">
-        <li>งานยาแนวรอยต่อภายในที่มีการขยับตัวน้อย</li>
-        <li>รอยแตกร้าวบนผนัง ฝ้าเพดาน</li>
-        <li>งานที่ต้องทาสีทับ</li>
-      </ul>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">3. โพลียูรีเทนซีลแลนท์ (Polyurethane Sealant)</h3>
-      <p class="mb-4">มีความแข็งแรงสูง ยึดเกาะวัสดุได้หลากหลาย ทาสีทับได้ แต่ไม่ทนต่อรังสี UV เท่าซิลิโคน เหมาะกับ:</p>
-      <ul class="list-disc pl-6 mb-4">
-        <li>งานโครงสร้างอาคารที่ต้องการความแข็งแรง</li>
-        <li>รอยต่อพื้น ผนัง ที่มีการขยับตัวสูง</li>
-        <li>งานยาแนวคอนกรีต ไม้ โลหะ</li>
-      </ul>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">4. ซีลแลนท์ผสม (Hybrid Sealant)</h3>
-      <p class="mb-4">เป็นซีลแลนท์รุ่นใหม่ที่ผสมคุณสมบัติของซิลิโคนและโพลียูรีเทน มีความยืดหยุ่นดี ทาสีทับได้ และทนรังสี UV ได้ดี เหมาะกับ:</p>
-      <ul class="list-disc pl-6 mb-4">
-        <li>งานที่ต้องการคุณสมบัติรอบด้าน</li>
-        <li>งานภายนอกที่ต้องทาสีทับ</li>
-      </ul>
-      
-      <h2 class="text-2xl font-bold text-primary mt-8 mb-4">ปัจจัยในการเลือกซีลแลนท์</h2>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">1. วัสดุที่ต้องการยึดติด</h3>
-      <p class="mb-4">ตรวจสอบว่าซีลแลนท์นั้นๆ เหมาะกับวัสดุที่จะใช้งานหรือไม่ เช่น ซิลิโคนไม่เหมาะกับการยึดติดกับคอนกรีต</p>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">2. สภาพแวดล้อมการใช้งาน</h3>
-      <p class="mb-4">พิจารณาว่าเป็นงานภายในหรือภายนอก สัมผัสความชื้นหรือไม่ เช่น งานภายนอกควรใช้ซีลแลนท์ที่ทน UV</p>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">3. การขยายตัวของรอยต่อ</h3>
-      <p class="mb-4">หากรอยต่อมีการขยับตัวมาก ควรเลือกซีลแลนท์ที่มีความยืดหยุ่นสูง เช่น ซิลิโคนหรือโพลียูรีเทน</p>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">4. ความต้องการในการทาสีทับ</h3>
-      <p class="mb-4">หากต้องการทาสีทับซีลแลนท์ ควรเลือกอะคริลิคหรือโพลียูรีเทน เพราะซิลิโคนไม่สามารถทาสีทับได้</p>
-      
-      <div class="bg-primary/5 p-4 rounded-lg my-8">
-        <h3 class="text-xl font-bold text-primary mb-3">คำแนะนำจากผู้เชี่ยวชาญ</h3>
-        <p>การเลือกใช้ซีลแลนท์ที่เหมาะสมจะช่วยยืดอายุการใช้งานและเพิ่มประสิทธิภาพของงาน หากไม่แน่ใจว่าควรเลือกใช้ประเภทใด สามารถปรึกษาทีมงาน PU STAR เพื่อขอคำแนะนำเพิ่มเติมได้</p>
-      </div>
-      
-      <p class="mb-4">นอกจากการเลือกประเภทซีลแลนท์ที่เหมาะสมแล้ว วิธีการใช้งานที่ถูกต้องก็มีความสำคัญไม่แพ้กัน ติดตามบทความต่อไปของเราเพื่อเรียนรู้เทคนิคการใช้งานซีลแลนท์อย่างมืออาชีพ</p>
-    `,
-    relatedArticles: ["2", "3", "4"]
-  },
-  {
-    id: "2",
-    title: "เทคนิคการใช้งานกาว PU อย่างมืออาชีพ",
-    slug: "pu-adhesive-professional-techniques",
-    category: "เทคนิคการใช้งาน",
-    imageSrc: "/blog-adhesive.jpg",
-    excerpt: "เผยเคล็ดลับการใช้งานกาว PU ให้ได้ประสิทธิภาพสูงสุดและปลอดภัย...",
-    publishDate: "18 มิถุนายน 2023",
-    author: "ทีมงาน PU STAR",
-    authorImage: "/author-profile.jpg",
-    content: `
-      <p class="mb-4">กาว PU หรือ Polyurethane Adhesive เป็นกาวที่มีความแข็งแรงสูง ทนทานต่อแรงกระแทก และสามารถใช้ได้กับวัสดุหลากหลาย ไม่ว่าจะเป็นไม้ โลหะ พลาสติก หรือเซรามิค ในบทความนี้เราจะแนะนำเทคนิคการใช้งานกาว PU อย่างมืออาชีพ</p>
-      
-      <h2 class="text-2xl font-bold text-primary mt-8 mb-4">เทคนิคการใช้งานกาว PU</h2>
-      
-      <h3 class="text-xl font-bold text-primary mt-6 mb-3">1. การเตรียมพื้นผิว</h3>
-      <p class="mb-4">พื้นผิวที่สะอาดและแห้งเป็นสิ่งสำคัญในการยึดติดที่ดี:</p>
-      <ul class="list-disc pl-6 mb-4">
-        <li>ทำความสะอาดพื้นผิวให้ปราศจากฝุ่น น้ำมัน และสิ่งสกปรก</li>
-        <li>ขัดพื้นผิวเรียบด้วยกระดาษทรายละเอียดเพื่อเพิ่มการยึดเกาะ</li>
-        <li>เช็ดด้วยแอลกอฮอล์หรือสารทำความสะอาดที่เหมาะสม</li>
-        <li>รอให้พื้นผิวแห้งสนิทก่อนทากาว</li>
-      </ul>
-      
-      <p class="mb-4">โปรดเพิ่มเนื้อหาเกี่ยวกับเทคนิคการใช้งานกาว PU ต่อไป...</p>
-    `,
-    relatedArticles: ["1", "3", "5"]
-  }
-];
+interface ArticlePageProps {
+  params: Promise<{ slug: string }>;
+}
 
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+// Generate metadata for SEO
+export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  // ค้นหาบทความจาก slug
-  const article = articlesData.find((article) => article.slug === slug);
   
-  // ถ้าไม่พบบทความให้แสดงหน้า 404
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/${slug}`, {
+      next: { revalidate: 60 } // Revalidate every minute
+    });
+
+    if (!response.ok) {
+      return {
+        title: 'ไม่พบบทความ - PU STAR',
+        description: 'ไม่พบบทความที่คุณต้องการ'
+      };
+    }
+
+    const data = await response.json();
+    const article: IArticle = data.data.article;
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
+    return {
+      title: article.seo.title,
+      description: article.seo.description,
+      keywords: article.seo.keywords,
+      authors: [{ name: article.author.name }],
+      openGraph: {
+        title: article.seo.ogTitle || article.seo.title,
+        description: article.seo.ogDescription || article.seo.description,
+        images: article.seo.ogImage || article.featuredImage ? [{
+          url: article.seo.ogImage || article.featuredImage!,
+          width: 1200,
+          height: 630,
+          alt: article.title
+        }] : undefined,
+        type: 'article',
+        publishedTime: article.publishedAt,
+        modifiedTime: article.updatedAt,
+        section: article.category.name,
+        tags: article.tags,
+        url: `${baseUrl}/articles/${article.slug}`
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: article.seo.ogTitle || article.seo.title,
+        description: article.seo.ogDescription || article.seo.description,
+        images: article.seo.ogImage || article.featuredImage ? [article.seo.ogImage || article.featuredImage!] : undefined
+      },
+      alternates: {
+        canonical: article.seo.canonicalUrl || `${baseUrl}/articles/${article.slug}`
+      },
+      other: {
+        'article:published_time': article.publishedAt,
+        'article:modified_time': article.updatedAt,
+        'article:section': article.category.name,
+        'article:tag': article.tags.join(','),
+        'article:author': article.author.name
+      }
+    };
+  } catch (error) {
+    console.error('Error generating metadata:', error);
+    return {
+      title: 'บทความ - PU STAR',
+      description: 'อ่านบทความและเทคนิคต่างๆ จาก PU STAR'
+    };
+  }
+}
+
+export default async function ArticlePage({ params }: ArticlePageProps) {
+  const { slug } = await params;
+  
+  let article: IArticle | null = null;
+  let relatedArticles: IArticle[] = [];
+  let navigation: { previous: IArticle | null; next: IArticle | null } = { previous: null, next: null };
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/articles/${slug}`, {
+      next: { revalidate: 60 } // Revalidate every minute
+    });
+
+    if (!response.ok) {
+      notFound();
+    }
+
+    const data = await response.json();
+    article = data.data.article;
+    relatedArticles = data.data.relatedArticles || [];
+    navigation = data.data.navigation || { previous: null, next: null };
+
+  } catch (error) {
+    console.error('Error fetching article:', error);
+    notFound();
+  }
+
   if (!article) {
     notFound();
   }
-  
-  // ดึงบทความที่เกี่ยวข้อง
-  const relatedArticles = article.relatedArticles
-    ? articlesData.filter((a) => article.relatedArticles.includes(a.id))
-    : [];
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatReadingTime = (minutes: number) => {
+    return `${minutes} นาที`;
+  };
+
+  // Structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": article.title,
+    "description": article.excerpt,
+    "image": article.featuredImage ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${article.featuredImage}` : undefined,
+    "author": {
+      "@type": "Person",
+      "name": article.author.name,
+      "email": article.author.email
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "PU STAR",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/logo.jpg`
+      }
+    },
+    "datePublished": article.publishedAt,
+    "dateModified": article.updatedAt,
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/articles/${article.slug}`
+    },
+    "articleSection": article.category.name,
+    "keywords": article.tags.join(', '),
+    "wordCount": article.readingTime * 200, // Approximate word count
+    "timeRequired": `PT${article.readingTime}M`
+  };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8">
-      <div className="mb-4">
-        <Link href="/articles" className="text-accent hover:underline flex items-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          กลับไปยังบทความทั้งหมด
-        </Link>
-      </div>
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData)
+        }}
+      />
 
-      <article>
-        {/* ส่วนหัวบทความ */}
-        <header className="mb-8">
-          <div className="mb-4">
-            <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
-              {article.category}
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
-            {article.title}
-          </h1>
-          <div className="flex items-center gap-4 text-gray-600 mb-6">
-            <div className="flex items-center gap-2">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                <Image 
-                  src={article.authorImage} 
-                  alt={article.author} 
-                  fill
-                  className="object-cover"
+      <div className="max-w-4xl mx-auto p-6 md:p-8">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <nav className="flex text-sm text-gray-600" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-primary">หน้าแรก</Link>
+            <span className="mx-2">/</span>
+            <Link href="/articles" className="hover:text-primary">บทความ</Link>
+            <span className="mx-2">/</span>
+            <Link 
+              href={`/articles?category=${article.category.slug}`} 
+              className="hover:text-primary"
+            >
+              {article.category.name}
+            </Link>
+            <span className="mx-2">/</span>
+            <span className="text-gray-400">{article.title}</span>
+          </nav>
+        </div>
+
+        <article className="bg-white rounded-lg shadow-sm">
+          {/* Article Header */}
+          <header className="mb-8">
+            {/* Category Badge */}
+            <div className="mb-4">
+              <Link 
+                href={`/articles?category=${article.category.slug}`}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                style={{ 
+                  backgroundColor: article.category.color ? `${article.category.color}20` : '#f3f4f6',
+                  color: article.category.color || '#6b7280'
+                }}
+              >
+                {article.category.name}
+              </Link>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
+              {article.title}
+            </h1>
+
+            {/* Meta Information */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
+              <div className="flex items-center gap-2">
+                {article.author.avatar && (
+                  <img
+                    src={article.author.avatar}
+                    alt={article.author.name}
+                    className="w-6 h-6 rounded-full"
+                  />
+                )}
+                <span>โดย {article.author.name}</span>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <time dateTime={article.publishedAt}>
+                  {formatDate(article.publishedAt!)}
+                </time>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>อ่าน {formatReadingTime(article.readingTime)}</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>{article.viewCount.toLocaleString()} ครั้ง</span>
+              </div>
+            </div>
+
+            {/* Featured Image */}
+            {article.featuredImage && (
+              <div className="mb-8">
+                <Image
+                  src={article.featuredImage}
+                  alt={article.title}
+                  width={800}
+                  height={400}
+                  className="w-full h-64 md:h-96 object-cover rounded-lg shadow-md"
+                  priority
                 />
               </div>
-              <span>{article.author}</span>
+            )}
+
+            {/* Excerpt */}
+            <div className="text-lg text-gray-700 leading-relaxed mb-8 p-4 bg-gray-50 rounded-lg border-l-4 border-primary">
+              {article.excerpt}
             </div>
-            <span>|</span>
-            <span>{article.publishDate}</span>
-          </div>
-          <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden">
-            <Image
-              src={article.imageSrc}
-              alt={article.title}
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        </header>
-        
-        {/* เนื้อหาบทความ */}
-        <div 
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
-        
-        {/* แชร์บทความ */}
-        <div className="mt-12 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">แชร์บทความนี้</h3>
-          <div className="flex gap-3">
-            <button className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600" aria-label="Share on Facebook">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
-              </svg>
-            </button>
-            <button className="p-2 bg-blue-400 text-white rounded-full hover:bg-blue-500" aria-label="Share on Twitter">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
-              </svg>
-            </button>
-            <button className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600" aria-label="Share on Line">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
-              </svg>
-            </button>
-            <button className="p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300" aria-label="Copy Link">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </article>
-      
-      {/* บทความที่เกี่ยวข้อง */}
-      {relatedArticles.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold text-primary mb-6">บทความที่เกี่ยวข้อง</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedArticles.map((relatedArticle) => (
-              <div
-                key={relatedArticle.id}
-                className="bg-white rounded-lg overflow-hidden shadow border border-gray-100 hover:shadow-md transition-shadow"
-              >
-                <Link href={`/articles/${relatedArticle.slug}`}>
-                  <div className="relative h-40 w-full">
-                    <Image
-                      src={relatedArticle.imageSrc}
-                      alt={relatedArticle.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </Link>
-                <div className="p-4">
-                  <div className="mb-2">
-                    <span className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">
-                      {relatedArticle.category}
-                    </span>
-                  </div>
-                  <Link href={`/articles/${relatedArticle.slug}`}>
-                    <h3 className="font-bold text-primary mb-2 hover:text-accent transition-colors">
-                      {relatedArticle.title}
-                    </h3>
+
+            {/* Tags */}
+            {article.tags && article.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-8">
+                {article.tags.map((tag, index) => (
+                  <Link
+                    key={index}
+                    href={`/articles?tag=${encodeURIComponent(tag)}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    #{tag}
                   </Link>
-                  <p className="text-gray-600 text-sm">{relatedArticle.excerpt}</p>
+                ))}
+              </div>
+            )}
+          </header>
+
+          {/* Article Content */}
+          <div className="prose prose-lg max-w-none">
+            <ArticleRenderer content={article.content} />
+          </div>
+
+          {/* Article Footer */}
+          <footer className="mt-12 pt-8 border-t border-gray-200">
+            {/* Author Info */}
+            <div className="bg-gray-50 rounded-lg p-6 mb-8">
+              <div className="flex items-start gap-4">
+                {article.author.avatar && (
+                  <img
+                    src={article.author.avatar}
+                    alt={article.author.name}
+                    className="w-16 h-16 rounded-full"
+                  />
+                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    เกี่ยวกับ {article.author.name}
+                  </h3>
+                  <p className="text-gray-600 mb-2">
+                    ทีมผู้เชี่ยวชาญด้านผลิตภัณฑ์ PU และวัสดุก่อสร้าง พร้อมแบ่งปันความรู้และประสบการณ์เพื่อช่วยให้คุณเลือกใช้ผลิตภัณฑ์ได้อย่างเหมาะสม
+                  </p>
+                  {article.author.email && (
+                    <p className="text-sm text-gray-500">
+                      ติดต่อ: {article.author.email}
+                    </p>
+                  )}
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Share Buttons */}
+            <div className="flex items-center gap-4 mb-8">
+              <span className="text-sm font-medium text-gray-700">แชร์บทความ:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const url = window.location.href;
+                    const text = article.title;
+                    if (navigator.share) {
+                      navigator.share({ title: text, url });
+                    } else {
+                      navigator.clipboard.writeText(url);
+                      alert('คัดลอกลิงก์แล้ว!');
+                    }
+                  }}
+                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                  title="แชร์"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </footer>
+        </article>
+
+        {/* Navigation */}
+        {(navigation.previous || navigation.next) && (
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {navigation.previous && (
+              <Link
+                href={`/articles/${navigation.previous.slug}`}
+                className="p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group"
+              >
+                <div className="text-sm text-gray-500 mb-1">บทความก่อนหน้า</div>
+                <div className="font-medium text-gray-900 group-hover:text-primary">
+                  {navigation.previous.title}
+                </div>
+              </Link>
+            )}
+            {navigation.next && (
+              <Link
+                href={`/articles/${navigation.next.slug}`}
+                className="p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group text-right"
+              >
+                <div className="text-sm text-gray-500 mb-1">บทความถัดไป</div>
+                <div className="font-medium text-gray-900 group-hover:text-primary">
+                  {navigation.next.title}
+                </div>
+              </Link>
+            )}
           </div>
-        </section>
-      )}
-    </div>
+        )}
+
+        {/* Related Articles */}
+        {relatedArticles.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">บทความที่เกี่ยวข้อง</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {relatedArticles.map((relatedArticle) => (
+                <article
+                  key={relatedArticle._id}
+                  className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                >
+                  <Link href={`/articles/${relatedArticle.slug}`}>
+                    {relatedArticle.featuredImage && (
+                      <div className="relative h-48 w-full">
+                        <Image
+                          src={relatedArticle.featuredImage}
+                          alt={relatedArticle.title}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                  </Link>
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span 
+                        className="text-xs font-medium px-2 py-1 rounded-full"
+                        style={{ 
+                          backgroundColor: relatedArticle.category.color ? `${relatedArticle.category.color}20` : '#f3f4f6',
+                          color: relatedArticle.category.color || '#6b7280'
+                        }}
+                      >
+                        {relatedArticle.category.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {formatDate(relatedArticle.publishedAt!)}
+                      </span>
+                    </div>
+                    <Link href={`/articles/${relatedArticle.slug}`}>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-primary transition-colors line-clamp-2">
+                        {relatedArticle.title}
+                      </h3>
+                    </Link>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">{relatedArticle.excerpt}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{formatReadingTime(relatedArticle.readingTime)}</span>
+                      <span>{relatedArticle.viewCount.toLocaleString()} ครั้ง</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Back to Articles */}
+        <div className="mt-12 text-center">
+          <Link
+            href="/articles"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            กลับไปยังบทความทั้งหมด
+          </Link>
+        </div>
+      </div>
+    </>
   );
-} 
+}

@@ -45,6 +45,17 @@ export const PERMISSIONS = {
   DASHBOARD_VIEW: 'dashboard.view',
   REPORTS_VIEW: 'reports.view',
   DATA_EXPORT: 'data.export',
+
+  // การจัดการบทความ
+  ARTICLES_VIEW: 'articles.view',
+  ARTICLES_CREATE: 'articles.create',
+  ARTICLES_EDIT: 'articles.edit',
+  ARTICLES_DELETE: 'articles.delete',
+  ARTICLES_PUBLISH: 'articles.publish',
+  ARTICLES_SCHEDULE: 'articles.schedule',
+  ARTICLES_CATEGORIES_MANAGE: 'articles.categories.manage',
+  ARTICLES_SEO_MANAGE: 'articles.seo.manage',
+  ARTICLES_IMAGES_UPLOAD: 'articles.images.upload',
 } as const;
 
 // สร้าง array ของสิทธิ์ทั้งหมด
