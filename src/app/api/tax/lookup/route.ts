@@ -23,15 +23,30 @@ export async function GET(request: NextRequest) {
     // เรียก API ของกรมพัฒนาธุรกิจการค้า (ใช้ endpoint ใหม่ตามเอกสาร)
     const mocApiUrl = `https://dataapi.moc.go.th/juristic?juristic_id=${taxId}`;
     
-    const response = await fetch(mocApiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; TaxLookupBot/1.0)'
-      },
-      // ตั้งค่า timeout 10 วินาที
-      signal: AbortSignal.timeout(10000)
-    });
+    // เพิ่ม timeout 30 วินาที และ retry logic
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    let response;
+    try {
+      response = await fetch(mocApiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; TaxLookupBot/1.0)',
+          'Cache-Control': 'no-cache'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('TIMEOUT');
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
       throw new Error(`API response not ok: ${response.status}`);
@@ -70,11 +85,27 @@ export async function GET(request: NextRequest) {
     console.error('Tax lookup error:', error);
     
     // จัดการ error ต่างๆ
-    if (error.name === 'TimeoutError') {
+    if (error.message === 'TIMEOUT' || error.name === 'AbortError') {
       return NextResponse.json({
         success: false,
-        message: 'การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง'
+        message: 'การเชื่อมต่อหมดเวลา เซิร์ฟเวอร์กรมพัฒนาธุรกิจการค้าอาจจะช้า กรุณาลองใหม่อีกครั้ง'
       }, { status: 408 });
+    }
+
+    // จัดการ network errors
+    if (error.message?.includes('fetch') || error.code === 'ENOTFOUND') {
+      return NextResponse.json({
+        success: false,
+        message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์กรมพัฒนาธุรกิจการค้าได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'
+      }, { status: 503 });
+    }
+
+    // จัดการ API response errors
+    if (error.message?.includes('API response not ok')) {
+      return NextResponse.json({
+        success: false,
+        message: 'เซิร์ฟเวอร์กรมพัฒนาธุรกิจการค้าขัดข้อง กรุณาลองใหม่ภายหลัง'
+      }, { status: 502 });
     }
 
     return NextResponse.json({
