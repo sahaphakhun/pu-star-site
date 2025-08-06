@@ -48,13 +48,11 @@ const tagSchema = new Schema<ITag>(
     },
     createdBy: {
       type: String,
-      required: [true, 'ต้องระบุผู้สร้าง'],
-      match: [/^[0-9]{10}$/, 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก']
+      required: [true, 'ต้องระบุผู้สร้าง']
     },
     updatedBy: {
       type: String,
-      required: [true, 'ต้องระบุผู้แก้ไข'],
-      match: [/^[0-9]{10}$/, 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก']
+      required: [true, 'ต้องระบุผู้แก้ไข']
     }
   },
   {
@@ -64,8 +62,7 @@ const tagSchema = new Schema<ITag>(
   }
 );
 
-// Indexes
-tagSchema.index({ slug: 1 });
+// Indexes (เอา slug ออกเพราะมี unique: true แล้ว)
 tagSchema.index({ name: 1 });
 tagSchema.index({ articleCount: -1 });
 

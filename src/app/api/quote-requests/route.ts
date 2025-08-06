@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
     await connectDB();
     
     // ตรวจสอบการยืนยันตัวตน
-    const authResult = await verifyToken(request);
-    if (!authResult.valid) {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       items: data.items,
       totalAmount: data.totalAmount,
       taxInvoice: data.taxInvoice,
-      userId: authResult.decoded?.userId,
+      userId: decodedToken.userId,
       status: 'pending'
     });
 
@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์แอดมิน
-    const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken || decodedToken.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 

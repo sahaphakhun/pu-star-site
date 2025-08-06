@@ -9,12 +9,12 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     // ตรวจสอบการยืนยันตัวตน
-    const authResult = await verifyToken(request);
-    if (!authResult.valid) {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 401 });
     }
 
-    const userId = authResult.decoded?.userId;
+    const userId = decodedToken.userId;
     
     if (!userId) {
       return NextResponse.json({ error: 'ไม่พบข้อมูลผู้ใช้' }, { status: 400 });

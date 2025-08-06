@@ -13,8 +13,8 @@ export async function POST(
 ) {
   try {
     // ตรวจสอบสิทธิ์แอดมิน
-    const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken || decodedToken.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 
@@ -45,7 +45,7 @@ export async function POST(
     if (quoteFileUrl) {
       quoteRequest.quoteFileUrl = quoteFileUrl;
     }
-    quoteRequest.quotedBy = authResult.decoded.userId;
+    quoteRequest.quotedBy = decodedToken.userId;
     quoteRequest.quotedAt = new Date();
 
     await quoteRequest.save();

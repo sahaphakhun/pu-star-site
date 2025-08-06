@@ -213,12 +213,13 @@ export default function AdminArticlesPage() {
           {canCreate && (
             <Link
               href="/admin/articles/create"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              สร้างบทความใหม่
+              <span className="text-lg">สร้างบทความใหม่</span>
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
             </Link>
           )}
         </div>

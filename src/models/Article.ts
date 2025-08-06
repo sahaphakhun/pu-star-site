@@ -226,13 +226,11 @@ const articleSchema = new Schema<IArticle>(
     comments: { type: commentsSchema, default: { enabled: true, count: 0 } },
     createdBy: {
       type: String,
-      required: [true, 'ต้องระบุผู้สร้าง'],
-      match: [/^[0-9]{10}$/, 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก']
+      required: [true, 'ต้องระบุผู้สร้าง']
     },
     updatedBy: {
       type: String,
-      required: [true, 'ต้องระบุผู้แก้ไข'],
-      match: [/^[0-9]{10}$/, 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก']
+      required: [true, 'ต้องระบุผู้แก้ไข']
     }
   },
   {
@@ -242,8 +240,7 @@ const articleSchema = new Schema<IArticle>(
   }
 );
 
-// Indexes สำหรับการค้นหา
-articleSchema.index({ slug: 1 });
+// Indexes สำหรับการค้นหา (เอา slug ออกเพราะมี unique: true แล้ว)
 articleSchema.index({ status: 1, publishedAt: -1 });
 articleSchema.index({ 'tags.slug': 1, status: 1 }); // เปลี่ยนจาก category เป็น tags
 articleSchema.index({ 'tags.name': 1, status: 1 }); // เพิ่ม index สำหรับชื่อแท็ก

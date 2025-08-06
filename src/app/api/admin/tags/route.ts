@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
     const tagData = {
       ...body,
       articleCount: 0,
-      createdBy: decodedToken.phoneNumber,
-      updatedBy: decodedToken.phoneNumber
+      createdBy: decodedToken.phoneNumber || decodedToken.userId,
+      updatedBy: decodedToken.phoneNumber || decodedToken.userId
     };
 
     // สร้างแท็กใหม่

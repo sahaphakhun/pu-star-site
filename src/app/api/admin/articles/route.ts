@@ -184,8 +184,8 @@ export async function POST(request: NextRequest) {
         enabled: body.comments?.enabled !== false,
         count: 0
       },
-      createdBy: decodedToken.phoneNumber,
-      updatedBy: decodedToken.phoneNumber
+      createdBy: decodedToken.phoneNumber || decodedToken.userId,
+      updatedBy: decodedToken.phoneNumber || decodedToken.userId
     };
 
     // สร้างบทความใหม่

@@ -142,7 +142,7 @@ export async function PUT(
     // เตรียมข้อมูลสำหรับอัพเดต
     const updateData = {
       ...body,
-      updatedBy: decodedToken.phoneNumber
+              updatedBy: decodedToken.phoneNumber || decodedToken.userId
     };
 
     // ถ้าเป็นการเผยแพร่ครั้งแรก ให้กำหนด publishedAt
