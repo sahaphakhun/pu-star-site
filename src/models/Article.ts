@@ -65,8 +65,8 @@ export interface ISEOMetadata {
   structuredData?: any; // JSON-LD structured data
 }
 
-// Interface สำหรับ Article Category
-export interface IArticleCategory {
+// Interface สำหรับ Article Tag
+export interface IArticleTag {
   name: string;
   slug: string;
   description?: string;
@@ -80,8 +80,7 @@ export interface IArticle extends Document {
   excerpt: string;
   featuredImage?: string;
   content: IContentBlock[];
-  category: IArticleCategory;
-  tags: string[];
+  tags: IArticleTag[]; // เปลี่ยนเป็น array ของ tag objects
   author: {
     name: string;
     email?: string;
@@ -149,8 +148,8 @@ const seoMetadataSchema = new Schema({
   structuredData: { type: Schema.Types.Mixed }
 }, { _id: false });
 
-// Schema สำหรับ Article Category
-const articleCategorySchema = new Schema({
+// Schema สำหรับ Article Tag
+const articleTagSchema = new Schema({
   name: { type: String, required: true },
   slug: { type: String, required: true },
   description: { type: String },
@@ -203,12 +202,7 @@ const articleSchema = new Schema<IArticle>(
       }
     },
     content: [contentBlockSchema],
-    category: { type: articleCategorySchema, required: true },
-    tags: [{
-      type: String,
-      trim: true,
-      maxlength: [50, 'แท็กต้องมีความยาวไม่เกิน 50 ตัวอักษร']
-    }],
+    tags: [articleTagSchema], // เปลี่ยนเป็น array ของ tag objects
     author: { type: authorSchema, required: true },
     seo: { type: seoMetadataSchema, required: true },
     status: {
@@ -251,8 +245,8 @@ const articleSchema = new Schema<IArticle>(
 // Indexes สำหรับการค้นหา
 articleSchema.index({ slug: 1 });
 articleSchema.index({ status: 1, publishedAt: -1 });
-articleSchema.index({ 'category.slug': 1, status: 1 });
-articleSchema.index({ tags: 1, status: 1 });
+articleSchema.index({ 'tags.slug': 1, status: 1 }); // เปลี่ยนจาก category เป็น tags
+articleSchema.index({ 'tags.name': 1, status: 1 }); // เพิ่ม index สำหรับชื่อแท็ก
 articleSchema.index({ title: 'text', excerpt: 'text', 'content.content.text': 'text' });
 
 // Virtual สำหรับ URL

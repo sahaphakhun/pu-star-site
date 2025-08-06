@@ -47,8 +47,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
         type: 'article',
         publishedTime: article.publishedAt,
         modifiedTime: article.updatedAt,
-        section: article.category.name,
-        tags: article.tags,
+        tags: article.tags.map(tag => tag.name),
         url: `${baseUrl}/articles/${article.slug}`
       },
       twitter: {

@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '12');
-    const category = searchParams.get('category');
-    const tag = searchParams.get('tag');
+    const tags = searchParams.get('tags')?.split(',').filter(Boolean); // รองรับหลายแท็ก
     const search = searchParams.get('search');
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
@@ -26,12 +25,8 @@ export async function GET(request: NextRequest) {
       ]
     };
     
-    if (category) {
-      filter['category.slug'] = category;
-    }
-    
-    if (tag) {
-      filter.tags = { $in: [tag] };
+    if (tags && tags.length > 0) {
+      filter['tags.slug'] = { $in: tags }; // เปลี่ยนเป็น tags.slug
     }
     
     if (search) {
@@ -40,7 +35,7 @@ export async function GET(request: NextRequest) {
         $or: [
           { title: { $regex: search, $options: 'i' } },
           { excerpt: { $regex: search, $options: 'i' } },
-          { tags: { $in: [new RegExp(search, 'i')] } }
+          { 'tags.name': { $regex: search, $options: 'i' } } // ค้นหาในชื่อแท็ก
         ]
       });
     }
@@ -64,43 +59,33 @@ export async function GET(request: NextRequest) {
     const totalCount = await Article.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    // ดึงหมวดหมู่ที่มีบทความ
-    const categories = await Article.aggregate([
-      { $match: { status: 'published' } },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { '_id.name': 1 } }
-    ]);
-
-    // ดึงแท็กที่นิยม
+    // ดึงแท็กยอดนิยม (แท็กที่มีบทความมากที่สุด 10 อันดับแรก)
     const popularTags = await Article.aggregate([
       { $match: { status: 'published' } },
       { $unwind: '$tags' },
-      { $group: { _id: '$tags', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 20 }
+      { $group: { 
+        _id: '$tags.slug', 
+        name: { $first: '$tags.name' },
+        slug: { $first: '$tags.slug' },
+        color: { $first: '$tags.color' },
+        articleCount: { $sum: 1 }
+      }},
+      { $sort: { articleCount: -1 } },
+      { $limit: 10 }
     ]);
 
     return NextResponse.json({
       success: true,
       data: {
         articles,
+        popularTags,
         pagination: {
           currentPage: page,
           totalPages,
           totalCount,
           hasNextPage: page < totalPages,
           hasPreviousPage: page > 1
-        },
-        categories: categories.map(cat => ({
-          name: cat._id.name,
-          slug: cat._id.slug,
-          count: cat.count,
-          color: cat._id.color
-        })),
-        popularTags: popularTags.map(tag => ({
-          name: tag._id,
-          count: tag.count
-        }))
+        }
       }
     });
 

@@ -1,17 +1,22 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
-import RichTextEditor from '@/components/RichTextEditor';
-import { IContentBlock, IArticle, ISEOMetadata, IArticleCategory } from '@/models/Article';
+import AdvancedRichTextEditor from '@/components/AdvancedRichTextEditor';
+import { IContentBlock, IArticle, ISEOMetadata, IArticleTag } from '@/models/Article';
 
 export default function CreateArticlePage() {
   const router = useRouter();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Available tags
+  const [availableTags, setAvailableTags] = useState<any[]>([]);
+  const [loadingTags, setLoadingTags] = useState(true);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -19,14 +24,8 @@ export default function CreateArticlePage() {
   const [excerpt, setExcerpt] = useState('');
   const [featuredImage, setFeaturedImage] = useState('');
   const [content, setContent] = useState<IContentBlock[]>([]);
-  const [category, setCategory] = useState<IArticleCategory>({
-    name: '',
-    slug: '',
-    description: '',
-    color: '#3B82F6'
-  });
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
+  const [selectedTags, setSelectedTags] = useState<IArticleTag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [scheduledAt, setScheduledAt] = useState('');
   const [author, setAuthor] = useState({
@@ -48,323 +47,368 @@ export default function CreateArticlePage() {
 
   const canCreate = hasPermission(PERMISSIONS.ARTICLES_CREATE);
   const canPublish = hasPermission(PERMISSIONS.ARTICLES_PUBLISH);
-  const canUploadImages = hasPermission(PERMISSIONS.ARTICLES_IMAGES_UPLOAD);
+
+  // Load available tags
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const response = await fetch('/api/tags?limit=100');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableTags(data.data.tags);
+        }
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      } finally {
+        setLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, []);
 
   // Auto-generate slug from title
-  const generateSlug = useCallback((title: string) => {
-    return title
+  const generateSlug = useCallback((text: string) => {
+    return text
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/[^\u0E00-\u0E7Fa-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
       .trim();
   }, []);
 
-  const handleTitleChange = (newTitle: string) => {
+  // Handle title change
+  const handleTitleChange = useCallback((newTitle: string) => {
     setTitle(newTitle);
     if (!slug || slug === generateSlug(title)) {
       setSlug(generateSlug(newTitle));
     }
-    // Auto-update SEO title if not manually set
-    if (!seo.title || seo.title === title) {
+    
+    // Auto-update SEO title if empty
+    if (!seo.title) {
       setSeo(prev => ({ ...prev, title: newTitle }));
     }
-  };
+  }, [title, slug, seo.title, generateSlug]);
 
-  const handleExcerptChange = (newExcerpt: string) => {
+  // Handle excerpt change
+  const handleExcerptChange = useCallback((newExcerpt: string) => {
     setExcerpt(newExcerpt);
-    // Auto-update SEO description if not manually set
-    if (!seo.description || seo.description === excerpt) {
+    
+    // Auto-update SEO description if empty
+    if (!seo.description) {
       setSeo(prev => ({ ...prev, description: newExcerpt }));
     }
-  };
+  }, [seo.description]);
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      const newTags = [...tags, tagInput.trim()];
-      setTags(newTags);
-      setSeo(prev => ({ ...prev, keywords: newTags }));
-      setTagInput('');
+  // Add tag
+  const addTag = useCallback((tag: any) => {
+    if (!selectedTags.find(t => t.slug === tag.slug)) {
+      setSelectedTags(prev => [...prev, tag]);
     }
-  };
+  }, [selectedTags]);
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    const newTags = tags.filter(tag => tag !== tagToRemove);
-    setTags(newTags);
-    setSeo(prev => ({ ...prev, keywords: newTags }));
-  };
+  // Remove tag
+  const removeTag = useCallback((tagSlug: string) => {
+    setSelectedTags(prev => prev.filter(t => t.slug !== tagSlug));
+  }, []);
 
+  // Create new tag
+  const createNewTag = useCallback(async () => {
+    if (!newTagName.trim()) return;
+
+    const slug = generateSlug(newTagName);
+    const newTag = {
+      name: newTagName.trim(),
+      slug,
+      color: '#3B82F6'
+    };
+
+    try {
+      const response = await fetch('/api/admin/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newTag),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const createdTag = data.data.tag;
+        setAvailableTags(prev => [...prev, createdTag]);
+        addTag(createdTag);
+        setNewTagName('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'เกิดข้อผิดพลาดในการสร้างแท็ก');
+      }
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      setError('เกิดข้อผิดพลาดในการสร้างแท็ก');
+    }
+  }, [newTagName, generateSlug, addTag]);
+
+  // Handle image upload
   const handleImageUpload = useCallback(async (file: File): Promise<string> => {
-    if (!canUploadImages) {
-      throw new Error('ไม่มีสิทธิ์อัพโหลดรูปภาพ');
-    }
-
     const formData = new FormData();
     formData.append('image', file);
 
     const response = await fetch('/api/admin/articles/upload-image', {
       method: 'POST',
-      body: formData
+      body: formData,
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
+      throw new Error('Failed to upload image');
     }
 
     const data = await response.json();
-    return data.data.url;
-  }, [canUploadImages]);
+    return data.data.imageUrl;
+  }, []);
 
-  const handleFeaturedImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const imageUrl = await handleImageUpload(file);
-      setFeaturedImage(imageUrl);
-      if (!seo.ogImage) {
-        setSeo(prev => ({ ...prev, ogImage: imageUrl }));
-      }
-    } catch (error: any) {
-      alert(error.message);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!canCreate) {
-      setError('ไม่มีสิทธิ์สร้างบทความ');
-      return;
-    }
-
-    if (status === 'published' && !canPublish) {
-      setError('ไม่มีสิทธิ์เผยแพร่บทความ');
-      return;
-    }
-
-    // Validation
-    if (!title.trim()) {
-      setError('กรุณาระบุชื่อบทความ');
-      return;
-    }
-
-    if (!slug.trim()) {
-      setError('กรุณาระบุ slug');
-      return;
-    }
-
-    if (!excerpt.trim()) {
-      setError('กรุณาระบุคำอธิบายสั้น');
-      return;
-    }
-
-    if (!category.name.trim()) {
-      setError('กรุณาระบุหมวดหมู่');
-      return;
-    }
-
-    if (!seo.title.trim()) {
-      setError('กรุณาระบุ SEO Title');
-      return;
-    }
-
-    if (!seo.description.trim()) {
-      setError('กรุณาระบุ SEO Description');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
+      // Validation
+      if (!title.trim()) {
+        throw new Error('กรุณาระบุชื่อบทความ');
+      }
+
+      if (!slug.trim()) {
+        throw new Error('กรุณาระบุ slug');
+      }
+
+      if (!excerpt.trim()) {
+        throw new Error('กรุณาระบุคำอธิบายสั้น');
+      }
+
+      if (!seo.title.trim()) {
+        throw new Error('กรุณาระบุ SEO Title');
+      }
+
+      if (!seo.description.trim()) {
+        throw new Error('กรุณาระบุ SEO Description');
+      }
+
       const articleData = {
         title: title.trim(),
         slug: slug.trim(),
         excerpt: excerpt.trim(),
-        featuredImage: featuredImage || undefined,
+        featuredImage: featuredImage.trim() || undefined,
         content,
-        category: {
-          ...category,
-          name: category.name.trim(),
-          slug: category.slug.trim() || generateSlug(category.name)
-        },
-        tags,
+        tags: selectedTags,
         author,
-        seo,
+        seo: {
+          ...seo,
+          keywords: seo.keywords.filter(k => k.trim())
+        },
         status,
-        ...(scheduledAt && { scheduledAt: new Date(scheduledAt) })
+        ...(scheduledAt && { scheduledAt: new Date(scheduledAt).toISOString() })
       };
 
       const response = await fetch('/api/admin/articles', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(articleData)
+        body: JSON.stringify(articleData),
       });
 
       if (response.ok) {
-        const result = await response.json();
-        alert('สร้างบทความสำเร็จ');
+        const data = await response.json();
         router.push('/admin/articles');
       } else {
-        const error = await response.json();
-        setError(error.error || 'เกิดข้อผิดพลาดในการสร้างบทความ');
+        const errorData = await response.json();
+        setError(errorData.error || 'เกิดข้อผิดพลาดในการสร้างบทความ');
       }
-    } catch (error) {
-      console.error('Error creating article:', error);
-      setError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } catch (error: any) {
+      setError(error.message || 'เกิดข้อผิดพลาดในการสร้างบทความ');
     } finally {
       setLoading(false);
     }
-  };
+  }, [title, slug, excerpt, featuredImage, content, selectedTags, author, seo, status, scheduledAt, router]);
 
   if (permissionsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (!canCreate) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">ไม่มีสิทธิ์เข้าถึง</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>คุณไม่มีสิทธิ์สร้างบทความ</p>
-              </div>
-            </div>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">ไม่ได้รับอนุญาต</h1>
+          <p className="text-gray-600">คุณไม่มีสิทธิ์ในการสร้างบทความ</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">สร้างบทความใหม่</h1>
-        <p className="text-gray-600">สร้างบทความใหม่พร้อมเครื่องมือแต่งข้อความที่ครบครัน</p>
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">สร้างบทความใหม่</h1>
+            <p className="text-gray-600 mt-2">สร้างและจัดการเนื้อหาบทความของคุณ</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              {showPreview ? 'แก้ไข' : 'ดูตัวอย่าง'}
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'กำลังบันทึก...' : 'บันทึกบทความ'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">เกิดข้อผิดพลาด</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>{error}</p>
-              </div>
-            </div>
-          </div>
+          <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {showPreview ? (
+        // Preview Mode
+        <div className="bg-white rounded-xl shadow-sm p-8">
+          <article className="prose max-w-none">
+            <header className="mb-8">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">{title || 'ชื่อบทความ'}</h1>
+              {selectedTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {selectedTags.map(tag => (
+                    <span
+                      key={tag.slug}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                      style={{ backgroundColor: tag.color + '20', color: tag.color }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xl text-gray-600">{excerpt || 'คำอธิบายสั้น'}</p>
+              {featuredImage && (
+                <div className="mt-6">
+                  <img src={featuredImage} alt={title} className="w-full rounded-lg" />
+                </div>
+              )}
+            </header>
+
+            <div className="space-y-6">
+              {content.map(block => (
+                <div key={block.id}>
+                  {/* Render preview of content blocks */}
+                  {block.type === 'text' && (
+                    <p className={`${
+                      block.styles.alignment === 'center' ? 'text-center' :
+                      block.styles.alignment === 'right' ? 'text-right' : 'text-left'
+                    } ${
+                      block.styles.fontSize === 'small' ? 'text-sm' :
+                      block.styles.fontSize === 'large' ? 'text-lg' :
+                      block.styles.fontSize === 'xlarge' ? 'text-2xl' : 'text-base'
+                    } ${block.styles.fontWeight === 'bold' ? 'font-bold' : 'font-normal'}`}
+                    style={{ color: block.styles.color, backgroundColor: block.styles.backgroundColor }}
+                    >
+                      {(block.content as any).text}
+                    </p>
+                  )}
+                  {/* Add other block type previews as needed */}
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+      ) : (
+        // Edit Mode
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Basic Info */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">ข้อมูลพื้นฐาน</h2>
+          <div className="lg:col-span-2 space-y-8">
+            {/* Basic Information */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">ข้อมูลพื้นฐาน</h2>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อบทความ *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ชื่อบทความ *
+                  </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => handleTitleChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="ระบุชื่อบทความ"
-                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="ระบุชื่อบทความ..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Slug *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Slug (URL) *
+                  </label>
                   <input
                     type="text"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="url-friendly-slug"
-                    pattern="^[a-z0-9-]+$"
-                    required
                   />
-                  <p className="text-xs text-gray-500 mt-1">URL: /articles/{slug}</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">คำอธิบายสั้น *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    คำอธิบายสั้น *
+                  </label>
                   <textarea
                     value={excerpt}
                     onChange={(e) => handleExcerptChange(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="คำอธิบายสั้นของบทความ (จะแสดงในหน้ารายการ)"
-                    maxLength={500}
-                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="คำอธิบายสั้นๆ เกี่ยวกับบทความ..."
                   />
-                  <p className="text-xs text-gray-500 mt-1">{excerpt.length}/500 ตัวอักษร</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพหลัก</label>
-                  <div className="space-y-2">
-                    {featuredImage && (
-                      <div className="relative">
-                        <img
-                          src={featuredImage}
-                          alt="Featured"
-                          className="w-full h-48 object-cover rounded-md"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFeaturedImage('')}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFeaturedImageUpload}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    รูปภาพหน้าปก
+                  </label>
+                  <input
+                    type="url"
+                    value={featuredImage}
+                    onChange={(e) => setFeaturedImage(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
                 </div>
               </div>
             </div>
 
             {/* Content Editor */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">เนื้อหาบทความ</h2>
-              <RichTextEditor
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">เนื้อหาบทความ</h2>
+              </div>
+              <AdvancedRichTextEditor
                 content={content}
                 onChange={setContent}
-                onImageUpload={canUploadImages ? handleImageUpload : undefined}
+                onImageUpload={handleImageUpload}
               />
             </div>
           </div>
@@ -372,275 +416,216 @@ export default function CreateArticlePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Publish Settings */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">การเผยแพร่</h2>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">การเผยแพร่</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    สถานะ
+                  </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!canPublish && status !== 'draft'}
                   >
-                    <option value="draft">ร่าง</option>
+                    <option value="draft">แบบร่าง</option>
                     {canPublish && <option value="published">เผยแพร่</option>}
                     <option value="archived">เก็บถาวร</option>
                   </select>
                 </div>
 
-                {canPublish && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">กำหนดเวลาเผยแพร่</label>
-                    <input
-                      type="datetime-local"
-                      value={scheduledAt}
-                      onChange={(e) => setScheduledAt(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Category */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">หมวดหมู่</h2>
-              
-              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อหมวดหมู่ *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    กำหนดเผยแพร่ (ไม่บังคับ)
+                  </label>
                   <input
-                    type="text"
-                    value={category.name}
-                    onChange={(e) => setCategory(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="เช่น คู่มือการใช้งาน"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Slug หมวดหมู่</label>
-                  <input
-                    type="text"
-                    value={category.slug}
-                    onChange={(e) => setCategory(prev => ({ ...prev, slug: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="guide (จะสร้างอัตโนมัติถ้าไม่ระบุ)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">สีหมวดหมู่</label>
-                  <input
-                    type="color"
-                    value={category.color}
-                    onChange={(e) => setCategory(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-full h-10 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">คำอธิบายหมวดหมู่</label>
-                  <textarea
-                    value={category.description}
-                    onChange={(e) => setCategory(prev => ({ ...prev, description: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="คำอธิบายเกี่ยวกับหมวดหมู่นี้"
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
 
             {/* Tags */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">แท็ก</h2>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">แท็ก</h3>
               
-              <div className="space-y-4">
+              {/* Selected Tags */}
+              {selectedTags.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map(tag => (
+                      <span
+                        key={tag.slug}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                      >
+                        {tag.name}
+                        <button
+                          onClick={() => removeTag(tag.slug)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Existing Tag */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เลือกแท็กที่มีอยู่
+                </label>
+                <select
+                  onChange={(e) => {
+                    const tag = availableTags.find(t => t.slug === e.target.value);
+                    if (tag) {
+                      addTag(tag);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loadingTags}
+                >
+                  <option value="">เลือกแท็ก...</option>
+                  {availableTags
+                    .filter(tag => !selectedTags.find(t => t.slug === tag.slug))
+                    .map(tag => (
+                      <option key={tag.slug} value={tag.slug}>
+                        {tag.name} ({tag.articleCount})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Create New Tag */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  สร้างแท็กใหม่
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="เพิ่มแท็ก"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="ชื่อแท็กใหม่..."
                   />
                   <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                    onClick={createNewTag}
+                    disabled={!newTagName.trim()}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
                     เพิ่ม
                   </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800"
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-2 text-gray-400 hover:text-gray-600"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Author */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">ผู้เขียน</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อผู้เขียน</label>
-                  <input
-                    type="text"
-                    value={author.name}
-                    onChange={(e) => setAuthor(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
-                  <input
-                    type="email"
-                    value={author.email}
-                    onChange={(e) => setAuthor(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
                 </div>
               </div>
             </div>
 
             {/* SEO Settings */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">SEO</h2>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">การตั้งค่า SEO</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SEO Title *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SEO Title *
+                  </label>
                   <input
                     type="text"
                     value={seo.title}
                     onChange={(e) => setSeo(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="ชื่อสำหรับ SEO..."
                     maxLength={60}
-                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">{seo.title.length}/60 ตัวอักษร</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SEO Description *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SEO Description *
+                  </label>
                   <textarea
                     value={seo.description}
                     onChange={(e) => setSeo(prev => ({ ...prev, description: e.target.value }))}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="คำอธิบายสำหรับ SEO..."
                     maxLength={160}
-                    required
                   />
                   <p className="text-xs text-gray-500 mt-1">{seo.description.length}/160 ตัวอักษร</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Open Graph Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Keywords (คั่นด้วยคอมม่า)
+                  </label>
                   <input
                     type="text"
-                    value={seo.ogTitle}
-                    onChange={(e) => setSeo(prev => ({ ...prev, ogTitle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    maxLength={60}
+                    value={seo.keywords.join(', ')}
+                    onChange={(e) => setSeo(prev => ({ 
+                      ...prev, 
+                      keywords: e.target.value.split(',').map(k => k.trim()).filter(k => k)
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="คำสำคัญ1, คำสำคัญ2, ..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Open Graph Description</label>
-                  <textarea
-                    value={seo.ogDescription}
-                    onChange={(e) => setSeo(prev => ({ ...prev, ogDescription: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    maxLength={160}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    OG Image
+                  </label>
                   <input
                     type="url"
-                    value={seo.canonicalUrl}
-                    onChange={(e) => setSeo(prev => ({ ...prev, canonicalUrl: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="https://example.com/articles/slug"
+                    value={seo.ogImage || ''}
+                    onChange={(e) => setSeo(prev => ({ ...prev, ogImage: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/og-image.jpg"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Author Settings */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">ผู้เขียน</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ชื่อผู้เขียน
+                  </label>
+                  <input
+                    type="text"
+                    value={author.name}
+                    onChange={(e) => setAuthor(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    อีเมลผู้เขียน
+                  </label>
+                  <input
+                    type="email"
+                    value={author.email}
+                    onChange={(e) => setAuthor(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-6 border-t">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-          >
-            ยกเลิก
-          </button>
-          
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={(e) => {
-                setStatus('draft');
-                handleSubmit(e as any);
-              }}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              disabled={loading}
-            >
-              บันทึกร่าง
-            </button>
-            
-            {canPublish && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  setStatus('published');
-                  handleSubmit(e as any);
-                }}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                disabled={loading}
-              >
-                เผยแพร่
-              </button>
-            )}
-            
-            <button
-              type="submit"
-              className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
-              disabled={loading}
-            >
-              {loading ? 'กำลังบันทึก...' : 'บันทึก'}
-            </button>
-          </div>
-        </div>
-      </form>
+      )}
     </div>
   );
 }

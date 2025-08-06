@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import Article, { IArticle } from '@/models/Article';
+import Tag from '@/models/Tag';
 import { verifyToken } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { PERMISSIONS } from '@/constants/permissions';
+import { updateTagArticleCount } from '@/app/api/tags/route';
 
-// GET - ดึงรายการบทความทั้งหมด (สำหรับแอดมิน)
+// GET - ดึงรายการแท็กทั้งหมด (สำหรับแอดมิน)
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบการล็อกอิน
@@ -21,19 +22,16 @@ export async function GET(request: NextRequest) {
     const canView = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_VIEW);
     if (!canView) {
       return NextResponse.json(
-        { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์ดูบทความ' },
+        { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์ดูแท็ก' },
         { status: 403 }
       );
     }
 
     await connectDB();
 
-    // รับ query parameters
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const status = searchParams.get('status');
-    const tags = searchParams.get('tags')?.split(',').filter(Boolean);
+    const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search');
     const sortBy = searchParams.get('sortBy') || 'updatedAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
@@ -41,19 +39,10 @@ export async function GET(request: NextRequest) {
     // สร้าง query filter
     const filter: any = {};
     
-    if (status && ['draft', 'published', 'archived'].includes(status)) {
-      filter.status = status;
-    }
-    
-    if (tags && tags.length > 0) {
-      filter['tags.slug'] = { $in: tags };
-    }
-    
     if (search) {
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { excerpt: { $regex: search, $options: 'i' } },
-        { 'tags.name': { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -64,65 +53,46 @@ export async function GET(request: NextRequest) {
     const sort: any = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // ดึงข้อมูลบทความ
-    const articles = await Article.find(filter)
+    // ดึงข้อมูลแท็ก
+    const tags = await Tag.find(filter)
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .select('-content') // ไม่ดึง content ในหน้า list
       .lean();
 
     // นับจำนวนทั้งหมด
-    const totalCount = await Article.countDocuments(filter);
+    const totalCount = await Tag.countDocuments(filter);
+
+    // คำนวณ pagination
     const totalPages = Math.ceil(totalCount / limit);
-
-    // สถิติพื้นฐาน
-    const stats = await Article.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const statusStats = {
-      draft: 0,
-      published: 0,
-      archived: 0
-    };
-
-    stats.forEach(stat => {
-      if (statusStats.hasOwnProperty(stat._id)) {
-        statusStats[stat._id as keyof typeof statusStats] = stat.count;
-      }
-    });
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
 
     return NextResponse.json({
       success: true,
       data: {
-        articles,
+        tags,
         pagination: {
           currentPage: page,
           totalPages,
           totalCount,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1
-        },
-        stats: statusStats
+          hasNextPage,
+          hasPreviousPage,
+          limit
+        }
       }
     });
 
-  } catch (error) {
-    console.error('Error fetching articles:', error);
+  } catch (error: any) {
+    console.error('Error fetching admin tags:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลบทความ' },
+      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลแท็ก' },
       { status: 500 }
     );
   }
 }
 
-// POST - สร้างบทความใหม่
+// POST - สร้างแท็กใหม่
 export async function POST(request: NextRequest) {
   try {
     // ตรวจสอบการล็อกอิน
@@ -138,7 +108,7 @@ export async function POST(request: NextRequest) {
     const canCreate = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_CREATE);
     if (!canCreate) {
       return NextResponse.json(
-        { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์สร้างบทความ' },
+        { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์สร้างแท็ก' },
         { status: 403 }
       );
     }
@@ -146,7 +116,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validation
-    const requiredFields = ['title', 'slug', 'excerpt', 'seo'];
+    const requiredFields = ['name', 'slug'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
     if (missingFields.length > 0) {
@@ -159,47 +129,34 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // ตรวจสอบว่า slug ซ้ำหรือไม่
-    const existingArticle = await Article.findOne({ slug: body.slug });
-    if (existingArticle) {
+    const existingTag = await Tag.findOne({ slug: body.slug });
+    if (existingTag) {
       return NextResponse.json(
-        { error: 'slug นี้ถูกใช้แล้ว กรุณาใช้ slug อื่น' },
+        { error: 'slug นี้ถูกใช้แล้ว' },
         { status: 400 }
       );
     }
 
-    // เตรียมข้อมูลบทความ
-    const articleData = {
+    // เตรียมข้อมูลแท็ก
+    const tagData = {
       ...body,
-      author: {
-        name: body.author?.name || 'ทีมงาน PU STAR',
-        email: body.author?.email,
-        avatar: body.author?.avatar
-      },
-      content: body.content || [],
-      tags: body.tags || [],
-      status: body.status || 'draft',
-      viewCount: 0,
-      relatedArticles: body.relatedArticles || [],
-      comments: {
-        enabled: body.comments?.enabled !== false,
-        count: 0
-      },
+      articleCount: 0,
       createdBy: decodedToken.phoneNumber,
       updatedBy: decodedToken.phoneNumber
     };
 
-    // สร้างบทความใหม่
-    const newArticle = new Article(articleData);
-    await newArticle.save();
+    // สร้างแท็กใหม่
+    const newTag = new Tag(tagData);
+    await newTag.save();
 
     return NextResponse.json({
       success: true,
-      message: 'สร้างบทความสำเร็จ',
-      data: { article: newArticle }
+      message: 'สร้างแท็กสำเร็จ',
+      data: { tag: newTag }
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error('Error creating article:', error);
+    console.error('Error creating tag:', error);
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
@@ -220,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการสร้างบทความ' },
+      { error: 'เกิดข้อผิดพลาดในการสร้างแท็ก' },
       { status: 500 }
     );
   }
