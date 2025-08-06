@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // เรียก API ของกรมพัฒนาธุรกิจการค้า
-    const mocApiUrl = `https://data.moc.go.th/OpenData/Juristic?$filter=juristic_id eq '${taxId}'&$format=json`;
+    // เรียก API ของกรมพัฒนาธุรกิจการค้า (ใช้ endpoint ใหม่ตามเอกสาร)
+    const mocApiUrl = `https://dataapi.moc.go.th/juristic?juristic_id=${taxId}`;
     
     const response = await fetch(mocApiUrl, {
       method: 'GET',
@@ -39,28 +39,28 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     
-    // ตรวจสอบว่ามีข้อมูลหรือไม่
-    if (!data.value || data.value.length === 0) {
+    // ตรวจสอบว่ามีข้อมูลหรือไม่ (API ใหม่คืนค่าเป็น object ตรงๆ)
+    if (!data || !data.juristicID) {
       return NextResponse.json({
         success: false,
         message: 'ไม่พบข้อมูลบริษัทที่มีเลขประจำตัวผู้เสียภาษีนี้'
       }, { status: 404 });
     }
 
-    const companyData = data.value[0];
+    const companyData = data;
     
-    // แปลงข้อมูลให้อยู่ในรูปแบบที่เหมาะสม
+    // แปลงข้อมูลให้อยู่ในรูปแบบที่เหมาะสม (ใช้ field names ตามเอกสาร MOC)
     const result = {
       success: true,
       data: {
-        companyName: companyData.juristic_name_th || companyData.juristic_name_en || '',
-        taxId: companyData.juristic_id || taxId,
-        companyAddress: formatAddress(companyData),
-        companyPhone: companyData.telephone || '',
+        companyName: companyData.juristicNameTH || companyData.juristicNameEN || '',
+        taxId: companyData.juristicID || taxId,
+        companyAddress: formatAddress(companyData.addressDetail),
+        companyPhone: '', // API ไม่มีข้อมูลเบอร์โทร
         companyEmail: '', // API ไม่มีข้อมูลอีเมล ต้องให้ผู้ใช้กรอกเอง
-        registrationDate: companyData.registration_date || '',
-        status: companyData.juristic_status || '',
-        businessType: companyData.business_type || ''
+        registrationDate: companyData.registerDate || '',
+        status: companyData.juristicStatus || '',
+        businessType: companyData.juristicType || ''
       }
     };
 
@@ -84,21 +84,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ฟังก์ชันสำหรับจัดรูปแบบที่อยู่
-function formatAddress(companyData: any): string {
+// ฟังก์ชันสำหรับจัดรูปแบบที่อยู่ (ใช้ field names ตามเอกสาร MOC)
+function formatAddress(addressDetail: any): string {
+  if (!addressDetail) return '';
+  
   const addressParts = [];
   
-  if (companyData.address_no) addressParts.push(companyData.address_no);
-  if (companyData.building) addressParts.push(`อาคาร ${companyData.building}`);
-  if (companyData.floor) addressParts.push(`ชั้น ${companyData.floor}`);
-  if (companyData.room) addressParts.push(`ห้อง ${companyData.room}`);
-  if (companyData.village) addressParts.push(`หมู่บ้าน ${companyData.village}`);
-  if (companyData.lane) addressParts.push(`ตรอก/ซอย ${companyData.lane}`);
-  if (companyData.road) addressParts.push(`ถนน ${companyData.road}`);
-  if (companyData.sub_district) addressParts.push(`ตำบล/แขวง ${companyData.sub_district}`);
-  if (companyData.district) addressParts.push(`อำเภอ/เขต ${companyData.district}`);
-  if (companyData.province) addressParts.push(`จังหวัด ${companyData.province}`);
-  if (companyData.postal_code) addressParts.push(companyData.postal_code);
+  if (addressDetail.houseNumber) addressParts.push(addressDetail.houseNumber);
+  if (addressDetail.buildingName) addressParts.push(`อาคาร ${addressDetail.buildingName}`);
+  if (addressDetail.floor) addressParts.push(`ชั้น ${addressDetail.floor}`);
+  if (addressDetail.roomNo) addressParts.push(`ห้อง ${addressDetail.roomNo}`);
+  if (addressDetail.villageName) addressParts.push(`หมู่บ้าน ${addressDetail.villageName}`);
+  if (addressDetail.moo) addressParts.push(`หมู่ ${addressDetail.moo}`);
+  if (addressDetail.soi) addressParts.push(`ซอย ${addressDetail.soi}`);
+  if (addressDetail.street) addressParts.push(`ถนน ${addressDetail.street}`);
+  if (addressDetail.subDistrict) addressParts.push(`ตำบล/แขวง ${addressDetail.subDistrict}`);
+  if (addressDetail.district) addressParts.push(`อำเภอ/เขต ${addressDetail.district}`);
+  if (addressDetail.province) addressParts.push(`จังหวัด ${addressDetail.province}`);
 
   return addressParts.join(' ');
 }
