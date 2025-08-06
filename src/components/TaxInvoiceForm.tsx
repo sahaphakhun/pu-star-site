@@ -10,6 +10,17 @@ interface TaxInvoiceInfo {
   companyEmail: string;
 }
 
+interface CompanyLookupData {
+  companyName: string;
+  taxId: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  registrationDate?: string;
+  status?: string;
+  businessType?: string;
+}
+
 interface TaxInvoiceFormProps {
   onTaxInvoiceChange: (taxInvoiceData: TaxInvoiceInfo | null) => void;
   className?: string;
@@ -32,6 +43,9 @@ const TaxInvoiceForm: React.FC<TaxInvoiceFormProps> = ({
     companyEmail: ''
   });
   const [loading, setLoading] = useState(true);
+  const [taxLookupId, setTaxLookupId] = useState('');
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState('');
 
   // ดึงข้อมูลใบกำกับภาษีที่บันทึกไว้
   useEffect(() => {
@@ -114,6 +128,60 @@ const TaxInvoiceForm: React.FC<TaxInvoiceFormProps> = ({
     }
   };
 
+  const handleTaxLookup = async () => {
+    if (!taxLookupId.trim()) {
+      setLookupMessage('กรุณากรอกเลขประจำตัวผู้เสียภาษี');
+      return;
+    }
+
+    // ตรวจสอบรูปแบบเลขประจำตัวผู้เสียภาษี
+    if (!/^\d{13}$/.test(taxLookupId.trim())) {
+      setLookupMessage('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก');
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupMessage('');
+
+    try {
+      const response = await fetch(`/api/tax/lookup?taxId=${encodeURIComponent(taxLookupId.trim())}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // นำข้อมูลที่ได้มากรอกในฟอร์ม
+        const newTaxInfo: TaxInvoiceInfo = {
+          companyName: result.data.companyName,
+          taxId: result.data.taxId,
+          companyAddress: result.data.companyAddress,
+          companyPhone: result.data.companyPhone,
+          companyEmail: result.data.companyEmail || '' // อีเมลต้องให้ผู้ใช้กรอกเอง
+        };
+        
+        setCustomTaxInfo(newTaxInfo);
+        setUseCustomTaxInfo(true);
+        
+        // ถ้าขอใบกำกับภาษีอยู่แล้ว ให้อัปเดตข้อมูลทันที
+        if (requestTaxInvoice) {
+          onTaxInvoiceChange(newTaxInfo);
+        }
+        
+        setLookupMessage('ดึงข้อมูลสำเร็จ! กรุณาตรวจสอบและกรอกอีเมลให้ครบถ้วน');
+      } else {
+        setLookupMessage(result.message || 'ไม่พบข้อมูลบริษัท');
+      }
+    } catch (error) {
+      console.error('Tax lookup error:', error);
+      setLookupMessage('เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  const handleTaxLookupIdChange = (value: string) => {
+    setTaxLookupId(value);
+    setLookupMessage('');
+  };
+
   if (loading) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -149,6 +217,54 @@ const TaxInvoiceForm: React.FC<TaxInvoiceFormProps> = ({
       {/* ฟอร์มข้อมูลใบกำกับภาษี */}
       {requestTaxInvoice && (
         <div className="space-y-4 border-l-4 border-blue-500 pl-4 ml-4">
+          
+          {/* ระบบดึงข้อมูลอัตโนมัติ */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h4 className="text-sm font-medium text-blue-900 mb-3">🔍 ดึงข้อมูลบริษัทอัตโนมัติ</h4>
+            <div className="flex gap-3 items-start">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={taxLookupId}
+                  onChange={(e) => handleTaxLookupIdChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก"
+                  maxLength={13}
+                  disabled={isLookingUp}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleTaxLookup}
+                disabled={isLookingUp || !taxLookupId.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 min-w-[120px] justify-center"
+              >
+                {isLookingUp ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    กำลังค้นหา...
+                  </>
+                ) : (
+                  'ดึงข้อมูล'
+                )}
+              </button>
+            </div>
+            {lookupMessage && (
+              <div className={`mt-2 text-sm ${
+                lookupMessage.includes('สำเร็จ') 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}>
+                {lookupMessage}
+              </div>
+            )}
+            <p className="text-xs text-blue-700 mt-2">
+              💡 ระบุเลขประจำตัวผู้เสียภาษี 13 หลัก แล้วกดดึงข้อมูล ระบบจะค้นหาข้อมูลจากกรมพัฒนาธุรกิจการค้าและกรอกให้อัตโนมัติ
+            </p>
+          </div>
           
           {/* ข้อมูลที่บันทึกไว้ */}
           {savedTaxInfo && (
