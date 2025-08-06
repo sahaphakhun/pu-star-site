@@ -6,8 +6,8 @@ import { verifyToken } from '@/lib/auth';
 // GET: ดึงการแจ้งเตือนสำหรับแอดมิน
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken || decodedToken.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
-    const adminId = authResult.decoded.userId;
+    const adminId = decodedToken.userId;
 
     let query: any = {};
 
@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
 // POST: สร้างการแจ้งเตือนใหม่
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken || decodedToken.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 

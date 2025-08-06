@@ -112,23 +112,18 @@ export async function verifyAuth(req: Request): Promise<AuthResult> {
 export async function verifyToken(request: any) {
   try {
     const authResult = await verifyAuth(request);
-    return {
-      valid: authResult.success,
-      decoded: authResult.user ? {
+    if (authResult.success && authResult.user) {
+      return {
         userId: authResult.user._id,
         phoneNumber: authResult.user.phoneNumber,
         name: authResult.user.name,
         role: authResult.user.role
-      } : null,
-      message: authResult.message
-    };
+      };
+    }
+    return null;
   } catch (error) {
     console.error('Error in verifyToken:', error);
-    return {
-      valid: false,
-      decoded: null,
-      message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์'
-    };
+    return null;
   }
 }
 

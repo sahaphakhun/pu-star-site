@@ -43,10 +43,31 @@ const AdminSidebar: React.FC = () => {
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
     try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N+QQAoUXrTp66hVFApGn+DyvmwhC');
-      audio.play().catch(e => console.log('Cannot play sound:', e));
+      // ใช้ Web Audio API แทน HTML5 Audio เพื่อหลีกเลี่ยงปัญหา browser policy
+      if (typeof window !== 'undefined' && 'AudioContext' in window) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        // สร้างเสียงแจ้งเตือนอย่างง่ายด้วย oscillator
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+        
+        // ทำความสะอาด audioContext หลังใช้งาน
+        setTimeout(() => {
+          audioContext.close().catch(() => {});
+        }, 500);
+      }
     } catch (error) {
-      console.log('Sound notification not available');
+      // เงียบๆ ไม่แสดง error log เพื่อไม่ให้รบกวนผู้ใช้
     }
   };
 
