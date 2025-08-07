@@ -37,7 +37,7 @@ export default function AdminArticlesPage() {
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [tagsFilter, setTagsFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<string>('desc');
@@ -58,7 +58,7 @@ export default function AdminArticlesPage() {
     if (canView) {
       fetchArticles();
     }
-  }, [canView, permissionsLoading, currentPage, statusFilter, categoryFilter, searchTerm, sortBy, sortOrder]);
+  }, [canView, permissionsLoading, currentPage, statusFilter, tagsFilter, searchTerm, sortBy, sortOrder]);
 
   const fetchArticles = async () => {
     try {
@@ -67,7 +67,7 @@ export default function AdminArticlesPage() {
         page: currentPage.toString(),
         limit: '10',
         ...(statusFilter && { status: statusFilter }),
-        ...(categoryFilter && { category: categoryFilter }),
+        ...(tagsFilter && { tags: tagsFilter }),
         ...(searchTerm && { search: searchTerm }),
         sortBy,
         sortOrder
@@ -169,7 +169,8 @@ export default function AdminArticlesPage() {
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Asia/Bangkok'
     });
   };
 
@@ -272,7 +273,7 @@ export default function AdminArticlesPage() {
         </div>
       </div>
 
-      {/* Filters */}
+        {/* Filters */}
       <div className="bg-white rounded-lg border p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -299,6 +300,17 @@ export default function AdminArticlesPage() {
               <option value="archived">เก็บถาวร</option>
             </select>
           </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">แท็ก (slug คั่นด้วย ,)</label>
+              <input
+                type="text"
+                placeholder="เช่น how-to,sealant"
+                value={tagsFilter}
+                onChange={(e) => setTagsFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">เรียงตาม</label>
@@ -339,7 +351,7 @@ export default function AdminArticlesPage() {
                   บทความ
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  หมวดหมู่
+                  แท็ก
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   สถานะ
@@ -380,15 +392,24 @@ export default function AdminArticlesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span 
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      style={{ 
-                        backgroundColor: article.category?.color ? `${article.category.color}20` : '#f3f4f6',
-                        color: article.category?.color || '#6b7280'
-                      }}
-                    >
-                      {article.category?.name || 'ไม่ระบุหมวด'}
-                    </span>
+                    <div className="flex flex-wrap gap-1 max-w-[280px]">
+                      {(article.tags as any[] | undefined)?.slice(0, 3).map((tag: any) => (
+                        <span
+                          key={tag.slug || tag.name}
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                          style={{ 
+                            backgroundColor: (tag.color ? `${tag.color}20` : '#e5e7eb'),
+                            color: tag.color || '#374151'
+                          }}
+                          title={tag.name || tag.slug}
+                        >
+                          {tag.name || tag.slug}
+                        </span>
+                      ))}
+                      {(!article.tags || (article.tags as any[]).length === 0) && (
+                        <span className="text-xs text-gray-500">ไม่ระบุแท็ก</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select

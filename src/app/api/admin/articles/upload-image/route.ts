@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { PERMISSIONS } from '@/constants/permissions';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
+import { cwd } from 'node:process';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // POST - อัพโหลดรูปภาพสำหรับบทความ
 export async function POST(request: NextRequest) {
@@ -20,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบสิทธิ์
-    const canUpload = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_IMAGES_UPLOAD);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canUpload = await hasPermission(requester, PERMISSIONS.ARTICLES_IMAGES_UPLOAD);
     if (!canUpload) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์อัพโหลดรูปภาพ' },
@@ -59,10 +64,10 @@ export async function POST(request: NextRequest) {
 
     // สร้างชื่อไฟล์ใหม่
     const fileExtension = path.extname(file.name);
-    const fileName = `${uuidv4()}${fileExtension}`;
+    const fileName = `${randomUUID()}${fileExtension}`;
     
     // กำหนดเส้นทางสำหรับบันทึกไฟล์
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'articles');
+    const uploadDir = path.join(cwd(), 'public', 'uploads', 'articles');
     const filePath = path.join(uploadDir, fileName);
     
     // สร้างโฟลเดอร์ถ้ายังไม่มี
@@ -72,11 +77,11 @@ export async function POST(request: NextRequest) {
 
     // แปลงไฟล์เป็น buffer และบันทึก
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const buffer = Buffer.from(bytes as ArrayBuffer);
     
     await writeFile(filePath, buffer);
 
-    // URL ของรูปภาพ
+    // URL ของรูปภาพ (public path)
     const imageUrl = `/uploads/articles/${fileName}`;
 
     return NextResponse.json({
@@ -113,7 +118,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // ตรวจสอบสิทธิ์
-    const canUpload = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_IMAGES_UPLOAD);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canUpload = await hasPermission(requester, PERMISSIONS.ARTICLES_IMAGES_UPLOAD);
     if (!canUpload) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์จัดการรูปภาพ' },
@@ -133,7 +139,7 @@ export async function DELETE(request: NextRequest) {
 
     // แปลง URL เป็น file path
     const fileName = path.basename(imageUrl);
-    const filePath = path.join(process.cwd(), 'public', 'uploads', 'articles', fileName);
+    const filePath = path.join(cwd(), 'public', 'uploads', 'articles', fileName);
     
     // ตรวจสอบว่าไฟล์มีอยู่จริง
     if (!existsSync(filePath)) {
@@ -144,8 +150,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // ลบไฟล์
-    const fs = require('fs').promises;
-    await fs.unlink(filePath);
+    await (await import('node:fs')).promises.unlink(filePath);
 
     return NextResponse.json({
       success: true,

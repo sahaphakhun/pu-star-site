@@ -64,20 +64,12 @@ export async function GET(request: NextRequest) {
     const totalCount = await Article.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    // ดึงแท็กยอดนิยม (แท็กที่มีบทความมากที่สุด 10 อันดับแรก)
-    const popularTags = await Article.aggregate([
-      { $match: { status: 'published' } },
-      { $unwind: '$tags' },
-      { $group: { 
-        _id: '$tags.slug', 
-        name: { $first: '$tags.name' },
-        slug: { $first: '$tags.slug' },
-        color: { $first: '$tags.color' },
-        articleCount: { $sum: 1 }
-      }},
-      { $sort: { articleCount: -1 } },
-      { $limit: 10 }
-    ]);
+    // ดึงแท็กยอดนิยมจาก Tag collection เพื่อสะท้อน articleCount
+    const popularTags = await (await import('@/models/Tag')).default.find({ articleCount: { $gt: 0 } })
+      .sort({ articleCount: -1 })
+      .limit(10)
+      .select('name slug color articleCount')
+      .lean();
 
     return NextResponse.json({
       success: true,

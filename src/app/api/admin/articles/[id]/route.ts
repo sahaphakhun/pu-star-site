@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { PERMISSIONS } from '@/constants/permissions';
 import mongoose from 'mongoose';
+import { updateTagArticleCount } from '@/app/api/tags/route';
 
 // GET - ดึงบทความเดียว (สำหรับแอดมิน)
 export async function GET(
@@ -24,7 +25,8 @@ export async function GET(
     }
 
     // ตรวจสอบสิทธิ์
-    const canView = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_VIEW);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canView = await hasPermission(requester, PERMISSIONS.ARTICLES_VIEW);
     if (!canView) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์ดูบทความ' },
@@ -84,7 +86,8 @@ export async function PUT(
     }
 
     // ตรวจสอบสิทธิ์
-    const canEdit = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_EDIT);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canEdit = await hasPermission(requester, PERMISSIONS.ARTICLES_EDIT);
     if (!canEdit) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์แก้ไขบทความ' },
@@ -130,7 +133,7 @@ export async function PUT(
 
     // ตรวจสอบสิทธิ์การเผยแพร่
     if (body.status === 'published' && existingArticle.status !== 'published') {
-      const canPublish = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_PUBLISH);
+      const canPublish = await hasPermission(requester, PERMISSIONS.ARTICLES_PUBLISH);
       if (!canPublish) {
         return NextResponse.json(
           { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์เผยแพร่บทความ' },
@@ -140,9 +143,9 @@ export async function PUT(
     }
 
     // เตรียมข้อมูลสำหรับอัพเดต
-    const updateData = {
+    const updateData: any = {
       ...body,
-              updatedBy: decodedToken.phoneNumber || decodedToken.userId
+      updatedBy: decodedToken.phoneNumber || decodedToken.userId
     };
 
     // ถ้าเป็นการเผยแพร่ครั้งแรก ให้กำหนด publishedAt
@@ -159,6 +162,12 @@ export async function PUT(
         runValidators: true 
       }
     );
+
+    // อัปเดตจำนวนบทความต่อแท็ก เมื่อมีการแก้ไขแท็กหรือสถานะ
+    if (updatedArticle) {
+      const slugs = [...new Set((updatedArticle.tags as any[]).map((t: any) => t.slug || t))].filter(Boolean);
+      await Promise.all(slugs.map((slug) => updateTagArticleCount(slug)));
+    }
 
     return NextResponse.json({
       success: true,
@@ -212,7 +221,8 @@ export async function DELETE(
     }
 
     // ตรวจสอบสิทธิ์
-    const canDelete = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_DELETE);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canDelete = await hasPermission(requester, PERMISSIONS.ARTICLES_DELETE);
     if (!canDelete) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์ลบบทความ' },

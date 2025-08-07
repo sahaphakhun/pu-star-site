@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
       openGraph: {
         title: article.seo.ogTitle || article.seo.title,
         description: article.seo.ogDescription || article.seo.description,
-        images: article.seo.ogImage || article.featuredImage ? [{
+        images: (article.seo.ogImage || article.featuredImage) ? [{
           url: article.seo.ogImage || article.featuredImage!,
           width: 1200,
           height: 630,
@@ -62,8 +62,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
       other: {
         'article:published_time': article.publishedAt,
         'article:modified_time': article.updatedAt,
-        'article:section': article.category?.name || (Array.isArray(article.tags) ? article.tags.map(t => t.name || t).join(', ') : ''),
-        'article:tag': Array.isArray(article.tags) ? article.tags.map(t => (typeof t === 'string' ? t : t.name)).join(',') : '',
+        'article:section': Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(', ') : '',
+        'article:tag': Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(',') : '',
         'article:author': article.author?.name || 'PU STAR'
       }
     };
@@ -124,7 +124,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     "@type": "Article",
     "headline": article.title,
     "description": article.excerpt,
-            "image": article.featuredImage ? `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}${article.featuredImage}` : undefined,
+    "image": article.featuredImage
+      ? (article.featuredImage.startsWith('http')
+        ? article.featuredImage
+        : `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}${article.featuredImage}`)
+      : undefined,
     "author": {
       "@type": "Person",
       "name": article.author?.name || 'PU STAR',
@@ -142,9 +146,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     "dateModified": article.updatedAt,
     "mainEntityOfPage": {
       "@type": "WebPage",
-              "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/articles/${article.slug}`
+      "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/articles/${article.slug}`
     },
-    "articleSection": article.category?.name || (Array.isArray(article.tags) ? (typeof article.tags[0] === 'string' ? article.tags[0] : article.tags[0]?.name) : undefined),
+    "articleSection": Array.isArray(article.tags) ? (typeof article.tags[0] === 'string' ? article.tags[0] : article.tags[0]?.name) : undefined,
     "keywords": Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(', ') : undefined,
     "wordCount": article.readingTime * 200, // Approximate word count
     "timeRequired": `PT${article.readingTime}M`
@@ -168,15 +172,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             <span className="mx-2">/</span>
             <Link href="/articles" className="hover:text-primary">บทความ</Link>
             <span className="mx-2">/</span>
-            {article.category?.slug && (
-              <Link 
-                href={`/articles?category=${article.category.slug}`} 
-                className="hover:text-primary"
-              >
-                {article.category?.name}
-              </Link>
-            )}
-            <span className="mx-2">/</span>
             <span className="text-gray-400">{article.title}</span>
           </nav>
         </div>
@@ -184,21 +179,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <article className="bg-white rounded-lg shadow-sm">
           {/* Article Header */}
           <header className="mb-8">
-            {/* Category Badge */}
-            <div className="mb-4">
-              {article.category && (
-                <Link 
-                  href={`/articles?category=${article.category.slug}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors"
-                  style={{ 
-                    backgroundColor: article.category?.color ? `${article.category.color}20` : '#f3f4f6',
-                    color: article.category?.color || '#6b7280'
-                  }}
-                >
-                  {article.category?.name}
-                </Link>
-              )}
-            </div>
+            {/* Category badge removed; using tags below */}
 
             {/* Title */}
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
@@ -263,17 +244,23 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </div>
 
             {/* Tags */}
-            {article.tags && article.tags.length > 0 && (
+            {article.tags && (article.tags as any[]).length > 0 && (
               <div className="flex flex-wrap gap-2 mb-8">
-                {article.tags.map((tag, index) => (
-                  <Link
-                    key={index}
-                    href={`/articles?tag=${encodeURIComponent(tag)}`}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                  >
-                    #{tag}
-                  </Link>
-                ))}
+                {(article.tags as any[]).map((tag: any, index: number) => {
+                  const name = typeof tag === 'string' ? tag : tag.name;
+                  const slug = typeof tag === 'string' ? tag : tag.slug;
+                  const color = typeof tag === 'object' ? tag.color : undefined;
+                  return (
+                    <Link
+                      key={`${slug}-${index}`}
+                      href={`/articles?tags=${encodeURIComponent(slug)}`}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                      style={{ backgroundColor: color ? `${color}20` : '#f3f4f6', color: color || '#374151' }}
+                    >
+                      #{name}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </header>
@@ -390,17 +377,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   </Link>
                   <div className="p-4">
                     <div className="flex justify-between items-center mb-2">
-                      {relatedArticle.category && (
-                        <span 
-                          className="text-xs font-medium px-2 py-1 rounded-full"
-                          style={{ 
-                            backgroundColor: relatedArticle.category?.color ? `${relatedArticle.category.color}20` : '#f3f4f6',
-                            color: relatedArticle.category?.color || '#6b7280'
-                          }}
-                        >
-                          {relatedArticle.category?.name}
-                        </span>
-                      )}
+                    {Array.isArray((relatedArticle as any).tags) && (relatedArticle as any).tags.length > 0 && (
+                      <span
+                        className="text-xs font-medium px-2 py-1 rounded-full"
+                        style={{ 
+                          backgroundColor: ((relatedArticle as any).tags[0]?.color ? `${(relatedArticle as any).tags[0].color}20` : '#f3f4f6'),
+                          color: (relatedArticle as any).tags[0]?.color || '#6b7280'
+                        }}
+                      >
+                        {(relatedArticle as any).tags[0]?.name || (relatedArticle as any).tags[0]?.slug}
+                      </span>
+                    )}
                       <span className="text-xs text-gray-500">
                         {formatDate(relatedArticle.publishedAt!)}
                       </span>

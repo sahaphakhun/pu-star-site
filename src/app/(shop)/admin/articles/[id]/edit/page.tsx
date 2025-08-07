@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
 import RichTextEditor from '@/components/RichTextEditor';
-import { IContentBlock, IArticle, ISEOMetadata, IArticleCategory } from '@/models/Article';
+import { IContentBlock, IArticle, ISEOMetadata, IArticleTag } from '@/models/Article';
 
 interface EditArticlePageProps {
   params: Promise<{ id: string }>;
@@ -25,14 +25,9 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const [excerpt, setExcerpt] = useState('');
   const [featuredImage, setFeaturedImage] = useState('');
   const [content, setContent] = useState<IContentBlock[]>([]);
-  const [category, setCategory] = useState<IArticleCategory>({
-    name: '',
-    slug: '',
-    description: '',
-    color: '#3B82F6'
-  });
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
+  const [availableTags, setAvailableTags] = useState<IArticleTag[]>([]);
+  const [tags, setTags] = useState<IArticleTag[]>([]);
+  const [newTagName, setNewTagName] = useState('');
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [scheduledAt, setScheduledAt] = useState('');
   const [author, setAuthor] = useState({
@@ -75,6 +70,22 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
     }
   }, [articleId, canEdit, permissionsLoading]);
 
+  // โหลดแท็กทั้งหมด
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const response = await fetch('/api/tags?limit=200', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableTags(data.data.tags || []);
+        }
+      } catch (e) {
+        console.error('Error loading tags', e);
+      }
+    };
+    loadTags();
+  }, []);
+
   const fetchArticle = async () => {
     try {
       setLoading(true);
@@ -95,8 +106,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       setExcerpt(article.excerpt);
       setFeaturedImage(article.featuredImage || '');
       setContent(article.content || []);
-      setCategory(article.category || { name: '', slug: '', description: '', color: '#3B82F6' } as any);
-      setTags((article.tags as any[])?.map((t: any) => (typeof t === 'string' ? t : t?.name)).filter(Boolean) || []);
+      setTags(((article.tags as any[]) || []).map((t: any) => (typeof t === 'string' ? { name: t, slug: t } : t)).filter(Boolean));
       setStatus(article.status);
       setAuthor(article.author || { name: 'ทีมงาน PU STAR', email: '', avatar: '' });
       setSeo(article.seo);
@@ -140,19 +150,45 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
     }
   };
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      const newTags = [...tags, tagInput.trim()];
-      setTags(newTags);
-      setSeo(prev => ({ ...prev, keywords: newTags }));
-      setTagInput('');
+  const addTag = (tag: IArticleTag) => {
+    if (!tags.find(t => t.slug === tag.slug)) {
+      const updated = [...tags, tag];
+      setTags(updated);
+      setSeo(prev => ({ ...prev, keywords: updated.map(t => t.name) }));
     }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    const newTags = tags.filter(tag => tag !== tagToRemove);
-    setTags(newTags);
-    setSeo(prev => ({ ...prev, keywords: newTags }));
+  const removeTag = (slug: string) => {
+    const updated = tags.filter(t => t.slug !== slug);
+    setTags(updated);
+    setSeo(prev => ({ ...prev, keywords: updated.map(t => t.name) }));
+  };
+
+  const createNewTag = async () => {
+    if (!newTagName.trim()) return;
+    const slug = newTagName.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+    const newTag: IArticleTag = { name: newTagName.trim(), slug } as IArticleTag;
+    try {
+      const response = await fetch('/api/admin/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(newTag)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const createdTag = data.data.tag as IArticleTag;
+        setAvailableTags(prev => [...prev, createdTag]);
+        addTag(createdTag);
+        setNewTagName('');
+      } else {
+        const err = await response.json();
+        alert(err.error || 'เกิดข้อผิดพลาดในการสร้างแท็ก');
+      }
+    } catch (e) {
+      console.error('create tag error', e);
+      alert('เกิดข้อผิดพลาดในการสร้างแท็ก');
+    }
   };
 
   const handleImageUpload = useCallback(async (file: File): Promise<string> => {
@@ -222,11 +258,6 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       return;
     }
 
-    if (!category?.name?.trim()) {
-      setError('กรุณาระบุหมวดหมู่');
-      return;
-    }
-
     if (!seo.title.trim()) {
       setError('กรุณาระบุ SEO Title');
       return;
@@ -247,11 +278,6 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
         excerpt: excerpt.trim(),
         featuredImage: featuredImage || undefined,
         content,
-        category: category?.name ? {
-          ...category,
-          name: category.name.trim(),
-          slug: (category.slug || '').trim() || generateSlug(category.name)
-        } : undefined,
         tags,
         author,
         seo,
@@ -473,101 +499,66 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
               </div>
             </div>
 
-            {/* Category */}
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-lg font-semibold mb-4">หมวดหมู่</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อหมวดหมู่ *</label>
-                  <input
-                    type="text"
-                    value={category.name}
-                    onChange={(e) => setCategory(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="เช่น คู่มือการใช้งาน"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Slug หมวดหมู่</label>
-                  <input
-                    type="text"
-                    value={category.slug}
-                    onChange={(e) => setCategory(prev => ({ ...prev, slug: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="guide"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">สีหมวดหมู่</label>
-                  <input
-                    type="color"
-                    value={category.color || '#3B82F6'}
-                    onChange={(e) => setCategory(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-full h-10 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">คำอธิบายหมวดหมู่</label>
-                  <textarea
-                    value={category.description || ''}
-                    onChange={(e) => setCategory(prev => ({ ...prev, description: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="คำอธิบายเกี่ยวกับหมวดหมู่นี้"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Tags */}
             <div className="bg-white rounded-lg border p-6">
               <h2 className="text-lg font-semibold mb-4">แท็ก</h2>
-              
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="เพิ่มแท็ก"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
-                  >
-                    เพิ่ม
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800"
-                    >
-                      {tag}
+              {tags.length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {tags.map(tag => (
+                    <span key={tag.slug} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                      {tag.name}
                       <button
                         type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-2 text-gray-400 hover:text-gray-600"
+                        onClick={() => removeTag(tag.slug)}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
                       >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        ✕
                       </button>
                     </span>
                   ))}
                 </div>
+              )}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">เลือกแท็กที่มีอยู่</label>
+                <select
+                  onChange={(e) => {
+                    const tag = availableTags.find(t => t.slug === e.target.value);
+                    if (tag) addTag(tag);
+                    e.currentTarget.value = '';
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">เลือกแท็ก...</option>
+                  {availableTags
+                    .filter(t => !tags.find(tt => tt.slug === t.slug))
+                    .map(t => (
+                      <option key={t.slug} value={t.slug}>{t.name}</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">สร้างแท็กใหม่</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="ชื่อแท็กใหม่..."
+                  />
+                  <button
+                    type="button"
+                    onClick={createNewTag}
+                    disabled={!newTagName.trim()}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                  >
+                    เพิ่ม
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* เดิมมีส่วนแท็กแบบข้อความ ถูกแทนที่ด้วยส่วนแท็กด้านบน */}
 
             {/* Author */}
             <div className="bg-white rounded-lg border p-6">

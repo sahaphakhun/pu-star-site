@@ -4,6 +4,7 @@ import Article, { IArticle } from '@/models/Article';
 import { verifyToken } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { PERMISSIONS } from '@/constants/permissions';
+import { updateTagArticleCount } from '@/app/api/tags/route';
 
 // GET - ดึงรายการบทความทั้งหมด (สำหรับแอดมิน)
 export async function GET(request: NextRequest) {
@@ -18,7 +19,8 @@ export async function GET(request: NextRequest) {
     }
 
     // ตรวจสอบสิทธิ์
-    const canView = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_VIEW);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canView = await hasPermission(requester, PERMISSIONS.ARTICLES_VIEW);
     if (!canView) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์ดูบทความ' },
@@ -53,7 +55,8 @@ export async function GET(request: NextRequest) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
         { excerpt: { $regex: search, $options: 'i' } },
-        { 'tags.name': { $regex: search, $options: 'i' } }
+        { 'tags.name': { $regex: search, $options: 'i' } },
+        { 'content.content.text': { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -92,7 +95,7 @@ export async function GET(request: NextRequest) {
       archived: 0
     };
 
-    stats.forEach(stat => {
+    stats.forEach((stat: any) => {
       if (statusStats.hasOwnProperty(stat._id)) {
         statusStats[stat._id as keyof typeof statusStats] = stat.count;
       }
@@ -135,7 +138,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบสิทธิ์
-    const canCreate = await hasPermission(decodedToken.phoneNumber, PERMISSIONS.ARTICLES_CREATE);
+    const requester = decodedToken.phoneNumber || decodedToken.userId || '';
+    const canCreate = await hasPermission(requester, PERMISSIONS.ARTICLES_CREATE);
     if (!canCreate) {
       return NextResponse.json(
         { error: 'ไม่ได้รับอนุญาต: ไม่มีสิทธิ์สร้างบทความ' },
@@ -202,6 +206,12 @@ export async function POST(request: NextRequest) {
     const newArticle = new Article(articleData);
     await newArticle.save();
 
+    // อัปเดตจำนวนบทความต่อแท็ก
+    if (Array.isArray(newArticle.tags)) {
+      const slugs = [...new Set(newArticle.tags.map((t: any) => t.slug || t))].filter(Boolean);
+      await Promise.all(slugs.map((slug) => updateTagArticleCount(slug)));
+    }
+
     return NextResponse.json({
       success: true,
       message: 'สร้างบทความสำเร็จ',
@@ -213,7 +223,7 @@ export async function POST(request: NextRequest) {
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      const validationErrors = Object.values(error.errors as any).map((err: any) => err.message);
       return NextResponse.json(
         { error: `ข้อมูลไม่ถูกต้อง: ${validationErrors.join(', ')}` },
         { status: 400 }

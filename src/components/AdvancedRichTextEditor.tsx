@@ -35,7 +35,7 @@ const Toolbar: React.FC<{
     { type: 'image' as const, icon: '🖼️', label: 'รูปภาพ' },
     { type: 'quote' as const, icon: '💬', label: 'คำพูด' },
     { type: 'list' as const, icon: '📋', label: 'รายการ' },
-    { type: 'divider' as const, icon: '➖', label: 'เส้นแบ่g' },
+    { type: 'divider' as const, icon: '➖', label: 'เส้นคั่น' },
   ];
 
   return (

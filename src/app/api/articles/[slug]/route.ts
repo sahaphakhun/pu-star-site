@@ -50,7 +50,7 @@ export async function GET(
     ).exec().catch(err => console.error('Error updating view count:', err));
 
     // ดึงบทความที่เกี่ยวข้อง
-    let relatedArticles = [];
+    let relatedArticles: any[] = [];
     
     if (article.relatedArticles && article.relatedArticles.length > 0) {
       // ถ้ามีการระบุบทความที่เกี่ยวข้องไว้
@@ -58,26 +58,26 @@ export async function GET(
         _id: { $in: article.relatedArticles },
         status: 'published'
       })
-      .select('title slug excerpt featuredImage category publishedAt readingTime')
+      .select('title slug excerpt featuredImage publishedAt readingTime tags')
       .limit(3)
       .lean();
     }
     
-    // ถ้ายังไม่ครบ 3 บทความ ให้หาบทความในหมวดเดียวกัน
-    if (relatedArticles.length < 3) {
+    // ถ้ายังไม่ครบ 3 บทความ ให้หาโดยแท็กเดียวกัน
+    if (relatedArticles.length < 3 && Array.isArray(article.tags) && article.tags.length > 0) {
+      const tagSlugs = article.tags.map((t: any) => t.slug || t);
       const additionalArticles = await Article.find({
         _id: { 
           $ne: article._id,
           $nin: relatedArticles.map(a => a._id)
         },
-        'category.slug': article.category.slug,
+        'tags.slug': { $in: tagSlugs },
         status: 'published'
       })
-      .select('title slug excerpt featuredImage category publishedAt readingTime')
+      .select('title slug excerpt featuredImage publishedAt readingTime tags')
       .sort({ publishedAt: -1 })
       .limit(3 - relatedArticles.length)
       .lean();
-      
       relatedArticles = [...relatedArticles, ...additionalArticles];
     }
     
@@ -90,7 +90,7 @@ export async function GET(
         },
         status: 'published'
       })
-      .select('title slug excerpt featuredImage category publishedAt readingTime')
+      .select('title slug excerpt featuredImage publishedAt readingTime tags')
       .sort({ publishedAt: -1 })
       .limit(3 - relatedArticles.length)
       .lean();
@@ -98,10 +98,9 @@ export async function GET(
       relatedArticles = [...relatedArticles, ...latestArticles];
     }
 
-    // ดึงบทความก่อนหน้าและถัดไป
+    // ดึงบทความก่อนหน้าและถัดไปตามวันที่เผยแพร่
     const [previousArticle, nextArticle] = await Promise.all([
       Article.findOne({
-        'category.slug': article.category.slug,
         publishedAt: { $lt: article.publishedAt },
         status: 'published'
       })
@@ -110,7 +109,6 @@ export async function GET(
       .lean(),
       
       Article.findOne({
-        'category.slug': article.category.slug,
         publishedAt: { $gt: article.publishedAt },
         status: 'published'
       })

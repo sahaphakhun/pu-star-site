@@ -196,9 +196,17 @@ const articleSchema = new Schema<IArticle>(
       type: String,
       validate: {
         validator: function(v: string) {
-          return !v || /^\/.*\.(jpg|jpeg|png|webp|gif)$/i.test(v);
+          if (!v) return true;
+          // อนุญาตให้เป็น path ในโดเมนเดียวกัน หรือ URL http/https ภายนอก
+          if (v.startsWith('/')) return true;
+          try {
+            const url = new URL(v);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+          } catch {
+            return false;
+          }
         },
-        message: 'รูปภาพต้องเป็นไฟล์ .jpg, .jpeg, .png, .webp หรือ .gif เท่านั้น'
+        message: 'รูปภาพต้องเป็น URL ที่ถูกต้องหรือ path ที่ขึ้นต้นด้วย /'
       }
     },
     content: [contentBlockSchema],
@@ -247,17 +255,17 @@ articleSchema.index({ 'tags.name': 1, status: 1 }); // เพิ่ม index ส
 articleSchema.index({ title: 'text', excerpt: 'text', 'content.content.text': 'text' });
 
 // Virtual สำหรับ URL
-articleSchema.virtual('url').get(function() {
+articleSchema.virtual('url').get(function(this: any) {
   return `/articles/${this.slug}`;
 });
 
 // Middleware สำหรับคำนวณเวลาอ่าน
-articleSchema.pre('save', function(next) {
+articleSchema.pre('save', function(this: any, next: (err?: any) => void) {
   if (this.isModified('content')) {
     // คำนวณเวลาอ่านจากเนื้อหา (สมมติ 200 คำต่อนาที)
     const textContent = this.content
-      .filter(block => ['text', 'heading', 'quote', 'list'].includes(block.type))
-      .map(block => {
+      .filter((block: any) => ['text', 'heading', 'quote', 'list'].includes(block.type))
+      .map((block: any) => {
         if (block.type === 'text' || block.type === 'heading' || block.type === 'quote') {
           return block.content.text || '';
         } else if (block.type === 'list') {
@@ -267,14 +275,14 @@ articleSchema.pre('save', function(next) {
       })
       .join(' ');
     
-    const wordCount = textContent.split(/\s+/).filter(word => word.length > 0).length;
+    const wordCount = textContent.split(/\s+/).filter((word: string) => word.length > 0).length;
     this.readingTime = Math.max(1, Math.ceil(wordCount / 200));
   }
   next();
 });
 
 // Middleware สำหรับ auto-publish
-articleSchema.pre('save', function(next) {
+articleSchema.pre('save', function(this: any, next: (err?: any) => void) {
   if (this.status === 'published' && !this.publishedAt) {
     this.publishedAt = new Date();
   }
@@ -292,16 +300,9 @@ articleSchema.statics.findPublished = function() {
   }).sort({ publishedAt: -1 });
 };
 
-articleSchema.statics.findByCategory = function(categorySlug: string) {
-  return this.find({ 
-    'category.slug': categorySlug,
-    status: 'published'
-  }).sort({ publishedAt: -1 });
-};
-
 articleSchema.statics.findByTag = function(tag: string) {
   return this.find({ 
-    tags: tag,
+    'tags.slug': tag,
     status: 'published'
   }).sort({ publishedAt: -1 });
 };

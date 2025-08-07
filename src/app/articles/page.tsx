@@ -85,7 +85,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
     return `${minutes} นาที`;
   };
 
-  const selectedTags = tags ? tags.split(',') : [];
+  const selectedTags = tags ? tags.split(',').filter(Boolean) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,7 +142,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                     return (
                       <Link
                         key={tag.slug}
-                        href={`/articles?tags=${isSelected 
+                          href={`/articles?tags=${isSelected 
                           ? selectedTags.filter(t => t !== tag.slug).join(',')
                           : [...selectedTags, tag.slug].join(',')
                         }`}
@@ -170,7 +170,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {allTags.slice(0, 20).map((tag: any) => {
-                      const isSelected = selectedTags.includes(tag.slug);
+                       const isSelected = selectedTags.includes(tag.slug);
                       return (
                         <Link
                           key={tag.slug}
@@ -203,8 +203,8 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                   <span className="text-sm font-medium text-gray-700">กรองโดย:</span>
                   
                   {search && (
-                    <div className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm">
-                      <span>ค้นหา: "{search}"</span>
+                     <div className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm">
+                       <span>ค้นหา: "{search}"</span>
                       <Link
                         href={`/articles?${selectedTags.length > 0 ? `tags=${tags}` : ''}`}
                         className="ml-2 text-blue-600 hover:text-blue-800"
@@ -215,14 +215,14 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                   )}
                   
                   {selectedTags.map((tagSlug) => {
-                    const tag = allTags.find(t => t.slug === tagSlug);
+                     const tag = allTags.find(t => t.slug === tagSlug);
                     if (!tag) return null;
                     
                     return (
                       <div key={tagSlug} className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm">
                         <span>{tag?.name || tagSlug}</span>
                         <Link
-                          href={`/articles?${search ? `search=${search}&` : ''}tags=${selectedTags.filter(t => t !== tagSlug).join(',')}`}
+                     href={`/articles?${search ? `search=${search}&` : ''}tags=${selectedTags.filter(t => t !== tagSlug).join(',')}`}
                           className="ml-2 text-blue-600 hover:text-blue-800"
                         >
                           ✕
