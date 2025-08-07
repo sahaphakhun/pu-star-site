@@ -402,7 +402,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
                     onChange={(e) => setSlug(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="url-friendly-slug"
-                    pattern="^[a-z0-9-]+$"
+                    pattern="[a-z0-9\-]+"
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">URL: /articles/{slug}</p>

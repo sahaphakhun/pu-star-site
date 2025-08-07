@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Metadata } from 'next';
 import ArticleRenderer from '@/components/ArticleRenderer';
+import SocialShare from '@/components/SocialShare';
 import { IArticle } from '@/models/Article';
 
 interface ArticlePageProps {
@@ -105,6 +106,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   if (!article) {
     notFound();
   }
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com';
+  const pageUrl = `${baseUrl}/articles/${article.slug}`;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('th-TH', {
@@ -299,28 +303,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </div>
 
             {/* Share Buttons */}
-            <div className="flex items-center gap-4 mb-8">
-              <span className="text-sm font-medium text-gray-700">แชร์บทความ:</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const url = window.location.href;
-                    const text = article.title;
-                    if (navigator.share) {
-                      navigator.share({ title: text, url });
-                    } else {
-                      navigator.clipboard.writeText(url);
-                      alert('คัดลอกลิงก์แล้ว!');
-                    }
-                  }}
-                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-                  title="แชร์"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                  </svg>
-                </button>
-              </div>
+            <div className="mb-8">
+              <SocialShare url={pageUrl} title={article.title} description={article.excerpt} />
             </div>
           </footer>
         </article>

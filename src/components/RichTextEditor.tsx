@@ -637,42 +637,42 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <div className={`rich-text-editor ${className}`}>
       {/* Toolbar */}
       <div className="toolbar bg-gray-50 border border-gray-200 rounded-t-lg p-3 flex flex-wrap gap-2">
-        <button
+        <button type="button"
           onClick={() => addBlock('text')}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >
           <span>📝</span> ข้อความ
         </button>
         
-        <button
+        <button type="button"
           onClick={() => addBlock('heading')}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >
           <span>📰</span> หัวข้อ
         </button>
         
-        <button
+        <button type="button"
           onClick={() => fileInputRef.current?.click()}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >
           <span>🖼️</span> รูปภาพ
         </button>
         
-        <button
+        <button type="button"
           onClick={() => addBlock('quote')}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >
           <span>💬</span> คำพูด
         </button>
         
-        <button
+        <button type="button"
           onClick={() => addBlock('list')}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >
           <span>📋</span> รายการ
         </button>
         
-        <button
+        <button type="button"
           onClick={() => addBlock('divider')}
           className="px-3 py-1 bg-white border rounded hover:bg-gray-50 flex items-center gap-1"
         >

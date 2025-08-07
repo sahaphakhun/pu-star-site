@@ -45,7 +45,7 @@ const Toolbar: React.FC<{
         <div className="flex gap-1 mr-4">
           <span className="text-sm font-medium text-gray-700 self-center mr-2">เพิ่มเนื้อหา:</span>
           {blockTypes.map(({ type, icon, label }) => (
-            <button
+            <button type="button"
               key={type}
               onClick={() => onAddBlock(type)}
               className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
@@ -69,7 +69,7 @@ const Toolbar: React.FC<{
                 { value: 'center', icon: '↔️', label: 'กลาง' },
                 { value: 'right', icon: '➡️', label: 'ขวา' },
               ].map(({ value, icon, label }) => (
-                <button
+                <button type="button"
                   key={value}
                   onClick={() => onUpdateStyles({ alignment: value as any })}
                   className={`p-2 rounded ${
@@ -97,7 +97,7 @@ const Toolbar: React.FC<{
             </select>
 
             {/* Font Weight */}
-            <button
+            <button type="button"
               onClick={() => onUpdateStyles({ 
                 fontWeight: selectedBlock.styles.fontWeight === 'bold' ? 'normal' : 'bold' 
               })}
