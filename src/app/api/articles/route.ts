@@ -21,7 +21,12 @@ export async function GET(request: NextRequest) {
       status: 'published',
       $or: [
         { publishedAt: { $lte: new Date() } },
-        { scheduledAt: { $lte: new Date() } }
+        { scheduledAt: { $lte: new Date() } },
+        { $and: [
+            { publishedAt: { $exists: false } },
+            { scheduledAt: { $exists: false } }
+          ]
+        }
       ]
     };
     

@@ -165,16 +165,15 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
 
     const response = await fetch('/api/admin/articles/upload-image', {
       method: 'POST',
-      body: formData
+      body: formData,
+      credentials: 'include'
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
-    }
-
     const data = await response.json();
-    return data.data.url;
+    if (!response.ok) {
+      throw new Error(data?.error || 'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
+    }
+    return data.data?.url || data.data?.imageUrl;
   }, [canUploadImages]);
 
   const handleFeaturedImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

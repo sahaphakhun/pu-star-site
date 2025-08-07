@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     }
 
     // เตรียมข้อมูลบทความ
-    const articleData = {
+    const articleData: any = {
       ...body,
       author: {
         name: body.author?.name || 'ทีมงาน PU STAR',
@@ -187,6 +187,16 @@ export async function POST(request: NextRequest) {
       createdBy: decodedToken.phoneNumber || decodedToken.userId,
       updatedBy: decodedToken.phoneNumber || decodedToken.userId
     };
+
+    // แปลง scheduledAt เป็น Date ถ้ามี
+    if (articleData.scheduledAt) {
+      articleData.scheduledAt = new Date(articleData.scheduledAt);
+    }
+
+    // ถ้าสถานะเป็นเผยแพร่และยังไม่มีเวลา publishedAt ให้กำหนดทันที
+    if (articleData.status === 'published' && !articleData.publishedAt) {
+      articleData.publishedAt = new Date();
+    }
 
     // สร้างบทความใหม่
     const newArticle = new Article(articleData);

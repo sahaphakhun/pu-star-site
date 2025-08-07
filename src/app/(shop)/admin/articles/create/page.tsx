@@ -160,12 +160,12 @@ export default function CreateArticlePage() {
       credentials: 'include',
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to upload image');
-    }
-
     const data = await response.json();
-    return data.data.imageUrl;
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to upload image');
+    }
+    // รองรับรูปแบบ response ของ endpoint ปัจจุบัน
+    return data.data?.url || data.data?.imageUrl;
   }, []);
 
   // Handle form submission

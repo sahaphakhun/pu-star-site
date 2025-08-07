@@ -25,7 +25,12 @@ export async function GET(
       status: 'published',
       $or: [
         { publishedAt: { $lte: new Date() } },
-        { scheduledAt: { $lte: new Date() } }
+        { scheduledAt: { $lte: new Date() } },
+        { $and: [
+            { publishedAt: { $exists: false } },
+            { scheduledAt: { $exists: false } }
+          ]
+        }
       ]
     })
     .select('-createdBy -updatedBy')
