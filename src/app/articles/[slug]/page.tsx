@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
       title: article.seo.title,
       description: article.seo.description,
       keywords: article.seo.keywords,
-      authors: [{ name: article.author.name }],
+      authors: article.author?.name ? [{ name: article.author.name }] : undefined,
       openGraph: {
         title: article.seo.ogTitle || article.seo.title,
         description: article.seo.ogDescription || article.seo.description,
@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
         'article:modified_time': article.updatedAt,
         'article:section': article.category?.name || (Array.isArray(article.tags) ? article.tags.map(t => t.name || t).join(', ') : ''),
         'article:tag': Array.isArray(article.tags) ? article.tags.map(t => (typeof t === 'string' ? t : t.name)).join(',') : '',
-        'article:author': article.author.name
+        'article:author': article.author?.name || 'PU STAR'
       }
     };
   } catch (error) {
@@ -127,8 +127,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             "image": article.featuredImage ? `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}${article.featuredImage}` : undefined,
     "author": {
       "@type": "Person",
-      "name": article.author.name,
-      "email": article.author.email
+      "name": article.author?.name || 'PU STAR',
+      "email": article.author?.email
     },
     "publisher": {
       "@type": "Organization",
@@ -208,14 +208,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             {/* Meta Information */}
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
               <div className="flex items-center gap-2">
-                {article.author.avatar && (
+                {article.author?.avatar && (
                   <img
                     src={article.author.avatar}
-                    alt={article.author.name}
+                    alt={article.author?.name || 'ผู้เขียน'}
                     className="w-6 h-6 rounded-full"
                   />
                 )}
-                <span>โดย {article.author.name}</span>
+                <span>โดย {article.author?.name || 'PU STAR'}</span>
               </div>
               
               <div className="flex items-center gap-1">
@@ -288,21 +288,21 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             {/* Author Info */}
             <div className="bg-gray-50 rounded-lg p-6 mb-8">
               <div className="flex items-start gap-4">
-                {article.author.avatar && (
+                {article.author?.avatar && (
                   <img
                     src={article.author.avatar}
-                    alt={article.author.name}
+                    alt={article.author?.name || 'ผู้เขียน'}
                     className="w-16 h-16 rounded-full"
                   />
                 )}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    เกี่ยวกับ {article.author.name}
+                    เกี่ยวกับ {article.author?.name || 'PU STAR'}
                   </h3>
                   <p className="text-gray-600 mb-2">
                     ทีมผู้เชี่ยวชาญด้านผลิตภัณฑ์ PU และวัสดุก่อสร้าง พร้อมแบ่งปันความรู้และประสบการณ์เพื่อช่วยให้คุณเลือกใช้ผลิตภัณฑ์ได้อย่างเหมาะสม
                   </p>
-                  {article.author.email && (
+                  {article.author?.email && (
                     <p className="text-sm text-gray-500">
                       ติดต่อ: {article.author.email}
                     </p>
