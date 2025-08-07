@@ -137,7 +137,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                   แท็กยอดนิยม
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {popularTags.map((tag: any) => {
+                   {popularTags.map((tag: any) => {
                     const isSelected = selectedTags.includes(tag.slug);
                     return (
                       <Link
@@ -152,9 +152,9 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                             : 'bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-800'
                         }`}
                       >
-                        {tag.name}
+                         {tag?.name || tag?.slug}
                         <span className="ml-1.5 text-xs opacity-75">
-                          ({tag.articleCount})
+                           ({tag.articleCount ?? 0})
                         </span>
                       </Link>
                     );
@@ -184,7 +184,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                               : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'
                           }`}
                         >
-                          {tag.name}
+                          {tag?.name || tag?.slug}
                         </Link>
                       );
                     })}
@@ -220,7 +220,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                     
                     return (
                       <div key={tagSlug} className="flex items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm">
-                        <span>{tag.name}</span>
+                        <span>{tag?.name || tagSlug}</span>
                         <Link
                           href={`/articles?${search ? `search=${search}&` : ''}tags=${selectedTags.filter(t => t !== tagSlug).join(',')}`}
                           className="ml-2 text-blue-600 hover:text-blue-800"

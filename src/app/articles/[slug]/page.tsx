@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
         type: 'article',
         publishedTime: article.publishedAt,
         modifiedTime: article.updatedAt,
-        tags: article.tags.map(tag => tag.name),
+        tags: Array.isArray(article.tags) ? article.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag.name)).filter(Boolean) : [],
         url: `${baseUrl}/articles/${article.slug}`
       },
       twitter: {
@@ -144,8 +144,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
       "@type": "WebPage",
               "@id": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/articles/${article.slug}`
     },
-    "articleSection": article.category.name,
-    "keywords": article.tags.join(', '),
+    "articleSection": article.category?.name || (Array.isArray(article.tags) ? (typeof article.tags[0] === 'string' ? article.tags[0] : article.tags[0]?.name) : undefined),
+    "keywords": Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(', ') : undefined,
     "wordCount": article.readingTime * 200, // Approximate word count
     "timeRequired": `PT${article.readingTime}M`
   };

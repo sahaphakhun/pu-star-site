@@ -39,9 +39,11 @@ const AdminSidebar: React.FC = () => {
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
+    if (!hasUserInteracted) return;
     try {
       // ใช้ Web Audio API แทน HTML5 Audio เพื่อหลีกเลี่ยงปัญหา browser policy
       if (typeof window !== 'undefined' && 'AudioContext' in window) {
@@ -73,15 +75,18 @@ const AdminSidebar: React.FC = () => {
 
   // ฟังก์ชันขอสิทธิ์ browser notification
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    if (!('Notification' in window)) return false;
+    // ขอเฉพาะเมื่อยังไม่ได้ตัดสินใจ (default) เท่านั้น เพื่อลดการโดนบล็อก
+    if (Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       return permission === 'granted';
     }
-    return false;
+    return Notification.permission === 'granted';
   };
 
   // ฟังก์ชันส่ง browser notification
   const sendBrowserNotification = (title: string, body: string) => {
+    if (!hasUserInteracted) return;
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body,
@@ -92,9 +97,23 @@ const AdminSidebar: React.FC = () => {
     }
   };
 
+  // ติดธงว่าผู้ใช้มี interaction แล้ว เพื่อให้เล่นเสียง/แจ้งเตือนได้ตามนโยบายเบราว์เซอร์
   useEffect(() => {
-    // ขอสิทธิ์ notification เมื่อโหลดครั้งแรก
-    requestNotificationPermission();
+    const onFirstInteraction = () => {
+      setHasUserInteracted(true);
+      // ไม่ขอสิทธิ์ Notification อัตโนมัติ เพื่อลดการโดนบล็อกจากผู้ใช้เมินพรอมป์ซ้ำ
+      ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt =>
+        document.removeEventListener(evt, onFirstInteraction)
+      );
+    };
+    ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt =>
+      document.addEventListener(evt, onFirstInteraction, { once: true })
+    );
+    return () => {
+      ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt =>
+        document.removeEventListener(evt, onFirstInteraction)
+      );
+    };
   }, []);
 
   // ฟังก์ชันดึงข้อมูลออเดอร์รอดำเนินการ
@@ -248,6 +267,10 @@ const AdminSidebar: React.FC = () => {
   };
 
   const handleNotificationClick = async (notification: Notification) => {
+    // ขอสิทธิ์เมื่อผู้ใช้กดที่ศูนย์แจ้งเตือนเป็นครั้งแรก และยังไม่เคยอนุญาต/ปฏิเสธ
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      await requestNotificationPermission();
+    }
     // ทำเครื่องหมายอ่านแล้ว
     if (!notification.isRead) {
       await markAsRead(notification._id);
