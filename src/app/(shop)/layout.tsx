@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,11 +33,14 @@ export default function ShopLayout({ children }: LayoutProps) {
       <AppHeader showSearch={true} />
       
       {/* Main content */}
-      <main className="flex-1 bg-gray-100">
+      <main className="flex-1 bg-gray-100 pb-16 md:pb-0">
         <div className="container mx-auto px-4 py-6">
           {children}
         </div>
       </main>
+
+      {/* แถบเมนูด้านล่างสำหรับมือถือ เฉพาะฝั่งลูกค้า */}
+      <MobileBottomNav hideOnPrefix={["/admin"]} />
     </div>
   );
 } 

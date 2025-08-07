@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
-  const { name, price, description, imageUrl, options, category, units, shippingFee, isAvailable } = parsed.data;
+  const { name, price, description, imageUrl, options, category, units, shippingFee, isAvailable, wmsConfig, wmsVariantConfigs } = parsed.data;
 
   // ต้องมีอย่างน้อย price หรือ units
   if (price === undefined && (!units || units.length === 0)) {
@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
     units,
     shippingFee,
     isAvailable: isAvailable !== undefined ? isAvailable : true,
+    wmsConfig,
+    wmsVariantConfigs,
   });
   clearCache('products');
   return NextResponse.json(product.toObject ? product.toObject() : product, { status: 201 });

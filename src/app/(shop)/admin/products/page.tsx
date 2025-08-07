@@ -60,6 +60,99 @@ const AdminProductsPage = () => {
   const [wmsLotMfg, setWmsLotMfg] = useState('');
   const [wmsAdminUsername, setWmsAdminUsername] = useState('');
 
+  // WMS per-variant configuration
+  interface WMSVariantRow {
+    key: string;
+    unitLabel?: string;
+    options: Record<string, string>;
+    productCode: string;
+    lotGen: string;
+    locationBin: string;
+    lotMfg?: string;
+    adminUsername: string;
+    isEnabled: boolean;
+  }
+  const [wmsVariantMode, setWmsVariantMode] = useState(false);
+  const [wmsVariantConfigs, setWmsVariantConfigs] = useState<WMSVariantRow[]>([]);
+
+  const buildVariantKey = (unitLabel?: string, selectedOptions?: Record<string, string>) => {
+    const unitPart = unitLabel ? `unit:${unitLabel}` : 'unit:default';
+    const optionsPart = selectedOptions && Object.keys(selectedOptions).length > 0
+      ? 'opts:' + Object.keys(selectedOptions).sort().map(k => `${k}:${selectedOptions[k]}`).join('|')
+      : 'opts:none';
+    return `${unitPart}__${optionsPart}`;
+  };
+
+  const getOptionCombos = (opts: ProductOption[]): Record<string, string>[] => {
+    if (!opts || opts.length === 0) return [{}];
+    // เริ่มด้วยคอมโบว่าง แล้วคูณค่าของแต่ละ option ต่อกัน
+    return opts.reduce<Record<string, string>[]>((acc, option) => {
+      const validValues = (option.values || []).filter(v => v.label && v.label.trim());
+      if (validValues.length === 0) return acc; // ถ้าไม่มีค่า ให้ข้าม option นี้
+      const next: Record<string, string>[] = [];
+      for (const combo of acc) {
+        for (const val of validValues) {
+          next.push({ ...combo, [option.name]: val.label });
+        }
+      }
+      return next;
+    }, [{}]);
+  };
+
+  const generateVariantRows = () => {
+    const unitLabels = (units && units.length > 0) ? units.map(u => u.label) : [undefined];
+    const optionCombos = getOptionCombos(options);
+
+    const existingByKey = new Map<string, WMSVariantRow>();
+    for (const row of wmsVariantConfigs) existingByKey.set(row.key, row);
+
+    const rows: WMSVariantRow[] = [];
+    for (const unitLabel of unitLabels) {
+      for (const combo of optionCombos) {
+        const key = buildVariantKey(unitLabel, combo);
+        const prev = existingByKey.get(key);
+        rows.push({
+          key,
+          unitLabel,
+          options: combo,
+          productCode: prev?.productCode ?? wmsProductCode,
+          lotGen: prev?.lotGen ?? wmsLotGen,
+          locationBin: prev?.locationBin ?? wmsLocationBin,
+          lotMfg: prev?.lotMfg ?? wmsLotMfg,
+          adminUsername: prev?.adminUsername ?? wmsAdminUsername,
+          isEnabled: prev?.isEnabled ?? true,
+        });
+      }
+    }
+    setWmsVariantConfigs(rows);
+  };
+
+  useEffect(() => {
+    if (wmsVariantMode) {
+      generateVariantRows();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wmsVariantMode, JSON.stringify(units), JSON.stringify(options), wmsProductCode, wmsLotGen, wmsLocationBin, wmsLotMfg, wmsAdminUsername]);
+
+  const updateVariantRow = (index: number, patch: Partial<WMSVariantRow>) => {
+    setWmsVariantConfigs(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  };
+
+  const prefillAllFromTopLevel = () => {
+    setWmsVariantConfigs(prev => prev.map(r => ({
+      ...r,
+      productCode: wmsProductCode,
+      lotGen: wmsLotGen,
+      locationBin: wmsLocationBin,
+      lotMfg: wmsLotMfg,
+      adminUsername: wmsAdminUsername,
+    })));
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch('/api/products', { credentials: 'include' });
@@ -127,6 +220,8 @@ const AdminProductsPage = () => {
     
     // Reset WMS fields
     setWmsEnabled(false);
+    setWmsVariantMode(false);
+    setWmsVariantConfigs([]);
     setWmsProductCode('');
     setWmsLotGen('');
     setWmsLocationBin('');
@@ -213,23 +308,46 @@ const AdminProductsPage = () => {
 
     // WMS Configuration validation and setup
     if (wmsEnabled) {
-      if (!wmsProductCode.trim() || !wmsLotGen.trim() || !wmsLocationBin.trim() || !wmsAdminUsername.trim()) {
-        toast.error('กรุณากรอกข้อมูล WMS ให้ครบถ้วน (รหัสสินค้า, Lot Generate, Location Bin, และ Admin Username)');
-        return;
+      if (!wmsVariantMode) {
+        if (!wmsProductCode.trim() || !wmsLotGen.trim() || !wmsLocationBin.trim() || !wmsAdminUsername.trim()) {
+          toast.error('กรุณากรอกข้อมูล WMS ให้ครบถ้วน (รหัสสินค้า, Lot Generate, Location Bin, และ Admin Username)');
+          return;
+        }
+        productData.wmsConfig = {
+          productCode: wmsProductCode.trim(),
+          lotGen: wmsLotGen.trim(),
+          locationBin: wmsLocationBin.trim(),
+          lotMfg: wmsLotMfg.trim() || undefined,
+          adminUsername: wmsAdminUsername.trim(),
+          isEnabled: true
+        };
+      } else {
+        // variant mode: ต้องมีรายการอย่างน้อย 1 รายการ และถ้ามี จะ validate ทีละแถว
+        if (!wmsVariantConfigs || wmsVariantConfigs.length === 0) {
+          toast.error('กรุณาสร้างรายการตั้งค่า WMS ต่อ variant อย่างน้อย 1 รายการ');
+          return;
+        }
+        const invalid = wmsVariantConfigs.find(r => r.isEnabled && (!r.productCode.trim() || !r.lotGen.trim() || !r.locationBin.trim() || !r.adminUsername.trim()));
+        if (invalid) {
+          toast.error('รายการ WMS บางรายการกรอกไม่ครบถ้วน');
+          return;
+        }
+        productData.wmsVariantConfigs = wmsVariantConfigs.map(r => ({
+          key: r.key,
+          unitLabel: r.unitLabel,
+          options: r.options,
+          productCode: r.productCode.trim(),
+          lotGen: r.lotGen.trim(),
+          locationBin: r.locationBin.trim(),
+          lotMfg: r.lotMfg?.trim() || undefined,
+          adminUsername: r.adminUsername.trim(),
+          isEnabled: r.isEnabled,
+        }));
       }
-      
-      productData.wmsConfig = {
-        productCode: wmsProductCode.trim(),
-        lotGen: wmsLotGen.trim(),
-        locationBin: wmsLocationBin.trim(),
-        lotMfg: wmsLotMfg.trim() || undefined,
-        adminUsername: wmsAdminUsername.trim(),
-        isEnabled: true
-      };
     } else {
-      productData.wmsConfig = {
-        isEnabled: false
-      };
+      // ไม่ส่งฟิลด์ WMS เมื่อปิดการใช้งาน เพื่อหลีกเลี่ยง validation ฝั่งเซิร์ฟเวอร์
+      delete productData.wmsConfig;
+      delete productData.wmsVariantConfigs;
     }
 
     try {
@@ -304,16 +422,44 @@ const AdminProductsPage = () => {
       setUnits([]);
     }
 
-    // Load WMS configuration
-    if (product.wmsConfig) {
-      setWmsEnabled(product.wmsConfig.isEnabled || false);
-      setWmsProductCode(product.wmsConfig.productCode || '');
-      setWmsLotGen(product.wmsConfig.lotGen || '');
-      setWmsLocationBin(product.wmsConfig.locationBin || '');
-      setWmsLotMfg(product.wmsConfig.lotMfg || '');
-      setWmsAdminUsername(product.wmsConfig.adminUsername || '');
+    // Load WMS configuration (product-level + variant-level)
+    const anyProduct: any = product as any;
+    const hasVariantConfigs = Array.isArray(anyProduct.wmsVariantConfigs) && anyProduct.wmsVariantConfigs.length > 0;
+
+    if (hasVariantConfigs) {
+      setWmsEnabled(true);
+      setWmsVariantMode(true);
+      setWmsVariantConfigs(anyProduct.wmsVariantConfigs.map((r: any) => ({
+        key: r.key,
+        unitLabel: r.unitLabel,
+        options: r.options || {},
+        productCode: r.productCode || '',
+        lotGen: r.lotGen || '',
+        locationBin: r.locationBin || '',
+        lotMfg: r.lotMfg || '',
+        adminUsername: r.adminUsername || '',
+        isEnabled: r.isEnabled !== false,
+      })));
+      // เติมฟิลด์บนสุดเพื่อช่วย prefill
+      const first = anyProduct.wmsVariantConfigs[0];
+      setWmsProductCode(first?.productCode || '');
+      setWmsLotGen(first?.lotGen || '');
+      setWmsLocationBin(first?.locationBin || '');
+      setWmsLotMfg(first?.lotMfg || '');
+      setWmsAdminUsername(first?.adminUsername || '');
+    } else if (anyProduct.wmsConfig) {
+      setWmsEnabled(anyProduct.wmsConfig.isEnabled || false);
+      setWmsVariantMode(false);
+      setWmsVariantConfigs([]);
+      setWmsProductCode(anyProduct.wmsConfig.productCode || '');
+      setWmsLotGen(anyProduct.wmsConfig.lotGen || '');
+      setWmsLocationBin(anyProduct.wmsConfig.locationBin || '');
+      setWmsLotMfg(anyProduct.wmsConfig.lotMfg || '');
+      setWmsAdminUsername(anyProduct.wmsConfig.adminUsername || '');
     } else {
       setWmsEnabled(false);
+      setWmsVariantMode(false);
+      setWmsVariantConfigs([]);
       setWmsProductCode('');
       setWmsLotGen('');
       setWmsLocationBin('');
@@ -1131,7 +1277,26 @@ const AdminProductsPage = () => {
                     </div>
                     
                     {wmsEnabled && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-6">
+                        {/* Toggle variant mode */}
+                        <div className="flex items-center justify-between bg-white p-4 rounded-lg border">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">โหมดกำหนดค่าแยกตามตัวเลือก/หน่วย (Variant Mode)</p>
+                            <p className="text-xs text-gray-500">เมื่อเปิด จะสามารถกำหนด WMS ต่อชุด Unit + ตัวเลือก ได้</p>
+                          </div>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={wmsVariantMode}
+                              onChange={(e) => setWmsVariantMode(e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">เปิดโหมด Variant</span>
+                          </label>
+                        </div>
+
+                        {/* Top-level fields (used when not variant mode, or for prefill) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             รหัสสินค้า (Product Code) <span className="text-red-500">*</span>
@@ -1196,6 +1361,68 @@ const AdminProductsPage = () => {
                             placeholder="ชื่อผู้ใช้แอดมินใน WMS"
                           />
                         </div>
+                        </div>
+
+                        {/* Variant table */}
+                        {wmsVariantMode && (
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <h4 className="font-semibold text-gray-800">กำหนดค่า WMS ต่อ Variant</h4>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={generateVariantRows} className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200">รีเฟรชรายการ</button>
+                                <button type="button" onClick={prefillAllFromTopLevel} className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Prefill จากฟิลด์ด้านบน</button>
+                              </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full text-sm">
+                                <thead>
+                                  <tr className="bg-gray-100 text-gray-700">
+                                    <th className="px-3 py-2 text-left">Unit</th>
+                                    <th className="px-3 py-2 text-left">ตัวเลือก</th>
+                                    <th className="px-3 py-2 text-left">Product Code</th>
+                                    <th className="px-3 py-2 text-left">Lot Gen</th>
+                                    <th className="px-3 py-2 text-left">Location Bin</th>
+                                    <th className="px-3 py-2 text-left">Lot Mfg</th>
+                                    <th className="px-3 py-2 text-left">Admin</th>
+                                    <th className="px-3 py-2 text-left">เปิดใช้</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {wmsVariantConfigs.map((row, idx) => (
+                                    <tr key={row.key} className="bg-white">
+                                      <td className="px-3 py-2 whitespace-nowrap">{row.unitLabel || '-'}</td>
+                                      <td className="px-3 py-2">
+                                        {Object.keys(row.options).length > 0
+                                          ? Object.entries(row.options).map(([k, v]) => (
+                                              <span key={k} className="inline-block mr-2 bg-gray-100 rounded px-2 py-0.5">{k}: {v}</span>
+                                            ))
+                                          : '-'}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input value={row.productCode} onChange={(e) => updateVariantRow(idx, { productCode: e.target.value })} className="w-40 px-2 py-1 border rounded" />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input value={row.lotGen} onChange={(e) => updateVariantRow(idx, { lotGen: e.target.value })} className="w-40 px-2 py-1 border rounded" />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input value={row.locationBin} onChange={(e) => updateVariantRow(idx, { locationBin: e.target.value })} className="w-36 px-2 py-1 border rounded" />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input value={row.lotMfg || ''} onChange={(e) => updateVariantRow(idx, { lotMfg: e.target.value })} className="w-28 px-2 py-1 border rounded" />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input value={row.adminUsername} onChange={(e) => updateVariantRow(idx, { adminUsername: e.target.value })} className="w-36 px-2 py-1 border rounded" />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input type="checkbox" checked={row.isEnabled} onChange={(e) => updateVariantRow(idx, { isEnabled: e.target.checked })} />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                     

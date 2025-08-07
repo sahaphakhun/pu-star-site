@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest, context: unknown) {
     return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
   }
 
-  const { name, price, description, imageUrl, options, category, units, shippingFee, isAvailable } = parsed.data;
+  const { name, price, description, imageUrl, options, category, units, shippingFee, isAvailable, wmsConfig, wmsVariantConfigs } = parsed.data;
 
   if (price === undefined && (!units || units.length === 0)) {
     return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
@@ -67,6 +67,8 @@ export async function PUT(request: NextRequest, context: unknown) {
       units,
       shippingFee,
       isAvailable: isAvailable !== undefined ? isAvailable : true,
+      wmsConfig,
+      wmsVariantConfigs,
     },
     { new: true, runValidators: true }
   );

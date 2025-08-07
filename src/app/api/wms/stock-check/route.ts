@@ -3,6 +3,15 @@ import { wmsService } from '@/lib/wms';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
 import { connectToDatabase } from '@/lib/mongodb';
+import type { WMSVariantConfig } from '@/types/wms';
+
+function buildVariantKey(unitLabel?: string, selectedOptions?: Record<string, string>): string {
+  const unitPart = unitLabel ? `unit:${unitLabel}` : 'unit:default';
+  const optionsPart = selectedOptions && Object.keys(selectedOptions).length > 0
+    ? 'opts:' + Object.keys(selectedOptions).sort().map(k => `${k}:${selectedOptions[k]}`).join('|')
+    : 'opts:none';
+  return `${unitPart}__${optionsPart}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,49 +38,89 @@ export async function POST(request: NextRequest) {
     const stockCheckResults = [];
     let overallStatus: 'checked' | 'insufficient' | 'error' = 'checked';
 
-    // ตรวจสอบสต็อกสำหรับแต่ละสินค้าในออเดอร์
+    // ตรวจสอบสต็อกสำหรับแต่ละสินค้าในออเดอร์ (รองรับ WMS ต่อ variant)
     for (const item of order.items) {
-      const product = await Product.findById(item.productId);
-      
-      if (!product || !product.wmsConfig || !product.wmsConfig.isEnabled) {
-        // ถ้าสินค้าไม่มี WMS config หรือไม่เปิดใช้งาน ให้ถือว่าพร้อมใช้งาน
+      const product = await Product.findById(item.productId).lean();
+
+      if (!product) {
         stockCheckResults.push({
           productId: item.productId.toString(),
           productCode: 'N/A',
           requestedQuantity: item.quantity,
-          availableQuantity: item.quantity, // สมมติว่ามีเพียงพอ
-          status: 'available',
-          message: 'ไม่มีการตั้งค่า WMS สำหรับสินค้านี้'
+          availableQuantity: 0,
+          status: 'error',
+          message: 'ไม่พบสินค้าในระบบ'
         });
+        overallStatus = 'error';
         continue;
       }
 
-      // เรียก WMS API ตรวจสอบสต็อก
-      const stockResult = await wmsService.checkStockQuantity({
-        productCode: product.wmsConfig.productCode,
-        lotGen: product.wmsConfig.lotGen,
-        locationBin: product.wmsConfig.locationBin,
-        lotMfg: product.wmsConfig.lotMfg,
-        adminUsername: product.wmsConfig.adminUsername
-      });
+      // สร้างกุญแจ variant จาก unit + selectedOptions เพื่อจับคู่ config ที่ตรง
+      const variantKey = buildVariantKey(item.unitLabel, item.selectedOptions);
 
+      let matchedVariant: WMSVariantConfig | undefined;
+      const variantConfigs = (product as any).wmsVariantConfigs as WMSVariantConfig[] | undefined;
+      if (Array.isArray(variantConfigs) && variantConfigs.length > 0) {
+        matchedVariant = variantConfigs.find(vc => vc.key === variantKey && (vc.isEnabled ?? true));
+      }
+
+      if (!matchedVariant) {
+        // ถ้าไม่มี variant config ให้ fallback ไปที่ product-level config (ถ้ามีและเปิดใช้งาน)
+        const wmsCfg = (product as any).wmsConfig;
+        if (!wmsCfg || !wmsCfg.isEnabled) {
+          stockCheckResults.push({
+            productId: item.productId.toString(),
+            productCode: 'N/A',
+            requestedQuantity: item.quantity,
+            availableQuantity: 0,
+            status: 'not_found',
+            message: 'ไม่มีการตั้งค่า WMS สำหรับสินค้านี้หรือ variant นี้'
+          });
+          overallStatus = overallStatus === 'error' ? 'error' : 'insufficient';
+          continue;
+        }
+
+        const stockResult = await wmsService.checkStockQuantity({
+          productCode: wmsCfg.productCode,
+          lotGen: wmsCfg.lotGen,
+          locationBin: wmsCfg.locationBin,
+          lotMfg: wmsCfg.lotMfg,
+          adminUsername: wmsCfg.adminUsername
+        });
+
+        const isAvailable = stockResult.quantity >= item.quantity;
+        const itemStatus = stockResult.status === 'available' && isAvailable ? 'available' : (stockResult.status === 'available' && !isAvailable ? 'insufficient' : stockResult.status);
+        stockCheckResults.push({
+          productId: item.productId.toString(),
+          productCode: wmsCfg.productCode,
+          requestedQuantity: item.quantity,
+          availableQuantity: stockResult.quantity,
+          status: itemStatus,
+          message: stockResult.message
+        });
+
+        if (itemStatus === 'insufficient' || itemStatus === 'not_found') {
+          overallStatus = 'insufficient';
+        } else if (itemStatus === 'error') {
+          overallStatus = 'error';
+        }
+        continue;
+      }
+
+      // ใช้ variant-level config
+      const stockResult = await wmsService.checkStockForVariant(matchedVariant);
       const isAvailable = stockResult.quantity >= item.quantity;
-      const itemStatus = stockResult.status === 'available' && isAvailable 
-        ? 'available' 
-        : stockResult.status === 'available' && !isAvailable
-        ? 'insufficient'
-        : stockResult.status;
+      const itemStatus = stockResult.status === 'available' && isAvailable ? 'available' : (stockResult.status === 'available' && !isAvailable ? 'insufficient' : stockResult.status);
 
       stockCheckResults.push({
         productId: item.productId.toString(),
-        productCode: product.wmsConfig.productCode,
+        productCode: matchedVariant.productCode,
         requestedQuantity: item.quantity,
         availableQuantity: stockResult.quantity,
         status: itemStatus,
         message: stockResult.message
       });
 
-      // อัพเดท overall status
       if (itemStatus === 'insufficient' || itemStatus === 'not_found') {
         overallStatus = 'insufficient';
       } else if (itemStatus === 'error') {

@@ -678,11 +678,8 @@ const ProfilePage = () => {
           }
         });
         
-        // รีเฟรชข้อมูลออเดอร์
-        fetchOrders();
-        
-        // เปลี่ยนไปแท็บออเดอร์
-        setActiveTab('orders');
+        // เปลี่ยนไปหน้าคำสั่งซื้อของฉัน
+        router.push('/my-orders');
         
       } else {
         toast.dismiss();

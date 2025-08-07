@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import type { WMSVariantConfig } from '@/types/wms';
 
 export interface IProduct extends Document {
   name: string;
@@ -30,6 +31,7 @@ export interface IProduct extends Document {
     adminUsername: string;
     isEnabled: boolean;
   };
+  wmsVariantConfigs?: WMSVariantConfig[];
   isAvailable?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -98,6 +100,26 @@ const productSchema = new Schema<IProduct>(
         isEnabled: { type: Boolean, required: true, default: false }
       },
       required: false,
+    },
+    wmsVariantConfigs: {
+      type: [
+        new Schema(
+          {
+            key: { type: String, required: true, trim: true },
+            unitLabel: { type: String, required: false, trim: true },
+            options: { type: Schema.Types.Mixed, required: false, default: {} },
+            productCode: { type: String, required: true, trim: true },
+            lotGen: { type: String, required: true, trim: true },
+            locationBin: { type: String, required: true, trim: true },
+            lotMfg: { type: String, required: false, trim: true },
+            adminUsername: { type: String, required: true, trim: true },
+            isEnabled: { type: Boolean, required: false, default: true },
+          },
+          { _id: false }
+        ),
+      ],
+      required: false,
+      default: undefined,
     },
     shippingFee: {
       type: Number,

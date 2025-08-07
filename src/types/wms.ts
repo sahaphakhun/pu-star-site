@@ -52,3 +52,18 @@ export interface WMSPickingResult {
   orderNumber: string;
   message?: string;
 }
+
+// Variant-level WMS configuration
+export type WMSVariantOptions = Record<string, string>;
+
+export interface WMSVariantConfig {
+  key: string; // unique key for variant (unit + sorted options)
+  unitLabel?: string;
+  options?: WMSVariantOptions;
+  productCode: string;
+  lotGen: string;
+  locationBin: string;
+  lotMfg?: string;
+  adminUsername: string;
+  isEnabled?: boolean;
+}

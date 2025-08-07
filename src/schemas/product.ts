@@ -28,6 +28,32 @@ export const productInputSchema = z.object({
   category: z.string().optional(),
   options: z.array(optionSchema).optional(),
   isAvailable: z.boolean().optional(),
+  isWmsEnabled: z.boolean().optional(),
+  wmsConfig: z
+    .object({
+      productCode: z.string().min(1),
+      lotGen: z.string().min(1),
+      locationBin: z.string().min(1),
+      lotMfg: z.string().optional(),
+      adminUsername: z.string().min(1),
+      isEnabled: z.boolean().optional(),
+    })
+    .optional(),
+  wmsVariantConfigs: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        unitLabel: z.string().optional(),
+        options: z.record(z.string(), z.string()).optional(),
+        productCode: z.string().min(1),
+        lotGen: z.string().min(1),
+        locationBin: z.string().min(1),
+        lotMfg: z.string().optional(),
+        adminUsername: z.string().min(1),
+        isEnabled: z.boolean().optional(),
+      })
+    )
+    .optional(),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>; 

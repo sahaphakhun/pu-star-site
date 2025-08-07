@@ -6,7 +6,8 @@ import type {
   WMSStockResult,
   WMSPickingResult,
   WMSStockStatus,
-  WMSPickingStatus
+  WMSPickingStatus,
+  WMSVariantConfig
 } from '@/types/wms';
 
 export class WMSService {
@@ -90,6 +91,19 @@ export class WMSService {
   async checkMultipleStocks(wmsConfigs: WMSConfig[]): Promise<WMSStockResult[]> {
     const promises = wmsConfigs.map(config => this.checkStockQuantity(config));
     return Promise.all(promises);
+  }
+
+  /**
+   * ตรวจสอบสต็อกแบบผูกกับ variant-level config
+   */
+  async checkStockForVariant(config: WMSVariantConfig): Promise<WMSStockResult> {
+    return this.checkStockQuantity({
+      productCode: config.productCode,
+      lotGen: config.lotGen,
+      locationBin: config.locationBin,
+      lotMfg: config.lotMfg,
+      adminUsername: config.adminUsername,
+    });
   }
 
   /**
