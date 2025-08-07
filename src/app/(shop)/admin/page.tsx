@@ -49,11 +49,11 @@ const AdminDashboard = () => {
         // คำนวณสถิติ
         const totalOrders = orders.length;
         const totalRevenue = orders
-          .filter((order: any) => ['delivered', 'confirmed', 'shipped'].includes(order.status))
-          .reduce((sum: number, order: any) => sum + order.totalAmount, 0);
-        const pendingOrders = orders.filter((order: any) => order.status === 'pending').length;
+          .filter((order: any) => order?.status && ['delivered', 'confirmed', 'shipped'].includes(order.status))
+          .reduce((sum: number, order: any) => sum + (order?.totalAmount || 0), 0);
+        const pendingOrders = orders.filter((order: any) => order?.status === 'pending').length;
         const claimedOrders = orders.filter((order: any) => 
-          ['claimed', 'claim_approved', 'claim_rejected'].includes(order.status)
+          order?.status && ['claimed', 'claim_approved', 'claim_rejected'].includes(order.status)
         ).length;
         
         // ออเดอร์ล่าสุด 5 รายการ
@@ -326,11 +326,11 @@ const AdminDashboard = () => {
                     <td className="py-3 px-4">
                       <span className="font-medium text-gray-900">#{order._id.slice(-8).toUpperCase()}</span>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">{order.customerName}</td>
-                    <td className="py-3 px-4 font-medium text-gray-900">{formatCurrency(order.totalAmount)}</td>
+                    <td className="py-3 px-4 text-gray-600">{order?.customerName || 'ไม่ระบุ'}</td>
+                    <td className="py-3 px-4 font-medium text-gray-900">{formatCurrency(order?.totalAmount || 0)}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                        {getStatusLabel(order.status)}
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order?.status || 'pending')}`}>
+                        {getStatusLabel(order?.status || 'pending')}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-600">
