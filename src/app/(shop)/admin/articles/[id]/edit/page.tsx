@@ -18,6 +18,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [articleId, setArticleId] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -196,21 +197,38 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       throw new Error('ไม่มีสิทธิ์อัพโหลดรูปภาพ');
     }
 
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const response = await fetch('/api/admin/articles/upload-image', {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error || 'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME as string | undefined;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string | undefined;
+    if (!cloudName || !uploadPreset) {
+      throw new Error('การตั้งค่า Cloudinary ไม่ถูกต้อง');
     }
-    return data.data?.url || data.data?.imageUrl;
-  }, [canUploadImages]);
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+      formData.append('folder', 'article-images');
+      formData.append(
+        'public_id',
+        `article-${articleId || 'new'}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      );
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message || 'เกิดข้อผิดพลาดในการอัพโหลดรูปภาพ');
+      }
+
+      return data.secure_url as string;
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [canUploadImages, articleId]);
 
   const handleFeaturedImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -450,15 +468,30 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
                       type="file"
                       accept="image/*"
                       onChange={handleFeaturedImageUpload}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      disabled={uploadingImage}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                     />
+                    {uploadingImage && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span>กำลังอัพโหลด...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Content Editor */}
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-lg border p-6 relative">
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                  <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-md shadow">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <span className="text-sm text-gray-700">กำลังอัพโหลดรูปภาพ...</span>
+                  </div>
+                </div>
+              )}
               <h2 className="text-lg font-semibold mb-4">เนื้อหาบทความ</h2>
               <RichTextEditor
                 content={content}

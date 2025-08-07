@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from 'next';
 import { IArticle } from '@/models/Article';
+import OptimizedImage from '@/components/OptimizedImage';
 
 export const metadata: Metadata = {
   title: 'บทความและเทคนิค - PU STAR',
@@ -90,7 +91,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+      <div className="bg-gradient-to-br from-primary via-primary to-[#1e3a8a] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-6">
@@ -112,7 +113,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-2 bottom-2 px-6 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
+                  className="absolute right-2 top-2 bottom-2 px-6 bg-accent text-white rounded-full hover:opacity-90 transition-colors duration-200 flex items-center justify-center"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -250,7 +251,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                       <Link href={`/articles/${article.slug}`}>
                         {article.featuredImage && (
                           <div className="aspect-video overflow-hidden">
-                            <Image
+                            <OptimizedImage
                               src={article.featuredImage}
                               alt={article.title}
                               width={400}
@@ -334,7 +335,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                             href={`/articles?page=${pageNum}${search ? `&search=${search}` : ''}${tags ? `&tags=${tags}` : ''}`}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                               pageNum === pagination.currentPage
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-primary text-white'
                                 : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
                             }`}
                           >

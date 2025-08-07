@@ -10,6 +10,13 @@ interface ArticleRendererProps {
 }
 
 const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = '' }) => {
+  const slugify = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\u0E00-\u0E7Fa-z0-9\s-]/g, '') // keep Thai letters, alphanumerics, spaces and dashes
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
   const getAlignmentClass = (alignment?: string) => {
     switch (alignment) {
       case 'center': return 'text-center';
@@ -57,7 +64,6 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
             {textContent.format === 'html' ? (
               <div 
                 dangerouslySetInnerHTML={{ __html: textContent.text }}
-                className="prose prose-lg max-w-none"
               />
             ) : (
               <p className="leading-relaxed">{textContent.text}</p>
@@ -68,6 +74,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
       case 'heading':
         const headingContent = block.content as IHeadingContent;
         const HeadingTag = `h${headingContent.level}` as keyof JSX.IntrinsicElements;
+        const headingId = `${slugify(headingContent.text)}-${index}`;
         
         const headingClasses = {
           1: 'text-4xl font-bold mb-6 mt-8',
@@ -80,8 +87,9 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
 
         return (
           <HeadingTag
+            id={headingId}
             key={block.id || index}
-            className={`${baseClasses} ${headingClasses[headingContent.level]} text-gray-900`}
+            className={`${baseClasses} ${headingClasses[headingContent.level]} text-gray-900 scroll-mt-24`}
             style={blockStyle}
           >
             {headingContent.text}
@@ -116,7 +124,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
                   alt={imageContent.alt}
                   width={800}
                   height={600}
-                  className={`rounded-lg shadow-md ${
+                  className={`rounded-lg shadow-md ring-1 ring-gray-200 ${
                     imageContent.objectFit === 'contain' ? 'object-contain' :
                     imageContent.objectFit === 'fill' ? 'object-fill' : 'object-cover'
                   }`}
@@ -140,7 +148,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
         return (
           <blockquote
             key={block.id || index}
-            className={`${baseClasses} mb-6 border-l-4 border-blue-500 pl-6 py-4 bg-blue-50 rounded-r-lg`}
+            className={`${baseClasses} mb-6 border-l-4 border-primary pl-6 py-4 bg-primary/5 rounded-r-lg`}
             style={blockStyle}
           >
             <p className="text-lg italic text-gray-800 leading-relaxed mb-2">
@@ -170,7 +178,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
                 listContent.type === 'ordered' 
                   ? 'list-decimal list-inside' 
                   : 'list-disc list-inside'
-              } space-y-2 text-gray-800 leading-relaxed pl-4`}
+              } space-y-2 text-gray-800 leading-relaxed pl-4 marker:text-primary`}
             >
               {listContent.items.map((item, itemIndex) => (
                 <li key={itemIndex} className="pl-2">
@@ -211,7 +219,7 @@ const ArticleRenderer: React.FC<ArticleRendererProps> = ({ content, className = 
 
   return (
     <div className={`article-content ${className}`}>
-      <div className="prose prose-lg max-w-none">
+      <div className="prose prose-lg max-w-none text-gray-800">
         {sortedContent.map((block, index) => renderBlock(block, index))}
       </div>
     </div>

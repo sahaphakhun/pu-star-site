@@ -142,6 +142,10 @@ const ProfilePage = () => {
     }
   });
   
+  // Slip สำหรับโอนเงิน
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipPreview, setSlipPreview] = useState<string | null>(null);
+  
   // Profile editing states
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -568,6 +572,16 @@ const ProfilePage = () => {
     return true;
   };
 
+  const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSlipFile(file);
+    if (file) {
+      setSlipPreview(URL.createObjectURL(file));
+    } else {
+      setSlipPreview(null);
+    }
+  };
+
   const handleCreateOrderFromQuote = async () => {
     // ตรวจสอบข้อมูลก่อนส่ง
     if (!validateDeliveryInfo()) {
@@ -597,26 +611,69 @@ const ProfilePage = () => {
     }
 
     try {
-      // สร้างที่อยู่จัดส่งแบบเต็ม
-      const fullAddress = [
+      // สร้างที่อยู่จัดส่งแบบเต็ม (จากฟอร์มใหม่)
+      const fullAddressFromForm = [
         orderFormData.deliveryAddress.houseNumber,
         orderFormData.deliveryAddress.moo ? `หมู่ ${orderFormData.deliveryAddress.moo}` : '',
-        orderFormData.deliveryAddress.lane ? `ซอย ${orderFormData.deliveryAddress.lane}` : '',
-        orderFormData.deliveryAddress.road ? `ถนน ${orderFormData.deliveryAddress.road}` : '',
-        orderFormData.deliveryAddress.subDistrict,
-        orderFormData.deliveryAddress.district,
+        orderFormData.deliveryAddress.lane ? `ซ.${orderFormData.deliveryAddress.lane}` : '',
+        orderFormData.deliveryAddress.road ? `ถ.${orderFormData.deliveryAddress.road}` : '',
+        orderFormData.deliveryAddress.subDistrict ? `ต.${orderFormData.deliveryAddress.subDistrict}` : orderFormData.deliveryAddress.subDistrict,
+        orderFormData.deliveryAddress.district ? `อ.${orderFormData.deliveryAddress.district}` : orderFormData.deliveryAddress.district,
         orderFormData.deliveryAddress.province,
         orderFormData.deliveryAddress.postalCode
       ].filter(Boolean).join(' ');
 
+      // ใช้ที่อยู่จากที่อยู่ที่บันทึกไว้ หากเลือกไว้
+      let finalAddress = fullAddressFromForm;
+      if (selectedAddressId) {
+        const selectedAddr: any = addresses.find((a: any) => (a._id || '') === selectedAddressId);
+        if (selectedAddr) {
+          if (typeof selectedAddr.address === 'string') {
+            finalAddress = selectedAddr.address;
+          } else {
+            finalAddress = [
+              selectedAddr.houseNumber,
+              selectedAddr.lane ? `ซ.${selectedAddr.lane}` : '',
+              selectedAddr.moo ? `หมู่ ${selectedAddr.moo}` : '',
+              selectedAddr.road ? `ถ.${selectedAddr.road}` : '',
+              selectedAddr.subDistrict ? `ต.${selectedAddr.subDistrict}` : '',
+              selectedAddr.district ? `อ.${selectedAddr.district}` : '',
+              selectedAddr.province,
+              selectedAddr.postalCode
+            ].filter(Boolean).join(' ');
+          }
+        }
+      }
+
+      if (!finalAddress) {
+        // สำรองด้วยที่อยู่จากใบเสนอราคาเดิม
+        finalAddress = orderFormData.customerAddress || currentQuoteForOrder.customerAddress;
+      }
+
+      // อัพโหลดสลิปหากเป็นการโอนเงิน
+      let slipUrl = '';
+      const isTransfer = orderFormData.paymentMethod === 'bank_transfer';
+      if (isTransfer && slipFile) {
+        const formData = new FormData();
+        formData.append('file', slipFile);
+        formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        slipUrl = data.secure_url;
+      }
+
       // เตรียมข้อมูลออเดอร์
-      const orderData = {
+      const orderData: any = {
         customerName: orderFormData.deliveryAddress.name,
         customerPhone: orderFormData.deliveryAddress.phone,
-        customerAddress: fullAddress,
-        paymentMethod: orderFormData.paymentMethod === 'cash_on_delivery' ? 'cod' : 'transfer',
+        customerAddress: finalAddress,
+        paymentMethod: isTransfer ? 'transfer' : 'cod',
         deliveryMethod: orderFormData.deliveryMethod,
         deliveryLocation: orderFormData.deliveryLocation,
+        ...(isTransfer && slipUrl ? { slipUrl } : {}),
         items: currentQuoteForOrder.items.map(item => ({
           productId: item.productId || 'quote-item',
           name: item.name,
@@ -627,14 +684,14 @@ const ProfilePage = () => {
           unitPrice: item.unitPrice || item.price
         })),
         totalAmount: currentQuoteForOrder.totalAmount,
-        shippingFee: 0, // ค่าจัดส่งจะคำนวณภายหลัง
+        shippingFee: 0,
         taxInvoice: currentQuoteForOrder.taxInvoice,
         fromQuoteRequest: true,
         quoteRequestId: currentQuoteForOrder._id,
         deliveryAddress: {
           name: orderFormData.deliveryAddress.name,
           phone: orderFormData.deliveryAddress.phone,
-          address: fullAddress
+          address: finalAddress
         }
       };
 
@@ -677,6 +734,8 @@ const ProfilePage = () => {
             road: ''
           }
         });
+        setSlipFile(null);
+        setSlipPreview(null);
         
         // เปลี่ยนไปหน้าคำสั่งซื้อของฉัน
         router.push('/my-orders');
@@ -1962,6 +2021,70 @@ const ProfilePage = () => {
                       </div>
                     </div>
 
+                    {orderFormData.paymentMethod === 'bank_transfer' && (
+                      <div className="space-y-4 mb-6">
+                        {/* ข้อมูลธนาคาร */}
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-medium text-blue-900 mb-3">ข้อมูลสำหรับโอนเงิน</h4>
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">ธนาคาร:</span>
+                              <span className="ml-2 text-gray-900">ธนาคารกสิกรไทย</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">เลขที่บัญชี:</span>
+                                <span className="ml-2 text-gray-900 font-mono text-lg">1943234902</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('1943234902');
+                                  const el = document.createElement('div');
+                                  el.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-[9999] transition-all duration-300';
+                                  el.textContent = 'คัดลอกเลขบัญชีแล้ว';
+                                  document.body.appendChild(el);
+                                  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => document.body.removeChild(el), 300); }, 2000);
+                                }}
+                                className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                <span>คัดลอก</span>
+                              </button>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-700">ชื่อบัญชี:</span>
+                              <span className="ml-2 text-gray-900">บริษัท วินริช ไดนามิค จำกัด</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* อัพโหลดสลิป */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">อัพโหลดสลิปการโอนเงิน</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleSlipChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required
+                          />
+                          {slipPreview && (
+                            <div className="mt-2 relative w-full h-48">
+                              <Image
+                                src={slipPreview}
+                                alt="ตัวอย่างสลิป"
+                                fill
+                                className="object-contain border rounded-lg"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="flex gap-3">
                       <button
@@ -1977,13 +2100,17 @@ const ProfilePage = () => {
                         }}
                         className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
                         disabled={
-                          !orderFormData.deliveryAddress.name ||
-                          !orderFormData.deliveryAddress.phone ||
-                          !orderFormData.deliveryAddress.houseNumber ||
-                          !orderFormData.deliveryAddress.province ||
-                          !orderFormData.deliveryAddress.district ||
-                          !orderFormData.deliveryAddress.subDistrict ||
-                          !orderFormData.deliveryAddress.postalCode
+                          (
+                            !selectedAddressId && (
+                              !orderFormData.deliveryAddress.name ||
+                              !orderFormData.deliveryAddress.phone ||
+                              !orderFormData.deliveryAddress.houseNumber ||
+                              !orderFormData.deliveryAddress.province ||
+                              !orderFormData.deliveryAddress.district ||
+                              !orderFormData.deliveryAddress.subDistrict ||
+                              !orderFormData.deliveryAddress.postalCode
+                            )
+                          ) || (orderFormData.paymentMethod === 'bank_transfer' && !slipFile)
                         }
                       >
                         ยืนยันการสั่งซื้อ

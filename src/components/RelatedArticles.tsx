@@ -123,7 +123,7 @@ export default async function RelatedArticles({
                     </div>
                   )}
                   
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary transition-colors duration-200 line-clamp-2">
                     {article.title}
                   </h3>
                   
@@ -150,7 +150,7 @@ export default async function RelatedArticles({
         <div className="text-center mt-10">
           <Link
             href="/articles"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+            className="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors duration-200"
           >
             ดูบทความทั้งหมด
             <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
