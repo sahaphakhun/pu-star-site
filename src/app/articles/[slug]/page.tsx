@@ -62,8 +62,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
       other: {
         'article:published_time': article.publishedAt,
         'article:modified_time': article.updatedAt,
-        'article:section': article.category.name,
-        'article:tag': article.tags.join(','),
+        'article:section': article.category?.name || (Array.isArray(article.tags) ? article.tags.map(t => t.name || t).join(', ') : ''),
+        'article:tag': Array.isArray(article.tags) ? article.tags.map(t => (typeof t === 'string' ? t : t.name)).join(',') : '',
         'article:author': article.author.name
       }
     };
@@ -168,12 +168,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             <span className="mx-2">/</span>
             <Link href="/articles" className="hover:text-primary">บทความ</Link>
             <span className="mx-2">/</span>
-            <Link 
-              href={`/articles?category=${article.category.slug}`} 
-              className="hover:text-primary"
-            >
-              {article.category.name}
-            </Link>
+            {article.category?.slug && (
+              <Link 
+                href={`/articles?category=${article.category.slug}`} 
+                className="hover:text-primary"
+              >
+                {article.category?.name}
+              </Link>
+            )}
             <span className="mx-2">/</span>
             <span className="text-gray-400">{article.title}</span>
           </nav>
@@ -184,16 +186,18 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           <header className="mb-8">
             {/* Category Badge */}
             <div className="mb-4">
-              <Link 
-                href={`/articles?category=${article.category.slug}`}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors"
-                style={{ 
-                  backgroundColor: article.category.color ? `${article.category.color}20` : '#f3f4f6',
-                  color: article.category.color || '#6b7280'
-                }}
-              >
-                {article.category.name}
-              </Link>
+              {article.category && (
+                <Link 
+                  href={`/articles?category=${article.category.slug}`}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                  style={{ 
+                    backgroundColor: article.category?.color ? `${article.category.color}20` : '#f3f4f6',
+                    color: article.category?.color || '#6b7280'
+                  }}
+                >
+                  {article.category?.name}
+                </Link>
+              )}
             </div>
 
             {/* Title */}
@@ -386,15 +390,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   </Link>
                   <div className="p-4">
                     <div className="flex justify-between items-center mb-2">
-                      <span 
-                        className="text-xs font-medium px-2 py-1 rounded-full"
-                        style={{ 
-                          backgroundColor: relatedArticle.category.color ? `${relatedArticle.category.color}20` : '#f3f4f6',
-                          color: relatedArticle.category.color || '#6b7280'
-                        }}
-                      >
-                        {relatedArticle.category.name}
-                      </span>
+                      {relatedArticle.category && (
+                        <span 
+                          className="text-xs font-medium px-2 py-1 rounded-full"
+                          style={{ 
+                            backgroundColor: relatedArticle.category?.color ? `${relatedArticle.category.color}20` : '#f3f4f6',
+                            color: relatedArticle.category?.color || '#6b7280'
+                          }}
+                        >
+                          {relatedArticle.category?.name}
+                        </span>
+                      )}
                       <span className="text-xs text-gray-500">
                         {formatDate(relatedArticle.publishedAt!)}
                       </span>

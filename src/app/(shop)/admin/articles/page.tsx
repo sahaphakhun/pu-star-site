@@ -383,11 +383,11 @@ export default function AdminArticlesPage() {
                     <span 
                       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                       style={{ 
-                        backgroundColor: article.category.color ? `${article.category.color}20` : '#f3f4f6',
-                        color: article.category.color || '#6b7280'
+                        backgroundColor: article.category?.color ? `${article.category.color}20` : '#f3f4f6',
+                        color: article.category?.color || '#6b7280'
                       }}
                     >
-                      {article.category.name}
+                      {article.category?.name || 'ไม่ระบุหมวด'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -395,7 +395,7 @@ export default function AdminArticlesPage() {
                       value={article.status}
                       onChange={(e) => handleStatusChange(article._id, e.target.value)}
                       className="text-sm border-0 bg-transparent focus:ring-0"
-                      disabled={!canEdit || (e.target.value === 'published' && !canPublish)}
+                      disabled={!canEdit}
                     >
                       <option value="draft">ร่าง</option>
                       <option value="published">เผยแพร่แล้ว</option>
