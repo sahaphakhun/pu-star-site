@@ -69,7 +69,7 @@ const QuoteRequestsContent = () => {
   const fetchQuoteRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/quote-requests?status=${selectedStatus}&limit=50`);
+      const response = await fetch(`/api/quote-requests?status=${selectedStatus}&limit=50`, { credentials: 'include' });
       const data = await response.json();
       
       if (data.success) {
@@ -116,6 +116,7 @@ const QuoteRequestsContent = () => {
           quoteMessage: responseMessage.trim(),
           quoteFileUrl: responseFileUrl.trim() || undefined,
         }),
+        credentials: 'include'
       });
 
       if (response.ok) {

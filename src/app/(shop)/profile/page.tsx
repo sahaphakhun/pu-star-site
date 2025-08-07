@@ -293,7 +293,7 @@ const ProfilePage = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch('/api/profile');
+      const res = await fetch('/api/profile', { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setProfileData({
@@ -310,7 +310,7 @@ const ProfilePage = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/orders/my-orders');
+      const res = await fetch('/api/orders/my-orders', { credentials: 'include' });
       const data = await res.json();
       if (Array.isArray(data)) {
         setOrders(data);
@@ -324,7 +324,7 @@ const ProfilePage = () => {
 
   const fetchAddresses = async () => {
     try {
-      const res = await fetch('/api/profile/addresses');
+      const res = await fetch('/api/profile/addresses', { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setAddresses(data.data || []);
@@ -336,7 +336,7 @@ const ProfilePage = () => {
 
   const fetchTaxInvoiceInfo = async () => {
     try {
-      const res = await fetch('/api/profile/tax-invoice');
+      const res = await fetch('/api/profile/tax-invoice', { credentials: 'include' });
       const data = await res.json();
       if (data.success && data.data) {
         setTaxInvoiceInfo(data.data);
@@ -348,7 +348,7 @@ const ProfilePage = () => {
 
   const fetchQuoteRequests = async () => {
     try {
-      const res = await fetch('/api/quote-requests/my-quotes');
+      const res = await fetch('/api/quote-requests/my-quotes', { credentials: 'include' });
       const data = await res.json();
       if (Array.isArray(data)) {
         setQuoteRequests(data);
@@ -371,6 +371,7 @@ const ProfilePage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(taxData),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -402,6 +403,7 @@ const ProfilePage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(profileData),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -454,6 +456,7 @@ const ProfilePage = () => {
           address: formatAddressForAPI(newAddress),
           isDefault: newAddress.isDefault
         }),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -490,6 +493,7 @@ const ProfilePage = () => {
       try {
         const response = await fetch(`/api/profile/addresses?id=${addressId}`, {
           method: 'DELETE',
+          credentials: 'include'
         });
 
         const data = await response.json();

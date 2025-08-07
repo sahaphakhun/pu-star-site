@@ -33,7 +33,7 @@ const AdminCategoriesPage = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/categories');
+      const response = await fetch('/api/admin/categories', { credentials: 'include' });
       if (!response.ok) {
         throw new Error('Failed to fetch categories');
       }
@@ -91,6 +91,7 @@ const AdminCategoriesPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(categoryData),
+        credentials: 'include'
       });
 
       const result = await response.json();
@@ -164,6 +165,7 @@ const AdminCategoriesPage = () => {
 
       const response = await fetch(`/api/categories/${categoryId}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
 
       const responseData = await response.json();

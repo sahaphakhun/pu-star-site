@@ -62,7 +62,7 @@ const AdminProductsPage = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await fetch('/api/products');
+      const response = await fetch('/api/products', { credentials: 'include' });
       const data = await response.json();
       setProducts(data);
       setLoading(false);
@@ -75,7 +75,7 @@ const AdminProductsPage = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/categories');
+      const response = await fetch('/api/categories', { credentials: 'include' });
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -247,6 +247,7 @@ const AdminProductsPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(productData),
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -358,6 +359,7 @@ const AdminProductsPage = () => {
 
       const response = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
 
       if (response.ok) {

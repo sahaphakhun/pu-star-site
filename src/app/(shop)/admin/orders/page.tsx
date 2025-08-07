@@ -154,7 +154,8 @@ const AdminOrdersPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId })
+        body: JSON.stringify({ orderId }),
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -291,7 +292,7 @@ const AdminOrdersPage = () => {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const response = await fetch('/api/orders');
+      const response = await fetch('/api/orders', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setOrders(data.orders || []);
@@ -352,7 +353,8 @@ const AdminOrdersPage = () => {
             price: Number(formData.totalAmount),
             quantity: 1
           }]
-        })
+        }),
+        credentials: 'include'
       });
 
       if (res.ok) {
@@ -382,7 +384,8 @@ const AdminOrdersPage = () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/upload-packing-image`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
       
       if (res.ok) {
@@ -402,7 +405,8 @@ const AdminOrdersPage = () => {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(updates),
+        credentials: 'include'
       });
       
       if (res.ok) {

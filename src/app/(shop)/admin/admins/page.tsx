@@ -15,7 +15,7 @@ const AdminsPage = () => {
 
   const fetchPhones = async () => {
     try {
-      const res = await fetch('/api/admin/admin-phones');
+      const res = await fetch('/api/admin/admin-phones', { credentials: 'include' });
       const data = await res.json();
       setPhones(data);
     } catch (err) {
@@ -36,6 +36,7 @@ const AdminsPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: newPhone }),
+        credentials: 'include'
       });
       if (res.ok) {
         toast.success('เพิ่มเบอร์ผู้ดูแลแล้ว');
@@ -83,7 +84,7 @@ const AdminsPage = () => {
                   const ok = confirm('ยืนยันลบเบอร์นี้?');
                   if(!ok) return;
                   try{
-                    const res = await fetch('/api/admin/admin-phones',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:p._id})});
+                    const res = await fetch('/api/admin/admin-phones',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:p._id}), credentials: 'include'});
                     if(res.ok){toast.success('ลบแล้ว');fetchPhones();}
                     else {const d=await res.json();toast.error(d.message||'ผิดพลาด');}
                   }catch{toast.error('ผิดพลาด');}

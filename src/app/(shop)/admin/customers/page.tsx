@@ -104,7 +104,7 @@ const CustomerManagementPage: React.FC = () => {
       console.log('Active tab:', activeTab);
       console.log('Search term:', searchTerm);
       
-      const response = await fetch(`/api/admin/customers?${params}`);
+      const response = await fetch(`/api/admin/customers?${params}`, { credentials: 'include' });
       console.log('Response status:', response.status);
       
       const data = await response.json();
@@ -166,7 +166,8 @@ const CustomerManagementPage: React.FC = () => {
       const response = await fetch(`/api/admin/customers/${selectedCustomer._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTo: assignedTo.trim() })
+        body: JSON.stringify({ assignedTo: assignedTo.trim() }),
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -199,7 +200,7 @@ const CustomerManagementPage: React.FC = () => {
         ...(maxSpent && { maxSpent }),
       });
 
-      const response = await fetch(`/api/admin/customers?${params}`);
+      const response = await fetch(`/api/admin/customers?${params}`, { credentials: 'include' });
       const data = await response.json();
 
       if (data.success && data.export) {
@@ -229,7 +230,8 @@ const CustomerManagementPage: React.FC = () => {
       const response = await fetch('/api/admin/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'updateAllCustomerStats' })
+        body: JSON.stringify({ action: 'updateAllCustomerStats' }),
+        credentials: 'include'
       });
 
       const data = await response.json();

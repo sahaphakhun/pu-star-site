@@ -74,6 +74,7 @@ const AdminNotificationPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ targetType, phoneNumbers: numbers, message }),
+        credentials: 'include'
       });
 
       const data = await response.json();

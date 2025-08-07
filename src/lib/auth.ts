@@ -113,12 +113,21 @@ export async function verifyToken(request: any) {
   try {
     const authResult = await verifyAuth(request);
     if (authResult.success && authResult.user) {
-      return {
+      // Return both formats for backward compatibility
+      const result = {
         userId: authResult.user._id,
         phoneNumber: authResult.user.phoneNumber,
         name: authResult.user.name,
-        role: authResult.user.role
+        role: authResult.user.role,
+        valid: true,
+        decoded: {
+          userId: authResult.user._id,
+          phoneNumber: authResult.user.phoneNumber,
+          name: authResult.user.name,
+          role: authResult.user.role
+        }
       };
+      return result;
     }
     return null;
   } catch (error) {

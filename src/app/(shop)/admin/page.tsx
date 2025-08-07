@@ -36,11 +36,11 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     try {
       // ดึงข้อมูลออเดอร์
-      const ordersRes = await fetch('/api/orders');
+      const ordersRes = await fetch('/api/orders', { credentials: 'include' });
       const ordersData = await ordersRes.json();
       
       // ดึงข้อมูลลูกค้า
-      const customersRes = await fetch('/api/admin/customers?limit=1');
+      const customersRes = await fetch('/api/admin/customers?limit=1', { credentials: 'include' });
       const customersData = await customersRes.json();
 
       if (ordersData.orders && Array.isArray(ordersData.orders)) {

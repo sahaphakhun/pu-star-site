@@ -57,12 +57,7 @@ const PermissionsManagePage: React.FC = () => {
   // ดึงข้อมูลสิทธิ์ที่มีในระบบ
   const fetchAvailablePermissions = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/permissions/available', {
-        headers: {
-          'Authorization': 'Bearer admin-token',
-          'x-admin-phone': '+66900000000', // ใส่เบอร์แอดมินจริง
-        },
-      });
+      const response = await fetch('/api/admin/permissions/available', { credentials: 'include' });
       
       if (response.ok) {
         const data = await response.json();
@@ -78,12 +73,7 @@ const PermissionsManagePage: React.FC = () => {
   // ดึงข้อมูลรายการผู้ใช้ที่มีสิทธิ์
   const fetchUserPermissions = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/permissions', {
-        headers: {
-          'Authorization': 'Bearer admin-token',
-          'x-admin-phone': '+66900000000', // ใส่เบอร์แอดมินจริง
-        },
-      });
+      const response = await fetch('/api/admin/permissions', { credentials: 'include' });
       
       if (response.ok) {
         const data = await response.json();
@@ -109,12 +99,7 @@ const PermissionsManagePage: React.FC = () => {
 
     setSearching(true);
     try {
-      const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`, {
-        headers: {
-          'Authorization': 'Bearer admin-token',
-          'x-admin-phone': '+66900000000', // ใส่เบอร์แอดมินจริง
-        },
-      });
+      const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
       
       if (response.ok) {
         const data = await response.json();
@@ -144,16 +129,13 @@ const PermissionsManagePage: React.FC = () => {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-token',
-          'x-admin-phone': '+66900000000', // ใส่เบอร์แอดมินจริง
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: selectedUser.phoneNumber,
           permissions: selectedPermissions,
           note,
         }),
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -181,10 +163,7 @@ const PermissionsManagePage: React.FC = () => {
     try {
       const response = await fetch(`/api/admin/permissions/${encodeURIComponent(phoneNumber)}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': 'Bearer admin-token',
-          'x-admin-phone': '+66900000000', // ใส่เบอร์แอดมินจริง
-        },
+        credentials: 'include'
       });
 
       if (response.ok) {

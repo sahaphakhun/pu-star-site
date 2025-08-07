@@ -73,7 +73,7 @@ export default function AdminArticlesPage() {
         sortOrder
       });
 
-      const response = await fetch(`/api/admin/articles?${params}`);
+      const response = await fetch(`/api/admin/articles?${params}`, { credentials: 'include' });
       const data: ArticleListResponse = await response.json();
 
       if (data.success) {
@@ -104,7 +104,8 @@ export default function AdminArticlesPage() {
 
     try {
       const response = await fetch(`/api/admin/articles/${articleId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -132,7 +133,8 @@ export default function AdminArticlesPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
       });
 
       if (response.ok) {
