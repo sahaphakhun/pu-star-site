@@ -52,7 +52,7 @@ export default function CreateArticlePage() {
   useEffect(() => {
     const loadTags = async () => {
       try {
-        const response = await fetch('/api/tags?limit=100');
+        const response = await fetch('/api/tags?limit=100', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           setAvailableTags(data.data.tags);
@@ -130,6 +130,7 @@ export default function CreateArticlePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(newTag),
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -156,6 +157,7 @@ export default function CreateArticlePage() {
     const response = await fetch('/api/admin/articles/upload-image', {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -216,6 +218,7 @@ export default function CreateArticlePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(articleData),
+        credentials: 'include',
       });
 
       if (response.ok) {

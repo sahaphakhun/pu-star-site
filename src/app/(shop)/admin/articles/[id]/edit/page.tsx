@@ -95,10 +95,10 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       setExcerpt(article.excerpt);
       setFeaturedImage(article.featuredImage || '');
       setContent(article.content || []);
-      setCategory(article.category);
-      setTags(article.tags || []);
+      setCategory(article.category || { name: '', slug: '', description: '', color: '#3B82F6' } as any);
+      setTags((article.tags as any[])?.map((t: any) => (typeof t === 'string' ? t : t?.name)).filter(Boolean) || []);
       setStatus(article.status);
-      setAuthor(article.author);
+      setAuthor(article.author || { name: 'ทีมงาน PU STAR', email: '', avatar: '' });
       setSeo(article.seo);
       
       if (article.scheduledAt) {
@@ -223,7 +223,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
       return;
     }
 
-    if (!category.name.trim()) {
+    if (!category?.name?.trim()) {
       setError('กรุณาระบุหมวดหมู่');
       return;
     }
@@ -248,11 +248,11 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
         excerpt: excerpt.trim(),
         featuredImage: featuredImage || undefined,
         content,
-        category: {
+        category: category?.name ? {
           ...category,
           name: category.name.trim(),
-          slug: category.slug.trim() || generateSlug(category.name)
-        },
+          slug: (category.slug || '').trim() || generateSlug(category.name)
+        } : undefined,
         tags,
         author,
         seo,
