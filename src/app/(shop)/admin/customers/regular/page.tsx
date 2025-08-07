@@ -449,7 +449,7 @@ const RegularCustomersPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${status.color}`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${status?.color || 'bg-gray-100 text-gray-800'}`}>
                         {status.icon} {status.label}
                       </span>
                     </td>

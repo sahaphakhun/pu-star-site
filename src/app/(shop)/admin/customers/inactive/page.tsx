@@ -498,7 +498,7 @@ const InactiveCustomersPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${inactiveLevel.color}`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${inactiveLevel?.color || 'bg-gray-100 text-gray-800'}`}>
                         {inactiveLevel.icon} {inactiveLevel.label}
                       </span>
                     </td>
