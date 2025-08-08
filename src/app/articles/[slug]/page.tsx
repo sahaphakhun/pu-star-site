@@ -308,8 +308,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   </div>
                 </div>
 
-                {/* Share Buttons */}
-                <div className="mt-8">
+                {/* Share Buttons - mobile/tablet only */}
+                <div className="mt-8 block lg:hidden">
                   <SocialShare url={pageUrl} title={article.title} description={article.excerpt} />
                 </div>
               </footer>
@@ -416,7 +416,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           {/* Aside - TOC & Share */}
           <aside className="lg:col-span-4">
             <div className="sticky top-24 space-y-6">
-              <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-100 p-6">
+              <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-100 p-6 hidden lg:block">
                 <SocialShare url={pageUrl} title={article.title} description={article.excerpt} />
               </div>
 
