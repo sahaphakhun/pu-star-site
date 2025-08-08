@@ -4,7 +4,7 @@ import Order from '@/models/Order';
 import { sendShippingNotification } from '@/app/notification/sms';
 import mongoose from 'mongoose';
 import AdminPhone from '@/models/AdminPhone';
-import { sendSMS } from '@/utils/deesmsx';
+import { sendSMS } from '@/app/notification';
 import { sendOrderStatusUpdate } from '@/app/notification';
 
 export const dynamic = 'force-dynamic';

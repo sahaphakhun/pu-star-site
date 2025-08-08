@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import AdminNotification from '@/models/AdminNotification';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { sendSMS } from '@/app/notification';
 
 export async function POST(
   request: NextRequest,
@@ -83,6 +84,15 @@ export async function POST(
       },
       { new: true }
     );
+
+    // ส่ง SMS ยืนยันรับคำขอเคลมให้ลูกค้า
+    try {
+      const shortId = orderId.slice(-8).toUpperCase();
+      const msg = `รับคำขอเคลมแล้วสำหรับออเดอร์ #${shortId}\nทีมงานกำลังตรวจสอบและจะแจ้งผลให้ทราบเร็วๆ นี้`;
+      await sendSMS(order.customerPhone, msg);
+    } catch (err) {
+      console.error('ส่ง SMS ยืนยันรับเคลมล้มเหลว:', err);
+    }
 
     // สร้างการแจ้งเตือนสำหรับแอดมิน
     try {

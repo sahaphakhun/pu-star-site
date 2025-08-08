@@ -5,7 +5,7 @@ require('dotenv').config();
 const connectDB = require('../src/lib/mongodb').default || require('../src/lib/mongodb');
 const Order = require('../src/models/Order').default || require('../src/models/Order');
 const AdminPhone = require('../src/models/AdminPhone').default || require('../src/models/AdminPhone');
-const { sendSMS } = require('../src/utils/deesmsx');
+const { sendSMS } = require('../src/app/notification');
 
 (async () => {
   await connectDB();

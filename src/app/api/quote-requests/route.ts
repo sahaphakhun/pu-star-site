@@ -4,7 +4,7 @@ import QuoteRequest from '@/models/QuoteRequest';
 import AdminNotification from '@/models/AdminNotification';
 import { verifyToken } from '@/lib/auth';
 import AdminPhone from '@/models/AdminPhone';
-import { sendSMS } from '@/utils/deesmsx';
+import { sendSMS } from '@/app/notification';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +42,15 @@ export async function POST(request: NextRequest) {
     });
 
     await quoteRequest.save();
+
+    // ส่ง SMS ยืนยันรับคำขอใบเสนอราคาให้ลูกค้า
+    try {
+      const shortId = quoteRequest._id.toString().slice(-8).toUpperCase();
+      const msg = `รับคำขอใบเสนอราคาแล้ว #${shortId}\nทีมงานจะติดต่อกลับโดยเร็ว ขอบคุณครับ`;
+      await sendSMS(quoteRequest.customerPhone, msg);
+    } catch (err) {
+      console.error('ส่ง SMS ยืนยันรับคำขอใบเสนอราคาล้มเหลว:', err);
+    }
 
     // สร้างการแจ้งเตือนสำหรับแอดมิน
     try {

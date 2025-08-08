@@ -4,7 +4,7 @@ import Order from '@/models/Order';
 import User from '@/models/User';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { sendSMS } from '@/utils/deesmsx';
+import { sendSMS } from '@/app/notification';
 import { orderInputSchema } from '@schemas/order';
 import AdminPhone from '@/models/AdminPhone';
 import { updateUserNameFromOrder } from '@/utils/userNameSync';
@@ -129,6 +129,14 @@ export async function POST(request: NextRequest) {
             'wmsData.stockCheckStatus': 'insufficient'
           });
           console.warn('Order created but stock insufficient:', order._id);
+          // แจ้งลูกค้าเรื่องสต็อกไม่พอ (เว็บ + SMS โดยส่ง SMS ที่นี่)
+          try {
+            const shortId = order._id.toString().slice(-8).toUpperCase();
+            const msg = `ออเดอร์ #${shortId} สินค้าบางรายการสต็อกไม่พอ\nทีมงานจะติดต่อเพื่อเสนอทางเลือก/กำหนดส่งใหม่`; 
+            await sendSMS(data.customerPhone, msg);
+          } catch (smsErr) {
+            console.error('ส่ง SMS แจ้งสต็อกไม่พอ (หลังสร้างออเดอร์) ล้มเหลว:', smsErr);
+          }
         }
       } else {
         console.error('Failed to check stock via WMS:', await stockCheckResponse.text());

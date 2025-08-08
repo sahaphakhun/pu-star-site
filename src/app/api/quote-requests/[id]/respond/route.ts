@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import QuoteRequest from '@/models/QuoteRequest';
 import { verifyToken } from '@/lib/auth';
-import { sendSMS } from '@/utils/deesmsx';
+import { sendSMS } from '@/app/notification';
 
 export const dynamic = 'force-dynamic';
 

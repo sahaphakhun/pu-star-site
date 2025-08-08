@@ -1,7 +1,8 @@
 /**
  * ไฟล์สำหรับจัดการการแจ้งเตือนในแอปพลิเคชัน
+ * รวมศูนย์การส่ง SMS ให้เรียกใช้ implementation เดียวจาก `src/app/notification/sms.ts`
  */
-import { sendSMS as deeSMSxSendSMS } from '@/utils/deesmsx';
+import { sendSMS as smsSend } from '@/app/notification/sms';
 
 /**
  * ส่ง SMS ไปยังเบอร์โทรศัพท์ของผู้ใช้
@@ -13,8 +14,8 @@ export async function sendSMS(phoneNumber: string, message: string) {
   try {
     console.log(`กำลังส่ง SMS ไปที่: ${phoneNumber}, ข้อความ: ${message}`);
     
-    // เรียกใช้ฟังก์ชัน sendSMS จาก deesmsx.ts เพื่อส่ง SMS
-    const result = await deeSMSxSendSMS(phoneNumber, message);
+    // เรียกใช้ฟังก์ชัน sendSMS จาก notification/sms (implementation กลาง)
+    const result = await smsSend(phoneNumber, message);
     
     console.log('ผลลัพธ์การส่ง SMS:', result);
     
