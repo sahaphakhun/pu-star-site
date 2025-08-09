@@ -1210,7 +1210,7 @@ const ShopPage = () => {
           rel="noopener noreferrer"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-40 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+          className="fixed bottom-48 md:bottom-40 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
         >
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -1222,7 +1222,7 @@ const ShopPage = () => {
           href="tel:0989746363"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-24 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition-colors z-10"
+          className="fixed bottom-36 md:bottom-24 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition-colors z-10"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -1236,7 +1236,7 @@ const ShopPage = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               onClick={() => setShowCart(true)}
-              className="cart-icon fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 z-10"
+              className="cart-icon fixed bottom-20 md:bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 z-10"
             >
               <div className="relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1248,7 +1248,7 @@ const ShopPage = () => {
               </div>
             </motion.button>
             {/* ยอดรวมราคารวมใต้ไอคอนตะกร้า */}
-            <div className="fixed bottom-2 right-6 z-10 bg-white bg-opacity-90 rounded-lg px-3 py-1 shadow text-blue-700 font-bold text-sm text-center pointer-events-none select-none">
+            <div className="fixed bottom-16 md:bottom-2 right-6 z-10 bg-white bg-opacity-90 rounded-lg px-3 py-1 shadow text-blue-700 font-bold text-sm text-center pointer-events-none select-none">
               ฿{calculateTotal().toLocaleString()}
             </div>
           </>

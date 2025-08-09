@@ -16,7 +16,7 @@ export async function GET() {
       success: true,
       data: {
         siteName: doc?.siteName || 'WINRICH DYNAMIC',
-        logoUrl: doc?.logoUrl || '/logo.jpg',
+        logoUrl: doc?.logoUrl || '',
       },
     });
   } catch (error) {

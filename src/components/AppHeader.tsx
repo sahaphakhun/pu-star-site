@@ -77,15 +77,17 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Logo and Company Name */}
-          <div className="flex items-center space-x-3">
-            <div className="relative w-8 h-8">
-              <Image src={siteInfo?.logoUrl || '/logo.jpg'} alt="Site Logo" fill sizes="32px" className="object-contain" />
-            </div>
+          <Link href="/shop" aria-label="ไปหน้าร้าน" className="flex items-center space-x-3">
+            {siteInfo?.logoUrl ? (
+              <div className="relative w-8 h-8">
+                <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="32px" className="object-contain" />
+              </div>
+            ) : null}
             <div className="flex flex-col">
               <div className="text-lg font-bold text-slate-800 leading-tight">{(siteInfo?.siteName || 'WINRICH DYNAMIC').split(' ')[0]}</div>
               <div className="text-sm font-medium text-slate-600 leading-tight text-center">{(siteInfo?.siteName || 'WINRICH DYNAMIC').split(' ').slice(1).join(' ')}</div>
             </div>
-          </div>
+          </Link>
 
           {/* Right Icons */}
           <div className="flex items-center space-x-3">

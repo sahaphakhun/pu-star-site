@@ -18,9 +18,8 @@ const siteSettingSchema = new Schema<ISiteSetting>(
     },
     logoUrl: {
       type: String,
-      required: true,
-      // ใช้รูปเดิมใน public เป็นค่าเริ่มต้น
-      default: '/logo.jpg',
+      required: false,
+      default: '',
       trim: true,
     },
   },

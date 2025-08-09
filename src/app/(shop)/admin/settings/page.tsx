@@ -31,7 +31,8 @@ export default function AdminSettingsPage() {
   }, []);
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    const inputEl = e.currentTarget;
+    const files = inputEl.files;
     if (!files || files.length === 0) return;
     const file = files[0];
 
@@ -56,7 +57,7 @@ export default function AdminSettingsPage() {
       toast.error('เกิดข้อผิดพลาดในการอัพโหลด');
     } finally {
       setIsSaving(false);
-      e.currentTarget.value = '';
+      if (inputEl) inputEl.value = '';
     }
   };
 
