@@ -22,7 +22,6 @@ export async function parseNameAddress(input: string): Promise<ParsedResult | nu
       },
       body: JSON.stringify({
         model: 'gpt-4.1-nano', // หรือ gpt-4.1-nano ตามที่มีในบัญชี
-        temperature: 0,
         messages: [
           {
             role: 'system',

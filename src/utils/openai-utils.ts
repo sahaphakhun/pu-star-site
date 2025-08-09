@@ -64,7 +64,7 @@ export async function callOpenAI(
   }
 
   const url = 'https://api.openai.com/v1/chat/completions';
-  const body = JSON.stringify({ model, messages, temperature });
+  const body = JSON.stringify({ model, messages });
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${OPENAI_API_KEY}`

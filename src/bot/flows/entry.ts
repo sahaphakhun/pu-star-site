@@ -348,7 +348,7 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload === 'Q_INQUIRY') {
       // เปิดโหมด AI ให้ตอบคำถามสินค้า
       await enableAIForUser(psid);
-      await callSendAPI(psid, { text: 'กรุณาพิมพ์คำถามเกี่ยวกับสินค้า แล้วบอทจะตอบให้อัตโนมัติค่ะ' });
+      await callSendAPI(psid, { text: 'พิมพ์คำถามเกี่ยวกับสินค้าได้เลยนะคะ' });
       return callSendAPI(psid, {
         text: 'หากต้องการเลือกดูสินค้า หรือกลับเมนูหลัก สามารถกดปุ่มด้านล่างได้เลยค่ะ',
         quick_replies: [
