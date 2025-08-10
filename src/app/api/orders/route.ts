@@ -76,17 +76,21 @@ export async function POST(request: NextRequest) {
   try {
     const raw = await request.json();
 
-    // ดึง token เพื่อหา userId และเบอร์โทรหากไม่ส่งมา
+    // ดึง token เพื่อหา userId และเบอร์โทรหากไม่ส่งมา - บังคับให้ต้องล็อกอินก่อนสั่งซื้อ
     const cookieStore = (await cookies()) as any;
     const tokenCookie = cookieStore.get?.('token') || cookieStore.get('token');
 
+    if (!tokenCookie?.value) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อนสั่งซื้อ' }, { status: 401 });
+    }
+
     let userId: string | undefined;
-    if (tokenCookie) {
-      try {
-        const decoded = jwt.verify(tokenCookie.value, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
-        userId = decoded.userId;
-        if (!raw.customerPhone) raw.customerPhone = decoded.phoneNumber;
-      } catch {}
+    try {
+      const decoded = jwt.verify(tokenCookie.value, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
+      userId = decoded.userId;
+      if (!raw.customerPhone) raw.customerPhone = decoded.phoneNumber;
+    } catch {
+      return NextResponse.json({ error: 'token ไม่ถูกต้อง หรือหมดอายุ' }, { status: 401 });
     }
 
     const parsed = orderInputSchema.safeParse(raw);
@@ -103,7 +107,14 @@ export async function POST(request: NextRequest) {
       ...data,
       customerPhone: data.customerPhone,
       orderDate: new Date(),
-      ...(userId && { userId })
+      ...(userId && { userId }),
+      orderedBy: userId
+        ? {
+            userId,
+            name: data.customerName,
+            phone: data.customerPhone,
+          }
+        : undefined
     });
 
     // ตรวจสอบสต็อกผ่าน WMS อัตโนมัติหลังจากสร้างออเดอร์

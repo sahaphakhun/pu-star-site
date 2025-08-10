@@ -112,10 +112,11 @@ const TargetCustomersPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/customers/${selectedCustomer._id}`, {
+      const response = await fetch(`/api/admin/customers`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTo: assignedTo.trim() })
+        body: JSON.stringify({ userId: selectedCustomer._id, updates: { assignedTo: assignedTo.trim() } }),
+        credentials: 'include'
       });
 
       const data = await response.json();

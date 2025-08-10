@@ -61,6 +61,8 @@ const CustomerManagementPage: React.FC = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [includeAdmins, setIncludeAdmins] = useState(false);
+  const [dateField, setDateField] = useState<'createdAt' | 'lastOrderDate'>('lastOrderDate');
   
   // Special filters for target customers
   const [minSpent, setMinSpent] = useState('');
@@ -94,6 +96,8 @@ const CustomerManagementPage: React.FC = () => {
         assignedTo: assignedToFilter,
         sortBy,
         sortOrder,
+        includeAdmins: includeAdmins ? '1' : '0',
+        dateField,
         ...(dateRange.start && { startDate: dateRange.start }),
         ...(dateRange.end && { endDate: dateRange.end }),
         ...(minSpent && { minSpent }),
@@ -163,10 +167,10 @@ const CustomerManagementPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/customers/${selectedCustomer._id}`, {
+      const response = await fetch(`/api/admin/customers`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTo: assignedTo.trim() }),
+        body: JSON.stringify({ userId: selectedCustomer._id, updates: { assignedTo: assignedTo.trim() } }),
         credentials: 'include'
       });
 
@@ -194,6 +198,8 @@ const CustomerManagementPage: React.FC = () => {
         assignedTo: assignedToFilter,
         sortBy,
         sortOrder,
+        includeAdmins: includeAdmins ? '1' : '0',
+        dateField,
         ...(dateRange.start && { startDate: dateRange.start }),
         ...(dateRange.end && { endDate: dateRange.end }),
         ...(minSpent && { minSpent }),
@@ -255,6 +261,8 @@ const CustomerManagementPage: React.FC = () => {
     setSortOrder('desc');
     setMinSpent('');
     setMaxSpent('');
+    setIncludeAdmins(false);
+    setDateField('lastOrderDate');
     setCurrentPage(1);
   };
 
@@ -518,6 +526,28 @@ const CustomerManagementPage: React.FC = () => {
               <option value="averageOrderValue-desc">ค่าเฉลี่ยต่อออเดอร์สูงสุด</option>
               <option value="name-asc">ชื่อ A-Z</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ฟิลด์วันที่สำหรับกรอง</label>
+            <select
+              value={dateField}
+              onChange={(e) => setDateField(e.target.value as 'createdAt' | 'lastOrderDate')}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="lastOrderDate">วันที่สั่งซื้อล่าสุด</option>
+              <option value="createdAt">วันที่สมัคร</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <label className="inline-flex items-center space-x-2">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                checked={includeAdmins}
+                onChange={(e) => setIncludeAdmins(e.target.checked)}
+              />
+              <span className="text-sm text-gray-700">รวมแอดมิน</span>
+            </label>
           </div>
         </div>
         

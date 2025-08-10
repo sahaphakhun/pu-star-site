@@ -3,11 +3,11 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Order from '@/models/Order';
 import { verifyToken } from '@/lib/auth';
-import { 
-  filterCustomers, 
-  generateCustomerStats, 
+import {
+  filterCustomers,
+  generateCustomerStats,
   updateCustomerStats,
-  prepareCustomerDataForExport 
+  prepareCustomerDataForExport,
 } from '@/utils/customerAnalytics';
 
 export async function GET(request: NextRequest) {
@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     // ตรวจสอบสิทธิ์ admin
     const authResult = await verifyToken(request);
     console.log('Auth result:', authResult);
-    
-    if (!authResult.valid) {
+
+    if (!authResult || !authResult.valid) {
       console.log('Authentication failed');
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง - ต้องเข้าสู่ระบบ' }, { status: 401 });
     }
@@ -45,17 +45,33 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const minSpent = searchParams.get('minSpent');
     const maxSpent = searchParams.get('maxSpent');
+    const includeAdminsParam = searchParams.get('includeAdmins');
+    const includeAdmins = includeAdminsParam === '1' || includeAdminsParam === 'true';
+    const dateField = (searchParams.get('dateField') || 'lastOrderDate') as 'createdAt' | 'lastOrderDate';
 
     console.log('Query params:', {
-      page, limit, customerType, assignedTo, searchTerm, sortBy, sortOrder,
-      startDate, endDate, minSpent, maxSpent
+      page,
+      limit,
+      customerType,
+      assignedTo,
+      searchTerm,
+      sortBy,
+      sortOrder,
+      startDate,
+      endDate,
+      minSpent,
+      maxSpent,
+      includeAdmins,
+      dateField,
     });
 
     // สร้างเงื่อนไขการค้นหา
     const filters: any = {};
     
-    // เฉพาะลูกค้า (ไม่ใช่ admin)
-    filters.role = 'user';
+    // เฉพาะลูกค้า (ไม่ใช่ admin) หากไม่ได้ระบุให้รวมแอดมินด้วย
+    if (!includeAdmins) {
+      filters.role = 'user';
+    }
     
     if (customerType) {
       filters.customerType = customerType;
@@ -77,11 +93,15 @@ export async function GET(request: NextRequest) {
     }
     
     if (startDate && endDate) {
-      filters.lastOrderDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-      console.log('Adding date filter:', startDate, 'to', endDate);
+      // ใช้เวลาไทย (UTC+7) ให้ครอบคลุมทั้งวัน
+      const start = new Date(`${startDate}T00:00:00+07:00`);
+      const end = new Date(`${endDate}T23:59:59+07:00`);
+      if (dateField === 'createdAt') {
+        filters.createdAt = { $gte: start, $lte: end } as any;
+      } else {
+        filters.lastOrderDate = { $gte: start, $lte: end } as any;
+      }
+      console.log('Adding date filter:', startDate, 'to', endDate, 'field:', dateField);
     }
     
     if (minSpent) {
@@ -141,7 +161,7 @@ export async function GET(request: NextRequest) {
     }
 
     // สร้างสถิติรวม
-    const allCustomersForStats = await User.find({ role: 'user' })
+    const allCustomersForStats = await User.find(includeAdmins ? {} : { role: 'user' })
       .select('-password')
       .lean();
     console.log('All customers for stats:', allCustomersForStats.length);
@@ -182,7 +202,7 @@ export async function PATCH(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์ admin
     const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    if (!authResult || !authResult.valid || authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 
@@ -224,7 +244,7 @@ export async function POST(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์ admin
     const authResult = await verifyToken(request);
-    if (!authResult.valid || authResult.decoded?.role !== 'admin') {
+    if (!authResult || !authResult.valid || authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 

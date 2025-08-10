@@ -78,6 +78,12 @@ export interface IOrder extends Document {
     pickingStatus?: 'pending' | 'completed' | 'incomplete' | 'not_found' | 'error';
     lastPickingCheck?: Date;
   };
+  // ฟิลด์บันทึกผู้สั่งซื้อ (อ้างถึงผู้ใช้ที่ดำเนินการสั่ง)
+  orderedBy?: {
+    userId: Schema.Types.ObjectId;
+    name?: string;
+    phone?: string;
+  };
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -235,6 +241,12 @@ const orderSchema = new Schema<IOrder>(
         enum: ['pending', 'completed', 'incomplete', 'not_found', 'error']
       },
       lastPickingCheck: { type: Date }
+    }
+    ,
+    orderedBy: {
+      userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+      name: { type: String },
+      phone: { type: String }
     }
   },
   { 
