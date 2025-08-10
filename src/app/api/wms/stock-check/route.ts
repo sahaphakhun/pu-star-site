@@ -127,7 +127,8 @@ export async function POST(request: NextRequest) {
           message: [
             stockResult.message,
             stockResult.rawStatus ? `(raw:${stockResult.rawStatus})` : '',
-            stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : ''
+            stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : '',
+            stockResult.requestParams ? `(params:${JSON.stringify(stockResult.requestParams)})` : ''
           ].filter(Boolean).join(' ')
         });
 
@@ -156,7 +157,8 @@ export async function POST(request: NextRequest) {
         message: [
           stockResult.message,
           stockResult.rawStatus ? `(raw:${stockResult.rawStatus})` : '',
-          stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : ''
+          stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : '',
+          stockResult.requestParams ? `(params:${JSON.stringify(stockResult.requestParams)})` : ''
         ].filter(Boolean).join(' ')
       });
 

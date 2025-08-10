@@ -49,6 +49,7 @@ export interface WMSStockResult {
   rawStatus?: string;
   rawResponse?: unknown;
   requestUrl?: string;
+  requestParams?: WMSStockCheckRequest;
 }
 
 export interface WMSPickingResult {
@@ -59,6 +60,7 @@ export interface WMSPickingResult {
   rawStatus?: string;
   rawResponse?: unknown;
   requestUrl?: string;
+  requestParams?: WMSPickingStatusRequest;
 }
 
 // Variant-level WMS configuration

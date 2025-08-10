@@ -43,6 +43,10 @@ export class WMSService {
         rawStatus: data.status,
         rawResponse: data,
         requestUrl,
+        requestParams: {
+          order: orderNumber,
+          admin: adminUsername,
+        }
       };
     } catch (error) {
       console.error('WMS Picking Status Check Error:', error);
@@ -81,6 +85,13 @@ export class WMSService {
         rawStatus: data.status,
         rawResponse: data,
         requestUrl,
+        requestParams: {
+          productcode: wmsConfig.productCode,
+          admin: wmsConfig.adminUsername,
+          lotgen: wmsConfig.lotGen,
+          locationbin: wmsConfig.locationBin,
+          lotmfg: wmsConfig.lotMfg,
+        }
       };
     } catch (error) {
       console.error('WMS Stock Check Error:', error);

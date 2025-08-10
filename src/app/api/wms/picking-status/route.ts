@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
       message: [
         pickingResult.message,
         pickingResult.rawStatus ? `(raw:${pickingResult.rawStatus})` : '',
-        pickingResult.requestUrl ? `(url:${pickingResult.requestUrl})` : ''
+        pickingResult.requestUrl ? `(url:${pickingResult.requestUrl})` : '',
+        pickingResult.requestParams ? `(params:${JSON.stringify(pickingResult.requestParams)})` : ''
       ].filter(Boolean).join(' '),
       orderStatusUpdated: pickingResult.status === 'completed' && order.status === 'confirmed'
     });
