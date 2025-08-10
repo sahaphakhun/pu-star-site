@@ -876,16 +876,18 @@ const AdminProductsPage = () => {
                       ลบ
                     </button>
                   )}
-                  {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_EDIT)) && (
+                </div>
+                {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_EDIT)) && (
+                  <div className="mt-2">
                     <button
                       onClick={() => testWMSProductStock(product._id)}
-                      className="flex-1 bg-gray-100 text-gray-800 py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                      className="w-full bg-gray-100 text-gray-800 py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                       title="เรียก WMS ตรวจสต็อกตามการตั้งค่าของสินค้า"
                     >
                       ทดสอบ WMS
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

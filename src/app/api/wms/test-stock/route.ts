@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 import { wmsService } from '@/lib/wms';
 import type { WMSVariantConfig } from '@/types/wms';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase();
+    await connectDB();
     const { productId, variantKey } = await request.json();
 
     if (!productId) {
