@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
 import { wmsService } from '@/lib/wms';
 import type { WMSVariantConfig } from '@/types/wms';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'productId is required' }, { status: 400 });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return NextResponse.json({ error: 'Invalid productId' }, { status: 400 });
+    }
     const product = await Product.findById(productId).lean();
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

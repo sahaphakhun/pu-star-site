@@ -32,13 +32,17 @@ export class WMSService {
       url.searchParams.append('order', orderNumber);
       url.searchParams.append('admin', adminUsername);
 
-      const response = await this.fetchWithRetry(url.toString());
+      const requestUrl = url.toString();
+      const response = await this.fetchWithRetry(requestUrl);
       const data: WMSPickingStatusResponse = await response.json();
 
       return {
         status: this.mapPickingStatus(data.status),
         orderNumber,
-        message: data.message || this.getPickingStatusMessage(data.status)
+        message: data.message || this.getPickingStatusMessage(data.status),
+        rawStatus: data.status,
+        rawResponse: data,
+        requestUrl,
       };
     } catch (error) {
       console.error('WMS Picking Status Check Error:', error);
@@ -65,14 +69,18 @@ export class WMSService {
         url.searchParams.append('lotmfg', wmsConfig.lotMfg);
       }
 
-      const response = await this.fetchWithRetry(url.toString());
+      const requestUrl = url.toString();
+      const response = await this.fetchWithRetry(requestUrl);
       const data: WMSStockStatusResponse = await response.json();
 
       return {
         status: this.mapStockStatus(data.status, data.total_qty || 0),
         quantity: data.total_qty || 0,
         productCode: wmsConfig.productCode,
-        message: data.message || this.getStockStatusMessage(data.status, data.total_qty || 0)
+        message: data.message || this.getStockStatusMessage(data.status, data.total_qty || 0),
+        rawStatus: data.status,
+        rawResponse: data,
+        requestUrl,
       };
     } catch (error) {
       console.error('WMS Stock Check Error:', error);

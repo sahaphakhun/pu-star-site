@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { wmsService } from '@/lib/wms';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
-import { connectToDatabase } from '@/lib/mongodb';
+import connectToDatabase from '@/lib/mongodb';
 import type { WMSVariantConfig } from '@/types/wms';
+import mongoose from 'mongoose';
 
 function buildVariantKey(unitLabel?: string, selectedOptions?: Record<string, string>): string {
   const unitPart = unitLabel ? `unit:${unitLabel}` : 'unit:default';
@@ -50,6 +51,19 @@ export async function POST(request: NextRequest) {
       if (rawProductId && typeof rawProductId === 'object' && rawProductId._id) {
         product = typeof rawProductId.toObject === 'function' ? rawProductId.toObject() : rawProductId;
       } else {
+        // ป้องกันกรณี productId ไม่ใช่ ObjectId (เช่น ออเดอร์ manual) เพื่อไม่ให้ CastError แล้วกลายเป็น 500
+        if (!mongoose.Types.ObjectId.isValid(productIdStr)) {
+          stockCheckResults.push({
+            productId: productIdStr,
+            productCode: 'N/A',
+            requestedQuantity: item.quantity,
+            availableQuantity: 0,
+            status: 'not_found',
+            message: 'สินค้าไม่ได้เชื่อมกับฐานข้อมูล (เช่น ออเดอร์ที่สร้างแบบ manual) จึงไม่สามารถตรวจ WMS ได้'
+          });
+          overallStatus = overallStatus === 'error' ? 'error' : 'insufficient';
+          continue;
+        }
         product = await Product.findById(rawProductId).lean();
       }
 
@@ -110,7 +124,11 @@ export async function POST(request: NextRequest) {
           requestedQuantity: item.quantity,
           availableQuantity: stockResult.quantity,
           status: itemStatus,
-          message: stockResult.message
+          message: [
+            stockResult.message,
+            stockResult.rawStatus ? `(raw:${stockResult.rawStatus})` : '',
+            stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : ''
+          ].filter(Boolean).join(' ')
         });
 
         if (itemStatus === 'insufficient' || itemStatus === 'not_found') {
@@ -135,7 +153,11 @@ export async function POST(request: NextRequest) {
         requestedQuantity: item.quantity,
         availableQuantity: stockResult.quantity,
         status: itemStatus,
-        message: stockResult.message
+        message: [
+          stockResult.message,
+          stockResult.rawStatus ? `(raw:${stockResult.rawStatus})` : '',
+          stockResult.requestUrl ? `(url:${stockResult.requestUrl})` : ''
+        ].filter(Boolean).join(' ')
       });
 
       if (itemStatus === 'insufficient' || itemStatus === 'not_found') {

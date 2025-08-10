@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { wmsService } from '@/lib/wms';
 import Order from '@/models/Order';
-import { connectToDatabase } from '@/lib/mongodb';
+import connectToDatabase from '@/lib/mongodb';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +47,11 @@ export async function POST(request: NextRequest) {
       orderId,
       pickingOrderNumber,
       pickingStatus: pickingResult.status,
-      message: pickingResult.message,
+      message: [
+        pickingResult.message,
+        pickingResult.rawStatus ? `(raw:${pickingResult.rawStatus})` : '',
+        pickingResult.requestUrl ? `(url:${pickingResult.requestUrl})` : ''
+      ].filter(Boolean).join(' '),
       orderStatusUpdated: pickingResult.status === 'completed' && order.status === 'confirmed'
     });
 

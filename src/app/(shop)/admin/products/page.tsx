@@ -719,6 +719,12 @@ const AdminProductsPage = () => {
 
       const data = await res.json();
       console.log('[WMS] Test Stock - Response', data);
+      if (Array.isArray(data?.results)) {
+        try {
+          const table = data.results.map((r: any) => ({ key: r.key, productCode: r.productCode, quantity: r.quantity, status: r.status, message: r.message }));
+          console.table(table);
+        } catch {}
+      }
       console.log('DurationMs', Math.round(performance.now() - startedAt));
       console.groupEnd();
       const { counts, tested } = data || {};

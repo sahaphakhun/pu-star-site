@@ -45,12 +45,20 @@ export interface WMSStockResult {
   quantity: number;
   productCode: string;
   message?: string;
+  // Debug (optional)
+  rawStatus?: string;
+  rawResponse?: unknown;
+  requestUrl?: string;
 }
 
 export interface WMSPickingResult {
   status: WMSPickingStatus;
   orderNumber: string;
   message?: string;
+  // Debug (optional)
+  rawStatus?: string;
+  rawResponse?: unknown;
+  requestUrl?: string;
 }
 
 // Variant-level WMS configuration

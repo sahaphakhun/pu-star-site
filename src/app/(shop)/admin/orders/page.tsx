@@ -234,6 +234,12 @@ const AdminOrdersPage = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('[WMS] Stock Check - Response', result);
+        if (Array.isArray(result?.results)) {
+          try {
+            const table = result.results.map((r: any) => ({ productId: r.productId, productCode: r.productCode, reqQty: r.requestedQuantity, availQty: r.availableQuantity, status: r.status, message: r.message }));
+            console.table(table);
+          } catch {}
+        }
         console.log('DurationMs', Math.round(performance.now() - startedAt));
         console.groupEnd();
         toast.success(`ตรวจสอบสต็อก WMS เรียบร้อย: ${result.message}`);
