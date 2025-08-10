@@ -59,6 +59,21 @@ interface Order {
     addedAt: Date;
   }>;
   claimInfo?: ClaimInfo;
+  wmsData?: {
+    stockCheckStatus?: 'pending' | 'checked' | 'insufficient' | 'error';
+    stockCheckResults?: Array<{
+      productId: string;
+      productCode: string;
+      requestedQuantity: number;
+      availableQuantity: number;
+      status: 'available' | 'insufficient' | 'not_found' | 'error';
+      message?: string;
+    }>;
+    lastStockCheck?: string;
+    pickingOrderNumber?: string;
+    pickingStatus?: 'pending' | 'completed' | 'incomplete' | 'not_found' | 'error';
+    lastPickingCheck?: string;
+  };
 }
 
 const AdminOrdersPage = () => {
@@ -144,6 +159,52 @@ const AdminOrdersPage = () => {
     checked: 'สต็อกเพียงพอ',
     insufficient: 'สต็อกไม่เพียงพอ',
     error: 'เกิดข้อผิดพลาด'
+  };
+
+  // Picking status UI helpers
+  const wmsPickingStatusColors: Record<string, string> = {
+    pending: 'bg-gray-100 text-gray-800 border-gray-200',
+    completed: 'bg-green-100 text-green-800 border-green-200',
+    incomplete: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    not_found: 'bg-gray-100 text-gray-800 border-gray-200',
+    error: 'bg-red-100 text-red-800 border-red-200',
+  };
+
+  const wmsPickingStatusLabels: Record<string, string> = {
+    pending: 'รอดำเนินการ',
+    completed: 'เก็บครบแล้ว',
+    incomplete: 'ยังไม่ครบ',
+    not_found: 'ไม่พบ',
+    error: 'ผิดพลาด',
+  };
+
+  const [expandedStockRows, setExpandedStockRows] = useState<Record<string, boolean>>({});
+
+  const checkWMSPicking = async (orderId: string) => {
+    const pickingOrderNumber = window.prompt('กรอกเลขที่ใบเบิก (Picking Order):')?.trim();
+    if (!pickingOrderNumber) return;
+    const adminUsername = window.prompt('กรอก Admin Username:')?.trim();
+    if (!adminUsername) return;
+
+    try {
+      const res = await fetch('/api/wms/picking-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ orderId, pickingOrderNumber, adminUsername }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'เช็คสถานะ Picking ล้มเหลว' }));
+        toast.error(err.error || 'เช็คสถานะ Picking ล้มเหลว');
+        return;
+      }
+      const data = await res.json();
+      toast.success(`เช็ค Picking: ${data.message || data.pickingStatus}`);
+      await fetchOrders();
+    } catch (e) {
+      console.error(e);
+      toast.error('เกิดข้อผิดพลาดในการเช็ค Picking');
+    }
   };
 
   // Function to check WMS stock for an order
@@ -799,12 +860,42 @@ const AdminOrdersPage = () => {
                                   {wmsStockStatusLabels[order.wmsData.stockCheckStatus]}
                                 </span>
                               )}
+                              {order.wmsData?.pickingStatus && (
+                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${wmsPickingStatusColors[order.wmsData.pickingStatus]}`}>
+                                  Picking: {wmsPickingStatusLabels[order.wmsData.pickingStatus]}
+                                </span>
+                              )}
                               <button
                                 onClick={() => checkWMSStock(order._id)}
                                 className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                               >
                                 ตรวจสอบสต็อก
                               </button>
+                              <button
+                                onClick={() => checkWMSPicking(order._id)}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                เช็ค Picking
+                              </button>
+                              {!!order.wmsData?.stockCheckResults?.length && (
+                                <>
+                                  <button
+                                    onClick={() => setExpandedStockRows(prev => ({ ...prev, [order._id]: !prev[order._id] }))}
+                                    className="text-xs text-gray-600 hover:text-gray-800"
+                                  >
+                                    {expandedStockRows[order._id] ? 'ซ่อนผลตรวจ' : 'ดูผลตรวจ'}
+                                  </button>
+                                  {expandedStockRows[order._id] && (
+                                    <div className="mt-1 space-y-1">
+                                      {order.wmsData!.stockCheckResults!.map((r, idx) => (
+                                        <div key={idx} className="text-[11px] text-gray-700">
+                                          {r.productCode} ต้องการ {r.requestedQuantity} มี {r.availableQuantity} → {r.status === 'available' ? 'พร้อม' : r.status === 'insufficient' ? 'ไม่พอ' : r.status === 'not_found' ? 'ไม่มีตั้งค่า' : 'ผิดพลาด'}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

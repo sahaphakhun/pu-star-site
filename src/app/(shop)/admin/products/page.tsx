@@ -695,6 +695,35 @@ const AdminProductsPage = () => {
     );
   };
 
+  // ทดสอบตรวจสต็อก WMS สำหรับสินค้า
+  const testWMSProductStock = async (productId: string) => {
+    try {
+      const res = await fetch('/api/wms/test-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'ทดสอบล้มเหลว' }));
+        toast.error(err.error || 'ทดสอบ WMS ล้มเหลว');
+        return;
+      }
+
+      const data = await res.json();
+      const { counts, tested } = data || {};
+      if (counts) {
+        toast.success(`ทดสอบ WMS สำเร็จ: พร้อม ${counts.available}, หมด ${counts.out_of_stock}, ไม่พบ ${counts.not_found}, ผิดพลาด ${counts.error} (รวม ${tested})`);
+      } else {
+        toast.success('ทดสอบ WMS สำเร็จ');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('เกิดข้อผิดพลาดในการทดสอบ WMS');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -845,6 +874,15 @@ const AdminProductsPage = () => {
                       className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                     >
                       ลบ
+                    </button>
+                  )}
+                  {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_EDIT)) && (
+                    <button
+                      onClick={() => testWMSProductStock(product._id)}
+                      className="flex-1 bg-gray-100 text-gray-800 py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                      title="เรียก WMS ตรวจสต็อกตามการตั้งค่าของสินค้า"
+                    >
+                      ทดสอบ WMS
                     </button>
                   )}
                 </div>
