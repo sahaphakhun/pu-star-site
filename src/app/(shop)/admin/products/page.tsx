@@ -698,6 +698,9 @@ const AdminProductsPage = () => {
   // ทดสอบตรวจสต็อก WMS สำหรับสินค้า
   const testWMSProductStock = async (productId: string) => {
     try {
+      const startedAt = performance.now();
+      console.groupCollapsed('[WMS] Test Stock - Request');
+      console.log('Request', { endpoint: '/api/wms/test-stock', productId });
       const res = await fetch('/api/wms/test-stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -707,11 +710,17 @@ const AdminProductsPage = () => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'ทดสอบล้มเหลว' }));
+        console.warn('[WMS] Test Stock - Response (non-OK)', err);
+        console.log('DurationMs', Math.round(performance.now() - startedAt));
+        console.groupEnd();
         toast.error(err.error || 'ทดสอบ WMS ล้มเหลว');
         return;
       }
 
       const data = await res.json();
+      console.log('[WMS] Test Stock - Response', data);
+      console.log('DurationMs', Math.round(performance.now() - startedAt));
+      console.groupEnd();
       const { counts, tested } = data || {};
       if (counts) {
         toast.success(`ทดสอบ WMS สำเร็จ: พร้อม ${counts.available}, หมด ${counts.out_of_stock}, ไม่พบ ${counts.not_found}, ผิดพลาด ${counts.error} (รวม ${tested})`);
@@ -719,7 +728,7 @@ const AdminProductsPage = () => {
         toast.success('ทดสอบ WMS สำเร็จ');
       }
     } catch (e) {
-      console.error(e);
+      console.error('[WMS] Test Stock - Error', e);
       toast.error('เกิดข้อผิดพลาดในการทดสอบ WMS');
     }
   };

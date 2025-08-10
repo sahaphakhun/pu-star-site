@@ -187,6 +187,9 @@ const AdminOrdersPage = () => {
     if (!adminUsername) return;
 
     try {
+      const startedAt = performance.now();
+      console.groupCollapsed('[WMS] Picking Status - Request');
+      console.log('Request', { endpoint: '/api/wms/picking-status', orderId, pickingOrderNumber, adminUsername });
       const res = await fetch('/api/wms/picking-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,14 +198,20 @@ const AdminOrdersPage = () => {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'เช็คสถานะ Picking ล้มเหลว' }));
+        console.warn('[WMS] Picking Status - Response (non-OK)', err);
+        console.log('DurationMs', Math.round(performance.now() - startedAt));
+        console.groupEnd();
         toast.error(err.error || 'เช็คสถานะ Picking ล้มเหลว');
         return;
       }
       const data = await res.json();
+      console.log('[WMS] Picking Status - Response', data);
+      console.log('DurationMs', Math.round(performance.now() - startedAt));
+      console.groupEnd();
       toast.success(`เช็ค Picking: ${data.message || data.pickingStatus}`);
       await fetchOrders();
     } catch (e) {
-      console.error(e);
+      console.error('[WMS] Picking Status - Error', e);
       toast.error('เกิดข้อผิดพลาดในการเช็ค Picking');
     }
   };
@@ -210,6 +219,9 @@ const AdminOrdersPage = () => {
   // Function to check WMS stock for an order
   const checkWMSStock = async (orderId: string) => {
     try {
+      const startedAt = performance.now();
+      console.groupCollapsed('[WMS] Stock Check - Request');
+      console.log('Request', { endpoint: '/api/wms/stock-check', orderId });
       const response = await fetch('/api/wms/stock-check', {
         method: 'POST',
         headers: {
@@ -221,14 +233,20 @@ const AdminOrdersPage = () => {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('[WMS] Stock Check - Response', result);
+        console.log('DurationMs', Math.round(performance.now() - startedAt));
+        console.groupEnd();
         toast.success(`ตรวจสอบสต็อก WMS เรียบร้อย: ${result.message}`);
         fetchOrders(); // Refresh orders list
       } else {
         const error = await response.json();
+        console.warn('[WMS] Stock Check - Response (non-OK)', error);
+        console.log('DurationMs', Math.round(performance.now() - startedAt));
+        console.groupEnd();
         toast.error(`เกิดข้อผิดพลาด: ${error.error}`);
       }
     } catch (error) {
-      console.error('Error checking WMS stock:', error);
+      console.error('[WMS] Stock Check - Error', error);
       toast.error('เกิดข้อผิดพลาดในการตรวจสอบสต็อก WMS');
     }
   };

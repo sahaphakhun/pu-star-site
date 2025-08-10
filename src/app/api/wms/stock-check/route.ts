@@ -40,11 +40,22 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบสต็อกสำหรับแต่ละสินค้าในออเดอร์ (รองรับ WMS ต่อ variant)
     for (const item of order.items) {
-      const product = await Product.findById(item.productId).lean();
+      // รองรับทั้งกรณีที่ populate แล้ว (Document) และยังเป็น ObjectId อยู่
+      const rawProductId: any = (item as any).productId;
+      const productIdStr = rawProductId && typeof rawProductId === 'object' && rawProductId._id
+        ? String(rawProductId._id)
+        : String(rawProductId);
+
+      let product: any;
+      if (rawProductId && typeof rawProductId === 'object' && rawProductId._id) {
+        product = typeof rawProductId.toObject === 'function' ? rawProductId.toObject() : rawProductId;
+      } else {
+        product = await Product.findById(rawProductId).lean();
+      }
 
       if (!product) {
         stockCheckResults.push({
-          productId: item.productId.toString(),
+          productId: productIdStr,
           productCode: 'N/A',
           requestedQuantity: item.quantity,
           availableQuantity: 0,
@@ -89,9 +100,12 @@ export async function POST(request: NextRequest) {
         });
 
         const isAvailable = stockResult.quantity >= item.quantity;
-        const itemStatus = stockResult.status === 'available' && isAvailable ? 'available' : (stockResult.status === 'available' && !isAvailable ? 'insufficient' : stockResult.status);
+        const baseStatus = stockResult.status === 'out_of_stock' ? 'insufficient' : stockResult.status;
+        const itemStatus = baseStatus === 'available'
+          ? (isAvailable ? 'available' : 'insufficient')
+          : baseStatus;
         stockCheckResults.push({
-          productId: item.productId.toString(),
+          productId: productIdStr,
           productCode: wmsCfg.productCode,
           requestedQuantity: item.quantity,
           availableQuantity: stockResult.quantity,
@@ -110,10 +124,13 @@ export async function POST(request: NextRequest) {
       // ใช้ variant-level config
       const stockResult = await wmsService.checkStockForVariant(matchedVariant);
       const isAvailable = stockResult.quantity >= item.quantity;
-      const itemStatus = stockResult.status === 'available' && isAvailable ? 'available' : (stockResult.status === 'available' && !isAvailable ? 'insufficient' : stockResult.status);
+      const baseStatus = stockResult.status === 'out_of_stock' ? 'insufficient' : stockResult.status;
+      const itemStatus = baseStatus === 'available'
+        ? (isAvailable ? 'available' : 'insufficient')
+        : baseStatus;
 
       stockCheckResults.push({
-        productId: item.productId.toString(),
+        productId: productIdStr,
         productCode: matchedVariant.productCode,
         requestedQuantity: item.quantity,
         availableQuantity: stockResult.quantity,
