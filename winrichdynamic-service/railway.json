@@ -20,7 +20,12 @@
         "LINE_CHANNEL_SECRET": "your-line-channel-secret",
         "LINE_CHANNEL_ACCESS_TOKEN": "your-line-channel-access-token",
         "WMS_API_URL": "your-wms-api-url",
-        "WMS_API_KEY": "your-wms-api-key"
+        "WMS_API_KEY": "your-wms-api-key",
+        "JWT_SECRET": "your-jwt-secret-here",
+        "SMTP_HOST": "smtp.gmail.com",
+        "SMTP_PORT": "587",
+        "SMTP_USER": "your-email@gmail.com",
+        "SMTP_PASS": "your-app-password-here"
       }
     }
   }

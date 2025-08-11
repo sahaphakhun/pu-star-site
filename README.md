@@ -217,6 +217,39 @@ winrichdynamic-service/src/
 3. **Port Conflicts:** ตรวจสอบ ports เมื่อรันในโหมด development
 4. **Shared Resources:** ระวังการแก้ไขไฟล์ที่ใช้ร่วมกัน
 5. **Deployment:** ตรวจสอบ working directory สำหรับ Railway
+6. **Next.js Configuration:** สำหรับ Next.js 15+ ใช้ `serverExternalPackages` แทน `experimental.serverComponentsExternalPackages`
+
+## 🔧 การแก้ไขปัญหา Deploy
+
+### ปัญหา: Invalid next.config.js options
+**สาเหตุ:** Next.js 15 ย้าย `serverComponentsExternalPackages` จาก `experimental` ไปเป็น `serverExternalPackages`
+
+**วิธีแก้:**
+```javascript
+// ❌ เก่า (Next.js 14)
+const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['mongoose'],
+  },
+}
+
+// ✅ ใหม่ (Next.js 15+)
+const nextConfig = {
+  serverExternalPackages: ['mongoose'],
+}
+```
+
+### Environment Variables ที่จำเป็น:
+- `MONGODB_URI`: MongoDB connection string
+- `LINE_CHANNEL_SECRET`: LINE Bot channel secret
+- `LINE_CHANNEL_ACCESS_TOKEN`: LINE Bot access token
+- `WMS_API_URL`: WMS API URL
+- `WMS_API_KEY`: WMS API key
+- `JWT_SECRET`: JWT secret key
+- `SMTP_HOST`: SMTP server host
+- `SMTP_PORT`: SMTP server port
+- `SMTP_USER`: SMTP username
+- `SMTP_PASS`: SMTP password
 
 ---
 
