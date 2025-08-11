@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /winrichdynamic-service/node_modules
+/winrichdynamic-service/.next/
 /.pnp
 .pnp.*
 .yarn/*
