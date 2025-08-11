@@ -27,5 +27,35 @@ module.exports = {
       },
     },
   },
-  plugins: [],
-}
+  plugins: [
+    // เพิ่ม utilities สำหรับ mobile-first design
+    function({ addUtilities, theme }) {
+      const mobileUtilities = {
+        '.touch-manipulation': {
+          'touch-action': 'manipulation',
+        },
+        '.tap-highlight-none': {
+          '-webkit-tap-highlight-color': 'transparent',
+        },
+        '.safe-area-inset': {
+          'padding-top': 'env(safe-area-inset-top)',
+          'padding-bottom': 'env(safe-area-inset-bottom)',
+          'padding-left': 'env(safe-area-inset-left)',
+          'padding-right': 'env(safe-area-inset-right)',
+        },
+        '.scrollbar-none': {
+          '-ms-overflow-style': 'none',
+          'scrollbar-width': 'none',
+          '&::-webkit-scrollbar': {
+            display: 'none',
+          },
+        },
+        '.text-balance': {
+          'text-wrap': 'balance',
+        },
+      };
+
+      addUtilities(mobileUtilities);
+    },
+  ],
+};
