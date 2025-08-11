@@ -239,7 +239,36 @@ const nextConfig = {
 }
 ```
 
+### ปัญหา: The key "NODE_ENV" under "env" in next.config.js is not allowed
+**สาเหตุ:** Next.js ไม่ยอมให้ใช้ `NODE_ENV` ใน `env` section เพราะเป็น environment variable ที่ Next.js จัดการเอง
+
+**วิธีแก้:**
+```javascript
+// ❌ ไม่ถูกต้อง
+const nextConfig = {
+  env: {
+    NODE_ENV: process.env.NODE_ENV,  // ไม่ได้!
+    NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED,
+  },
+}
+
+// ✅ ถูกต้อง
+const nextConfig = {
+  env: {
+    NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED,
+  },
+}
+```
+
 ### Environment Variables ที่จำเป็น:
+
+**สำหรับการ Deploy พื้นฐาน:**
+- `NEXT_TELEMETRY_DISABLED`: 1
+- `PORT`: 8080
+
+**หมายเหตุ:** `NODE_ENV` จะถูกตั้งค่าโดยอัตโนมัติโดย Next.js และ Railway
+
+**สำหรับการใช้งานจริง (เมื่อต้องการ):**
 - `MONGODB_URI`: MongoDB connection string
 - `LINE_CHANNEL_SECRET`: LINE Bot channel secret
 - `LINE_CHANNEL_ACCESS_TOKEN`: LINE Bot access token
