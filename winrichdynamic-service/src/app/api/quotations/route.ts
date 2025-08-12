@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { createQuotationSchema, searchQuotationSchema } from '@/schemas/quotation';
 
 // GET: ดึงใบเสนอราคาทั้งหมด (พร้อมการค้นหาและ pagination)
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     await connectDB();
     
-    const searchParams = request.nextUrl.searchParams;
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const page = Number(searchParams.get('page') || '1');
     const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
     const q = searchParams.get('q') || '';
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST: สร้างใบเสนอราคาใหม่
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const raw = await request.json();
     

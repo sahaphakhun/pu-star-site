@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Customer from '@/models/Customer';
 import { updateCustomerSchema } from '@/schemas/customer';
 
 // GET: ดึงข้อมูลลูกค้าตาม ID
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -33,7 +33,7 @@ export async function GET(
 
 // PUT: อัพเดทข้อมูลลูกค้า
 export async function PUT(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -128,7 +128,7 @@ export async function PUT(
 
 // DELETE: ลบลูกค้า (Soft Delete)
 export async function DELETE(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {

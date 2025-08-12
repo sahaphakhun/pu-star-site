@@ -1,113 +1,154 @@
 # WinRich Dynamic Service
 
-ระบบจัดการใบเสนอราคา และบริหารธุรกิจ
+ระบบจัดการธุรกิจที่พัฒนาด้วย Next.js, MongoDB, และ React
 
-## 🚀 การ Deploy บน Railway
+## สิ่งที่ได้พัฒนาแล้ว
 
-### ขั้นตอนการ Deploy:
+### 1. ระบบจัดการลูกค้า (Customer Management)
+- **Model**: `src/models/Customer.ts` - ข้อมูลลูกค้าพร้อม validation
+- **Schema**: `src/schemas/customer.ts` - Zod validation schemas
+- **API Routes**: 
+  - `GET /api/customers` - ดึงรายการลูกค้าทั้งหมด (พร้อม search, filter, pagination)
+  - `POST /api/customers` - สร้างลูกค้าใหม่
+  - `GET /api/customers/[id]` - ดึงข้อมูลลูกค้าตาม ID
+  - `PUT /api/customers/[id]` - อัพเดทข้อมูลลูกค้า
+  - `DELETE /api/customers/[id]` - ลบลูกค้า (Soft Delete)
+- **UI Components**: 
+  - `CustomerForm.tsx` - ฟอร์มเพิ่ม/แก้ไขลูกค้า
+  - `CustomerList.tsx` - ตารางแสดงรายการลูกค้า
+- **Admin Page**: `/admin/customers` - หน้าจัดการลูกค้า
 
-1. **ตั้งค่า Environment Variables บน Railway:**
-   - ไปที่ Railway Dashboard
-   - เลือก service `winrichdynamic-service`
-   - ไปที่ Variables tab
-   - ตั้งค่าตัวแปรพื้นฐาน:
-     ```
-     NODE_ENV=production
-     NEXT_TELEMETRY_DISABLED=1
-     PORT=8080
-     ```
+### 2. ระบบจัดการใบเสนอราคา (Quotation Management)
+- **Model**: `src/models/Quotation.ts` - ข้อมูลใบเสนอราคาพร้อมรายการสินค้า
+- **Schema**: `src/schemas/quotation.ts` - Zod validation schemas
+- **API Routes**:
+  - `GET /api/quotations` - ดึงรายการใบเสนอราคาทั้งหมด
+  - `POST /api/quotations` - สร้างใบเสนอราคาใหม่
+  - `GET /api/quotations/[id]` - ดึงข้อมูลใบเสนอราคาตาม ID
+  - `PUT /api/quotations/[id]` - อัพเดทข้อมูลใบเสนอราคา
+  - `DELETE /api/quotations/[id]` - ลบใบเสนอราคา
+  - `PUT /api/quotations/[id]/status` - เปลี่ยนสถานะใบเสนอราคา
+  - `POST /api/quotations/[id]/send` - ส่งใบเสนอราคา
+  - `POST /api/quotations/[id]/convert` - แปลงเป็น Sales Order
+- **UI Components**: 
+  - `QuotationForm.tsx` - ฟอร์มสร้าง/แก้ไขใบเสนอราคา
+- **Admin Page**: `/admin/quotations` - หน้าจัดการใบเสนอราคา
 
-2. **Deploy:**
-   ```bash
-   cd winrichdynamic-service
-   railway up
-   ```
+### 3. ระบบฐานข้อมูล
+- **Connection**: `src/lib/mongodb.ts` - MongoDB connection utility
+- **Models**: Mongoose models สำหรับ Customer และ Quotation
 
-### การตั้งค่าเพิ่มเติม (เมื่อต้องการใช้งานจริง):
+### 4. Admin Dashboard
+- **Main Page**: `/admin` - หน้าหลัก admin พร้อม navigation
+- **Navigation**: ลิงก์ไปยังหน้าจัดการลูกค้าและใบเสนอราคา
 
-เมื่อต้องการเพิ่มฟีเจอร์ที่ใช้ external services ให้ตั้งค่า environment variables เพิ่มเติม:
+## การติดตั้งและรัน
 
-```
-# Database (เมื่อต้องการใช้ MongoDB)
-MONGODB_URI=your-mongodb-connection-string
-
-# LINE Bot (เมื่อต้องการใช้ LINE Bot)
-LINE_CHANNEL_SECRET=your-line-channel-secret
-LINE_CHANNEL_ACCESS_TOKEN=your-line-channel-access-token
-
-# WMS API (เมื่อต้องการเชื่อมต่อ WMS)
-WMS_API_URL=your-wms-api-url
-WMS_API_KEY=your-wms-api-key
-
-# JWT (เมื่อต้องการใช้ authentication)
-JWT_SECRET=your-jwt-secret-here
-
-# Email (เมื่อต้องการส่ง email)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password-here
-```
-
-## 🔧 การพัฒนา
-
-### การรันในโหมด Development:
-
+### 1. ติดตั้ง Dependencies
 ```bash
-# ติดตั้ง dependencies
 npm install
+```
 
-# รันในโหมด development
+### 2. ตั้งค่า Environment Variables
+สร้างไฟล์ `.env.local` จาก `env.example`:
+```bash
+cp env.example .env.local
+```
+
+แก้ไขค่าใน `.env.local`:
+```
+MONGODB_URI=mongodb://localhost:27017/winrichdynamic
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+API_BASE_URL=http://localhost:3001/api
+```
+
+### 3. รัน Development Server
+```bash
 npm run dev
-
-# Build สำหรับ production
-npm run build
-
-# รันในโหมด production
-npm start
 ```
 
-### การตั้งค่า Environment Variables ในการพัฒนา:
+แอปจะรันที่ `http://localhost:3001`
 
-สร้างไฟล์ `.env.local` ในโฟลเดอร์ `winrichdynamic-service`:
-
-```env
-NEXT_TELEMETRY_DISABLED=1
-```
-
-**หมายเหตุ:** `NODE_ENV` จะถูกตั้งค่าโดยอัตโนมัติโดย Next.js (development ในโหมด dev, production ในโหมด build)
-
-## 📁 โครงสร้างโปรเจ็กต์
+## โครงสร้างโปรเจค
 
 ```
-winrichdynamic-service/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/               # API routes
-│   │   ├── admin/             # Admin routes
-│   │   ├── wholesale/         # Wholesale routes
-│   │   ├── layout.tsx         # Root layout
-│   │   └── page.tsx           # Home page
-│   ├── components/            # React Components
-│   ├── models/                # MongoDB Models (เมื่อต้องการ)
-│   ├── services/              # Business Logic
-│   ├── schemas/               # Validation Schemas
-│   ├── types/                 # TypeScript Types
-│   ├── utils/                 # Utility Functions
-│   └── lib/                   # Library Configurations
-├── public/                    # Static Files
-├── next.config.js             # Next.js Configuration
-├── package.json               # Dependencies
-└── railway.json               # Railway Configuration
+src/
+├── app/
+│   ├── admin/           # Admin pages
+│   │   ├── customers/   # Customer management
+│   │   ├── quotations/  # Quotation management
+│   │   └── page.tsx     # Admin dashboard
+│   └── api/             # API routes
+│       ├── customers/   # Customer API endpoints
+│       └── quotations/  # Quotation API endpoints
+├── components/           # React components
+│   ├── CustomerForm.tsx
+│   ├── CustomerList.tsx
+│   └── QuotationForm.tsx
+├── lib/                  # Utilities
+│   └── mongodb.ts       # Database connection
+├── models/               # Mongoose models
+│   ├── Customer.ts
+│   └── Quotation.ts
+└── schemas/              # Zod validation schemas
+    ├── customer.ts
+    └── quotation.ts
 ```
 
-## 🚨 ข้อควรระวัง
+## เทคโนโลยีที่ใช้
 
-1. **Environment Variables:** ตั้งค่าเฉพาะที่จำเป็นสำหรับการทำงาน
-2. **Dependencies:** ติดตั้งเฉพาะ packages ที่ใช้จริง
-3. **Build Process:** ตรวจสอบ build logs หากมีปัญหา
-4. **Healthcheck:** endpoint `/api/ping` ต้องทำงานได้ปกติ
+- **Frontend**: Next.js 15, React 19, Tailwind CSS, Framer Motion
+- **Backend**: Next.js API Routes, MongoDB, Mongoose
+- **Validation**: Zod
+- **UI Components**: Custom components with Tailwind CSS
+- **Animations**: Framer Motion
+- **Notifications**: React Hot Toast
 
-## 📞 การติดต่อ
+## สถานะปัจจุบัน
 
-หากมีปัญหาหรือคำถามเกี่ยวกับการพัฒนาโปรเจ็กต์นี้ กรุณาติดต่อทีมพัฒนา
+✅ **เสร็จแล้ว**:
+- ระบบจัดการลูกค้า (CRUD)
+- ระบบจัดการใบเสนอราคา (CRUD + Status Management)
+- Admin Dashboard
+- Database models และ schemas
+- API endpoints ทั้งหมด
+- UI components พร้อม validation
+
+🔄 **กำลังพัฒนา**:
+- PDF generation สำหรับใบเสนอราคา
+- LINE Bot integration
+- WMS integration
+
+📋 **แผนการพัฒนาต่อ**:
+- ระบบ Billing
+- ระบบ Sales Orders
+- ระบบ Inventory Management
+- ระบบ Reporting และ Analytics
+
+## การใช้งาน
+
+### 1. เข้าสู่ Admin Dashboard
+ไปที่ `http://localhost:3001/admin`
+
+### 2. จัดการลูกค้า
+- ไปที่ `/admin/customers`
+- กดปุ่ม "สร้างลูกค้าใหม่" เพื่อเพิ่มลูกค้า
+- แก้ไขหรือลบข้อมูลลูกค้าได้
+
+### 3. จัดการใบเสนอราคา
+- ไปที่ `/admin/quotations`
+- กดปุ่ม "สร้างใบเสนอราคาใหม่" เพื่อสร้างใบเสนอราคา
+- เลือกลูกค้าและกรอกข้อมูลสินค้า
+- ระบบจะคำนวณราคาอัตโนมัติ
+- ส่งใบเสนอราคาได้เมื่อเสร็จแล้ว
+
+## การแก้ไขปัญหา
+
+### TypeScript Errors
+หากเจอ error เกี่ยวกับ `NextRequest` type ให้เปลี่ยนเป็น `Request` ใน API routes
+
+### MongoDB Connection
+ตรวจสอบว่า MongoDB กำลังรันและ URI ใน `.env.local` ถูกต้อง
+
+### Port Conflicts
+หาก port 3001 ถูกใช้งาน ให้เปลี่ยนใน `package.json` scripts

@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { updateQuotationSchema } from '@/schemas/quotation';
 
 // GET: ดึงข้อมูลใบเสนอราคาตาม ID
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -33,7 +33,7 @@ export async function GET(
 
 // PUT: อัพเดทข้อมูลใบเสนอราคา
 export async function PUT(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -95,7 +95,7 @@ export async function PUT(
 
 // DELETE: ลบใบเสนอราคา
 export async function DELETE(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
