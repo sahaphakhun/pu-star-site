@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { 
           error: 'รูปแบบข้อมูลไม่ถูกต้อง', 
-          details: parsed.error.errors 
+          details: parsed.error.issues
         },
         { status: 400 }
       );

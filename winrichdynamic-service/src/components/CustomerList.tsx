@@ -4,17 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
-interface Customer {
+export interface Customer {
   _id: string;
   name: string;
   phoneNumber: string;
   email?: string;
   taxId?: string;
   companyName?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string;
+  creditLimit?: number;
+  notes?: string;
+  paymentTerms?: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface CustomerListProps {

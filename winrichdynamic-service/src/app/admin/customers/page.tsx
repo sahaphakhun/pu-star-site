@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import CustomerForm from '@/components/CustomerForm';
-import CustomerList from '@/components/CustomerList';
+import CustomerList, { Customer as ListCustomer } from '@/components/CustomerList';
 
 interface Customer {
   _id: string;
@@ -27,10 +27,10 @@ interface Customer {
 }
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<ListCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<ListCustomer | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   // ดึงข้อมูลลูกค้าทั้งหมด
@@ -133,7 +133,7 @@ export default function CustomersPage() {
   };
 
   // แก้ไขลูกค้า
-  const handleEditCustomer = (customer: Customer) => {
+  const handleEditCustomer = (customer: ListCustomer) => {
     setEditingCustomer(customer);
     setShowForm(true);
   };

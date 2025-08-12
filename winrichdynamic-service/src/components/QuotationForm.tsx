@@ -42,7 +42,7 @@ interface Customer {
 interface QuotationFormProps {
   initialData?: Partial<QuotationFormData>;
   customers: Customer[];
-  onSubmit: (data: QuotationFormData) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
   isEditing?: boolean;
   loading?: boolean;
@@ -83,7 +83,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     notes: '',
   });
 
-  const [errors, setErrors] = useState<Partial<QuotationFormData>>({});
+  type QuotationFormErrors = Partial<Record<keyof QuotationFormData, string>>;
+  const [errors, setErrors] = useState<QuotationFormErrors>({});
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
@@ -129,7 +130,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<QuotationFormData> = {};
+    const newErrors: QuotationFormErrors = {};
 
     if (!formData.customerId) {
       newErrors.customerId = 'กรุณาเลือกลูกค้า';
@@ -209,7 +210,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   };
 
   const handleCustomerChange = (customerId: string) => {
-    const customer = customers.find(c => c._id === customerId);
+    const customer = customers.find(c => c._id === customerId) || null;
     setSelectedCustomer(customer);
     
     if (customer) {

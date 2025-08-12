@@ -18,11 +18,7 @@ if (MONGODB_URI && process.env.NODE_ENV !== 'production') {
   console.log('[DB] using connection string =', MONGODB_URI.slice(0, 30) + '...');
 }
 
-if (!MONGODB_URI) {
-  throw new Error(
-    'กรุณากำหนดค่า MONGODB_URI, MONGO_URL, DATABASE_URL หรือ MONGODB_URL ในตัวแปรสภาพแวดล้อม Railway'
-  );
-}
+// อย่า throw ระหว่าง build; ตรวจสอบตอน connect แทน
 
 // กำหนดรูปแบบ interface สำหรับค่า cached
 interface MongooseCache {
@@ -48,6 +44,11 @@ async function connectDB(): Promise<mongoose.Connection> {
   }
 
   if (!cached.promise) {
+    if (!MONGODB_URI) {
+      throw new Error(
+        'กรุณากำหนดค่า MONGODB_URI, MONGO_URL, DATABASE_URL หรือ MONGODB_URL ในตัวแปรสภาพแวดล้อม'
+      );
+    }
     const opts = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 30000, // 30 วินาที หากหาเซิร์ฟเวอร์ไม่เจอจะ throw เร็วขึ้น

@@ -15,7 +15,7 @@ interface CustomerFormData {
   companyEmail: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo: string;
-  creditLimit: string;
+  creditLimit?: string;
   paymentTerms: string;
   notes: string;
   isActive: boolean;
@@ -23,7 +23,7 @@ interface CustomerFormData {
 
 interface CustomerFormProps {
   initialData?: Partial<CustomerFormData>;
-  onSubmit: (data: CustomerFormData) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
   isEditing?: boolean;
   loading?: boolean;
