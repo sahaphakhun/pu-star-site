@@ -36,7 +36,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {menuItems.map((item, index) => (
             <motion.div
               key={item.href}
@@ -44,13 +44,13 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Link href={item.href}>
-                <div className={`${item.color} rounded-lg shadow-lg p-6 text-white transition-all duration-200 transform hover:scale-105 cursor-pointer`}>
-                  <div className="text-4xl mb-4">{item.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                  <p className="text-blue-100">{item.description}</p>
-                </div>
-              </Link>
+                          <Link href={item.href} className="block group">
+                            <div className="rounded-lg border bg-white p-6 shadow-sm transition-all duration-200 group-hover:shadow-md">
+                              <div className="text-4xl mb-4">{item.icon}</div>
+                              <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                              <p className="text-gray-500">{item.description}</p>
+                            </div>
+                          </Link>
             </motion.div>
           ))}
         </div>
