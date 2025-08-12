@@ -222,7 +222,9 @@ export async function POST(request: NextRequest) {
 
     // แจ้งเตือนเข้ากลุ่ม LINE ที่ตั้งค่าไว้
     try {
+      console.log('[Orders API] เริ่มส่ง LINE notification สำหรับออเดอร์:', order._id);
       await notifyLineGroupsNewOrder(order);
+      console.log('[Orders API] ส่ง LINE notification สำเร็จ');
     } catch (e) {
       console.error('ส่ง LINE แจ้งเตือนออเดอร์ล้มเหลว:', e);
     }

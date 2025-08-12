@@ -21,19 +21,48 @@ export async function linePush(
     | { type: string; [k: string]: any }
     | Array<{ type: string; [k: string]: any }>
 ) {
-  if (!ACCESS_TOKEN) throw new Error('LINE_CHANNEL_ACCESS_TOKEN is missing');
+  console.log('[LINE Push] เริ่มส่งข้อความไปยัง:', to);
+  console.log('[LINE Push] ข้อความ:', message);
+  
+  if (!ACCESS_TOKEN) {
+    console.error('[LINE Push] LINE_CHANNEL_ACCESS_TOKEN ไม่ถูกตั้งค่า');
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is missing');
+  }
+  
   const messages = Array.isArray(message)
     ? message
     : [{ type: 'text', text: typeof message === 'string' ? message : '' }];
-  const res = await fetch(`${LINE_API_BASE}/message/push`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-    },
-    body: JSON.stringify({ to, messages }),
-  });
-  if (!res.ok) throw new Error(`LINE push error ${res.status}: ${await res.text()}`);
+  
+  console.log('[LINE Push] แปลงข้อความเป็น:', messages);
+  
+  const payload = { to, messages };
+  console.log('[LINE Push] ส่ง payload:', JSON.stringify(payload, null, 2));
+  
+  try {
+    const res = await fetch(`${LINE_API_BASE}/message/push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    console.log('[LINE Push] HTTP status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('[LINE Push] HTTP error:', errorText);
+      throw new Error(`LINE push error ${res.status}: ${errorText}`);
+    }
+    
+    const result = await res.json();
+    console.log('[LINE Push] ส่งสำเร็จ:', result);
+    return result;
+  } catch (error) {
+    console.error('[LINE Push] เกิดข้อผิดพลาด:', error);
+    throw error;
+  }
 }
 
 export async function lineReply(replyToken: string, message: string | Array<{ type: string; [k: string]: any }>) {
