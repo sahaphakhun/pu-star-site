@@ -8,6 +8,7 @@ import { sendSMS } from '@/app/notification';
 import { orderInputSchema } from '@schemas/order';
 import AdminPhone from '@/models/AdminPhone';
 import { updateUserNameFromOrder } from '@/utils/userNameSync';
+import { notifyLineGroupsNewOrder } from '@/utils/lineNotification';
 
 export async function GET(request: NextRequest) {
   try {
@@ -217,6 +218,13 @@ export async function POST(request: NextRequest) {
       await Promise.allSettled(adminList.map((a:any)=> sendSMS(a.phoneNumber, adminMsg)));
     } catch (err){
       console.error('ส่ง SMS แจ้งแอดมินล้มเหลว:', err);
+    }
+
+    // แจ้งเตือนเข้ากลุ่ม LINE ที่ตั้งค่าไว้
+    try {
+      await notifyLineGroupsNewOrder(order);
+    } catch (e) {
+      console.error('ส่ง LINE แจ้งเตือนออเดอร์ล้มเหลว:', e);
     }
 
     return NextResponse.json(order, { status: 201 });
