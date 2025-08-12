@@ -5,6 +5,7 @@ import AdminNotification from '@/models/AdminNotification';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { sendSMS } from '@/app/notification';
+import { notifyLineGroupsNewClaim } from '@/utils/lineNotification';
 
 export async function POST(
   request: NextRequest,
@@ -109,6 +110,13 @@ export async function POST(
       // ไม่ให้ error การแจ้งเตือนทำให้การเคลมล้มเหลว
     }
     
+    // แจ้งเตือนเข้ากลุ่ม LINE ที่ตั้งค่าไว้
+    try {
+      await notifyLineGroupsNewClaim(updatedOrder);
+    } catch (e) {
+      console.error('ส่ง LINE แจ้งเตือนเคสเคลมล้มเหลว:', e);
+    }
+
     return NextResponse.json(updatedOrder);
     
   } catch (error) {
