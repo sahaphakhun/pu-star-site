@@ -194,7 +194,22 @@ export default function CustomersPage() {
                 className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
               >
                 <CustomerForm
-                  initialData={editingCustomer || undefined}
+                  initialData={editingCustomer ? {
+                    name: editingCustomer.name,
+                    phoneNumber: editingCustomer.phoneNumber,
+                    email: editingCustomer.email || '',
+                    taxId: editingCustomer.taxId || '',
+                    companyName: editingCustomer.companyName || '',
+                    companyAddress: editingCustomer.companyAddress || '',
+                    companyPhone: editingCustomer.companyPhone || '',
+                    companyEmail: editingCustomer.companyEmail || '',
+                    customerType: editingCustomer.customerType,
+                    assignedTo: editingCustomer.assignedTo || '',
+                    creditLimit: editingCustomer.creditLimit !== undefined ? String(editingCustomer.creditLimit) : '',
+                    paymentTerms: editingCustomer.paymentTerms,
+                    notes: editingCustomer.notes || '',
+                    isActive: editingCustomer.isActive,
+                  } : undefined}
                   onSubmit={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
                   onCancel={editingCustomer ? handleCancelEdit : handleCancelCreate}
                   isEditing={!!editingCustomer}

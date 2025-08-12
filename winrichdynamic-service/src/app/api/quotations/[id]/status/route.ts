@@ -6,7 +6,7 @@ import { updateQuotationStatusSchema } from '@/schemas/quotation';
 // PUT: เปลี่ยนสถานะใบเสนอราคา
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const raw = await request.json();
@@ -28,7 +28,7 @@ export async function PUT(
     await connectDB();
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(params.id);
+    const existingQuotation = await Quotation.findById(context.params.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -49,7 +49,7 @@ export async function PUT(
     }
     
     const updatedQuotation = await Quotation.findByIdAndUpdate(
-      params.id,
+      context.params.id,
       updateData,
       { new: true }
     ).lean();

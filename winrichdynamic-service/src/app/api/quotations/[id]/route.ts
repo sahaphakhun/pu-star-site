@@ -6,12 +6,12 @@ import { updateQuotationSchema } from '@/schemas/quotation';
 // GET: ดึงข้อมูลใบเสนอราคาตาม ID
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     await connectDB();
     
-    const quotation = await Quotation.findById(params.id).lean();
+    const quotation = await Quotation.findById(context.params.id).lean();
     
     if (!quotation) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 // PUT: อัพเดทข้อมูลใบเสนอราคา
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const raw = await request.json();
@@ -56,7 +56,7 @@ export async function PUT(
     await connectDB();
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(params.id);
+    const existingQuotation = await Quotation.findById(context.params.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -66,7 +66,7 @@ export async function PUT(
     
     // อัพเดทข้อมูลใบเสนอราคา
     const updatedQuotation = await Quotation.findByIdAndUpdate(
-      params.id,
+      context.params.id,
       updateData,
       { 
         new: true, 
@@ -96,13 +96,13 @@ export async function PUT(
 // DELETE: ลบใบเสนอราคา
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     await connectDB();
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(params.id);
+    const existingQuotation = await Quotation.findById(context.params.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -119,7 +119,7 @@ export async function DELETE(
     }
     
     // ลบใบเสนอราคา
-    await Quotation.findByIdAndDelete(params.id);
+    await Quotation.findByIdAndDelete(context.params.id);
     
     return NextResponse.json({
       message: 'ลบใบเสนอราคาเรียบร้อยแล้ว'

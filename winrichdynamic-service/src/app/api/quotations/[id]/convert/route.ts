@@ -6,7 +6,7 @@ import { convertToOrderSchema } from '@/schemas/quotation';
 // POST: แปลงใบเสนอราคาเป็น Sales Order
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const raw = await request.json();
@@ -28,7 +28,7 @@ export async function POST(
     await connectDB();
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(params.id);
+    const existingQuotation = await Quotation.findById(context.params.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -59,7 +59,7 @@ export async function POST(
     };
     
     const updatedQuotation = await Quotation.findByIdAndUpdate(
-      params.id,
+      context.params.id,
       updateData,
       { new: true }
     ).lean();

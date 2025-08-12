@@ -8,7 +8,8 @@
   }
   
   body {
-    @apply text-gray-900 bg-gray-50;
+    color: rgb(17 24 39);
+    background-color: rgb(249 250 251);
   }
 }
 
