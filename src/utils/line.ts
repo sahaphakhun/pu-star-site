@@ -50,15 +50,20 @@ export async function linePush(
     
     console.log('[LINE Push] HTTP status:', res.status);
     
+    const bodyText = await res.text();
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error('[LINE Push] HTTP error:', errorText);
-      throw new Error(`LINE push error ${res.status}: ${errorText}`);
+      console.error('[LINE Push] HTTP error body:', bodyText);
+      throw new Error(`LINE push error ${res.status}: ${bodyText}`);
     }
     
-    const result = await res.json();
-    console.log('[LINE Push] ส่งสำเร็จ:', result);
-    return result;
+    let parsed: any = null;
+    try {
+      parsed = bodyText ? JSON.parse(bodyText) : { ok: true };
+    } catch {
+      parsed = { ok: true };
+    }
+    console.log('[LINE Push] ส่งสำเร็จ:', parsed);
+    return parsed;
   } catch (error) {
     console.error('[LINE Push] เกิดข้อผิดพลาด:', error);
     throw error;

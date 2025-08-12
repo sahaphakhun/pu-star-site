@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
               });
 
               const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
-              const smsMsg = 'ตั้งค่ากลุ่ม LINE สำหรับแจ้งเตือนแล้ว — ระบบจะเริ่มส่งแจ้งเตือนไปยังกลุ่มดังกล่าว';
+              // ข้อความสำหรับ DeeSMSx: เลี่ยงอักขระพิเศษ (เช่น em dash) และจำกัดความยาว
+              const smsMsg = 'ตั้งค่ากลุ่ม LINE สำหรับแจ้งเตือนแล้ว - ระบบจะเริ่มส่งแจ้งเตือนไปยังกลุ่มดังกล่าว';
               await Promise.allSettled(adminList.map((a: any) => sendSMS(a.phoneNumber, smsMsg)));
             } catch (e) {
               console.error('[LINE webhook] notify admin error', e);
