@@ -1,0 +1,39 @@
+# Allow access to robots.txt and sitemap.xml
+<Files "robots.txt">
+    Require all granted
+</Files>
+
+<Files "sitemap.xml">
+    Require all granted
+</Files>
+
+<Files "verification.txt">
+    Require all granted
+</Files>
+
+# Set proper MIME types
+<IfModule mod_mime.c>
+    AddType text/plain .txt
+    AddType application/xml .xml
+</IfModule>
+
+# Enable CORS for Facebook crawlers
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
+# Cache control for static files
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/plain "access plus 1 hour"
+    ExpiresByType application/xml "access plus 1 hour"
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>

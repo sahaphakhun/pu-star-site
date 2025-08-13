@@ -21,6 +21,51 @@ async function isUrlAccessible(url: string): Promise<boolean> {
 }
 
 /**
+ * ตรวจสอบว่า URL รูปภาพเข้ากันได้กับ Facebook หรือไม่
+ */
+async function checkFacebookImageCompatibility(imageUrl: string): Promise<boolean> {
+  try {
+    // ตรวจสอบว่าเป็น HTTPS หรือไม่
+    if (!imageUrl.startsWith('https://')) {
+      console.warn(`[WARN] Image URL must be HTTPS: ${imageUrl}`);
+      return false;
+    }
+    
+    // ตรวจสอบว่า domain ไม่ใช่ localhost หรือ private IP
+    const url = new URL(imageUrl);
+    if (url.hostname === 'localhost' || 
+        url.hostname.startsWith('192.168.') ||
+        url.hostname.startsWith('10.') ||
+        url.hostname.startsWith('172.')) {
+      console.warn(`[WARN] Image URL is private/local: ${imageUrl}`);
+      return false;
+    }
+    
+    // ตรวจสอบว่า domain มี robots.txt ที่เหมาะสมหรือไม่
+    const robotsUrl = `${url.protocol}//${url.hostname}/robots.txt`;
+    try {
+      const robotsResponse = await fetch(robotsUrl, { 
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000)
+      });
+      if (robotsResponse.ok) {
+        console.log(`[DEBUG] Robots.txt found for ${url.hostname}`);
+        return true;
+      }
+    } catch (robotsError) {
+      console.warn(`[WARN] Could not check robots.txt for ${url.hostname}:`, robotsError);
+      // ถ้าไม่มี robots.txt ก็ยังคงยอมรับได้
+      return true;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn(`[WARN] Error checking Facebook compatibility: ${imageUrl}`, error);
+    return false;
+  }
+}
+
+/**
  * ประมวลผลข้อความที่มี [cut] และ [SEND_IMAGE:...] 
  * แล้วส่งทีละส่วนไปยัง Facebook Messenger
  */
@@ -148,6 +193,22 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
     return;
   }
   
+  // ตรวจสอบว่าเป็น URL ที่ Facebook ยอมรับหรือไม่
+  const isFacebookCompatible = await checkFacebookImageCompatibility(imageUrl);
+  if (!isFacebookCompatible) {
+    console.warn(`[WARN] Image URL not Facebook compatible: ${imageUrl}`);
+    // ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ รูปภาพนี้ไม่สามารถแสดงใน Messenger ได้ กรุณาลองใช้รูปภาพอื่น`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    }
+    return;
+  }
+  
   const message: FBMessagePayload = {
     attachment: {
       type: 'image',
@@ -161,17 +222,30 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
   try {
     await callSendAPI(recipientId, message);
     console.log("[DEBUG] Image sent successfully");
-  } catch (err) {
+  } catch (err: any) {
     console.error("[ERROR] Failed to send image:", err);
     
-    // ถ้าส่งรูปภาพไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
-    try {
-      const fallbackMessage: FBMessagePayload = {
-        text: `ขออภัยค่ะ ไม่สามารถแสดงรูปภาพได้ (${imageUrl})`
-      };
-      await callSendAPI(recipientId, fallbackMessage);
-    } catch (fallbackErr) {
-      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    // ตรวจสอบ error code และจัดการตามนั้น
+    if (err?.error?.code === 100 && err?.error?.error_subcode === 2018388) {
+      console.warn("[WARN] Facebook robots.txt error - sending fallback message");
+      try {
+        const fallbackMessage: FBMessagePayload = {
+          text: `ขออภัยค่ะ Facebook ไม่สามารถเข้าถึงรูปภาพนี้ได้ กรุณาลองใช้รูปภาพจากแหล่งอื่น`
+        };
+        await callSendAPI(recipientId, fallbackMessage);
+      } catch (fallbackErr) {
+        console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+      }
+    } else {
+      // ถ้าส่งรูปภาพไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
+      try {
+        const fallbackMessage: FBMessagePayload = {
+          text: `ขออภัยค่ะ ไม่สามารถแสดงรูปภาพได้ (${imageUrl})`
+        };
+        await callSendAPI(recipientId, fallbackMessage);
+      } catch (fallbackErr) {
+        console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+      }
     }
   }
 }

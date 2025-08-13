@@ -1,0 +1,5 @@
+Facebook App Verification File
+Domain: yourdomain.com
+App ID: 1150008753538160
+Created: 2024-01-13
+Purpose: Facebook Messenger Bot Integration
