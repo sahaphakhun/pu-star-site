@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 // ---------- ENV / CONFIG ----------
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MAIN_MODEL = process.env.OPENAI_MAIN_MODEL || 'gpt-4.1-mini';
+const OPENAI_MAIN_MODEL = process.env.OPENAI_MAIN_MODEL || 'gpt-4.1';
 
 // Google Service Account (คงไว้ในไฟล์นี้ตามคำขอ)
 const GOOGLE_CLIENT_EMAIL = "aitar-888@eminent-wares-446512-j8.iam.gserviceaccount.com";

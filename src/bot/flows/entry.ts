@@ -10,6 +10,7 @@ import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
 import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, enableAutoModeForUser, isAutoModeEnabled, addToConversationHistory, getConversationHistory, enableAutoModeAndRespond } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
+import { sendSmartMessage, hasCutOrImageCommands } from '@/utils/messenger-utils';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -472,13 +473,26 @@ export async function handleEvent(event: MessagingEvent) {
           // เปิดโหมดอัตโนมัติและเรียก AI มาตอบทันที
           const answer = await enableAutoModeAndRespond(psid, question);
           
-          await callSendAPI(psid, {
-            text: answer,
-            quick_replies: [
-              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-            ],
-          });
+          // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
+          if (hasCutOrImageCommands(answer)) {
+            await sendSmartMessage(psid, answer);
+            // ส่ง quick replies แยก
+            await callSendAPI(psid, {
+              text: '',
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+              ],
+            });
+          } else {
+            await callSendAPI(psid, {
+              text: answer,
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+              ],
+            });
+          }
           return;
         }
         
@@ -492,26 +506,51 @@ export async function handleEvent(event: MessagingEvent) {
           // เพิ่มข้อความ AI ลงในประวัติ
           await addToConversationHistory(psid, 'assistant', answer);
           
-          await callSendAPI(psid, {
-            text: answer,
-            quick_replies: [
-              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-            ],
-          });
+          // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
+          if (hasCutOrImageCommands(answer)) {
+            await sendSmartMessage(psid, answer);
+            // ส่ง quick replies แยก
+            await callSendAPI(psid, {
+              text: '',
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+              ],
+            });
+          } else {
+            await callSendAPI(psid, {
+              text: answer,
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+              ],
+            });
+          }
           return;
         } else {
           // โหมด AI ปกติ
           console.log(`[AI Debug] Using basic AI mode`);
           const systemInstructions = await buildSystemInstructions('Basic');
           const answer = await getAssistantResponse(systemInstructions, [], question);
-          await callSendAPI(psid, {
-            text: answer,
-            quick_replies: [
-              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-            ],
-          });
+          
+          // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
+          if (hasCutOrImageCommands(answer)) {
+            await sendSmartMessage(psid, answer);
+            // ส่ง quick replies แยก
+            await callSendAPI(psid, {
+              text: '',
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              ],
+            });
+          } else {
+            await callSendAPI(psid, {
+              text: answer,
+              quick_replies: [
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              ],
+            });
+          }
           return;
         }
       } catch (error) {
