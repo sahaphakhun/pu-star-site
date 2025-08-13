@@ -8,7 +8,7 @@ import { showMyOrders } from './orderHistory.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
-import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, enableAutoModeForUser, isAutoModeEnabled, addToConversationHistory, getConversationHistory, buildAutoModeInitialMessage } from '@/utils/openai-utils';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, enableAutoModeForUser, isAutoModeEnabled, addToConversationHistory, getConversationHistory, enableAutoModeAndRespond } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 
 interface MessagingEvent {
@@ -468,14 +468,12 @@ export async function handleEvent(event: MessagingEvent) {
         // ตรวจสอบว่าควรเปิดโหมดอัตโนมัติหรือไม่
         if (!autoModeEnabled && session.nonMenuMessageCount >= 2) {
           console.log(`[AutoMode] Enabling auto mode for ${psid} after ${session.nonMenuMessageCount} non-menu messages`);
-          await enableAutoModeForUser(psid);
           
-          // ส่งข้อความเริ่มต้นโหมดอัตโนมัติ
-          const conversationHistory = await getConversationHistory(psid);
-          const initialMessage = buildAutoModeInitialMessage(conversationHistory);
+          // เปิดโหมดอัตโนมัติและเรียก AI มาตอบทันที
+          const answer = await enableAutoModeAndRespond(psid, question);
           
           await callSendAPI(psid, {
-            text: initialMessage,
+            text: answer,
             quick_replies: [
               { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
               { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
