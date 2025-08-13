@@ -49,6 +49,19 @@ interface Order {
     responseDate?: string;
   };
   updatedAt?: string; // Added for enhanced order status
+  slipUrl?: string; // Added for slip verification
+  slipVerification?: {
+    verified: boolean;
+    confidence: number;
+    verifiedAt?: string;
+    error?: string;
+    slip2GoData?: {
+      bank: string;
+      amount: number;
+      date: string;
+      time: string;
+    };
+  };
 }
 
 const MyOrdersPage = () => {
@@ -769,7 +782,7 @@ const MyOrdersPage = () => {
                   <div className="bg-blue-50 p-4 rounded-lg mt-6">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
                       <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       ขอใบกำกับภาษี
                     </h3>
@@ -783,6 +796,119 @@ const MyOrdersPage = () => {
                         <p className="font-medium font-mono">{selectedOrder.taxInvoice.taxId}</p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Slip Information */}
+                {selectedOrder.slipUrl && (
+                  <div className="bg-green-50 p-4 rounded-lg mt-6 border border-green-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      หลักฐานการโอนเงิน
+                    </h3>
+                    
+                    {/* Slip Image */}
+                    <div className="mb-4">
+                      <img
+                        src={selectedOrder.slipUrl}
+                        alt="หลักฐานการโอนเงิน"
+                        className="w-full max-w-md h-auto rounded-lg border border-green-200 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => window.open(selectedOrder.slipUrl, '_blank')}
+                      />
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        คลิกที่รูปเพื่อดูขนาดเต็ม
+                      </p>
+                    </div>
+
+                    {/* Slip Verification Status */}
+                    {selectedOrder.slipVerification ? (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                            selectedOrder.slipVerification.verified 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {selectedOrder.slipVerification.verified ? (
+                              <>
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                ตรวจสอบแล้ว
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                ตรวจสอบไม่สำเร็จ
+                              </>
+                            )}
+                          </span>
+                          {selectedOrder.slipVerification.confidence > 0 && (
+                            <span className="text-xs text-gray-600">
+                              ความแม่นยำ: {selectedOrder.slipVerification.confidence}%
+                            </span>
+                          )}
+                        </div>
+                        {selectedOrder.slipVerification.verifiedAt && (
+                          <p className="text-xs text-gray-600">
+                            ตรวจสอบเมื่อ: {new Date(selectedOrder.slipVerification.verifiedAt).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Asia/Bangkok'
+                            })}
+                          </p>
+                        )}
+                        {selectedOrder.slipVerification.error && (
+                          <p className="text-xs text-red-600 mt-1">
+                            ข้อผิดพลาด: {selectedOrder.slipVerification.error}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mb-4">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          รอการตรวจสอบ
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Slip Details */}
+                    {selectedOrder.slipVerification?.slip2GoData && (
+                      <div className="bg-white p-3 rounded-lg border border-green-200">
+                        <h4 className="font-medium text-gray-900 mb-2 text-sm">รายละเอียดสลิป</h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-600">ธนาคาร:</span>
+                            <span className="ml-1 font-medium">{selectedOrder.slipVerification.slip2GoData.bank || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">จำนวนเงิน:</span>
+                            <span className="ml-1 font-medium">฿{selectedOrder.slipVerification.slip2GoData.amount?.toLocaleString() || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">วันที่:</span>
+                            <span className="ml-1 font-medium">{selectedOrder.slipVerification.slip2GoData.date ? new Date(selectedOrder.slipVerification.slip2GoData.date).toLocaleDateString('th-TH') : '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">เวลา:</span>
+                            <span className="ml-1 font-medium">{selectedOrder.slipVerification.slip2GoData.time || '-'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

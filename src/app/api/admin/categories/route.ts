@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Category from '@/models/Category';
 import Product from '@/models/Product';
-import { verifyAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 import { PERMISSIONS } from '@/constants/permissions';
 
 // GET: ดึงรายการหมวดหมู่ทั้งหมดสำหรับแอดมิน (รวม inactive)
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await verifyAuth(request);
-    if (!session?.user) {
+    const authResult = await verifyToken(request);
+    if (!authResult?.valid) {
       return NextResponse.json({ error: 'ไม่ได้รับอนุญาต' }, { status: 401 });
     }
 
-    if (session.user.role !== 'admin') {
+    if (authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ในการดูหมวดหมู่' }, { status: 403 });
     }
 

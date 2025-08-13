@@ -3,7 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Category from '@/models/Category';
 import Product from '@/models/Product';
 import { categoryUpdateSchema } from '@/schemas/category';
-import { verifyAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 import { PERMISSIONS } from '@/constants/permissions';
 
 // GET: ดึงข้อมูลหมวดหมู่ตาม ID
@@ -36,12 +36,12 @@ export async function PUT(
 ) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await verifyAuth(request);
-    if (!session?.user) {
+    const authResult = await verifyToken(request);
+    if (!authResult?.valid) {
       return NextResponse.json({ error: 'ไม่ได้รับอนุญาต' }, { status: 401 });
     }
 
-    if (session.user.role !== 'admin') {
+    if (authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ในการแก้ไขหมวดหมู่' }, { status: 403 });
     }
 
@@ -99,12 +99,12 @@ export async function DELETE(
 ) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await verifyAuth(request);
-    if (!session?.user) {
+    const authResult = await verifyToken(request);
+    if (!authResult?.valid) {
       return NextResponse.json({ error: 'ไม่ได้รับอนุญาต' }, { status: 401 });
     }
 
-    if (session.user.role !== 'admin') {
+    if (authResult.decoded?.role !== 'admin') {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ในการลบหมวดหมู่' }, { status: 403 });
     }
 
