@@ -71,7 +71,8 @@ async function checkFacebookImageCompatibility(imageUrl: string): Promise<boolea
  */
 export async function sendTextMessageWithCutAndImages(
   recipientId: string, 
-  response: string
+  response: string,
+  includeMenu: boolean = false
 ): Promise<void> {
   console.log("[DEBUG] sendTextMessageWithCutAndImages => raw response:", response);
 
@@ -130,10 +131,23 @@ export async function sendTextMessageWithCutAndImages(
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // ส่งข้อความ (ถ้ามี)
+    // ส่งข้อความ (ถ้ามี) พร้อมเมนูถ้าเป็นส่วนสุดท้ายและต้องการเมนู
     if (textPart) {
       console.log(`[DEBUG] Sending text part: ${textPart.substring(0, 100)}...`);
-      await sendSimpleTextMessage(recipientId, textPart);
+      
+      if (includeMenu && i === segments.length - 1) {
+        // ส่งข้อความพร้อมเมนูสำหรับส่วนสุดท้าย
+        await callSendAPI(recipientId, {
+          text: textPart,
+          quick_replies: [
+            { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+            { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+          ],
+        });
+      } else {
+        // ส่งข้อความธรรมดา
+        await sendSimpleTextMessage(recipientId, textPart);
+      }
       
       // รอเล็กน้อยระหว่างการส่งข้อความ
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -424,15 +438,27 @@ export async function sendBatchMessage(
  */
 export async function sendSmartMessage(
   recipientId: string, 
-  response: string
+  response: string,
+  includeMenu: boolean = false
 ): Promise<void> {
   // ตรวจสอบว่าต้องใช้ระบบ [cut] หรือไม่
   if (hasCutOrImageCommands(response)) {
     console.log("[DEBUG] Using cut/image system for message");
-    return sendTextMessageWithCutAndImages(recipientId, response);
+    return sendTextMessageWithCutAndImages(recipientId, response, includeMenu);
   } else {
     // ข้อความธรรมดา
     console.log("[DEBUG] Using simple text message");
-    return sendSimpleTextMessage(recipientId, response);
+    if (includeMenu) {
+      // ส่งข้อความพร้อมเมนู
+      return callSendAPI(recipientId, {
+        text: response,
+        quick_replies: [
+          { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+          { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+        ],
+      });
+    } else {
+      return sendSimpleTextMessage(recipientId, response);
+    }
   }
 }

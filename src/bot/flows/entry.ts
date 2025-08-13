@@ -475,15 +475,7 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer);
-            // ส่งเมนูหลังจากข้อความ AI เสร็จแล้ว
-            await callSendAPI(psid, {
-              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
-              quick_replies: [
-                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-              ],
-            });
+            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
@@ -508,20 +500,13 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer);
-            // ส่งเมนูหลังจากข้อความ AI เสร็จแล้ว
-            await callSendAPI(psid, {
-              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
-              quick_replies: [
-                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-              ],
-            });
+            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
               quick_replies: [
-                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_PRODUCTS' },
+                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+                { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
               ],
             });
           }
@@ -534,14 +519,7 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer);
-            // ส่งเมนูหลังจากข้อความ AI เสร็จแล้ว
-            await callSendAPI(psid, {
-              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
-              quick_replies: [
-                { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-              ],
-            });
+            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
