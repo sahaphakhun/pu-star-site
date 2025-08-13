@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
@@ -40,6 +41,7 @@ const AdminSidebar: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [siteInfo, setSiteInfo] = useState<{ siteName: string; logoUrl: string } | null>(null);
 
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
@@ -90,8 +92,8 @@ const AdminSidebar: React.FC = () => {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body,
-        icon: '/logo.jpg',
-        badge: '/logo.jpg',
+        icon: siteInfo?.logoUrl || '/logo.jpg',
+        badge: siteInfo?.logoUrl || '/logo.jpg',
         tag: 'admin-notification',
       });
     }
@@ -114,6 +116,16 @@ const AdminSidebar: React.FC = () => {
         document.removeEventListener(evt, onFirstInteraction)
       );
     };
+  }, []);
+
+  // โหลดข้อมูลโลโก้/ชื่อเว็บให้ใช้ใน Sidebar แอดมิน
+  useEffect(() => {
+    fetch('/api/admin/settings/logo', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.success) setSiteInfo({ siteName: data.data.siteName, logoUrl: data.data.logoUrl });
+      })
+      .catch(() => {});
   }, []);
 
   // ฟังก์ชันดึงข้อมูลออเดอร์รอดำเนินการ
@@ -409,7 +421,14 @@ const AdminSidebar: React.FC = () => {
           >
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>
+                <div className="flex items-center gap-2">
+                  {siteInfo?.logoUrl ? (
+                    <div className="relative w-6 h-6">
+                      <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="24px" className="object-contain" />
+                    </div>
+                  ) : null}
+                  <h1 className="text-xl font-bold text-blue-600">{siteInfo?.siteName || 'Admin Panel'}</h1>
+                </div>
                 
                 {/* Notification Bell - Mobile */}
                 {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW) || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && (
@@ -511,7 +530,14 @@ const AdminSidebar: React.FC = () => {
       <aside className="w-64 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>
+          <div className="flex items-center gap-2">
+            {siteInfo?.logoUrl ? (
+              <div className="relative w-7 h-7">
+                <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="28px" className="object-contain" />
+              </div>
+            ) : null}
+            <h1 className="text-xl font-bold text-blue-600">{siteInfo?.siteName || 'Admin Panel'}</h1>
+          </div>
           
           {/* Notification Bell - แสดงเฉพาะคนที่มีสิทธิ์ดูออเดอร์หรือการแจ้งเตือน */}
           {(isAdmin || hasPermission(PERMISSIONS.ORDERS_VIEW) || hasPermission(PERMISSIONS.NOTIFICATIONS_VIEW)) && (

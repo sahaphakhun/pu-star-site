@@ -47,6 +47,7 @@ export default function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [siteInfo, setSiteInfo] = useState<{ siteName: string; logoUrl: string } | null>(null);
 
   // ตรวจจับขนาดหน้าจอเพื่อกำหนด Mobile mode
   useEffect(() => {
@@ -59,6 +60,16 @@ export default function Sidebar() {
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // โหลดข้อมูลโลโก้/ชื่อเว็บจากแอดมิน เหมือนส่วนหัว
+  useEffect(() => {
+    fetch('/api/admin/settings/logo', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.success) setSiteInfo({ siteName: data.data.siteName, logoUrl: data.data.logoUrl });
+      })
+      .catch(() => {});
   }, []);
 
   // ไม่จำเป็นต้องใช้ getSubMenuOffset อีกต่อไป เพราะจะใช้ relative positioning
@@ -99,8 +110,16 @@ export default function Sidebar() {
         )}
 
         <div className="mb-10">
-          <Link href="/" onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                            <Image src="/logo.jpg" alt="WINRICH DYNAMIC Logo" width={isMobile ? 80 : 120} height={isMobile ? 80 : 120} priority />
+          <Link href="/" onClick={() => isMobile && setIsMobileMenuOpen(false)} className="flex flex-col items-center gap-2">
+            {siteInfo?.logoUrl ? (
+              <Image src={siteInfo.logoUrl} alt={`${siteInfo.siteName} Logo`} width={isMobile ? 80 : 120} height={isMobile ? 80 : 120} priority />
+            ) : null}
+            {siteInfo?.siteName ? (
+              <div className="text-center leading-tight">
+                <div className="text-base font-bold text-slate-800">{siteInfo.siteName.split(' ')[0]}</div>
+                <div className="text-xs text-slate-600">{siteInfo.siteName.split(' ').slice(1).join(' ')}</div>
+              </div>
+            ) : null}
           </Link>
         </div>
         

@@ -32,6 +32,11 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com';
     
+    const toIso = (d: any): string | undefined => {
+      if (!d) return undefined;
+      try { return new Date(d as any).toISOString(); } catch { return undefined; }
+    };
+
     return {
       title: article.seo.title,
       description: article.seo.description,
@@ -47,8 +52,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
           alt: article.title
         }] : undefined,
         type: 'article',
-        publishedTime: article.publishedAt,
-        modifiedTime: article.updatedAt,
+        publishedTime: toIso(article.publishedAt as any),
+        modifiedTime: toIso(article.updatedAt as any),
         tags: Array.isArray(article.tags) ? article.tags.map((tag: any) => (typeof tag === 'string' ? tag : tag.name)).filter(Boolean) : [],
         url: `${baseUrl}/articles/${article.slug}`
       },
@@ -62,8 +67,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
         canonical: article.seo.canonicalUrl || `${baseUrl}/articles/${article.slug}`
       },
       other: {
-        'article:published_time': article.publishedAt,
-        'article:modified_time': article.updatedAt,
+        'article:published_time': toIso(article.publishedAt as any) || '',
+        'article:modified_time': toIso(article.updatedAt as any) || '',
         'article:section': Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(', ') : '',
         'article:tag': Array.isArray(article.tags) ? article.tags.map((t: any) => (typeof t === 'string' ? t : t.name)).filter(Boolean).join(',') : '',
         'article:author': article.author?.name || 'PU STAR'
@@ -142,10 +147,10 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "PU STAR",
+      "name": (typeof window !== 'undefined' && (window as any).__SITE_NAME__) || 'PU STAR',
       "logo": {
         "@type": "ImageObject",
-                  "url": `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/logo.jpg`
+        "url": (typeof window !== 'undefined' && (window as any).__SITE_LOGO_URL__) || `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com'}/logo.jpg`
       }
     },
     "datePublished": article.publishedAt,
@@ -223,8 +228,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <time dateTime={article.publishedAt}>
-                      {formatDate(article.publishedAt!)}
+                    <time dateTime={new Date(article.publishedAt as any).toISOString()}>
+                      {formatDate(new Date(article.publishedAt as any).toISOString())}
                     </time>
                   </div>
 
@@ -349,8 +354,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">บทความที่เกี่ยวข้อง</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {relatedArticles.map((relatedArticle) => (
-                    <article
-                      key={relatedArticle._id}
+                        <article
+                      key={String(relatedArticle._id)}
                       className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                     >
                       <Link href={`/articles/${relatedArticle.slug}`}>
@@ -379,7 +384,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                           </span>
                         )}
                           <span className="text-xs text-gray-500">
-                            {formatDate(relatedArticle.publishedAt!)}
+                            {formatDate(new Date(relatedArticle.publishedAt as any).toISOString())}
                           </span>
                         </div>
                         <Link href={`/articles/${relatedArticle.slug}`}>

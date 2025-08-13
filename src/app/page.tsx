@@ -1,8 +1,19 @@
+'use client';
+import { useEffect, useState } from 'react';
+
 export default function Home() {
+  const [siteName, setSiteName] = useState<string>('');
+  useEffect(() => {
+    fetch('/api/admin/settings/logo', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (data?.success) setSiteName(data.data.siteName); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center bg-gradient-to-br from-indigo-50 to-blue-50 px-4">
       <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-blue-700 mb-4">
-        ยินดีต้อนรับสู่ WINRICH DYNAMIC
+        ยินดีต้อนรับสู่ {siteName || 'WINRICH DYNAMIC'}
       </h1>
       <p className="text-base sm:text-lg text-gray-700 max-w-2xl mb-8 leading-relaxed">
         ผู้นำด้านการจำหน่ายวัสดุก่อสร้างและอุปกรณ์อุตสาหกรรม คุณภาพสูง ราคาเป็นธรรม บริการมืออาชีพ

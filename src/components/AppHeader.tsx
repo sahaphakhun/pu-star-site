@@ -279,15 +279,21 @@ export default function AppHeader({ showSearch = true, onSearchToggle }: AppHead
                <div className="mt-6 pt-6 border-t border-gray-200">
                  <div className="px-4 py-2 text-center">
                    <div className="flex items-center justify-center space-x-2 mb-2">
-                     <div className="w-6 h-6 relative">
-                       <div className="absolute inset-0 border-2 border-slate-700" 
-                            style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}>
-                       </div>
-                       <div className="absolute inset-1 bg-slate-700" 
-                            style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}>
-                       </div>
-                     </div>
-                     <div className="text-sm font-bold text-slate-800">WINRICH DYNAMIC</div>
+                      {siteInfo?.logoUrl ? (
+                        <div className="relative w-6 h-6">
+                          <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="24px" className="object-contain" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 relative">
+                          <div className="absolute inset-0 border-2 border-slate-700" 
+                               style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}>
+                          </div>
+                          <div className="absolute inset-1 bg-slate-700" 
+                               style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}>
+                          </div>
+                        </div>
+                      )}
+                      <div className="text-sm font-bold text-slate-800">{siteInfo?.siteName || 'WINRICH DYNAMIC'}</div>
                    </div>
                    <p className="text-xs text-gray-500">เวอร์ชัน 1.0.0</p>
                  </div>

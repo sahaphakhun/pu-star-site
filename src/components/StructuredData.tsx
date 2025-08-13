@@ -6,6 +6,7 @@ interface StructuredDataProps {
 
 export default function StructuredData({ article }: StructuredDataProps) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.winrichdynamic.com';
+  // หมายเหตุ: ชื่อเว็บ/โลโก้ใน structured data จะใช้ fallback จาก environment + endpoint เดียวกันเมื่อฝั่ง client hydrate
   
   // Article structured data
   const articleStructuredData = {
@@ -21,10 +22,10 @@ export default function StructuredData({ article }: StructuredDataProps) {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "PU STAR Thailand",
+      "name": (typeof window !== 'undefined' && (window as any).__SITE_NAME__) || 'PU STAR Thailand',
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/logo.jpg`
+        "url": (typeof window !== 'undefined' && (window as any).__SITE_LOGO_URL__) || `${baseUrl}/logo.jpg`
       }
     },
     "datePublished": article.publishedAt || article.createdAt,
@@ -71,7 +72,7 @@ export default function StructuredData({ article }: StructuredDataProps) {
   const websiteStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "PU STAR Thailand",
+    "name": (typeof window !== 'undefined' && (window as any).__SITE_NAME__) || 'PU STAR Thailand',
     "url": baseUrl,
     "description": "ผู้นำด้านกาว ซีลแลนท์ และผลิตภัณฑ์ PU คุณภาพสูงในประเทศไทย",
     "potentialAction": {
