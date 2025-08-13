@@ -98,30 +98,52 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
   if (!forceRefresh && _googleDocInstructions && now - _lastGoogleDocFetchTime < ONE_HOUR_MS) {
     return _googleDocInstructions;
   }
-  const accessToken = await getAccessToken();
-  const url = `https://docs.googleapis.com/v1/documents/${GOOGLE_DOC_ID}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
-  if (!res.ok) throw new Error(`Docs HTTP ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  let fullText = '';
-  for (const block of json.body?.content || []) {
-    for (const el of block.paragraph?.elements || []) {
-      if (el.textRun?.content) fullText += el.textRun.content;
+  
+  try {
+    const accessToken = await getAccessToken();
+    const url = `https://docs.googleapis.com/v1/documents/${GOOGLE_DOC_ID}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
+    
+    if (!res.ok) {
+      console.warn(`[Google Docs] Failed to fetch document: HTTP ${res.status}`);
+      // ใช้ข้อมูลเดิมถ้ามี หรือคืนข้อความ fallback
+      return _googleDocInstructions || 'Google Docs instructions temporarily unavailable';
     }
+    
+    const json = await res.json();
+    let fullText = '';
+    for (const block of json.body?.content || []) {
+      for (const el of block.paragraph?.elements || []) {
+        if (el.textRun?.content) fullText += el.textRun.content;
+      }
+    }
+    _googleDocInstructions = fullText.trim();
+    _lastGoogleDocFetchTime = now;
+    return _googleDocInstructions;
+    
+  } catch (error) {
+    console.error('[Google Docs] Error fetching document:', error);
+    // ใช้ข้อมูลเดิมถ้ามี หรือคืนข้อความ fallback
+    return _googleDocInstructions || 'Google Docs instructions temporarily unavailable';
   }
-  _googleDocInstructions = fullText.trim();
-  _lastGoogleDocFetchTime = now;
-  return _googleDocInstructions;
 }
 
 // ---------- Google Sheets (ทุกแท็บ) ----------
 async function _fetchSheetValues(spreadsheetId: string, sheetName: string) {
-  const accessToken = await getAccessToken();
-  const range = encodeURIComponent(`${sheetName}!A:ZZZ`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
-  if (!res.ok) return { values: [] as any[] };
-  return res.json(); // { values: [...] }
+  try {
+    const accessToken = await getAccessToken();
+    const range = encodeURIComponent(`${sheetName}!A:ZZZ`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
+    if (!res.ok) {
+      console.warn(`[Google Sheets] Failed to fetch sheet ${sheetName}: HTTP ${res.status}`);
+      return { values: [] as any[] };
+    }
+    return res.json(); // { values: [...] }
+  } catch (error) {
+    console.error(`[Google Sheets] Error fetching sheet ${sheetName}:`, error);
+    return { values: [] as any[] };
+  }
 }
 
 export async function fetchAllSheetsData(forceRefresh = false) {
@@ -130,40 +152,69 @@ export async function fetchAllSheetsData(forceRefresh = false) {
     return _sheetJSON;
   }
 
-  const accessToken = await getAccessToken();
-  const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${INSTRUCTIONS_SPREADSHEET_ID}`;
-  const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } as any });
-  if (!metaRes.ok) throw new Error(`Sheets meta HTTP ${metaRes.status}: ${await metaRes.text()}`);
-  const metaJson = await metaRes.json();
+  try {
+    const accessToken = await getAccessToken();
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${INSTRUCTIONS_SPREADSHEET_ID}`;
+    const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } as any });
+    
+    if (!metaRes.ok) {
+      console.warn(`[Google Sheets] Failed to fetch metadata: HTTP ${metaRes.status}`);
+      // ใช้ข้อมูลเดิมถ้ามี หรือคืน array ว่าง
+      return _sheetJSON.length > 0 ? _sheetJSON : [];
+    }
+    
+    const metaJson = await metaRes.json();
+    const result: Array<{ sheetName: string; data: any[] }> = [];
+    
+    for (const s of metaJson.sheets || []) {
+      const name = s.properties?.title;
+      if (!name) continue;
+      const { values } = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, name);
+      const parsed = parseSheetRowsToObjects(values || []);
+      if (parsed.length) result.push({ sheetName: name, data: parsed });
+    }
 
-  const result: Array<{ sheetName: string; data: any[] }> = [];
-  for (const s of metaJson.sheets || []) {
-    const name = s.properties?.title;
-    if (!name) continue;
-    const { values } = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, name);
-    const parsed = parseSheetRowsToObjects(values || []);
-    if (parsed.length) result.push({ sheetName: name, data: parsed });
+    _sheetJSON = result;
+    _lastSheetsFetchTime = now;
+    return result;
+    
+  } catch (error) {
+    console.error('[Google Sheets] Error in fetchAllSheetsData:', error);
+    // ใช้ข้อมูลเดิมถ้ามี หรือคืน array ว่าง
+    return _sheetJSON.length > 0 ? _sheetJSON : [];
   }
-
-  _sheetJSON = result;
-  _lastSheetsFetchTime = now;
-  return _sheetJSON;
 }
 
 // ---------- Google Extra (Docs+Sheets) ----------
 export async function getGoogleExtraData() {
-  const [docText, sheetsData] = await Promise.all([
-    fetchGoogleDocInstructions(),
-    fetchAllSheetsData()
-  ]);
-  return { googleDocInstructions: docText, sheets: sheetsData };
+  try {
+    const [docText, sheetsData] = await Promise.allSettled([
+      fetchGoogleDocInstructions(),
+      fetchAllSheetsData()
+    ]);
+    
+    return { 
+      googleDocInstructions: docText.status === 'fulfilled' ? docText.value : 'Google Docs instructions temporarily unavailable',
+      sheets: sheetsData.status === 'fulfilled' ? sheetsData.value : []
+    };
+  } catch (error) {
+    console.error('[Google Extra] Error fetching data:', error);
+    return {
+      googleDocInstructions: 'Google Docs instructions temporarily unavailable',
+      sheets: []
+    };
+  }
 }
 
 // ---------- System Instructions (สไตล์ฉบับแรก) ----------
 export function buildSystemInstructions(extraNote: string = 'Rules about images, privacy, etc...') {
-  const sheetsDataString = JSON.stringify(_sheetJSON, null, 2);
-  return `
-${_googleDocInstructions}
+  try {
+    const sheetsDataString = _sheetJSON && _sheetJSON.length > 0 
+      ? JSON.stringify(_sheetJSON, null, 2) 
+      : 'No additional sheet data available';
+      
+    return `
+${_googleDocInstructions || 'Google Docs instructions temporarily unavailable'}
 
 Below is additional data from Google Sheets (INSTRUCTIONS) - all tabs:
 ---
@@ -171,6 +222,14 @@ ${sheetsDataString}
 
 ${extraNote}
 `.trim();
+  } catch (error) {
+    console.error('[buildSystemInstructions] Error:', error);
+    return `
+${_googleDocInstructions || 'Google Docs instructions temporarily unavailable'}
+
+${extraNote}
+`.trim();
+  }
 }
 
 // ปลั๊กอินแบบ user-aware (ถ้าต้องใช้)
@@ -218,37 +277,53 @@ export async function getAssistantResponse(
   userContent: string | any[] = '',
   userId?: string
 ) {
-  // รีเฟรช Google cache (TTL 1 ชม.)
-  await Promise.all([fetchGoogleDocInstructions(), fetchAllSheetsData()]);
+  try {
+    // รีเฟรช Google cache (TTL 1 ชม.) ด้วย error handling
+    await Promise.allSettled([
+      fetchGoogleDocInstructions(), 
+      fetchAllSheetsData()
+    ]);
 
-  const mergedSystem = `${systemInstructions}\n\n${buildSystemInstructions()}`;
-  const messages: Array<{ role: string; content: string | any[] }> = [
-    normalizeRoleContent('system', mergedSystem),
-    ...history.map((h) => normalizeRoleContent(h.role, h.content))
-  ];
+    // ใช้ enhanced system instructions ที่มี fallback
+    const enhancedSystem = await buildEnhancedSystemInstructions(systemInstructions);
+    const messages: Array<{ role: string; content: string | any[] }> = [
+      normalizeRoleContent('system', enhancedSystem),
+      ...history.map((h) => normalizeRoleContent(h.role, h.content))
+    ];
 
-  const thNow = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
-  if (Array.isArray(userContent)) {
-    // Vision: แทรก timestamp เป็น text element แรก
-    const arr = [...userContent];
-    if (!arr.length || !(arr[0] && arr[0].type === 'text')) {
-      arr.unshift({ type: 'text', text: `เวลาปัจจุบัน: ${thNow}` });
+    const thNow = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    if (Array.isArray(userContent)) {
+      // Vision: แทรก timestamp เป็น text element แรก
+      const arr = [...userContent];
+      if (!arr.length || !(arr[0] && arr[0].type === 'text')) {
+        arr.unshift({ type: 'text', text: `เวลาปัจจุบัน: ${thNow}` });
+      } else {
+        arr[0] = { ...arr[0], text: `เวลาปัจจุบัน: ${thNow}\n${arr[0].text || ''}` };
+      }
+      messages.push(normalizeRoleContent('user', arr));
     } else {
-      arr[0] = { ...arr[0], text: `เวลาปัจจุบัน: ${thNow}\n${arr[0].text || ''}` };
+      messages.push(normalizeRoleContent('user', `${userContent}\n\nเวลาปัจจุบัน: ${thNow}`));
     }
-    messages.push(normalizeRoleContent('user', arr));
-  } else {
-    messages.push(normalizeRoleContent('user', `${userContent}\n\nเวลาปัจจุบัน: ${thNow}`));
+
+    const json = await callOpenAI(messages);
+    let assistantReply = json?.choices?.[0]?.message?.content ?? '';
+    if (typeof assistantReply !== 'string') assistantReply = JSON.stringify(assistantReply);
+
+    assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
+    const parts = assistantReply.split('[cut]');
+    if (parts.length > 10) assistantReply = parts.slice(0, 10).join('[cut]');
+    return assistantReply.trim();
+    
+  } catch (error) {
+    console.error('[getAssistantResponse] Error:', error);
+    
+    // Fallback response เมื่อเกิดข้อผิดพลาด
+    if (error instanceof Error && error.message.includes('OPENAI_API_KEY')) {
+      return 'ขออภัยค่ะ ระบบ AI ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งหรือติดต่อเจ้าหน้าที่ค่ะ';
+    }
+    
+    return 'ขออภัยค่ะ เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้งค่ะ';
   }
-
-  const json = await callOpenAI(messages);
-  let assistantReply = json?.choices?.[0]?.message?.content ?? '';
-  if (typeof assistantReply !== 'string') assistantReply = JSON.stringify(assistantReply);
-
-  assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
-  const parts = assistantReply.split('[cut]');
-  if (parts.length > 10) assistantReply = parts.slice(0, 10).join('[cut]');
-  return assistantReply.trim();
 }
 
 // ---------- AI Toggle ----------
@@ -435,11 +510,16 @@ export async function addToConversationHistoryWithContext(
 
 // รีเฟรช cache Google
 export async function refreshGoogleDataCache(): Promise<void> {
-  _googleDocInstructions = '';
-  _sheetJSON = [];
-  _lastGoogleDocFetchTime = 0;
-  _lastSheetsFetchTime = 0;
-  await getGoogleExtraData();
+  try {
+    _googleDocInstructions = '';
+    _sheetJSON = [];
+    _lastGoogleDocFetchTime = 0;
+    _lastSheetsFetchTime = 0;
+    await getGoogleExtraData();
+  } catch (error) {
+    console.error('[refreshGoogleDataCache] Error:', error);
+    // ไม่ต้องทำอะไร เพียงแค่ log error
+  }
 }
 
 // ---------- Auto Mode with AI Response ----------
@@ -462,3 +542,73 @@ export async function enableAutoModeAndRespond(
   
   return answer;
 }
+
+// ---------- Google API Status Check ----------
+export async function checkGoogleAPIStatus(): Promise<{
+  docs: boolean;
+  sheets: boolean;
+  overall: boolean;
+}> {
+  try {
+    const [docsResult, sheetsResult] = await Promise.allSettled([
+      fetchGoogleDocInstructions(true),
+      fetchAllSheetsData(true)
+    ]);
+    
+    const docs = docsResult.status === 'fulfilled' && docsResult.value !== 'Google Docs instructions temporarily unavailable';
+    const sheets = sheetsResult.status === 'fulfilled' && Array.isArray(sheetsResult.value) && sheetsResult.value.length > 0;
+    
+    return {
+      docs,
+      sheets,
+      overall: docs || sheets
+    };
+  } catch (error) {
+    console.error('[checkGoogleAPIStatus] Error:', error);
+    return { docs: false, sheets: false, overall: false };
+  }
+}
+
+// ---------- Fallback Mode ----------
+export function isFallbackMode(): boolean {
+  return !_googleDocInstructions || _sheetJSON.length === 0;
+}
+
+// ---------- Fallback Instructions ----------
+export function getFallbackInstructions(): string {
+  return `
+คุณเป็น AI Assistant ที่ให้บริการลูกค้าของบริษัท PU Star
+
+หน้าที่หลัก:
+- ตอบคำถามเกี่ยวกับผลิตภัณฑ์และบริการ
+- ให้คำแนะนำเกี่ยวกับการใช้งานผลิตภัณฑ์
+- ช่วยเหลือลูกค้าในเรื่องต่างๆ
+- ให้ข้อมูลเกี่ยวกับราคาและการสั่งซื้อ
+
+หากคุณไม่แน่ใจในข้อมูลใดๆ กรุณาบอกลูกค้าว่าจะติดต่อเจ้าหน้าที่เพื่อยืนยันข้อมูลที่ถูกต้อง
+
+กรุณาตอบคำถามลูกค้าด้วยความสุภาพและเป็นมิตร
+`.trim();
+}
+
+// ---------- Enhanced System Instructions with Fallback ----------
+export async function buildEnhancedSystemInstructions(extraNote: string = 'Rules about images, privacy, etc...') {
+  try {
+    // ตรวจสอบสถานะ Google API
+    const apiStatus = await checkGoogleAPIStatus();
+    
+    if (apiStatus.overall) {
+      // ใช้ข้อมูลจาก Google API
+      return buildSystemInstructions(extraNote);
+    } else {
+      // ใช้ fallback instructions
+      console.warn('[System Instructions] Using fallback mode - Google API unavailable');
+      return `${getFallbackInstructions()}\n\n${extraNote}`;
+    }
+  } catch (error) {
+    console.error('[buildEnhancedSystemInstructions] Error:', error);
+    return `${getFallbackInstructions()}\n\n${extraNote}`;
+  }
+}
+
+// ---------- Refresh Google Data Cache ----------
