@@ -28,6 +28,11 @@ let _googleDocInstructions = '';
 let _sheetJSON: Array<{ sheetName: string; data: any[] }> = [];
 let _lastGoogleDocFetchTime = 0;
 let _lastSheetsFetchTime = 0;
+let _lastCacheRefreshHour = -1; // เก็บชั่วโมงล่าสุดที่รีเฟรชแคช
+
+// ตั้งค่าเวลาแคช (x:44 ทุกชั่วโมง)
+const CACHE_REFRESH_MINUTE = 44; // นาทีที่ 44
+const CACHE_REFRESH_INTERVAL_MS = 60 * 1000; // ตรวจสอบทุก 1 นาที
 const ONE_HOUR_MS = 3_600_000;
 
 interface UserState {
@@ -90,8 +95,15 @@ function createGoogleAuth() {
 
 // ---------- Google Docs ----------
 export async function fetchGoogleDocInstructions(forceRefresh = false) {
+  // ตรวจสอบเวลารีเฟรชแคช
+  if (!forceRefresh && shouldRefreshCache()) {
+    console.log("[DEBUG] Cache refresh time reached, refreshing Google Docs...");
+    forceRefresh = true;
+  }
+  
   const now = Date.now();
   if (!forceRefresh && _googleDocInstructions && now - _lastGoogleDocFetchTime < ONE_HOUR_MS) {
+    console.log("[DEBUG] Using cached Google Docs instructions");
     return _googleDocInstructions;
   }
   
@@ -115,7 +127,8 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
 
     _googleDocInstructions = fullText.trim();
     _lastGoogleDocFetchTime = now;
-    console.log("[DEBUG] Fetched Google Doc instructions OK.");
+    _lastCacheRefreshHour = new Date().getHours(); // อัปเดตชั่วโมงล่าสุด
+    console.log(`[DEBUG] Fetched Google Doc instructions OK at ${new Date().toLocaleString('th-TH')}`);
     return _googleDocInstructions;
     
   } catch (error) {
@@ -123,6 +136,61 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
     // ใช้ข้อมูลเดิมถ้ามี หรือคืนข้อความ fallback
     return _googleDocInstructions || 'Google Docs instructions temporarily unavailable';
   }
+}
+
+// ---------- Cache Management Functions ----------
+/**
+ * ตรวจสอบว่าควรรีเฟรชแคชหรือไม่ (x:44 ทุกชั่วโมง)
+ */
+function shouldRefreshCache(): boolean {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // ตรวจสอบว่าเป็นนาทีที่ 44 และยังไม่อัปเดตในชั่วโมงนี้
+  if (currentMinute === CACHE_REFRESH_MINUTE && _lastCacheRefreshHour !== currentHour) {
+    console.log(`[DEBUG] Cache refresh time reached: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`);
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * ตรวจสอบสถานะแคช
+ */
+export function getCacheStatus(): {
+  googleDoc: { hasData: boolean; lastFetch: Date | null; lastRefreshHour: number };
+  sheets: { hasData: boolean; lastFetch: Date | null; itemCount: number };
+  nextRefreshTime: string;
+} {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // คำนวณเวลารีเฟรชครั้งถัดไป
+  let nextRefreshHour = currentHour;
+  let nextRefreshMinute = CACHE_REFRESH_MINUTE;
+  
+  if (currentMinute >= CACHE_REFRESH_MINUTE) {
+    nextRefreshHour = (currentHour + 1) % 24;
+  }
+  
+  const nextRefreshTime = `${nextRefreshHour.toString().padStart(2, '0')}:${nextRefreshMinute.toString().padStart(2, '0')}`;
+  
+  return {
+    googleDoc: {
+      hasData: !!_googleDocInstructions,
+      lastFetch: _lastGoogleDocFetchTime ? new Date(_lastGoogleDocFetchTime) : null,
+      lastRefreshHour: _lastCacheRefreshHour
+    },
+    sheets: {
+      hasData: _sheetJSON.length > 0,
+      lastFetch: _lastSheetsFetchTime ? new Date(_lastSheetsFetchTime) : null,
+      itemCount: _sheetJSON.length
+    },
+    nextRefreshTime
+  };
 }
 
 // ---------- Google Sheets (ทุกแท็บ) ----------
@@ -145,8 +213,15 @@ async function _fetchSheetValues(spreadsheetId: string, sheetName: string) {
 }
 
 export async function fetchAllSheetsData(forceRefresh = false) {
+  // ตรวจสอบเวลารีเฟรชแคช
+  if (!forceRefresh && shouldRefreshCache()) {
+    console.log("[DEBUG] Cache refresh time reached, refreshing Google Sheets...");
+    forceRefresh = true;
+  }
+  
   const now = Date.now();
   if (!forceRefresh && _sheetJSON.length && now - _lastSheetsFetchTime < ONE_HOUR_MS) {
+    console.log("[DEBUG] Using cached Google Sheets data");
     return _sheetJSON;
   }
 
@@ -171,7 +246,8 @@ export async function fetchAllSheetsData(forceRefresh = false) {
 
     _sheetJSON = result;
     _lastSheetsFetchTime = now;
-    console.log(`[DEBUG] Fetched ${result.length} sheets data OK.`);
+    _lastCacheRefreshHour = new Date().getHours(); // อัปเดตชั่วโมงล่าสุด
+    console.log(`[DEBUG] Fetched ${result.length} sheets data OK at ${new Date().toLocaleString('th-TH')}`);
     return result;
     
   } catch (error) {
@@ -184,15 +260,19 @@ export async function fetchAllSheetsData(forceRefresh = false) {
 // ---------- Google Extra (Docs+Sheets) ----------
 export async function getGoogleExtraData() {
   try {
+    console.log("[DEBUG] Fetching Google extra data...");
     const [docText, sheetsData] = await Promise.allSettled([
       fetchGoogleDocInstructions(),
       fetchAllSheetsData()
     ]);
     
-    return { 
+    const result = { 
       googleDocInstructions: docText.status === 'fulfilled' ? docText.value : 'Google Docs instructions temporarily unavailable',
       sheets: sheetsData.status === 'fulfilled' ? sheetsData.value : []
     };
+    
+    console.log(`[DEBUG] Google extra data fetched - Docs: ${!!result.googleDocInstructions}, Sheets: ${result.sheets.length} items`);
+    return result;
   } catch (error) {
     console.error('[Google Extra] Error fetching data:', error);
     return {
@@ -507,15 +587,46 @@ export async function addToConversationHistoryWithContext(
 // รีเฟรช cache Google
 export async function refreshGoogleDataCache(): Promise<void> {
   try {
+    console.log("[DEBUG] Manually refreshing Google data cache...");
     _googleDocInstructions = '';
     _sheetJSON = [];
     _lastGoogleDocFetchTime = 0;
     _lastSheetsFetchTime = 0;
+    _lastCacheRefreshHour = -1;
     await getGoogleExtraData();
+    console.log("[DEBUG] Google data cache refreshed successfully");
   } catch (error) {
     console.error('[refreshGoogleDataCache] Error:', error);
     // ไม่ต้องทำอะไร เพียงแค่ log error
   }
+}
+
+/**
+ * รีเฟรชแคชตามเวลาที่กำหนด (x:44 ทุกชั่วโมง)
+ */
+export async function refreshCacheIfNeeded(): Promise<void> {
+  if (shouldRefreshCache()) {
+    console.log("[DEBUG] Scheduled cache refresh triggered");
+    await refreshGoogleDataCache();
+  }
+}
+
+/**
+ * ตั้งค่าการตรวจสอบแคชอัตโนมัติ
+ */
+export function setupCacheMonitoring(): void {
+  console.log(`[DEBUG] Setting up cache monitoring - refresh at x:${CACHE_REFRESH_MINUTE.toString().padStart(2, '0')} every hour`);
+  
+  // ตรวจสอบทุก 1 นาที
+  setInterval(async () => {
+    try {
+      await refreshCacheIfNeeded();
+    } catch (error) {
+      console.error('[Cache Monitoring] Error:', error);
+    }
+  }, CACHE_REFRESH_INTERVAL_MS);
+  
+  console.log("[DEBUG] Cache monitoring started");
 }
 
 // ---------- Auto Mode with AI Response ----------
@@ -544,6 +655,7 @@ export async function checkGoogleAPIStatus(): Promise<{
   docs: boolean;
   sheets: boolean;
   overall: boolean;
+  cacheStatus: ReturnType<typeof getCacheStatus>;
 }> {
   try {
     const [docsResult, sheetsResult] = await Promise.allSettled([
@@ -554,14 +666,22 @@ export async function checkGoogleAPIStatus(): Promise<{
     const docs = docsResult.status === 'fulfilled' && docsResult.value !== 'Google Docs instructions temporarily unavailable';
     const sheets = sheetsResult.status === 'fulfilled' && Array.isArray(sheetsResult.value) && sheetsResult.value.length > 0;
     
+    const cacheStatus = getCacheStatus();
+    
     return {
       docs,
       sheets,
-      overall: docs || sheets
+      overall: docs || sheets,
+      cacheStatus
     };
   } catch (error) {
     console.error('[checkGoogleAPIStatus] Error:', error);
-    return { docs: false, sheets: false, overall: false };
+    return { 
+      docs: false, 
+      sheets: false, 
+      overall: false,
+      cacheStatus: getCacheStatus()
+    };
   }
 }
 

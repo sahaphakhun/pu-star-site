@@ -5,6 +5,22 @@
 import { callSendAPI, FBMessagePayload } from './messenger';
 
 /**
+ * ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
+ */
+async function isUrlAccessible(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      signal: AbortSignal.timeout(5000) // timeout 5 วินาที
+    });
+    return response.ok;
+  } catch (error) {
+    console.warn(`[WARN] URL not accessible: ${url}`, error);
+    return false;
+  }
+}
+
+/**
  * ประมวลผลข้อความที่มี [cut] และ [SEND_IMAGE:...] 
  * แล้วส่งทีละส่วนไปยัง Facebook Messenger
  */
@@ -110,6 +126,28 @@ async function sendSimpleTextMessage(recipientId: string, text: string): Promise
 async function sendImageMessage(recipientId: string, imageUrl: string): Promise<void> {
   console.log(`[DEBUG] Sending image to ${recipientId}: ${imageUrl}`);
   
+  // ตรวจสอบว่า URL ถูกต้องหรือไม่
+  if (!imageUrl || !imageUrl.startsWith('http')) {
+    console.error(`[ERROR] Invalid image URL: ${imageUrl}`);
+    return;
+  }
+  
+  // ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
+  const isAccessible = await isUrlAccessible(imageUrl);
+  if (!isAccessible) {
+    console.warn(`[WARN] Image URL not accessible: ${imageUrl}`);
+    // ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ ไม่สามารถเข้าถึงรูปภาพได้ (${imageUrl})`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    }
+    return;
+  }
+  
   const message: FBMessagePayload = {
     attachment: {
       type: 'image',
@@ -125,6 +163,16 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
     console.log("[DEBUG] Image sent successfully");
   } catch (err) {
     console.error("[ERROR] Failed to send image:", err);
+    
+    // ถ้าส่งรูปภาพไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ ไม่สามารถแสดงรูปภาพได้ (${imageUrl})`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    }
   }
 }
 
@@ -133,6 +181,28 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
  */
 async function sendVideoMessage(recipientId: string, videoUrl: string): Promise<void> {
   console.log(`[DEBUG] Sending video to ${recipientId}: ${videoUrl}`);
+  
+  // ตรวจสอบว่า URL ถูกต้องหรือไม่
+  if (!videoUrl || !videoUrl.startsWith('http')) {
+    console.error(`[ERROR] Invalid video URL: ${videoUrl}`);
+    return;
+  }
+  
+  // ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
+  const isAccessible = await isUrlAccessible(videoUrl);
+  if (!isAccessible) {
+    console.warn(`[WARN] Video URL not accessible: ${videoUrl}`);
+    // ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ ไม่สามารถเข้าถึงวิดีโอได้ (${videoUrl})`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    }
+    return;
+  }
   
   const message: FBMessagePayload = {
     attachment: {
@@ -149,6 +219,16 @@ async function sendVideoMessage(recipientId: string, videoUrl: string): Promise<
     console.log("[DEBUG] Video sent successfully");
   } catch (err) {
     console.error("[ERROR] Failed to send video:", err);
+    
+    // ถ้าส่งวิดีโอไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ ไม่สามารถแสดงวิดีโอได้ (${videoUrl})`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+    }
   }
 }
 

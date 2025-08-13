@@ -478,7 +478,7 @@ export async function handleEvent(event: MessagingEvent) {
             await sendSmartMessage(psid, answer);
             // ส่ง quick replies แยก
             await callSendAPI(psid, {
-              text: '',
+              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
               quick_replies: [
                 { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
                 { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
@@ -511,7 +511,7 @@ export async function handleEvent(event: MessagingEvent) {
             await sendSmartMessage(psid, answer);
             // ส่ง quick replies แยก
             await callSendAPI(psid, {
-              text: '',
+              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
               quick_replies: [
                 { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
                 { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
@@ -538,7 +538,7 @@ export async function handleEvent(event: MessagingEvent) {
             await sendSmartMessage(psid, answer);
             // ส่ง quick replies แยก
             await callSendAPI(psid, {
-              text: '',
+              text: 'หากต้องการกลับไปเมนูหลัก กดด้านล่างได้เลยค่ะ',
               quick_replies: [
                 { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
               ],
