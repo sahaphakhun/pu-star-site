@@ -448,9 +448,20 @@ export async function handleEvent(event: MessagingEvent) {
     const autoModeEnabled = await isAutoModeEnabled(psid);
     
     // check AI mode first
-    if (await isAIEnabled(psid)) {
-      const question = event.message.text.trim();
-      if (question.length > 0) {
+    const aiEnabled = await isAIEnabled(psid);
+    console.log(`[AI Debug] PSID: ${psid}, AI Enabled: ${aiEnabled}, NonMenuCount: ${session.nonMenuMessageCount}, AutoMode: ${autoModeEnabled}`);
+    
+    // เปิดโหมด AI ให้ผู้ใช้ใหม่โดยอัตโนมัติ
+    if (!aiEnabled) {
+      console.log(`[AI Debug] Enabling AI for new user: ${psid}`);
+      await enableAIForUser(psid);
+    }
+    
+    const question = event.message.text.trim();
+    if (question.length > 0) {
+      console.log(`[AI Debug] Processing question: "${question}"`);
+      
+      try {
         // เพิ่มข้อความผู้ใช้ลงในประวัติ
         await addToConversationHistory(psid, 'user', question);
         
@@ -475,8 +486,10 @@ export async function handleEvent(event: MessagingEvent) {
         
         // ถ้าโหมดอัตโนมัติเปิดอยู่ ให้ส่งประวัติการสนทนาไปด้วย
         if (autoModeEnabled) {
+          console.log(`[AI Debug] Using auto mode with conversation history`);
           const conversationHistory = await getConversationHistory(psid);
-          const answer = await getAssistantResponse(buildSystemInstructions('Basic'), conversationHistory, question);
+          const systemInstructions = await buildSystemInstructions('Basic');
+          const answer = await getAssistantResponse(systemInstructions, conversationHistory, question);
           
           // เพิ่มข้อความ AI ลงในประวัติ
           await addToConversationHistory(psid, 'assistant', answer);
@@ -491,7 +504,9 @@ export async function handleEvent(event: MessagingEvent) {
           return;
         } else {
           // โหมด AI ปกติ
-          const answer = await getAssistantResponse(buildSystemInstructions('Basic'), [], question);
+          console.log(`[AI Debug] Using basic AI mode`);
+          const systemInstructions = await buildSystemInstructions('Basic');
+          const answer = await getAssistantResponse(systemInstructions, [], question);
           await callSendAPI(psid, {
             text: answer,
             quick_replies: [
@@ -501,6 +516,17 @@ export async function handleEvent(event: MessagingEvent) {
           });
           return;
         }
+      } catch (error) {
+        console.error(`[AI Debug] Error processing AI response:`, error);
+        // ถ้า AI มีปัญหา ให้ส่งข้อความข้อผิดพลาด
+        await callSendAPI(psid, {
+          text: 'ขออภัยค่ะ ระบบ AI ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งค่ะ',
+          quick_replies: [
+            { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+            { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+          ],
+        });
+        return;
       }
     }
 
@@ -552,7 +578,8 @@ export async function handleEvent(event: MessagingEvent) {
       return handleCoordinatesText(psid, event.message.text);
     }
 
-    if (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello')) {
+    // จัดการข้อความทักทายเฉพาะเมื่อไม่ได้อยู่ในโหมด AI
+    if (!aiEnabled && (txt.includes('สวัสดี') || txt.includes('สวัสดีค่ะ') || txt.includes('hello'))) {
       await sendWelcome(psid);
       return; // รอการเลือกเมนูจากผู้ใช้
     }
@@ -588,11 +615,26 @@ export async function handleEvent(event: MessagingEvent) {
     return;
   }
 
-  // ถ้าไม่เข้าเงื่อนไขใด ส่งเมนูเริ่มต้น
-  if (session.step === 'browse') {
-    return sendWelcome(psid);
+  // ถ้าไม่เข้าเงื่อนไขใด และไม่ได้อยู่ในโหมด AI ให้ส่งเมนูเริ่มต้น
+  const currentAiEnabled = await isAIEnabled(psid);
+  if (!currentAiEnabled) {
+    if (session.step === 'browse') {
+      return sendWelcome(psid);
+    }
+    return showCategories(psid);
   }
-  return showCategories(psid);
+  
+  // ถ้าอยู่ในโหมด AI แต่ไม่ได้ส่งข้อความใดๆ ให้ส่งข้อความแนะนำ
+  if (currentAiEnabled && event.message && event.message.text) {
+    await callSendAPI(psid, {
+      text: 'กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ',
+      quick_replies: [
+        { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+        { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+      ],
+    });
+    return;
+  }
 }
 
 // ฟังก์ชันแจ้งเตือนแอดมินผ่าน SMS และ LINE เมื่อผู้ใช้กด "ติดต่อแอดมิน"

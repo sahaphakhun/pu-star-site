@@ -94,9 +94,24 @@ export async function callOpenAI(
 export async function getAssistantResponse(
   systemInstructions: string,
   history: { role: string; content: string }[] = [],
-  userContent: string = ''
+  userContent: string = '',
+  userId?: string
 ) {
-  const messages = [normalizeRoleContent('system', systemInstructions), ...history];
+  // ดึงข้อมูลจาก Google Sheets และ Docs
+  let googleData = '';
+  try {
+    const extraData = await getGoogleExtraData('Basic');
+    if (extraData.googleDocInstructions || extraData.sheets.length > 0) {
+      googleData = `\n\nข้อมูลจาก Google:\n${extraData.googleDocInstructions}\n\nข้อมูลจาก Sheets:\n${JSON.stringify(extraData.sheets, null, 2)}`;
+    }
+  } catch (err) {
+    console.error('[getAssistantResponse] Google data fetch error:', err);
+  }
+
+  // สร้าง system instructions ที่รวมข้อมูลจาก Google
+  const enhancedSystemInstructions = systemInstructions + googleData;
+  
+  const messages = [normalizeRoleContent('system', enhancedSystemInstructions), ...history];
 
   const now = new Date();
   const date = now.toLocaleDateString('th-TH');
@@ -249,12 +264,23 @@ async function getGoogleExtraData(tier = 'Basic') {
 }
 
 // ---------- System Instructions ----------
-function buildSystemInstructions(tier = 'Basic', extraData: any = '') {
+async function buildSystemInstructions(tier = 'Basic', extraData: any = '') {
   const currentDateTime = new Date().toLocaleString('th-TH', {
     dateStyle: 'full',
     timeStyle: 'medium',
     timeZone: 'Asia/Bangkok'
   });
+
+  // ดึงข้อมูลจาก Google Sheets และ Docs
+  let googleData = '';
+  try {
+    const googleExtraData = await getGoogleExtraData(tier);
+    if (googleExtraData.googleDocInstructions || googleExtraData.sheets.length > 0) {
+      googleData = `\n\nข้อมูลจาก Google Docs:\n${googleExtraData.googleDocInstructions}\n\nข้อมูลจาก Google Sheets:\n${JSON.stringify(googleExtraData.sheets, null, 2)}`;
+    }
+  } catch (err) {
+    console.error('[buildSystemInstructions] Google data fetch error:', err);
+  }
 
   if (typeof extraData === 'object') {
     try {
@@ -264,16 +290,24 @@ function buildSystemInstructions(tier = 'Basic', extraData: any = '') {
     }
   }
 
-  return `คุณคือแชตบอตขายของออนไลน์ เทียร์ ${tier} \nวันที่-เวลา: ${currentDateTime}\n${extraData}`.trim();
+  return `คุณคือแชตบอทขายของออนไลน์ เทียร์ ${tier} 
+
+วันที่-เวลา: ${currentDateTime}
+
+คำแนะนำระบบ: ${extraData}
+
+${googleData}
+
+กรุณาตอบคำถามเกี่ยวกับสินค้า ราคา การสั่งซื้อ และบริการต่างๆ อย่างเป็นมิตรและเป็นประโยชน์ โดยใช้ข้อมูลจาก Google Sheets และ Docs ที่มีให้`.trim();
 }
 
-function buildSystemInstructionsForUser(
+async function buildSystemInstructionsForUser(
   userObj: any = {},
   overrideTier: string | null = null,
   extraData: any = ''
 ) {
   const tier = overrideTier || userObj.tier || 'Basic';
-  const base = buildSystemInstructions(tier, extraData);
+  const base = await buildSystemInstructions(tier, extraData);
 
   const userInfo = JSON.stringify(
     {
@@ -437,6 +471,90 @@ export function buildAutoModeInitialMessage(conversationHistory: Array<{ role: s
     .join('\n');
   
   return `สวัสดีค่ะ ยินดีให้บริการค่ะ\n\nจากที่คุยกันก่อนหน้านี้:\n${summary}\n\nกรุณาพิมพ์คำถามหรือความต้องการเพิ่มเติมได้เลยค่ะ`;
+}
+
+// ---------- Enhanced Conversation Management ----------
+export async function getEnhancedConversationHistory(psid: string): Promise<Array<{ role: string; content: string; timestamp?: Date }>> {
+  try {
+    // ดึงจากฐานข้อมูลก่อน
+    const dbHistory = await getConversationHistory(psid);
+    
+    // ถ้ามีประวัติในฐานข้อมูล ให้ใช้
+    if (dbHistory && dbHistory.length > 0) {
+      return dbHistory;
+    }
+    
+    // ถ้าไม่มี ให้ดึงจาก memory
+    const state = _ensure(psid);
+    return state.history;
+  } catch (err) {
+    console.error('[getEnhancedConversationHistory] error:', err);
+    // fallback to memory
+    const state = _ensure(psid);
+    return state.history;
+  }
+}
+
+export async function addToConversationHistoryWithContext(
+  psid: string, 
+  role: 'user' | 'assistant' | 'system', 
+  content: string,
+  context?: string
+): Promise<void> {
+  const timestamp = new Date();
+  const message = { 
+    role, 
+    content, 
+    timestamp,
+    context: context || undefined
+  };
+  
+  // เพิ่มใน memory
+  const state = _ensure(psid);
+  state.history.push(message);
+  
+  // เก็บเฉพาะ 30 ข้อความล่าสุด (เพิ่มจากเดิม 20)
+  if (state.history.length > 30) {
+    state.history = state.history.slice(-30);
+  }
+  
+  // อัปเดตในฐานข้อมูล
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    await MessengerUser.findOneAndUpdate(
+      { psid },
+      { 
+        $push: { 
+          conversationHistory: {
+            $each: [message],
+            $slice: -30 // เก็บเฉพาะ 30 ข้อความล่าสุด
+          }
+        },
+        updatedAt: new Date()
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[addToConversationHistoryWithContext] DB error:', err);
+  }
+}
+
+// ฟังก์ชันสำหรับล้าง cache ของ Google data
+export async function refreshGoogleDataCache(): Promise<void> {
+  try {
+    _googleDocInstructions = '';
+    _sheetJSON = [];
+    _lastGoogleDocFetchTime = 0;
+    _lastSheetsFetchTime = 0;
+    
+    // ดึงข้อมูลใหม่
+    await getGoogleExtraData('Basic');
+    console.log('[refreshGoogleDataCache] Google data cache refreshed successfully');
+  } catch (err) {
+    console.error('[refreshGoogleDataCache] error:', err);
+  }
 }
 
 // ---------- Exports ----------
