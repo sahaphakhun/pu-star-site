@@ -84,4 +84,51 @@ export async function lineReply(replyToken: string, message: string | Array<{ ty
   if (!res.ok) throw new Error(`LINE reply error ${res.status}: ${await res.text()}`);
 }
 
+// ฟังก์ชันส่งแจ้งเตือนไปยังกลุ่มไลน์ทั้งหมดที่เปิดใช้งานอยู่
+export async function notifyAllLineGroups(message: string) {
+  try {
+    // Import แบบ dynamic เพื่อหลีกเลี่ยง circular dependency
+    const { default: connectDB } = await import('@/lib/mongodb');
+    const { default: LineNotificationGroup } = await import('@/models/LineNotificationGroup');
+    
+    await connectDB();
+    
+    // หากลุ่มไลน์ทั้งหมดที่เปิดใช้งานอยู่
+    const activeGroups = await LineNotificationGroup.find({ enabled: true }).lean();
+    
+    if (activeGroups.length === 0) {
+      console.log('[LINE Notify] ไม่พบกลุ่มไลน์ที่เปิดใช้งานอยู่');
+      return;
+    }
+    
+    console.log(`[LINE Notify] พบกลุ่มไลน์ที่เปิดใช้งาน ${activeGroups.length} กลุ่ม`);
+    
+    // ส่งข้อความไปยังทุกกลุ่ม
+    const results = await Promise.allSettled(
+      activeGroups.map(async (group) => {
+        try {
+          await linePush(group.groupId, message);
+          console.log(`[LINE Notify] ส่งสำเร็จไปยังกลุ่ม ${group.groupId} (${group.sourceType})`);
+          return { success: true, groupId: group.groupId, sourceType: group.sourceType };
+        } catch (error) {
+          console.error(`[LINE Notify] ส่งไม่สำเร็จไปยังกลุ่ม ${group.groupId}:`, error);
+          return { success: false, groupId: group.groupId, sourceType: group.sourceType, error };
+        }
+      })
+    );
+    
+    // สรุปผลการส่ง
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.length - successful;
+    
+    console.log(`[LINE Notify] สรุปผลการส่ง: สำเร็จ ${successful} กลุ่ม, ล้มเหลว ${failed} กลุ่ม`);
+    
+    return { successful, failed, total: results.length };
+    
+  } catch (error) {
+    console.error('[LINE Notify] เกิดข้อผิดพลาดในการส่งแจ้งเตือน:', error);
+    throw error;
+  }
+}
+
 

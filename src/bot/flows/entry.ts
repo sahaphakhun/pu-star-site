@@ -595,19 +595,36 @@ export async function handleEvent(event: MessagingEvent) {
   return showCategories(psid);
 }
 
-// ฟังก์ชันแจ้งเตือนแอดมินผ่าน SMS เมื่อผู้ใช้กด "ติดต่อแอดมิน"
+// ฟังก์ชันแจ้งเตือนแอดมินผ่าน SMS และ LINE เมื่อผู้ใช้กด "ติดต่อแอดมิน"
 async function notifyAdminsContact(userPsid: string) {
   try {
     await connectDB();
+    
+    // ส่ง SMS แจ้งเตือนแอดมิน
     const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
-    if (!adminList || adminList.length === 0) {
+    if (adminList && adminList.length > 0) {
+      const smsMsg = `มีลูกค้ากด "ติดต่อแอดมิน" (PSID: ${userPsid}) ผ่านเพจ Facebook กรุณาตอบกลับค่ะ`;
+      await Promise.allSettled(
+        adminList.map((a: any) => sendSMS(a.phoneNumber, smsMsg))
+      );
+      console.log(`[notifyAdminsContact] ส่ง SMS แจ้งเตือนไปยังแอดมิน ${adminList.length} คน`);
+    } else {
       console.warn('[notifyAdminsContact] ไม่พบเบอร์โทรแอดมินในระบบ');
-      return;
     }
-    const msg = `มีลูกค้ากด "ติดต่อแอดมิน" (PSID: ${userPsid}) ผ่านเพจ Facebook กรุณาตอบกลับค่ะ`;
-    await Promise.allSettled(
-      adminList.map((a: any) => sendSMS(a.phoneNumber, msg))
-    );
+    
+    // ส่งแจ้งเตือนไปยังกลุ่ม LINE
+    try {
+      const { notifyAllLineGroups } = await import('@/utils/line');
+      const lineMsg = `🚨 แจ้งเตือน: มีลูกค้ากด "ติดต่อแอดมิน" ในแชทเฟซบุ๊ค\n\nPSID: ${userPsid}\nเวลา: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}\n\nกรุณาตอบกลับลูกค้าด้วยค่ะ`;
+      
+      const lineResult = await notifyAllLineGroups(lineMsg);
+      if (lineResult) {
+        console.log(`[notifyAdminsContact] ส่งแจ้งเตือน LINE สำเร็จ ${lineResult.successful} กลุ่ม, ล้มเหลว ${lineResult.failed} กลุ่ม`);
+      }
+    } catch (lineError) {
+      console.error('[notifyAdminsContact] ส่งแจ้งเตือน LINE ไม่สำเร็จ:', lineError);
+    }
+    
   } catch (err) {
     console.error('[notifyAdminsContact] error', err);
   }
