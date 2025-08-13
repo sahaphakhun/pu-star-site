@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions, verifyToken } from '@/lib/auth';
 
 // ฟังก์ชันตรวจสอบสลิปด้วย Slip2Go ตามสเปก slip2go.md
 async function verifySlipWithSlip2Go(slipUrl: string) {
@@ -92,8 +92,12 @@ async function verifySlipWithSlip2Go(slipUrl: string) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    let tokenResult: any = null;
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const body = await request.json();
@@ -131,9 +135,9 @@ export async function POST(request: NextRequest) {
       slipVerification,
       taxInvoice,
       orderedBy: orderedBy || {
-        userId: session.user.id,
-        name: session.user.name,
-        phone: session.user.email
+        userId: (session?.user?.id) || tokenResult?.userId,
+        name: (session?.user?.name as any) || tokenResult?.name,
+        phone: (session?.user as any)?.email || tokenResult?.phoneNumber
       },
       orderDate: new Date(),
       status: 'pending'
@@ -160,7 +164,11 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      let tokenResult: any = null;
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     await connectDB();

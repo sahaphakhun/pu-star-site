@@ -6,11 +6,23 @@ import mongoose from 'mongoose';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
 import { sendOrderStatusUpdate } from '@/app/notification';
+import { getServerSession } from 'next-auth';
+import { authOptions, verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // Authorization: allow NextAuth session or JWT token
+    const session = await getServerSession(authOptions as any);
+    let tokenResult: any = null;
+    if (!session?.user) {
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     await connectDB();
     const orderId = params.id;
     if (!mongoose.isValidObjectId(orderId)) {
@@ -114,6 +126,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // Authorization: allow NextAuth session or JWT token
+    const session = await getServerSession(authOptions as any);
+    let tokenResult: any = null;
+    if (!session?.user) {
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     await connectDB();
     const orderId = params.id;
     if (!mongoose.isValidObjectId(orderId)) {
