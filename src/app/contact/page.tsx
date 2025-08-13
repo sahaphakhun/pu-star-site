@@ -1,6 +1,80 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 
 export default function ContactPage() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    subject: '',
+    category: '',
+    message: ''
+  });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+  } | null>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitResult(null);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSubmitResult({
+          success: true,
+          message: result.message
+        });
+        // รีเซ็ตฟอร์มหลังจากส่งสำเร็จ
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          company: '',
+          subject: '',
+          category: '',
+          message: ''
+        });
+      } else {
+        setSubmitResult({
+          success: false,
+          error: result.error || 'เกิดข้อผิดพลาดในการส่งข้อความ'
+        });
+      }
+    } catch (error) {
+      setSubmitResult({
+        success: false,
+        error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 p-4 md:p-8 max-w-6xl mx-auto">
       {/* หัวข้อหน้า */}
@@ -73,7 +147,32 @@ export default function ContactPage() {
       <section className="bg-white rounded-lg shadow-md p-6 border border-primary/10">
         <h2 className="text-2xl font-semibold text-primary mb-6">ส่งข้อความถึงเรา</h2>
         
-        <form className="space-y-6">
+        {/* แสดงผลการส่ง */}
+        {submitResult && (
+          <div className={`mb-6 p-4 rounded-md ${
+            submitResult.success 
+              ? 'bg-green-50 border border-green-200 text-green-800' 
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            {submitResult.success ? (
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {submitResult.message}
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {submitResult.error}
+              </div>
+            )}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-gray-700 font-medium mb-2">ชื่อ-นามสกุล *</label>
@@ -81,6 +180,8 @@ export default function ContactPage() {
                 type="text" 
                 id="name" 
                 name="name" 
+                value={formData.name}
+                onChange={handleInputChange}
                 required 
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
@@ -92,6 +193,8 @@ export default function ContactPage() {
                 type="email" 
                 id="email" 
                 name="email" 
+                value={formData.email}
+                onChange={handleInputChange}
                 required 
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
@@ -103,6 +206,8 @@ export default function ContactPage() {
                 type="tel" 
                 id="phone" 
                 name="phone" 
+                value={formData.phone}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -113,6 +218,8 @@ export default function ContactPage() {
                 type="text" 
                 id="company" 
                 name="company" 
+                value={formData.company}
+                onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -124,6 +231,8 @@ export default function ContactPage() {
               type="text" 
               id="subject" 
               name="subject" 
+              value={formData.subject}
+              onChange={handleInputChange}
               required 
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
@@ -134,6 +243,8 @@ export default function ContactPage() {
             <select 
               id="category" 
               name="category" 
+              value={formData.category}
+              onChange={handleInputChange}
               required 
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
@@ -152,6 +263,8 @@ export default function ContactPage() {
               id="message" 
               name="message" 
               rows={6} 
+              value={formData.message}
+              onChange={handleInputChange}
               required 
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
             ></textarea>
@@ -173,9 +286,14 @@ export default function ContactPage() {
           <div>
             <button 
               type="submit" 
-              className="px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isSubmitting}
+              className={`px-6 py-3 font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                isSubmitting
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary/90'
+              }`}
             >
-              ส่งข้อความ
+              {isSubmitting ? 'กำลังส่ง...' : 'ส่งข้อความ'}
             </button>
           </div>
         </form>
