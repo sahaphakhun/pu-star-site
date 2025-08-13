@@ -40,6 +40,28 @@ export interface IDeliveryLocation {
   mapDescription?: string;
 }
 
+export interface ISlipVerification {
+  verified: boolean;
+  verifiedAt: Date;
+  verificationType: 'manual' | 'automatic' | 'batch';
+  verifiedBy: string;
+  slip2GoData?: {
+    bank: string;
+    amount: number;
+    date: string;
+    time: string;
+    transaction_id: string;
+    sender_name: string;
+    sender_account: string;
+    receiver_name: string;
+    receiver_account: string;
+    slip_type: string;
+    confidence: number;
+  };
+  error?: string;
+  confidence: number;
+}
+
 export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
@@ -63,6 +85,7 @@ export interface IOrder extends Document {
   packingProofs?: IPackingProof[];
   taxInvoice?: ITaxInvoice;
   claimInfo?: IClaimInfo;
+  slipVerification?: ISlipVerification;
   wmsData?: {
     stockCheckStatus: 'pending' | 'checked' | 'insufficient' | 'error';
     stockCheckResults?: {
@@ -215,6 +238,27 @@ const orderSchema = new Schema<IOrder>(
       claimStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
       adminResponse: { type: String },
       responseDate: { type: Date }
+    },
+    slipVerification: {
+      verified: { type: Boolean, default: false },
+      verifiedAt: { type: Date },
+      verificationType: { type: String, enum: ['manual', 'automatic', 'batch'] },
+      verifiedBy: { type: String },
+      slip2GoData: {
+        bank: { type: String },
+        amount: { type: Number },
+        date: { type: String },
+        time: { type: String },
+        transaction_id: { type: String },
+        sender_name: { type: String },
+        sender_account: { type: String },
+        receiver_name: { type: String },
+        receiver_account: { type: String },
+        slip_type: { type: String },
+        confidence: { type: Number }
+      },
+      error: { type: String },
+      confidence: { type: Number, default: 0 }
     },
     wmsData: {
       stockCheckStatus: { 

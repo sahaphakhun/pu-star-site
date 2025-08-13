@@ -8,6 +8,9 @@ import PackingImageGallery from '@/components/PackingImageGallery';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
+import SlipVerificationButton from '@/components/SlipVerificationButton';
+import SlipVerificationDisplay from '@/components/SlipVerificationDisplay';
+import BatchSlipVerification from '@/components/BatchSlipVerification';
 
 interface OrderItem {
   productId: string;
@@ -60,6 +63,27 @@ interface Order {
     addedAt: Date;
   }>;
   claimInfo?: ClaimInfo;
+  slipVerification?: {
+    verified: boolean;
+    verifiedAt: Date;
+    verificationType: 'manual' | 'automatic' | 'batch';
+    verifiedBy: string;
+    slip2GoData?: {
+      bank: string;
+      amount: number;
+      date: string;
+      time: string;
+      transaction_id: string;
+      sender_name: string;
+      sender_account: string;
+      receiver_name: string;
+      receiver_account: string;
+      slip_type: string;
+      confidence: number;
+    };
+    error?: string;
+    confidence: number;
+  };
   wmsData?: {
     stockCheckStatus?: 'pending' | 'checked' | 'insufficient' | 'error';
     stockCheckResults?: Array<{
@@ -107,6 +131,10 @@ const AdminOrdersPage = () => {
   });
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  
+  // States for slip verification
+  const [showSlipVerification, setShowSlipVerification] = useState(false);
+  const [showBatchVerification, setShowBatchVerification] = useState(false);
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -180,6 +208,40 @@ const AdminOrdersPage = () => {
   };
 
   const [expandedStockRows, setExpandedStockRows] = useState<Record<string, boolean>>({});
+
+  // Function to handle slip verification completion
+  const handleSlipVerificationComplete = (verification: any) => {
+    // Update the order in the local state
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order._id === selectedOrder?._id 
+          ? { ...order, slipVerification: verification }
+          : order
+      )
+    );
+    
+    // Update selected order if it's currently selected
+    if (selectedOrder) {
+      setSelectedOrder(prev => prev ? { ...prev, slipVerification: verification } : null);
+    }
+  };
+
+  // Function to handle batch verification completion
+  const handleBatchVerificationComplete = (results: any[]) => {
+    // Update orders based on verification results
+    setOrders(prevOrders => 
+      prevOrders.map(order => {
+        const result = results.find(r => r.orderId === order._id);
+        if (result && result.success) {
+          return { ...order, slipVerification: result.verification };
+        }
+        return order;
+      })
+    );
+    
+    // Refresh orders to get latest data
+    fetchOrders();
+  };
 
   const checkWMSPicking = async (orderId: string) => {
     const pickingOrderNumber = window.prompt('กรอกเลขที่ใบเบิก (Picking Order):')?.trim();
@@ -758,6 +820,29 @@ const AdminOrdersPage = () => {
           )}
         </div>
 
+        {/* Batch Slip Verification Section */}
+        {hasPermission(PERMISSIONS.ORDERS_VIEW) && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">ตรวจสอบสลิปแบบกลุ่ม</h3>
+              <button
+                onClick={() => setShowBatchVerification(!showBatchVerification)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                {showBatchVerification ? 'ซ่อน' : 'แสดง'} ตรวจสอบแบบกลุ่ม
+              </button>
+            </div>
+            
+            {showBatchVerification && (
+              <BatchSlipVerification
+                orders={orders}
+                onVerificationComplete={handleBatchVerificationComplete}
+                className="mb-6"
+              />
+            )}
+          </div>
+        )}
+
         {/* Orders List/Cards - Responsive Design */}
         <div className="space-y-4">
           {filteredAndSortedOrders.length === 0 ? (
@@ -941,15 +1026,26 @@ const AdminOrdersPage = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                startEditOrder(order);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors"
-                            >
-                              จัดการ
-                            </button>
+                            <div className="flex flex-col space-y-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  startEditOrder(order);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors"
+                              >
+                                จัดการ
+                              </button>
+                              {order.paymentMethod === 'transfer' && order.slipUrl && (
+                                <SlipVerificationButton
+                                  orderId={order._id}
+                                  slipUrl={order.slipUrl}
+                                  onVerificationComplete={handleSlipVerificationComplete}
+                                  size="sm"
+                                  variant="outline"
+                                />
+                              )}
+                            </div>
                           </td>
                         </motion.tr>
                       ))}
@@ -1041,15 +1137,26 @@ const AdminOrdersPage = () => {
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            startEditOrder(order);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-                        >
-                          จัดการ
-                        </button>
+                        <div className="flex flex-col space-y-2">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              startEditOrder(order);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                          >
+                            จัดการ
+                          </button>
+                          {order.paymentMethod === 'transfer' && order.slipUrl && (
+                            <SlipVerificationButton
+                              orderId={order._id}
+                              slipUrl={order.slipUrl}
+                              onVerificationComplete={handleSlipVerificationComplete}
+                              size="sm"
+                              variant="outline"
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -1226,6 +1333,40 @@ const AdminOrdersPage = () => {
                             <p className="text-gray-900">{selectedOrder.taxInvoice.companyEmail}</p>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* แสดงข้อมูลการตรวจสอบสลิป ถ้ามี */}
+                    {selectedOrder.paymentMethod === 'transfer' && selectedOrder.slipUrl && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-gray-900">ข้อมูลสลิปการโอนเงิน</h4>
+                          <SlipVerificationButton
+                            orderId={selectedOrder._id}
+                            slipUrl={selectedOrder.slipUrl}
+                            onVerificationComplete={handleSlipVerificationComplete}
+                            size="sm"
+                            variant="primary"
+                          />
+                        </div>
+                        
+                        {/* แสดงสลิป */}
+                        <div className="mb-3">
+                          <img 
+                            src={selectedOrder.slipUrl} 
+                            alt="สลิปการโอนเงิน" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '200px' }}
+                          />
+                        </div>
+
+                        {/* แสดงข้อมูลการตรวจสอบสลิป */}
+                        {selectedOrder.slipVerification && (
+                          <SlipVerificationDisplay 
+                            verification={selectedOrder.slipVerification}
+                            className="mt-3"
+                          />
+                        )}
                       </div>
                     )}
                   </div>

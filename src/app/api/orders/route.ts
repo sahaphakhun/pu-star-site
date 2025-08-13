@@ -1,240 +1,201 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
-import User from '@/models/User';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-import { sendSMS } from '@/app/notification';
-import { orderInputSchema } from '@schemas/order';
-import AdminPhone from '@/models/AdminPhone';
-import { updateUserNameFromOrder } from '@/utils/userNameSync';
-import { notifyLineGroupsNewOrder } from '@/utils/lineNotification';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+// ฟังก์ชันตรวจสอบสลิปด้วย Slip2Go ตามสเปก slip2go.md
+async function verifySlipWithSlip2Go(slipUrl: string) {
   try {
-    await connectDB();
-    
-    // ดึงค่า query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    const apiSecret = process.env.SLIP2GO_API_SECRET || process.env.SLIP2GO_API_KEY;
+    const baseUrl = process.env.SLIP2GO_BASE_URL || 'https://connect.slip2go.com/api';
 
-    let query = {};
-    
-    // ถ้ามีการระบุช่วงวันที่
-    if (startDate && endDate) {
-      query = {
-        orderDate: {
-          $gte: new Date(startDate),
-          $lte: new Date(`${endDate}T23:59:59`)
-        }
-      };
+    if (!apiSecret) {
+      console.warn('Slip2Go API secret not configured');
+      return { success: false, error: 'API secret not configured' };
     }
 
-    // pagination & search
-    const page = Number(searchParams.get('page') || '1');
-    const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
-    const q = searchParams.get('q') || '';
-    const status = searchParams.get('status');
-
-    if (q) {
-      query = {
-        ...query,
-        $or: [
-          { customerName: { $regex: q, $options: 'i' } },
-          { customerPhone: { $regex: q, $options: 'i' } },
-          { _id: { $regex: q, $options: 'i' } },
-        ],
-      } as any;
+    // ดาวน์โหลดรูปภาพจาก URL
+    const imageResponse = await fetch(slipUrl);
+    if (!imageResponse.ok) {
+      throw new Error('Failed to download slip image');
     }
-    if (status) {
-      query = { ...query, status } as any;
-    }
+    const imageBuffer = await imageResponse.arrayBuffer();
 
-    const total = await Order.countDocuments(query);
-    const orders = await Order.find(query)
-      .sort({ orderDate: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    // สร้าง FormData สำหรับ multipart/form-data ตามสเปก qr-image
+    const formData = new FormData();
+    formData.append('file', new Blob([imageBuffer], { type: 'image/jpeg' }), 'slip.jpg');
+    formData.append('payload', JSON.stringify({
+      // สามารถเพิ่ม options อื่นๆ ได้ตาม Slip2Go API
+    }));
 
-    const hasPaginationParam = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || searchParams.has('status');
-    if (!hasPaginationParam && !startDate && !endDate) {
-      return NextResponse.json({ orders });
+    // เรียก Slip2Go API: /verify-slip/qr-image/info
+    const response = await fetch(`${baseUrl}/verify-slip/qr-image/info`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiSecret}`
+        // ไม่ต้องใส่ Content-Type เพราะ FormData จะตั้งให้เอง
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Slip2Go API error: ${response.status} - ${errorText}`);
     }
 
-    return NextResponse.json({ orders: orders, total, page, limit, totalPages: Math.ceil(total / limit) });
+    const resp = await response.json();
+
+    const code: string | undefined = resp?.code;
+    const message: string | undefined = resp?.message;
+    const data = resp?.data || {};
+    const isSuccess = code === '200000' || code === '200200';
+
+    const dateTime: string = data?.dateTime || '';
+    let time = '';
+    if (dateTime) {
+      try {
+        const iso = new Date(dateTime).toISOString();
+        time = iso.split('T')[1]?.replace('Z', '') || '';
+      } catch {}
+    }
+
+    const transformedData = {
+      bank: data?.receiver?.bank?.name || '',
+      amount: typeof data?.amount === 'number' ? data.amount : 0,
+      date: dateTime,
+      time,
+      transaction_id: data?.transRef || '',
+      sender_name: data?.sender?.account?.name || '',
+      sender_account: data?.sender?.account?.bank?.account || data?.sender?.account?.proxy?.account || '',
+      receiver_name: data?.receiver?.account?.name || '',
+      receiver_account: data?.receiver?.account?.bank?.account || data?.receiver?.account?.proxy?.account || '',
+      slip_type: 'qr-image',
+      confidence: isSuccess ? 100 : 0
+    };
+
+    return {
+      success: isSuccess,
+      data: transformedData,
+      error: isSuccess ? undefined : (message || 'Slip verification not valid')
+    };
+
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลคำสั่งซื้อ' },
-      { status: 500 }
-    );
+    console.error('Slip2Go API error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const raw = await request.json();
-
-    // ดึง token เพื่อหา userId และเบอร์โทรหากไม่ส่งมา - บังคับให้ต้องล็อกอินก่อนสั่งซื้อ
-    const cookieStore = (await cookies()) as any;
-    const tokenCookie = cookieStore.get?.('token') || cookieStore.get('token');
-
-    if (!tokenCookie?.value) {
-      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อนสั่งซื้อ' }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | undefined;
-    try {
-      const decoded = jwt.verify(tokenCookie.value, process.env.JWT_SECRET || 'default_secret_replace_in_production') as any;
-      userId = decoded.userId;
-      if (!raw.customerPhone) raw.customerPhone = decoded.phoneNumber;
-    } catch {
-      return NextResponse.json({ error: 'token ไม่ถูกต้อง หรือหมดอายุ' }, { status: 401 });
-    }
-
-    const parsed = orderInputSchema.safeParse(raw);
-    if (!parsed.success) {
-      console.error('Order validation failed:', parsed.error.errors);
-      console.error('Raw data received:', JSON.stringify(raw, null, 2));
-      return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
-    }
-    const data = parsed.data;
+    const body = await request.json();
+    const { customerName, customerPhone, customerAddress, items, totalAmount, shippingFee, discount, paymentMethod, slipUrl, taxInvoice, orderedBy } = body;
 
     await connectDB();
 
-    const order = await Order.create({
-      ...data,
-      customerPhone: data.customerPhone,
+    // ตรวจสอบสลิปอัตโนมัติถ้ามีการอัปโหลดสลิป
+    let slipVerification = null;
+    if (paymentMethod === 'transfer' && slipUrl) {
+      console.log('Auto-verifying slip for new order...');
+      const slip2GoResponse = await verifySlipWithSlip2Go(slipUrl);
+      
+      slipVerification = {
+        verified: slip2GoResponse.success,
+        verifiedAt: new Date(),
+        verificationType: 'automatic',
+        verifiedBy: 'system',
+        slip2GoData: slip2GoResponse.data || null,
+        error: slip2GoResponse.error || null,
+        confidence: slip2GoResponse.data?.confidence || 0
+      };
+    }
+
+    const order = new Order({
+      customerName,
+      customerPhone,
+      customerAddress,
+      items,
+      totalAmount,
+      shippingFee,
+      discount: discount || 0,
+      paymentMethod,
+      slipUrl,
+      slipVerification,
+      taxInvoice,
+      orderedBy: orderedBy || {
+        userId: session.user.id,
+        name: session.user.name,
+        phone: session.user.email
+      },
       orderDate: new Date(),
-      ...(userId && { userId }),
-      orderedBy: userId
-        ? {
-            userId,
-            name: data.customerName,
-            phone: data.customerPhone,
-          }
-        : undefined
+      status: 'pending'
     });
 
-    // ตรวจสอบสต็อกผ่าน WMS อัตโนมัติหลังจากสร้างออเดอร์
-    try {
-      const stockCheckResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://www.winrichdynamic.com'}/api/wms/stock-check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: order._id.toString()
-        })
-      });
+    await order.save();
 
-      if (stockCheckResponse.ok) {
-        const stockResult = await stockCheckResponse.json();
-        console.log('WMS Stock Check Result:', stockResult);
-        
-        // ถ้าสต็อกไม่เพียงพอ ให้เปลี่ยนสถานะออเดอร์เป็น pending และแจ้งเตือน
-        if (stockResult.overallStatus === 'insufficient') {
-          await Order.findByIdAndUpdate(order._id, {
-            status: 'pending',
-            'wmsData.stockCheckStatus': 'insufficient'
-          });
-          console.warn('Order created but stock insufficient:', order._id);
-          // แจ้งลูกค้าเรื่องสต็อกไม่พอ (เว็บ + SMS โดยส่ง SMS ที่นี่)
-          try {
-            const shortId = order._id.toString().slice(-8).toUpperCase();
-            const msg = `ออเดอร์ #${shortId} สินค้าบางรายการสต็อกไม่พอ\nทีมงานจะติดต่อเพื่อเสนอทางเลือก/กำหนดส่งใหม่`; 
-            await sendSMS(data.customerPhone, msg);
-          } catch (smsErr) {
-            console.error('ส่ง SMS แจ้งสต็อกไม่พอ (หลังสร้างออเดอร์) ล้มเหลว:', smsErr);
-          }
-        }
-      } else {
-        console.error('Failed to check stock via WMS:', await stockCheckResponse.text());
-      }
-    } catch (error) {
-      console.error('Error checking stock via WMS:', error);
-      // ไม่ให้ error ในการตรวจสอบสต็อกไปกระทบการสร้างออเดอร์
-    }
+    return NextResponse.json({ 
+      success: true, 
+      order,
+      slipVerification: slipVerification ? {
+        verified: slipVerification.verified,
+        confidence: slipVerification.confidence
+      } : null
+    });
 
-    // อัปเดตชื่อผู้ใช้จากออเดอร์หากยังไม่ได้ตั้งชื่อ
-    if (userId && data.customerName) {
-      try {
-        await updateUserNameFromOrder(userId, data.customerName);
-      } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการอัปเดตชื่อผู้ใช้:', error);
-      }
-    }
-
-    // บันทึกข้อมูลใบกำกับภาษีอัตโนมัติถ้าลูกค้าขอใบกำกับภาษีและยังไม่มีข้อมูลบันทึกไว้
-    if (userId && data.taxInvoice?.requestTaxInvoice && data.taxInvoice.companyName && data.taxInvoice.taxId) {
-      try {
-        const user = await User.findById(userId);
-        if (user && !user.taxInvoiceInfo) {
-          user.taxInvoiceInfo = {
-            companyName: data.taxInvoice.companyName,
-            taxId: data.taxInvoice.taxId,
-            companyAddress: data.taxInvoice.companyAddress || '',
-            companyPhone: data.taxInvoice.companyPhone || '',
-            companyEmail: data.taxInvoice.companyEmail || ''
-          };
-          await user.save();
-        }
-      } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูลใบกำกับภาษี:', error);
-      }
-    }
-
-    // ส่งการแจ้งเตือนผ่านทั้ง SMS และ Messenger
-    try {
-      const orderNumber = order._id.toString().slice(-8).toUpperCase();
-      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
-      const orderUrl = `${origin}/my-orders`;
-      
-      // Import ฟังก์ชันแบบ dynamic เพื่อหลีกเลี่ยง dependency issues
-      const { sendDualOrderConfirmation } = await import('@/app/notification/dualNotification');
-      
-      await sendDualOrderConfirmation(data.customerPhone, orderNumber, data.totalAmount);
-    } catch (notificationErr) {
-      console.error('ส่งการแจ้งเตือนล้มเหลว:', notificationErr);
-      
-      // Fallback ส่ง SMS อย่างเดียวถ้าระบบ dual notification มีปัญหา
-      try {
-        const orderNumber = order._id.toString().slice(-8).toUpperCase();
-        const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || '';
-        const orderUrl = `${origin}/my-orders`;
-        const smsMessage = `ขอบคุณสำหรับการสั่งซื้อ #${orderNumber} ยอดรวม ${data.totalAmount.toLocaleString()} บาท\nตรวจสอบรายละเอียดที่ ${orderUrl}`;
-        await sendSMS(data.customerPhone, smsMessage);
-      } catch (smsErr) {
-        console.error('ส่ง SMS แจ้งเตือนล้มเหลว:', smsErr);
-      }
-    }
-
-    // แจ้งเตือนแอดมินทุกคน
-    try {
-      const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
-      const adminMsg = `มีออเดอร์ใหม่ #${order._id.toString().slice(-8).toUpperCase()} ยอดรวม ${data.totalAmount.toLocaleString()} บาท`; 
-      await Promise.allSettled(adminList.map((a:any)=> sendSMS(a.phoneNumber, adminMsg)));
-    } catch (err){
-      console.error('ส่ง SMS แจ้งแอดมินล้มเหลว:', err);
-    }
-
-    // แจ้งเตือนเข้ากลุ่ม LINE ที่ตั้งค่าไว้
-    try {
-      console.log('[Orders API] เริ่มส่ง LINE notification สำหรับออเดอร์:', order._id);
-      await notifyLineGroupsNewOrder(order);
-      console.log('[Orders API] ส่ง LINE notification สำเร็จ');
-    } catch (e) {
-      console.error('ส่ง LINE แจ้งเตือนออเดอร์ล้มเหลว:', e);
-    }
-
-    return NextResponse.json(order, { status: 201 });
   } catch (error) {
-    console.error('Error creating order:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ' },
-      { status: 500 }
-    );
+    console.error('Create order error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const customerPhone = searchParams.get('customerPhone');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    let query: any = {};
+
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    if (customerPhone) {
+      query.customerPhone = { $regex: customerPhone, $options: 'i' };
+    }
+
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    return NextResponse.json({ orders });
+
+  } catch (error) {
+    console.error('Get orders error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 
