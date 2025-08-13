@@ -18,7 +18,7 @@ const OPENAI_MAIN_MODEL = process.env.OPENAI_MAIN_MODEL || 'gpt-4.1-mini';
 
 // Google Service Account (คงไว้ในไฟล์นี้ตามคำขอ)
 const GOOGLE_CLIENT_EMAIL = "winrichdynamic@core-outrider-464721-t3.iam.gserviceaccount.com";
-const GOOGLE_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDfnz5+5CaTKvVm\nQ9YHvPMWQVFQkBinemRJPjtP7GWxWf3m5DXlYYp8aQjLJF7DjqHTgl1RHzdB/U5R\naLoN6X/4Gw6cInexsr8EeDUNyDNkTxEVdc2Yc6MA93KF03Wqe6guk1K7Wx7IgcE3\n2jpTDdntLCjJoL35Fp0DQ3ZNXDVUkVwqO5XbsShwbCVdce8IlyuhT9iJtUaISd+I\nqSAqbG6CoNDy/0rY8CzeMAPj1Rd61a4PBYfB+tpFRjNDcpETewgE5j0EJNSgrOHQ\nyxxM2z/vmI0Uxt59CRhTpib9CLcqEjjGGAdHAocAWv/x1Lnf7Eg2WDLzkyHAv1Pq\nhlBkGiihAgMBAAECggEAB641kzls+glz5iA2w52z+R0RD7GpA7Aj0lvld8Khl867\niK1EDOkuztaqH95TkOcxbmipM/0BaVvihj21hH6qGOLGu5zTKgl+1jRkKzzMR6VY\n/e/Fp8BOJksik8GvU/ya3KqpaiGE/Vy4GkJ9nw1cqpVcVrNeudxb5lknCh0Fkwm5\nxhLEDKb4Cp6YutZR6/xfryLrmEhNXWk5UF801KxWBYF7pgMkjEunzfKiFwHlHMDU\nFyM7eLEs634dfYT+P2DGiNyYezMYMJrNJ41AkKdF2omu/B8LuksU9iWvvwvQ8HTk\nFeoWztgqtS4d02XNAjPK6PBfkIxcn3ki4YCJjWxItwKBgQDx3SB7/sOSLUG0NSRS\nMAAe9Kfv7Rh94jVsa0n8xYBnTf2Zw2m0xPnJ5dvUXly8rN4672uHqEC84H1j7Fz5\nDHCpZSY10Z71/A5VClM1Xln67QPE+dJxT+ouUCvo5PdfzcvEvEj3dY27D7t1dSNi\njGh+P8RkVBXoqRYPDZ2danim4wKBgQDssS0nbj/n86C7KcJ/n4EQWnDkuuBlcW28\nO5bX5AFfBARhiwPhzixuDAs7K8ElI6UoqoUDROlqA04SaOjTnvEQ+p9bQnYETlCb\nTxPtcPkAwreSlaq4wKB/Z83D/mXo7/lY2rqQoDzuwDfd02f+0aP6bUOPvR/YxeZd\n/3npNHLFqwKBgQCDYpzv3qA8uwrzKt8VKnAWYM8NnZ1tXMGqqMmjX2J2O76klavJ\ngCs1CwGU5sG32KxMFZ0zLyojsEtNSavjumdFDeZo2/tfItJiTd6PojZ9Ad3HVfKE\njWXoTLLdq+vZhkDIGYQFsT0RveUWVFCpix6EXn2ABtFz9s491SamyZzLAwKBgGx5\nSptekJUp90ive77nh8vJ1yFMb9it4j+5A4mPqf00pxlZD39l8MDCbkdA5zSxIFkB\nxRHZfCukthwDzmhl2E8SvQOi8tlIVvLGi/hupP9vPZhFVUd0qFmbZhbjuSrHB/xr\nycLMXQCCQVg9MdT7mO4FM0hlwXmkQM5lbiatbcgfAoGBAJ7oPcL0C3fB1hLE9fmJ\nhUO7kTY/1hkxXjnV2lJb/tQnLDTCpMdrj5tvmeVl064MkPN26WQXUWvS/yiW+qbO\np/z8dEEAL2lhyP00Vc8GeB0FQHZmSibDw+9iJ0fR4YQF8yOhOzcJAxdClDBIOPXv\nKW40EL7AKV00QKjTpy7kRlJW\n-----END PRIVATE KEY-----\n";
+const GOOGLE_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDfnz5+5CaTKvVm\nQ9YHvPMWQVFQkBinemRJPjtP7GWxWf3m5DXlYYp8aQjLJF7DjqHTgl1RHzdB/U5R\naLoN6X/4Gw6cInexsr8EeDUNyDNkTxEVdc2Yc6MA93KF03Wqe6guk1K7Wx7IgcE3\n2jpTDdntLCjJoL35Fp0DQ3ZNXDVUkVwqO5XbsShwbCVdce8IlyuhT9iJtUaISd+I\nqSAqbG6CoNDy/0rY8CzeMAPj1Rd61a4PBYfB+tpFRjNDcpETewgE5j0EJNSgrOHQ\nyxxM2z/vmI0Uxt59CRhTpib9CLcqEjjGGAdHAocAWv/x1Lnf7Eg2WDLzkyHAv1Pq\nhlBkGiihAgMBAAECggEAB641kzls+glz5iA2w52z+R0RD7GpA7Aj0lvld8Khl867\niK1EDOkuztaqH95TkOcxbmipM/0BaVvihj21hH6qGOLGu5zTKgl+1jRkKzzMR6VY\n/e/Fp8BOJksik8GvU/ya3KqpaiGE/Vy4GkJ9nw1cqpVcVrNeudxb5lknCh0Fkwm5\nxhLEDKb4Cp6YutZR6/xfryLrmEhNXWk5UF801KxWBYF7pgMkjEunzfKiFwHlHMDU\nFyM7eLEs634dfYT+P2DGiNyYezMYMJrNJ41AkKdF2omu/B8LuksU9iWvvwvQ8HTk\nFeoWztgqtS4d02XNAjPK6PBfkIxcn3ki4YCJjWxItwKBgQDx3SB7/sOSLUG0NSRS\nMAAe9Kfv7Rh94jVsa0n8xYBnTf2Zw2m0xPnJ5dvUXly8rN4672uHqEC84H1j7Fz5\nDHCpZSY10Z71/A5VClM1Xln67QPE+dJxT+ouUCvo5PdfzcvEvEj3dY27D7t1dSNi\njGh+P8RkVBXoqRYPDZ2danim4wKBgQDssS0nbj/n86C7KcJ/n4EQWnDkuuBlcW28\nO5bX5AFfBARhiwPhzixuDAs7K8ElI6UoqoUDROlqA04SaOjTnvEQ+p9bQnYETlCb\nTxPtcPkAwreSlaq4wKB/Z83D/mXo7/lY2rqQoDzuwDfd02f+0aP6bUOPvR/YxeZd\n/3npNHLFqwKBgQCDYpzv3qA8uwrzKt8VKnAWYM8NnZ1tXMGqqMmjX2J2O76klavJ\ngCs1CwGU5sG32KxMFZ0zLyojsEtNSavjumdFDeZo2/tfItJiTd6PojZ9Ad3HVfKE\njWXoTLLdq+vZhkDIGYQFsT0RveUWVFCpix6EXn2ABtFz9s491SamyZzLAwKBgGx5\nSptekJUp90ive77nh8vJ1yFMb9it4j+5A4mPqf00pxlZD39l8MDCbkdA5zSxIFkB\nxRHZfCukthwDzmhl2E8SvQOi8tlIVvLGi/hupP9vPZhFVUd0qFmbZhbjuSrHB/xr\nycLMXQCCQVg9MdT7mO4FM0hlwXmkQM5lbiatbcgfAoGBAJ7oPcL0C3fB1hLE9fmJ\nhUO7kTY/1hkxXjnV2lJb/tQnLDTCpMdrj5tvmeVl064MkPN26WQXUWvS/yiW+qbO\np/z8dEEAL2lhyP00Vc8GeB0FQHZmSibDw+9iJ0fR4YQF8yOhOzcJAxdClDBIOPX\nKW40EL7AKV00QKjTpy7kRlJW\n-----END PRIVATE KEY-----\n";
 
 const GOOGLE_DOC_ID = '16X8tI1OzQ1yfAKDRehUqnNfbebxeDA7jWH5n844FM1Y';
 const INSTRUCTIONS_SPREADSHEET_ID = '1P1nDP9CUtXFkKgW1iAap235V1_UR_1Mtqm5prVKoxf8';
@@ -72,23 +72,20 @@ function parseSheetRowsToObjects(rows: any[] = []) {
 }
 
 // ---------- Google Auth (Service Account JWT) ----------
-import { GoogleAuth } from 'google-auth-library';
+import { google } from 'googleapis';
 
 const scopes = [
   'https://www.googleapis.com/auth/documents.readonly',
   'https://www.googleapis.com/auth/spreadsheets.readonly'
 ];
 
-const auth = new GoogleAuth({
-  credentials: { client_email: GOOGLE_CLIENT_EMAIL, private_key: GOOGLE_PRIVATE_KEY },
-  scopes
-});
-
-async function getAccessToken() {
-  const client = await auth.getClient();
-  const token = await client.getAccessToken();
-  if (!token) throw new Error('No Google access token');
-  return token;
+// สร้าง JWT auth client แบบเดียวกับโค้ด Express
+function createGoogleAuth() {
+  return new google.auth.JWT({
+    email: GOOGLE_CLIENT_EMAIL,
+    key: GOOGLE_PRIVATE_KEY,
+    scopes
+  });
 }
 
 // ---------- Google Docs ----------
@@ -99,25 +96,26 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
   }
   
   try {
-    const accessToken = await getAccessToken();
-    const url = `https://docs.googleapis.com/v1/documents/${GOOGLE_DOC_ID}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
+    const auth = createGoogleAuth();
+    const docs = google.docs({ version: 'v1', auth });
+    const res = await docs.documents.get({ documentId: GOOGLE_DOC_ID });
     
-    if (!res.ok) {
-      console.warn(`[Google Docs] Failed to fetch document: HTTP ${res.status}`);
-      // ใช้ข้อมูลเดิมถ้ามี หรือคืนข้อความ fallback
-      return _googleDocInstructions || 'Google Docs instructions temporarily unavailable';
-    }
-    
-    const json = await res.json();
+    const docBody = res.data.body?.content || [];
     let fullText = '';
-    for (const block of json.body?.content || []) {
-      for (const el of block.paragraph?.elements || []) {
-        if (el.textRun?.content) fullText += el.textRun.content;
+    
+    docBody.forEach((block: any) => {
+      if (block.paragraph?.elements) {
+        block.paragraph.elements.forEach((elem: any) => {
+          if (elem.textRun?.content) {
+            fullText += elem.textRun.content;
+          }
+        });
       }
-    }
+    });
+
     _googleDocInstructions = fullText.trim();
     _lastGoogleDocFetchTime = now;
+    console.log("[DEBUG] Fetched Google Doc instructions OK.");
     return _googleDocInstructions;
     
   } catch (error) {
@@ -130,15 +128,16 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
 // ---------- Google Sheets (ทุกแท็บ) ----------
 async function _fetchSheetValues(spreadsheetId: string, sheetName: string) {
   try {
-    const accessToken = await getAccessToken();
-    const range = encodeURIComponent(`${sheetName}!A:ZZZ`);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } as any });
-    if (!res.ok) {
-      console.warn(`[Google Sheets] Failed to fetch sheet ${sheetName}: HTTP ${res.status}`);
-      return { values: [] as any[] };
-    }
-    return res.json(); // { values: [...] }
+    const auth = createGoogleAuth();
+    const sheets = google.sheets({ version: 'v4', auth });
+    const range = `${sheetName}!A:ZZZ`;
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range
+    });
+    
+    return { values: response.data.values || [] };
   } catch (error) {
     console.error(`[Google Sheets] Error fetching sheet ${sheetName}:`, error);
     return { values: [] as any[] };
@@ -152,29 +151,27 @@ export async function fetchAllSheetsData(forceRefresh = false) {
   }
 
   try {
-    const accessToken = await getAccessToken();
-    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${INSTRUCTIONS_SPREADSHEET_ID}`;
-    const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } as any });
+    const auth = createGoogleAuth();
+    const sheets = google.sheets({ version: 'v4', auth });
     
-    if (!metaRes.ok) {
-      console.warn(`[Google Sheets] Failed to fetch metadata: HTTP ${metaRes.status}`);
-      // ใช้ข้อมูลเดิมถ้ามี หรือคืน array ว่าง
-      return _sheetJSON.length > 0 ? _sheetJSON : [];
-    }
+    const { data } = await sheets.spreadsheets.get({ 
+      spreadsheetId: INSTRUCTIONS_SPREADSHEET_ID 
+    });
     
-    const metaJson = await metaRes.json();
     const result: Array<{ sheetName: string; data: any[] }> = [];
     
-    for (const s of metaJson.sheets || []) {
-      const name = s.properties?.title;
-      if (!name) continue;
-      const { values } = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, name);
+    for (const sheet of data.sheets || []) {
+      const sheetName = sheet.properties?.title;
+      if (!sheetName) continue;
+      
+      const { values } = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, sheetName);
       const parsed = parseSheetRowsToObjects(values || []);
-      if (parsed.length) result.push({ sheetName: name, data: parsed });
+      if (parsed.length) result.push({ sheetName, data: parsed });
     }
 
     _sheetJSON = result;
     _lastSheetsFetchTime = now;
+    console.log(`[DEBUG] Fetched ${result.length} sheets data OK.`);
     return result;
     
   } catch (error) {
