@@ -180,7 +180,42 @@ async function sendSimpleTextMessage(recipientId: string, text: string): Promise
 }
 
 /**
- * ส่งรูปภาพ
+ * โหลดภาพจาก URL มาไว้บนเซิร์ฟเวอร์
+ */
+async function uploadImageToServer(imageUrl: string): Promise<string | null> {
+  try {
+    console.log(`[UPLOAD] Uploading image to server: ${imageUrl}`);
+    
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
+    const response = await fetch(`${baseUrl}/api/messenger/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imageUrl }),
+      signal: AbortSignal.timeout(60000) // 60 วินาที
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log(`[UPLOAD] Image uploaded successfully: ${result.localUrl}`);
+      return result.localUrl;
+    } else {
+      throw new Error(result.error || 'Upload failed');
+    }
+  } catch (error) {
+    console.error('[UPLOAD] Error uploading image to server:', error);
+    return null;
+  }
+}
+
+/**
+ * ส่งรูปภาพ (ปรับปรุงให้ใช้ระบบอัปโหลด)
  */
 async function sendImageMessage(recipientId: string, imageUrl: string): Promise<void> {
   console.log(`[DEBUG] Sending image to ${recipientId}: ${imageUrl}`);
@@ -190,27 +225,26 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
     console.error(`[ERROR] Invalid image URL: ${imageUrl}`);
     return;
   }
+
+  // ลองอัปโหลดภาพมาบนเซิร์ฟเวอร์ก่อน
+  let finalImageUrl = imageUrl;
   
-  // ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
-  const isAccessible = await isUrlAccessible(imageUrl);
-  if (!isAccessible) {
-    console.warn(`[WARN] Image URL not accessible: ${imageUrl}`);
-    // ส่งข้อความแจ้งเตือนแทน
-    try {
-      const fallbackMessage: FBMessagePayload = {
-        text: `ขออภัยค่ะ ไม่สามารถเข้าถึงรูปภาพได้ (${imageUrl})`
-      };
-      await callSendAPI(recipientId, fallbackMessage);
-    } catch (fallbackErr) {
-      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
+  try {
+    const uploadedUrl = await uploadImageToServer(imageUrl);
+    if (uploadedUrl) {
+      finalImageUrl = uploadedUrl;
+      console.log(`[DEBUG] Using uploaded image URL: ${finalImageUrl}`);
+    } else {
+      console.warn(`[WARN] Failed to upload image, using original URL: ${imageUrl}`);
     }
-    return;
+  } catch (uploadError) {
+    console.warn(`[WARN] Upload failed, using original URL: ${imageUrl}`, uploadError);
   }
-  
+
   // ตรวจสอบว่าเป็น URL ที่ Facebook ยอมรับหรือไม่
-  const isFacebookCompatible = await checkFacebookImageCompatibility(imageUrl);
+  const isFacebookCompatible = await checkFacebookImageCompatibility(finalImageUrl);
   if (!isFacebookCompatible) {
-    console.warn(`[WARN] Image URL not Facebook compatible: ${imageUrl}`);
+    console.warn(`[WARN] Image URL not Facebook compatible: ${finalImageUrl}`);
     // ส่งข้อความแจ้งเตือนแทน
     try {
       const fallbackMessage: FBMessagePayload = {
@@ -227,7 +261,7 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
     attachment: {
       type: 'image',
       payload: { 
-        url: imageUrl, 
+        url: finalImageUrl, 
         is_reusable: true 
       }
     }
@@ -244,7 +278,7 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
       console.warn("[WARN] Facebook robots.txt error - sending fallback message");
       try {
         const fallbackMessage: FBMessagePayload = {
-          text: `ขออภัยค่ะ Facebook ไม่สามารถเข้าถึงรูปภาพนี้ได้ กรุณาลองใช้รูปภาพจากแหล่งอื่น`
+          text: `ขออภัยค่ะ Facebook ไม่สามารถเข้าถึงรูปภาพนี้ได้ กรุณาลองใช้รูปภาพอื่น`
         };
         await callSendAPI(recipientId, fallbackMessage);
       } catch (fallbackErr) {

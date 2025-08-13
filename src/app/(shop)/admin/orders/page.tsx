@@ -34,6 +34,7 @@ interface ClaimInfo {
   claimImages: string[];
   claimStatus: 'pending' | 'approved' | 'rejected';
   adminResponse?: string;
+  responseDate?: string;
 }
 
 interface Order {
@@ -648,7 +649,7 @@ const AdminOrdersPage = () => {
                     : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
                 }`}
               >
-                {statusIcons[status]} {label} ({stats[status] || 0})
+                {statusIcons[status as keyof typeof statusIcons]} {label} ({stats[status as keyof typeof stats] || 0})
               </button>
             ))}
           </div>
@@ -837,7 +838,15 @@ const AdminOrdersPage = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{order.items.length} รายการ</div>
                             <div className="text-xs text-gray-500">
-                              {order.items.slice(0, 1).map(item => item.name).join(', ')}
+                              {order.items.slice(0, 1).map(item => (
+                                <div key={item.productId}>
+                                  {item.name}
+                                  {item.unitLabel && <span className="text-blue-600"> ({item.unitLabel})</span>}
+                                  {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                    <span className="text-green-600"> • มีตัวเลือก</span>
+                                  )}
+                                </div>
+                              ))}
                               {order.items.length > 1 && `... +${order.items.length - 1}`}
                             </div>
                             <div className="flex items-center gap-2 mt-1">
@@ -858,6 +867,15 @@ const AdminOrdersPage = () => {
                   </span>
                 )}
                               </span>
+                              {/* แสดงข้อมูลเพิ่มเติมของสินค้า */}
+                              {order.items.some(item => item.unitLabel || (item.selectedOptions && Object.keys(item.selectedOptions).length > 0)) && (
+                                <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  รายละเอียด
+                                </span>
+                              )}
                               {order.packingProofs && order.packingProofs.length > 0 && (
                                 <span className="text-xs text-blue-600">
                                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -994,6 +1012,24 @@ const AdminOrdersPage = () => {
                           <div className="text-sm text-gray-500">{order.customerPhone}</div>
                           <div className="text-sm text-gray-500">
                             {order.items.length} รายการ
+                            {/* แสดงข้อมูลเพิ่มเติมของสินค้า */}
+                            {order.items.some(item => item.unitLabel || (item.selectedOptions && Object.keys(item.selectedOptions).length > 0)) && (
+                              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full ml-2">
+                                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                รายละเอียด
+                              </span>
+                            )}
+                            {order.items.slice(0, 1).map(item => (
+                              <div key={item.productId} className="text-xs mt-1">
+                                {item.name}
+                                {item.unitLabel && <span className="text-blue-600"> ({item.unitLabel})</span>}
+                                {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                  <span className="text-green-600"> • มีตัวเลือก</span>
+                                )}
+                              </div>
+                            ))}
                             {order.packingProofs && order.packingProofs.length > 0 && (
                               <span className="text-blue-600 ml-2 inline-flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1196,16 +1232,99 @@ const AdminOrdersPage = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">รายการสินค้า</label>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {selectedOrder.items.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <span className="font-medium">{item.name}</span>
-                            <span className="text-gray-500 ml-2">x{item.quantity}</span>
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 text-base">
+                                {item.name}
+                                {item.unitLabel && (
+                                  <span className="text-sm text-blue-600 ml-2 font-normal">
+                                    ({item.unitLabel})
+                                  </span>
+                                )}
+                              </h4>
+                              <div className="text-sm text-gray-600 mt-1">
+                                <span className="font-medium">จำนวน:</span> {item.quantity} {item.unitLabel || 'ชิ้น'}
+                              </div>
+                              {item.unitPrice && (
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium">ราคาต่อหน่วย:</span> ฿{item.unitPrice.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-gray-900 text-lg">
+                                ฿{(item.price * item.quantity).toLocaleString()}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                ฿{item.price.toLocaleString()} x {item.quantity}
+                              </div>
+                            </div>
                           </div>
-                          <span className="font-medium">฿{(item.price * item.quantity).toLocaleString()}</span>
+                          
+                          {/* แสดงตัวเลือกที่ลูกค้าเลือก */}
+                          {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                ตัวเลือกที่เลือก:
+                              </h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {Object.entries(item.selectedOptions).map(([optionKey, optionValue], optionIndex) => (
+                                  <div key={optionIndex} className="bg-white px-3 py-2 rounded-md border border-green-200">
+                                    <div className="text-xs text-gray-500 font-medium">{optionKey}</div>
+                                    <div className="text-sm text-gray-900 font-medium">{optionValue}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* แสดงข้อมูลเพิ่มเติม */}
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-500">รหัสสินค้า:</span>
+                                <span className="ml-2 font-mono text-gray-900">{item.productId}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">ราคารวม:</span>
+                                <span className="ml-2 font-bold text-gray-900">฿{(item.price * item.quantity).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
+                    </div>
+                    
+                    {/* สรุปยอดรวมรายการ */}
+                    <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-medium text-gray-900">รวมรายการสินค้า:</span>
+                        <span className="text-xl font-bold text-blue-600">
+                          ฿{selectedOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-600">
+                        <div className="flex justify-between">
+                          <span>ค่าจัดส่ง:</span>
+                          <span>฿{selectedOrder.shippingFee.toLocaleString()}</span>
+                        </div>
+                        {selectedOrder.discount && selectedOrder.discount > 0 && (
+                          <div className="flex justify-between text-red-600">
+                            <span>ส่วนลด:</span>
+                            <span>-฿{selectedOrder.discount.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-blue-200">
+                          <span>ยอดรวมทั้งหมด:</span>
+                          <span>฿{selectedOrder.totalAmount.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
