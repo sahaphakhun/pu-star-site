@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions, verifyToken } from '@/lib/auth';
 
 interface Slip2GoResponse {
   success: boolean;
@@ -24,9 +24,18 @@ interface Slip2GoResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions as any);
+    let tokenResult: any = null;
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
+    const isAdmin = (session?.user?.role === 'admin') || (tokenResult?.role === 'admin') || (tokenResult?.decoded?.role === 'admin');
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { orderId, slipUrl, verificationType = 'manual' } = await request.json();
@@ -51,7 +60,7 @@ export async function POST(request: NextRequest) {
       verified: slip2GoResponse.success,
       verifiedAt: new Date(),
       verificationType,
-      verifiedBy: session.user.email,
+      verifiedBy: (session?.user as any)?.email || tokenResult?.phoneNumber || 'system',
       slip2GoData: slip2GoResponse.data || null,
       error: slip2GoResponse.error || null,
       confidence: slip2GoResponse.data?.confidence || 0
@@ -161,9 +170,18 @@ async function verifySlipWithSlip2Go(slipUrl: string): Promise<Slip2GoResponse> 
 // API สำหรับตรวจสอบสลิปหลายรายการพร้อมกัน
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session: any = await getServerSession(authOptions as any);
+    let tokenResult: any = null;
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      try { tokenResult = await verifyToken(request as any); } catch {}
+      if (!tokenResult?.valid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
+    const isAdmin = (session?.user?.role === 'admin') || (tokenResult?.role === 'admin') || (tokenResult?.decoded?.role === 'admin');
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { orderIds } = await request.json();
@@ -190,7 +208,7 @@ export async function PUT(request: NextRequest) {
           verified: slip2GoResponse.success,
           verifiedAt: new Date(),
           verificationType: 'batch',
-          verifiedBy: session.user.email,
+          verifiedBy: (session?.user as any)?.email || tokenResult?.phoneNumber || 'system',
           slip2GoData: slip2GoResponse.data || null,
           error: slip2GoResponse.error || null,
           confidence: slip2GoResponse.data?.confidence || 0

@@ -15,6 +15,7 @@ export default function ShopLayout({ children }: LayoutProps) {
   const pathname = usePathname();
   const { isLoggedIn, user, logout, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const isAdminRoute = pathname?.startsWith('/admin');
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/');
@@ -34,9 +35,11 @@ export default function ShopLayout({ children }: LayoutProps) {
       
       {/* Main content */}
       <main className="flex-1 bg-gray-100 pb-16 md:pb-0">
-        <div className="container mx-auto px-4 py-6">
-          {children}
-        </div>
+        {isAdminRoute ? (
+          <div className="py-6">{children}</div>
+        ) : (
+          <div className="container mx-auto px-4 py-6">{children}</div>
+        )}
       </main>
 
       {/* แถบเมนูด้านล่างสำหรับมือถือ เฉพาะฝั่งลูกค้า */}
