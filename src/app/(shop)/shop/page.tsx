@@ -469,13 +469,23 @@ const ShopPage = () => {
       return;
     }
     
-    const unitToUse = selectedUnit ?? (selectedProduct.units && selectedProduct.units[0]);
+    // ตรวจสอบว่าสินค้ามีหน่วยหรือไม่ และต้องเลือกหน่วย
+    if (selectedProduct.units && selectedProduct.units.length > 0) {
+      if (!selectedUnit) {
+        toast.error('กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า');
+        return;
+      }
+    }
     
-    // ตรวจสอบว่าเลือกตัวเลือกครบหรือไม่
+    // ตรวจสอบว่าสินค้ามีตัวเลือกหรือไม่ และต้องเลือกตัวเลือกครบถ้วน
     if (selectedProduct.options && selectedProduct.options.length > 0) {
-      const missingOptions = selectedProduct.options.filter(option => !selectedOptions[option.name]);
+      const missingOptions = selectedProduct.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
       if (missingOptions.length > 0) {
-        toast.error(`กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')}`);
+        toast.error(`กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')} ก่อนเพิ่มลงตะกร้า`);
         return;
       }
       
@@ -489,6 +499,14 @@ const ShopPage = () => {
         }
       }
     }
+    
+    // ตรวจสอบจำนวนสินค้า
+    if (modalQuantity < 1) {
+      toast.error('กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น');
+      return;
+    }
+
+    const unitToUse = selectedUnit ?? (selectedProduct.units && selectedProduct.units[0]);
 
     handleAddToCart(selectedProduct, selectedOptions, unitToUse || undefined, modalQuantity);
     setSelectedProduct(null);
@@ -996,6 +1014,89 @@ const ShopPage = () => {
     router.push(`/products/${productId}`);
   };
 
+  const isModalFormValid = () => {
+    if (!selectedProduct) return false;
+    
+    // ตรวจสอบว่าสินค้าพร้อมขายหรือไม่
+    if (selectedProduct.isAvailable === false) {
+      return false;
+    }
+    
+    // ตรวจสอบว่าสินค้ามีหน่วยหรือไม่ และต้องเลือกหน่วย
+    if (selectedProduct.units && selectedProduct.units.length > 0) {
+      if (!selectedUnit) {
+        return false;
+      }
+    }
+    
+    // ตรวจสอบว่าสินค้ามีตัวเลือกหรือไม่ และต้องเลือกตัวเลือกครบถ้วน
+    if (selectedProduct.options && selectedProduct.options.length > 0) {
+      const missingOptions = selectedProduct.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
+      if (missingOptions.length > 0) {
+        return false;
+      }
+      
+      // ตรวจสอบว่าตัวเลือกที่เลือกยังมีสินค้าหรือไม่
+      for (const option of selectedProduct.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          return false;
+        }
+      }
+    }
+    
+    // ตรวจสอบจำนวนสินค้า
+    if (modalQuantity < 1) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const getModalValidationMessage = () => {
+    if (!selectedProduct) return 'ไม่พบสินค้า';
+    
+    if (selectedProduct.isAvailable === false) {
+      return 'สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้';
+    }
+    
+    if (selectedProduct.units && selectedProduct.units.length > 0) {
+      if (!selectedUnit) {
+        return 'กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า';
+      }
+    }
+    
+    if (selectedProduct.options && selectedProduct.options.length > 0) {
+      const missingOptions = selectedProduct.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
+      if (missingOptions.length > 0) {
+        return `กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')} ก่อนเพิ่มลงตะกร้า`;
+      }
+      
+      for (const option of selectedProduct.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          return `ตัวเลือก "${selectedValue}" ของ "${option.name}" หมดแล้ว กรุณาเลือกตัวเลือกอื่น`;
+        }
+      }
+    }
+    
+    if (modalQuantity < 1) {
+      return 'กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น';
+    }
+    
+    return 'สินค้าพร้อมสั่งซื้อ';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1189,7 +1290,7 @@ const ShopPage = () => {
                       ) : (
                         <div className="flex items-center justify-center space-x-2">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 2.5M7 13l2.5 2.5m6 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
                           </svg>
                           <span>เพิ่มลงตะกร้า ({getQuantityForProduct(product._id)} ชิ้น)</span>
                         </div>
@@ -1340,7 +1441,9 @@ const ShopPage = () => {
                 {/* Units Selection */}
                 {selectedProduct.units && selectedProduct.units.length > 0 && (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">เลือกหน่วย</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      เลือกหน่วย <span className="text-red-500">*</span>
+                    </label>
                     <div className="space-y-2">
                       {selectedProduct.units.map((unit, index) => (
                         <label key={index} className="flex items-center justify-between p-3 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 cursor-pointer transition-colors">
@@ -1365,13 +1468,18 @@ const ShopPage = () => {
                         </label>
                       ))}
                     </div>
+                    {!selectedUnit && (
+                      <p className="text-sm text-red-500 mt-1">กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า</p>
+                    )}
                   </div>
                 )}
 
                 {/* Options Selection */}
                 {selectedProduct.options && selectedProduct.options.map((option, optionIndex) => (
                   <div key={optionIndex} className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{option.name}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {option.name} <span className="text-red-500">*</span>
+                    </label>
                     <div className="grid grid-cols-2 gap-2">
                       {option.values.map((value, valueIndex) => {
                         const isOptionAvailable = value.isAvailable !== false;
@@ -1425,12 +1533,17 @@ const ShopPage = () => {
                         );
                       })}
                     </div>
+                    {!selectedOptions[option.name] && (
+                      <p className="text-sm text-red-500 mt-1">กรุณาเลือก {option.name} ก่อนเพิ่มลงตะกร้า</p>
+                    )}
                   </div>
                 ))}
 
                 {/* Quantity */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">จำนวน</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    จำนวน <span className="text-red-500">*</span>
+                  </label>
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
@@ -1455,18 +1568,21 @@ const ShopPage = () => {
                       +
                     </button>
                   </div>
+                  {modalQuantity < 1 && (
+                    <p className="text-sm text-red-500 mt-1">กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น</p>
+                  )}
                 </div>
 
                 <motion.button
                   onClick={addToCartWithOptions}
-                  disabled={selectedProduct.isAvailable === false}
+                  disabled={selectedProduct.isAvailable === false || !isModalFormValid()}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                    selectedProduct.isAvailable === false 
+                    selectedProduct.isAvailable === false || !isModalFormValid()
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                       : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
                   }`}
-                  whileHover={{ scale: selectedProduct.isAvailable ? 1.02 : 1 }}
-                  whileTap={{ scale: selectedProduct.isAvailable ? 0.98 : 1 }}
+                  whileHover={{ scale: selectedProduct.isAvailable && isModalFormValid() ? 1.02 : 1 }}
+                  whileTap={{ scale: selectedProduct.isAvailable && isModalFormValid() ? 0.98 : 1 }}
                 >
                   {selectedProduct.isAvailable === false 
                     ? (
@@ -1475,6 +1591,13 @@ const ShopPage = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         <span>สินค้าหมด</span>
+                      </div>
+                    ) : !isModalFormValid() ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <span>{getModalValidationMessage()}</span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center space-x-2">

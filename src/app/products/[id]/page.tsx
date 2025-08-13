@@ -13,6 +13,7 @@ interface Product {
   description: string;
   imageUrl: string;
   category?: string;
+  isAvailable?: boolean;
   units?: {
     label: string;
     price: number;
@@ -24,6 +25,7 @@ interface Product {
     values: {
       label: string;
       imageUrl?: string;
+      isAvailable?: boolean;
     }[];
   }[];
 }
@@ -97,6 +99,49 @@ export default function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+    
+    // ตรวจสอบว่าสินค้าพร้อมขายหรือไม่
+    if (product.isAvailable === false) {
+      toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
+      return;
+    }
+    
+    // ตรวจสอบว่าสินค้ามีหน่วยหรือไม่ และต้องเลือกหน่วย
+    if (product.units && product.units.length > 0) {
+      if (!selectedUnit || selectedUnit === '') {
+        toast.error('กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า');
+        return;
+      }
+    }
+    
+    // ตรวจสอบว่าสินค้ามีตัวเลือกหรือไม่ และต้องเลือกตัวเลือกครบถ้วน
+    if (product.options && product.options.length > 0) {
+      const missingOptions = product.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
+      if (missingOptions.length > 0) {
+        toast.error(`กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')} ก่อนเพิ่มลงตะกร้า`);
+        return;
+      }
+      
+      // ตรวจสอบว่าตัวเลือกที่เลือกยังมีสินค้าหรือไม่
+      for (const option of product.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          toast.error(`ตัวเลือก "${selectedValue}" ของ "${option.name}" หมดแล้ว กรุณาเลือกตัวเลือกอื่น`);
+          return;
+        }
+      }
+    }
+    
+    // ตรวจสอบจำนวนสินค้า
+    if (quantity < 1) {
+      toast.error('กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น');
+      return;
+    }
     
     setAddingToCart(true);
     
@@ -177,6 +222,89 @@ export default function ProductDetail() {
     } finally {
       setAddingToCart(false);
     }
+  };
+
+  const isFormValid = () => {
+    if (!product) return false;
+
+    // ตรวจสอบว่าสินค้าพร้อมขายหรือไม่
+    if (product.isAvailable === false) {
+      return false;
+    }
+
+    // ตรวจสอบว่าสินค้ามีหน่วยหรือไม่ และต้องเลือกหน่วย
+    if (product.units && product.units.length > 0) {
+      if (!selectedUnit || selectedUnit === '') {
+        return false;
+      }
+    }
+
+    // ตรวจสอบว่าสินค้ามีตัวเลือกหรือไม่ และต้องเลือกตัวเลือกครบถ้วน
+    if (product.options && product.options.length > 0) {
+      const missingOptions = product.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
+      if (missingOptions.length > 0) {
+        return false;
+      }
+      
+      // ตรวจสอบว่าตัวเลือกที่เลือกยังมีสินค้าหรือไม่
+      for (const option of product.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          return false;
+        }
+      }
+    }
+
+    // ตรวจสอบจำนวนสินค้า
+    if (quantity < 1) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const getValidationMessage = () => {
+    if (!product) return 'ไม่พบสินค้า';
+
+    if (product.isAvailable === false) {
+      return 'สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้';
+    }
+
+    if (product.units && product.units.length > 0) {
+      if (!selectedUnit || selectedUnit === '') {
+        return 'กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า';
+      }
+    }
+
+    if (product.options && product.options.length > 0) {
+      const missingOptions = product.options.filter(option => {
+        const selectedValue = selectedOptions[option.name];
+        return !selectedValue || selectedValue === '';
+      });
+      
+      if (missingOptions.length > 0) {
+        return `กรุณาเลือก ${missingOptions.map(o => o.name).join(', ')} ก่อนเพิ่มลงตะกร้า`;
+      }
+      
+      for (const option of product.options) {
+        const selectedValue = selectedOptions[option.name];
+        const optionValue = option.values.find(v => v.label === selectedValue);
+        if (optionValue && optionValue.isAvailable === false) {
+          return `ตัวเลือก "${selectedValue}" ของ "${option.name}" หมดแล้ว กรุณาเลือกตัวเลือกอื่น`;
+        }
+      }
+    }
+
+    if (quantity < 1) {
+      return 'กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น';
+    }
+
+    return 'สินค้าพร้อมสั่งซื้อ';
   };
 
   if (loading) {
@@ -262,19 +390,25 @@ export default function ProductDetail() {
             {product.units && product.units.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  เลือกหน่วย
+                  เลือกหน่วย <span className="text-red-500">*</span>
                 </label>
                 <select 
                   value={selectedUnit} 
                   onChange={(e) => handleUnitChange(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    !selectedUnit || selectedUnit === '' ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
                 >
+                  <option value="">-- เลือกหน่วย --</option>
                   {product.units.map((unit) => (
                     <option key={unit.label} value={unit.label}>
                       {unit.label} - ฿{unit.price.toLocaleString()}
                     </option>
                   ))}
                 </select>
+                {!selectedUnit || selectedUnit === '' ? (
+                  <p className="text-sm text-red-500 mt-1">กรุณาเลือกหน่วยสินค้าก่อนเพิ่มลงตะกร้า</p>
+                ) : null}
               </div>
             )}
 
@@ -282,31 +416,37 @@ export default function ProductDetail() {
             {product.options && product.options.map((option) => (
               <div key={option.name} className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {option.name}
+                  {option.name} <span className="text-red-500">*</span>
                 </label>
                 <select 
                   value={selectedOptions[option.name] || ''} 
                   onChange={(e) => handleOptionChange(option.name, e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    !selectedOptions[option.name] || selectedOptions[option.name] === '' ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
                 >
+                  <option value="">-- เลือก{option.name} --</option>
                   {option.values.map((value) => (
                     <option key={value.label} value={value.label}>
                       {value.label}
                     </option>
                   ))}
                 </select>
+                {!selectedOptions[option.name] || selectedOptions[option.name] === '' ? (
+                  <p className="text-sm text-red-500 mt-1">กรุณาเลือก {option.name} ก่อนเพิ่มลงตะกร้า</p>
+                ) : null}
               </div>
             ))}
 
             {/* ช่องใส่จำนวน */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                จำนวน
+                จำนวน <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
+                  className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
                 >
                   -
                 </button>
@@ -319,11 +459,14 @@ export default function ProductDetail() {
                 />
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300"
+                  className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600"
                 >
                   +
                 </button>
               </div>
+              {quantity < 1 ? (
+                <p className="text-sm text-red-500 mt-1">กรุณาเลือกจำนวนสินค้าอย่างน้อย 1 ชิ้น</p>
+              ) : null}
             </div>
 
             {/* ราคารวม */}
@@ -339,15 +482,26 @@ export default function ProductDetail() {
             {/* ปุ่มเพิ่มลงตะกร้า */}
             <motion.button
               onClick={handleAddToCart}
-              disabled={addingToCart}
-              className="add-to-cart-btn w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              disabled={addingToCart || !isFormValid()}
+              className={`add-to-cart-btn w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 ${
+                addingToCart || !isFormValid()
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+              whileHover={!addingToCart && isFormValid() ? { scale: 1.02 } : {}}
+              whileTap={!addingToCart && isFormValid() ? { scale: 0.98 } : {}}
             >
               {addingToCart ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>กำลังเพิ่ม...</span>
+                </div>
+              ) : !isFormValid() ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <span>{getValidationMessage()}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">

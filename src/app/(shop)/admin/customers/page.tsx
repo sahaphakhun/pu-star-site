@@ -253,6 +253,56 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
+  const handleSyncCustomerName = async (customerId: string, customerName: string) => {
+    try {
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'syncCustomerName',
+          customerId,
+          customerName 
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('ซิงค์ชื่อลูกค้าสำเร็จแล้ว');
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ชื่อ');
+      }
+    } catch (error) {
+      console.error('Error syncing customer name:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
+  const handleSyncAllCustomerNames = async () => {
+    try {
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'syncAllCustomerNames'
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`ซิงค์ชื่อลูกค้าสำเร็จ ${data.updated} คน`);
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ชื่อ');
+      }
+    } catch (error) {
+      console.error('Error syncing all customer names:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
   const resetFilters = () => {
     setSearchTerm('');
     setAssignedToFilter('');
@@ -301,9 +351,20 @@ const CustomerManagementPage: React.FC = () => {
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               ส่งออก CSV
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EDIT)) && (
+            <button
+              onClick={handleSyncAllCustomerNames}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              ซิงค์ชื่อลูกค้าทั้งหมด
             </button>
           )}
         </div>
@@ -611,28 +672,23 @@ const CustomerManagementPage: React.FC = () => {
                 <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ลูกค้า
                 </th>
-                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ประเภท
                 </th>
-                <th className="hidden sm:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ออเดอร์
-                </th>
-                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ยอดซื้อ
-                </th>
-                {activeTab === 'target' && (
-                  <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ค่าเฉลี่ย/ออเดอร์
-                  </th>
-                )}
-                <th className="hidden md:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ผู้รับผิดชอบ
                 </th>
                 <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  วันที่สั่งซื้อล่าสุด
+                  สถิติ
+                </th>
+                <th className="hidden lg:table-cell px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ออเดอร์ล่าสุด
                 </th>
                 <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  การกระทำ
+                  สถานะชื่อ
+                </th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  การจัดการ
                 </th>
               </tr>
             </thead>
@@ -641,118 +697,61 @@ const CustomerManagementPage: React.FC = () => {
                 <tr key={customer._id} className="hover:bg-gray-50">
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {activeTab === 'target' && (
-                        <div className="hidden sm:flex flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full items-center justify-center mr-3">
-                          <span className="text-yellow-800 font-bold text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </span>
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-blue-600 font-medium text-sm">
+                            {customer.name ? customer.name.charAt(0).toUpperCase() : '?'}
+                          </span>
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-gray-900 truncate">{customer.name || 'ไม่ระบุชื่อ'}</div>
-                        <div className="text-sm text-gray-500 truncate">{customer.phoneNumber || 'ไม่ระบุเบอร์โทร'}</div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {customer.name || 'ไม่มีชื่อ'}
+                        </div>
+                        <div className="text-sm text-gray-500">{customer.phoneNumber}</div>
                         {customer.email && (
-                          <div className="hidden md:block text-sm text-gray-500 truncate">{customer.email}</div>
+                          <div className="text-sm text-gray-400">{customer.email}</div>
                         )}
-                        {/* แสดงข้อมูลเพิ่มเติมในมือถือ */}
-                        <div className="sm:hidden mt-1 space-y-1">
-                          <div className="text-xs text-gray-500">
-                            ออเดอร์: {customer.totalOrders || 0} ครั้ง
-                          </div>
-                          {customer.assignedTo && (
-                            <div className="text-xs">
-                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                                {customer.assignedTo}
-                              </span>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {/* Desktop: แสดง badge ปกติ */}
-                    <span className={`hidden md:inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
+                  <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
                       {getCustomerTypeLabel(customer.customerType)}
                     </span>
-                    
-                    {/* Mobile: แสดงเป็น dropdown/select */}
-                    <div className="md:hidden relative">
-                      <button
-                        onClick={() => {
-                          const dropdownId = `customer-type-${customer._id}`;
-                          setOpenDropdownId(openDropdownId === dropdownId ? null : dropdownId);
-                        }}
-                        className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                      >
-                        {getCustomerTypeLabel(customer.customerType)}
-                        <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      
-                      {/* Dropdown menu */}
-                      <div
-                        className={`${openDropdownId === `customer-type-${customer._id}` ? 'block' : 'hidden'} absolute z-10 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg`}
-                      >
-                        <div className="py-1">
-                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">ประเภทลูกค้า</div>
-                          <div className="px-3 py-2">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
-                              {getCustomerTypeLabel(customer.customerType)}
-                            </span>
-                          </div>
-                          {customer.assignedTo && (
-                            <>
-                              <div className="px-3 py-1 text-xs text-gray-500 font-medium border-t">ผู้รับผิดชอบ</div>
-                              <div className="px-3 py-2">
-                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                                  {customer.assignedTo}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                          {customer.totalOrders > 0 && (
-                            <>
-                              <div className="px-3 py-1 text-xs text-gray-500 font-medium border-t">ข้อมูលเพิ่มเติม</div>
-                              <div className="px-3 py-2 text-xs text-gray-700">
-                                <div>ออเดอร์: {customer.totalOrders} ครั้ง</div>
-                                <div>ยอดซื้อ: ฿{(customer.totalSpent || 0).toLocaleString()}</div>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   </td>
-                  <td className="hidden sm:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="font-medium">{customer.totalOrders || 0} ครั้ง</div>
-                  </td>
-                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="font-bold text-green-600">฿{(customer.totalSpent || 0).toLocaleString()}</div>
-                  </td>
-                  {activeTab === 'target' && (
-                    <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium">฿{Math.round(customer.averageOrderValue || 0).toLocaleString()}</div>
-                    </td>
-                  )}
-                  <td className="hidden md:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {customer.assignedTo ? (
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
                         {customer.assignedTo}
                       </span>
                     ) : (
-                      <span className="text-gray-400">ไม่ได้กำหนด</span>
+                      <span className="text-gray-400 text-xs">ไม่ระบุ</span>
                     )}
+                  </td>
+                  <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="space-y-1">
+                      <div className="font-medium">{customer.totalOrders || 0} ครั้ง</div>
+                      <div className="font-bold text-green-600">฿{(customer.totalSpent || 0).toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">฿{Math.round(customer.averageOrderValue || 0).toLocaleString()}/ครั้ง</div>
+                    </div>
                   </td>
                   <td className="hidden lg:table-cell px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {customer.lastOrderDate ? 
                       new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : 
                       <span className="text-gray-400">ไม่เคยสั่งซื้อ</span>
                     }
+                  </td>
+                  <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        ต้องซิงค์ชื่อ
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        ชื่อถูกต้อง
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {/* Desktop: แสดงปุ่มแบบข้อความ */}
@@ -773,9 +772,18 @@ const CustomerManagementPage: React.FC = () => {
                             setAssignedTo(customer.assignedTo || '');
                             setShowAssignModal(true);
                           }}
-                          className="text-green-600 hover:text-green-900"
+                          className="text-green-600 hover:text-green-900 mr-3"
                         >
                           กำหนดผู้รับผิดชอบ
+                        </button>
+                      )}
+                      {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                        <button
+                          onClick={() => handleSyncCustomerName(customer._id, customer.name || '')}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="ซิงค์ชื่อจากออเดอร์"
+                        >
+                          ซิงค์ชื่อ
                         </button>
                       )}
                     </div>
@@ -807,6 +815,17 @@ const CustomerManagementPage: React.FC = () => {
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </button>
+                      )}
+                      {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                        <button
+                          onClick={() => handleSyncCustomerName(customer._id, customer.name || '')}
+                          className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full"
+                          title="ซิงค์ชื่อจากออเดอร์"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
                         </button>
                       )}
@@ -921,6 +940,31 @@ const CustomerManagementPage: React.FC = () => {
                   <p className="mt-1 text-sm text-gray-900">
                     {new Date(selectedCustomer.createdAt).toLocaleDateString('th-TH')}
                   </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">สถานะชื่อ</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    {selectedCustomer.name === 'ลูกค้า' || !selectedCustomer.name || selectedCustomer.name === selectedCustomer.phoneNumber ? (
+                      <>
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                          ต้องซิงค์ชื่อ
+                        </span>
+                        <button
+                          onClick={() => {
+                            handleSyncCustomerName(selectedCustomer._id, selectedCustomer.name || '');
+                            setShowDetailModal(false);
+                          }}
+                          className="text-xs text-purple-600 hover:text-purple-800 underline"
+                        >
+                          คลิกเพื่อซิงค์ชื่อ
+                        </button>
+                      </>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        ชื่อถูกต้อง
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               

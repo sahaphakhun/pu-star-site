@@ -1,6 +1,6 @@
 import { showCategories, sendWelcome, handleCategoryPostback, askNextOption, askQuantity, addProductWithOptions, handleUnitPostback } from './product.flow';
 import { callSendAPI } from '@/utils/messenger';
-import { getSession, clearSession, updateSession, removeFromCart } from '../state';
+import { getSession, clearSession, updateSession, removeFromCart, incrementNonMenuMessageCount, resetNonMenuMessageCount } from '../state';
 import { startAuth, handlePhone, handleOtp } from './auth.flow';
 import { sendTypingOn } from '@/utils/messenger';
 import { startCheckout, handleName, handleAddress, handleNameAddress, finalizeOrder, askPayment, sendBankInfo, showCart, confirmCOD, askColorOptions, handleSavedAddressSelection, promptNewAddress, handleDeliveryMethod, handleLalamoveLocation, handleCoordinatesText } from './order.flow';
@@ -8,7 +8,7 @@ import { showMyOrders } from './orderHistory.flow';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
-import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled } from '@/utils/openai-utils';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, enableAutoModeForUser, isAutoModeEnabled, addToConversationHistory, getConversationHistory, buildAutoModeInitialMessage } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 
 interface MessagingEvent {
@@ -50,6 +50,10 @@ export async function handleEvent(event: MessagingEvent) {
 
   if (event.postback) {
     const payload = event.postback.payload || '';
+    
+    // รีเซ็ตจำนวนข้อความที่ไม่ใช่เมนูเมื่อกดเมนู
+    await resetNonMenuMessageCount(psid);
+    
     if (payload === 'GET_STARTED') {
       await sendWelcome(psid);
       return; // รอให้ผู้ใช้เลือกเมนูต่อไปจาก quick reply
@@ -116,6 +120,10 @@ export async function handleEvent(event: MessagingEvent) {
 
   if (event.message && event.message.quick_reply) {
     const payload = event.message.quick_reply.payload;
+    
+    // รีเซ็ตจำนวนข้อความที่ไม่ใช่เมนูเมื่อกดเมนู
+    await resetNonMenuMessageCount(psid);
+    
     if (payload === 'CONFIRM_CART') {
       return startCheckout(psid);
     }
@@ -433,19 +441,66 @@ export async function handleEvent(event: MessagingEvent) {
 
   // fallback
   if (event.message && event.message.text) {
+    // เพิ่มจำนวนข้อความที่ไม่ใช่เมนู
+    await incrementNonMenuMessageCount(psid);
+    
+    // ตรวจสอบโหมดอัตโนมัติ
+    const autoModeEnabled = await isAutoModeEnabled(psid);
+    
     // check AI mode first
     if (await isAIEnabled(psid)) {
       const question = event.message.text.trim();
       if (question.length > 0) {
-        const answer = await getAssistantResponse(buildSystemInstructions('Basic'), [], question);
-        await callSendAPI(psid, {
-          text: answer,
-          quick_replies: [
-            { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-            { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-          ],
-        });
-        return;
+        // เพิ่มข้อความผู้ใช้ลงในประวัติ
+        await addToConversationHistory(psid, 'user', question);
+        
+        // ตรวจสอบว่าควรเปิดโหมดอัตโนมัติหรือไม่
+        if (!autoModeEnabled && session.nonMenuMessageCount >= 2) {
+          console.log(`[AutoMode] Enabling auto mode for ${psid} after ${session.nonMenuMessageCount} non-menu messages`);
+          await enableAutoModeForUser(psid);
+          
+          // ส่งข้อความเริ่มต้นโหมดอัตโนมัติ
+          const conversationHistory = await getConversationHistory(psid);
+          const initialMessage = buildAutoModeInitialMessage(conversationHistory);
+          
+          await callSendAPI(psid, {
+            text: initialMessage,
+            quick_replies: [
+              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+            ],
+          });
+          return;
+        }
+        
+        // ถ้าโหมดอัตโนมัติเปิดอยู่ ให้ส่งประวัติการสนทนาไปด้วย
+        if (autoModeEnabled) {
+          const conversationHistory = await getConversationHistory(psid);
+          const answer = await getAssistantResponse(buildSystemInstructions('Basic'), conversationHistory, question);
+          
+          // เพิ่มข้อความ AI ลงในประวัติ
+          await addToConversationHistory(psid, 'assistant', answer);
+          
+          await callSendAPI(psid, {
+            text: answer,
+            quick_replies: [
+              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+            ],
+          });
+          return;
+        } else {
+          // โหมด AI ปกติ
+          const answer = await getAssistantResponse(buildSystemInstructions('Basic'), [], question);
+          await callSendAPI(psid, {
+            text: answer,
+            quick_replies: [
+              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+            ],
+          });
+          return;
+        }
       }
     }
 

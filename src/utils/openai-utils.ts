@@ -25,7 +25,8 @@ const ONE_DAY_MS = 86_400_000;
 
 interface UserState {
   aiEnabled: boolean;
-  history: { role: string; content: string }[];
+  autoModeEnabled: boolean;
+  history: { role: string; content: string; timestamp?: Date }[];
 }
 
 const _userState = new Map<string, UserState>();
@@ -43,7 +44,11 @@ function normalizeRoleContent(role: string = 'user', content: any = '') {
 
 function _ensure(userId: string): UserState {
   if (!_userState.has(userId)) {
-    _userState.set(userId, { aiEnabled: false, history: [] });
+    _userState.set(userId, { 
+      aiEnabled: false, 
+      autoModeEnabled: false,
+      history: [] 
+    });
   }
   return _userState.get(userId)!;
 }
@@ -98,7 +103,7 @@ export async function getAssistantResponse(
   const time = now.toLocaleTimeString('th-TH');
   const userMsg = normalizeRoleContent(
     'user',
-    `[ข้อความนี้ส่งจากลูกค้าวันที่ ${date} เวลา ${time}] ${userContent}`
+    `${userContent}\n\nวันที่: ${date}\nเวลา: ${time}`
   );
   messages.push(userMsg);
 
@@ -283,6 +288,155 @@ function buildSystemInstructionsForUser(
   );
 
   return `${base}\n---------------------------\n(Additional user info)\n${userInfo}\n---------------------------`;
+}
+
+// ---------- Auto Mode Functions ----------
+// เปิดโหมดอัตโนมัติสำหรับผู้ใช้
+export async function enableAutoModeForUser(psid: string): Promise<void> {
+  const state = _ensure(psid);
+  state.autoModeEnabled = true;
+  state.aiEnabled = true;
+  
+  // อัปเดตในฐานข้อมูล
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    await MessengerUser.findOneAndUpdate(
+      { psid },
+      { 
+        autoModeEnabled: true,
+        aiEnabled: true,
+        updatedAt: new Date()
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[enableAutoModeForUser] DB error:', err);
+  }
+}
+
+// ปิดโหมดอัตโนมัติสำหรับผู้ใช้
+export async function disableAutoModeForUser(psid: string): Promise<void> {
+  const state = _ensure(psid);
+  state.autoModeEnabled = false;
+  
+  // อัปเดตในฐานข้อมูล
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    await MessengerUser.findOneAndUpdate(
+      { psid },
+      { 
+        autoModeEnabled: false,
+        updatedAt: new Date()
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[disableAutoModeForUser] DB error:', err);
+  }
+}
+
+// ตรวจสอบว่าโหมดอัตโนมัติเปิดอยู่หรือไม่
+export async function isAutoModeEnabled(psid: string): Promise<boolean> {
+  const state = _ensure(psid);
+  
+  // ตรวจสอบจากฐานข้อมูล
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    const user = await MessengerUser.findOne({ psid }).lean();
+    if (user) {
+      state.autoModeEnabled = (user as any).autoModeEnabled || false;
+      return (user as any).autoModeEnabled || false;
+    }
+  } catch (err) {
+    console.error('[isAutoModeEnabled] DB error:', err);
+  }
+  
+  return state.autoModeEnabled;
+}
+
+// เพิ่มข้อความลงในประวัติการสนทนา
+export async function addToConversationHistory(
+  psid: string, 
+  role: 'user' | 'assistant' | 'system', 
+  content: string
+): Promise<void> {
+  const state = _ensure(psid);
+  const message = { role, content, timestamp: new Date() };
+  
+  // เพิ่มใน memory
+  state.history.push({ role, content, timestamp: new Date() });
+  
+  // เก็บเฉพาะ 20 ข้อความล่าสุด
+  if (state.history.length > 20) {
+    state.history = state.history.slice(-20);
+  }
+  
+  // อัปเดตในฐานข้อมูล
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    await MessengerUser.findOneAndUpdate(
+      { psid },
+      { 
+        $push: { 
+          conversationHistory: {
+            $each: [message],
+            $slice: -20 // เก็บเฉพาะ 20 ข้อความล่าสุด
+          }
+        },
+        updatedAt: new Date()
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[addToConversationHistory] DB error:', err);
+  }
+}
+
+// ดึงประวัติการสนทนาจากฐานข้อมูล
+export async function getConversationHistory(psid: string): Promise<Array<{ role: string; content: string; timestamp?: Date }>> {
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    const user = await MessengerUser.findOne({ psid }).lean();
+    
+    if (user && (user as any).conversationHistory) {
+      // อัปเดต memory state
+      const state = _ensure(psid);
+      state.history = (user as any).conversationHistory;
+      return (user as any).conversationHistory;
+    }
+  } catch (err) {
+    console.error('[getConversationHistory] DB error:', err);
+  }
+  
+  // ถ้าไม่มีในฐานข้อมูล ใช้จาก memory
+  const state = _ensure(psid);
+  return state.history;
+}
+
+// สร้างข้อความเริ่มต้นสำหรับโหมดอัตโนมัติ
+export function buildAutoModeInitialMessage(conversationHistory: Array<{ role: string; content: string; timestamp?: Date }>): string {
+  if (conversationHistory.length === 0) {
+    return 'สวัสดีค่ะ ยินดีให้บริการค่ะ กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ';
+  }
+  
+  // สร้างข้อความสรุปจากประวัติการสนทนา
+  const recentMessages = conversationHistory.slice(-5); // 5 ข้อความล่าสุด
+  const summary = recentMessages
+    .filter(msg => msg.role === 'user')
+    .map(msg => msg.content)
+    .join('\n');
+  
+  return `สวัสดีค่ะ ยินดีให้บริการค่ะ\n\nจากที่คุยกันก่อนหน้านี้:\n${summary}\n\nกรุณาพิมพ์คำถามหรือความต้องการเพิ่มเติมได้เลยค่ะ`;
 }
 
 // ---------- Exports ----------

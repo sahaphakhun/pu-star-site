@@ -9,6 +9,7 @@ import {
   updateCustomerStats,
   prepareCustomerDataForExport,
 } from '@/utils/customerAnalytics';
+import { syncUserNameFromFirstOrder, migrateAllUserNamesFromOrders } from '@/utils/userNameSync';
 
 export async function GET(request: NextRequest) {
   try {
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const { action } = await request.json();
+    const { action, customerId, customerName } = await request.json();
 
     if (action === 'updateAllCustomerStats') {
       // ดึงลูกค้าทั้งหมด
@@ -279,6 +280,54 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `อัปเดตสถิติลูกค้าเรียบร้อยแล้ว ${updatedCount} รายการ`
       });
+    }
+
+    if (action === 'syncCustomerName') {
+      if (!customerId) {
+        return NextResponse.json({ error: 'ต้องระบุ customerId' }, { status: 400 });
+      }
+
+      try {
+        const result = await syncUserNameFromFirstOrder(customerId);
+        if (result) {
+          // ดึงข้อมูลลูกค้าที่อัปเดตแล้ว
+          const updatedCustomer = await User.findById(customerId).lean();
+          return NextResponse.json({
+            success: true,
+            message: 'ซิงค์ชื่อลูกค้าสำเร็จแล้ว',
+            customer: updatedCustomer
+          });
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'ไม่สามารถซิงค์ชื่อลูกค้าได้ (อาจไม่มีออเดอร์หรือชื่อถูกต้องแล้ว)'
+          });
+        }
+      } catch (error) {
+        console.error('Error syncing customer name:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการซิงค์ชื่อลูกค้า'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'syncAllCustomerNames') {
+      try {
+        const result = await migrateAllUserNamesFromOrders();
+        return NextResponse.json({
+          success: true,
+          message: `ซิงค์ชื่อลูกค้าสำเร็จ ${result.updated} จาก ${result.total} คน`,
+          updated: result.updated,
+          total: result.total
+        });
+      } catch (error) {
+        console.error('Error syncing all customer names:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการซิงค์ชื่อลูกค้าทั้งหมด'
+        }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ error: 'Action ไม่ถูกต้อง' }, { status: 400 });

@@ -6,6 +6,7 @@ import User from '@/models/User';
 import Order from '@/models/Order';
 import { updateSession } from '../state';
 import { sendWelcome } from './product.flow';
+import { syncUserNameFromFirstOrder } from '@/utils/userNameSync';
 
 export async function startAuth(psid: string) {
   await sendTypingOn(psid);
@@ -47,11 +48,38 @@ export async function handleOtp(psid: string, otp: string) {
   } catch {
     return callSendAPI(psid, { text: 'OTP ไม่ถูกต้อง กรุณาลองใหม่' });
   }
+  
   // create or find user
   let user = await User.findOne({ phoneNumber: mu.phoneNumber });
   if (!user) {
     user = await User.create({ name: 'ลูกค้า', phoneNumber: mu.phoneNumber, role: 'user', isVerified: true });
+    
+    // พยายามซิงค์ชื่อจากออเดอร์ที่มีอยู่แล้ว (กรณีผู้ใช้เก่า)
+    const userId = user._id.toString();
+    setTimeout(async () => {
+      try {
+        await syncUserNameFromFirstOrder(userId);
+      } catch (error) {
+        console.log('ไม่สามารถซิงค์ชื่อได้:', error);
+      }
+    }, 1000);
+  } else {
+    // สำหรับผู้ใช้ที่มีอยู่แล้ว ให้ตรวจสอบและซิงค์ชื่อหากจำเป็น
+    const userId = user._id.toString();
+    setTimeout(async () => {
+      try {
+        await syncUserNameFromFirstOrder(userId);
+      } catch (error) {
+        console.log('ไม่สามารถซิงค์ชื่อได้:', error);
+      }
+    }, 1000);
   }
+  
+  // ตรวจสอบว่า user ถูกสร้างหรือค้นพบสำเร็จ
+  if (!user) {
+    return callSendAPI(psid, { text: 'เกิดข้อผิดพลาดในการสร้างผู้ใช้ กรุณาลองใหม่' });
+  }
+  
   mu.userId = user._id;
   mu.otpToken = undefined;
   mu.otpExpire = undefined;
@@ -64,4 +92,4 @@ export async function handleOtp(psid: string, otp: string) {
   
   // รีเซ็ต session
   await updateSession(psid, { step: 'welcome' });
-} 
+}

@@ -15,6 +15,8 @@ export interface ISession extends Document {
   step: string;
   cart: CartItem[];
   tempData?: Record<string, unknown>;
+  nonMenuMessageCount: number; // จำนวนครั้งที่ส่งข้อความโดยไม่กดเมนู
+  lastMessageTime: Date; // เวลาที่ส่งข้อความล่าสุด
   updatedAt: Date;
 }
 
@@ -33,6 +35,8 @@ const SessionSchema = new Schema<ISession>({
   step: { type: String, default: 'browse' },
   cart: { type: [CartItemSchema], default: [] },
   tempData: { type: Object },
+  nonMenuMessageCount: { type: Number, default: 0 }, // เริ่มต้นที่ 0
+  lastMessageTime: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 

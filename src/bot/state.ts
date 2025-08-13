@@ -17,6 +17,8 @@ export interface Session {
   step: string;
   cart: CartItem[];
   tempData?: Record<string, unknown>;
+  nonMenuMessageCount: number; // จำนวนครั้งที่ส่งข้อความโดยไม่กดเมนู
+  lastMessageTime: Date; // เวลาที่ส่งข้อความล่าสุด
 }
 
 // Utility: แปลงจากเอกสาร Mongoose เป็น Session plain object
@@ -25,6 +27,8 @@ function docToSession(doc: ISession): Session {
     step: doc.step,
     cart: (doc.cart as unknown as CartItem[]) || [],
     tempData: doc.tempData || {},
+    nonMenuMessageCount: doc.nonMenuMessageCount || 0,
+    lastMessageTime: doc.lastMessageTime || new Date(),
   };
 }
 
@@ -33,7 +37,13 @@ export async function getSession(psid: string): Promise<Session> {
   let doc = await SessionModel.findOne({ psid }).lean<ISession>();
   if (!doc) {
     // create default session lazily (do not wait for write)
-    doc = await SessionModel.create({ psid, step: 'browse', cart: [] }) as unknown as ISession;
+    doc = await SessionModel.create({ 
+      psid, 
+      step: 'browse', 
+      cart: [],
+      nonMenuMessageCount: 0,
+      lastMessageTime: new Date()
+    }) as unknown as ISession;
   }
   return docToSession(doc);
 }
@@ -43,6 +53,34 @@ export async function updateSession(psid: string, partial: Partial<Session>): Pr
   await SessionModel.findOneAndUpdate(
     { psid },
     { ...partial, updatedAt: new Date() },
+    { upsert: true }
+  );
+}
+
+// เพิ่มฟังก์ชันสำหรับอัปเดตจำนวนข้อความที่ไม่ใช่เมนู
+export async function incrementNonMenuMessageCount(psid: string): Promise<void> {
+  await connectDB();
+  await SessionModel.findOneAndUpdate(
+    { psid },
+    { 
+      $inc: { nonMenuMessageCount: 1 },
+      lastMessageTime: new Date(),
+      updatedAt: new Date() 
+    },
+    { upsert: true }
+  );
+}
+
+// รีเซ็ตจำนวนข้อความที่ไม่ใช่เมนู (เมื่อกดเมนู)
+export async function resetNonMenuMessageCount(psid: string): Promise<void> {
+  await connectDB();
+  await SessionModel.findOneAndUpdate(
+    { psid },
+    { 
+      nonMenuMessageCount: 0,
+      lastMessageTime: new Date(),
+      updatedAt: new Date() 
+    },
     { upsert: true }
   );
 }

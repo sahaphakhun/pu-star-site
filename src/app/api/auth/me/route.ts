@@ -4,6 +4,7 @@ import User from '@/models/User';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import AdminPhone from '@/models/AdminPhone';
+import { syncUserNameFromFirstOrder } from '@/utils/userNameSync';
 
 interface DecodedToken {
   userId: string;
@@ -61,6 +62,15 @@ export async function GET() {
         user.role = 'admin';
         await user.save();
       }
+
+      // ซิงค์ชื่อจากออเดอร์หากจำเป็น (ทำงานแบบ async ไม่รอผลลัพธ์)
+      setTimeout(async () => {
+        try {
+          await syncUserNameFromFirstOrder(user._id.toString());
+        } catch (error) {
+          console.log('ไม่สามารถซิงค์ชื่อได้:', error);
+        }
+      }, 1000);
 
       return NextResponse.json({
         success: true,
@@ -132,7 +142,9 @@ export async function PATCH(req: Request) {
       });
     } else if (action === 'add') {
       // เพิ่มที่อยู่ใหม่
-      user.addresses = user.addresses || [];
+      if (!user.addresses) {
+        user.addresses = [];
+      }
       if (address.isDefault) {
         user.addresses.forEach((a: any) => (a.isDefault = false));
       }
@@ -141,7 +153,10 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true, addresses: user.addresses });
     } else if (action === 'edit') {
       // แก้ไขที่อยู่เดิม
-      user.addresses = (user.addresses || []).map((a: any) => {
+      if (!user.addresses) {
+        user.addresses = [];
+      }
+      user.addresses = user.addresses.map((a: any) => {
         if (a._id?.toString() === addressId || a._id === addressId) {
           if (address.isDefault) {
             user.addresses.forEach((b: any) => (b.isDefault = false));
@@ -154,7 +169,10 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true, addresses: user.addresses });
     } else if (action === 'delete') {
       // ลบที่อยู่
-      user.addresses = (user.addresses || []).filter((a: any) => (a._id?.toString() || a._id) !== addressId);
+      if (!user.addresses) {
+        user.addresses = [];
+      }
+      user.addresses = user.addresses.filter((a: any) => (a._id?.toString() || a._id) !== addressId);
       await user.save();
       return NextResponse.json({ success: true, addresses: user.addresses });
     } else if (action === 'updateTaxInvoice') {
