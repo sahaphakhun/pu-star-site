@@ -264,6 +264,91 @@ async function verifyDataIntegrity() {
 }
 
 /**
+ * ขั้นตอนที่ 4: ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่
+ */
+async function findOrphanedOrdersAndCreateUsers() {
+  console.log('\n🔍 ขั้นตอนที่ 4: ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่');
+  
+  // ดึงออเดอร์ทั้งหมดที่ไม่มี userId
+  const orphanedOrders = await Order.find({
+    userId: { $exists: false }
+  }).sort({ createdAt: 1 }).lean();
+
+  console.log(`พบออเดอร์ที่ไม่มี userId: ${orphanedOrders.length} รายการ`);
+
+  if (orphanedOrders.length === 0) {
+    console.log('✅ ไม่พบออเดอร์ที่ไม่มีผู้ใช้');
+    return { createdUsers: 0, syncedOrders: 0, skippedOrders: 0 };
+  }
+
+  let createdUsers = 0;
+  let syncedOrders = 0;
+  let skippedOrders = 0;
+  const processedPhones = new Set();
+
+  for (const order of orphanedOrders) {
+    try {
+      const customerPhone = order.customerPhone;
+      
+      // ข้ามหากเบอร์โทรซ้ำหรือไม่มีเบอร์โทร
+      if (!customerPhone || processedPhones.has(customerPhone)) {
+        skippedOrders++;
+        continue;
+      }
+
+      // ตรวจสอบว่ามีผู้ใช้ที่มีเบอร์โทรนี้อยู่แล้วหรือไม่
+      const existingUser = await User.findOne({
+        phoneNumber: customerPhone
+      }).lean();
+
+      if (existingUser) {
+        // มีผู้ใช้อยู่แล้ว ให้ซิงค์ออเดอร์
+        await Order.findByIdAndUpdate(order._id, {
+          $set: { userId: existingUser._id }
+        });
+        syncedOrders++;
+        console.log(`📱 ซิงค์ออเดอร์ ${order._id} ให้ผู้ใช้ ${existingUser.phoneNumber}`);
+      } else {
+        // สร้างผู้ใช้ใหม่
+        const newUser = new User({
+          name: order.customerName || 'ลูกค้า',
+          phoneNumber: customerPhone,
+          email: order.customerEmail || '',
+          role: 'user',
+          customerType: 'new',
+          totalOrders: 0,
+          totalSpent: 0,
+          averageOrderValue: 0,
+          lastOrderDate: null,
+          createdAt: order.createdAt,
+          updatedAt: new Date()
+        });
+
+        const savedUser = await newUser.save();
+        
+        // อัปเดตออเดอร์ให้มี userId
+        await Order.findByIdAndUpdate(order._id, {
+          $set: { userId: savedUser._id }
+        });
+
+        createdUsers++;
+        syncedOrders++;
+        processedPhones.add(customerPhone);
+        
+        console.log(`👤 สร้างผู้ใช้ใหม่: ${savedUser.phoneNumber} (${savedUser.name})`);
+      }
+
+    } catch (error) {
+      console.error(`❌ ไม่สามารถประมวลผลออเดอร์ ${order._id}:`, error);
+      skippedOrders++;
+    }
+  }
+
+  console.log(`✅ สร้างผู้ใช้ ${createdUsers} คน, ซิงค์ออเดอร์ ${syncedOrders} รายการ, ข้าม ${skippedOrders} รายการ`);
+  return { createdUsers, syncedOrders, skippedOrders };
+}
+
+/**
  * ฟังก์ชันหลัก
  */
 async function main() {
@@ -282,11 +367,22 @@ async function main() {
     // ขั้นตอนที่ 3: ตรวจสอบความถูกต้อง
     const verifyResult = await verifyDataIntegrity();
 
+    // ขั้นตอนที่ 4: ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่
+    const orphanedResult = await findOrphanedOrdersAndCreateUsers();
+
+    // ขั้นตอนที่ 5: อัปเดตสถิติอีกครั้งหลังสร้างผู้ใช้ใหม่
+    if (orphanedResult.createdUsers > 0 || orphanedResult.syncedOrders > 0) {
+      console.log('\n📊 อัปเดตสถิติอีกครั้งหลังสร้างผู้ใช้ใหม่...');
+      await updateAllCustomerStatsFromOrders();
+    }
+
     console.log('\n🎉 สรุปผลการแก้ไขปัญหา');
     console.log('=' .repeat(50));
     console.log(`📱 ซิงค์ออเดอร์: ${syncResult.totalSynced} รายการ`);
     console.log(`🔧 แก้ไขออเดอร์: ${syncResult.totalCorrected} รายการ`);
     console.log(`📊 อัปเดตสถิติ: ${updateResult.updatedCount} คน`);
+    console.log(`👤 สร้างผู้ใช้ใหม่: ${orphanedResult.createdUsers} คน`);
+    console.log(`📱 ซิงค์ออเดอร์เพิ่มเติม: ${orphanedResult.syncedOrders} รายการ`);
     console.log(`🔍 พบปัญหา: ${verifyResult.issuesFound} รายการ`);
     console.log(`📦 ออเดอร์ทั้งหมด: ${verifyResult.totalOrdersInDB} รายการ`);
     

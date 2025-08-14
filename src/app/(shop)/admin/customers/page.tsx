@@ -231,29 +231,7 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
-  const handleUpdateAllCustomerStats = async () => {
-    try {
-      toast.loading('กำลังอัปเดตสถิติลูกค้าทั้งหมด...', { id: 'updateStats' });
-      
-      const response = await fetch('/api/admin/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'updateAllCustomerStats' }),
-        credentials: 'include'
-      });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success(data.message, { id: 'updateStats' });
-        fetchCustomers(); // รีเฟรชข้อมูล
-      } else {
-        toast.error(data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถิติ', { id: 'updateStats' });
-      }
-    } catch (error) {
-      console.error('Error updating customer stats:', error);
-      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'updateStats' });
-    }
-  };
 
   const handleUpdateAllCustomerStatsFromOrders = async () => {
     try {
@@ -351,29 +329,7 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
-  const handleSyncAllOrdersToUsers = async () => {
-    try {
-      toast.loading('กำลังซิงค์ออเดอร์ทั้งหมด...', { id: 'syncAllOrders' });
-      
-      const response = await fetch('/api/admin/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'syncAllOrdersToUsers' }),
-        credentials: 'include'
-      });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success(data.message, { id: 'syncAllOrders' });
-        fetchCustomers(); // รีเฟรชข้อมูล
-      } else {
-        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์ทั้งหมด', { id: 'syncAllOrders' });
-      }
-    } catch (error) {
-      console.error('Error syncing all orders to users:', error);
-      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'syncAllOrders' });
-    }
-  };
 
   const handleSyncAllOrdersToUsersComprehensive = async () => {
     try {
@@ -396,6 +352,63 @@ const CustomerManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error syncing all orders to users comprehensively:', error);
       toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'syncAllOrdersComprehensive' });
+    }
+  };
+
+  const handleFindOrphanedOrdersAndCreateUsers = async () => {
+    try {
+      toast.loading('กำลังค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่...', { id: 'findOrphanedOrders' });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'findOrphanedOrdersAndCreateUsers' }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: 'findOrphanedOrders' });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการค้นหาออเดอร์ที่ไม่มีผู้ใช้', { id: 'findOrphanedOrders' });
+      }
+    } catch (error) {
+      console.error('Error finding orphaned orders and creating users:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'findOrphanedOrders' });
+    }
+  };
+
+  const handleReportOrphanedOrders = async () => {
+    try {
+      toast.loading('กำลังตรวจสอบออเดอร์ที่ไม่มีผู้ใช้...', { id: 'reportOrphanedOrders' });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reportOrphanedOrders' }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: 'reportOrphanedOrders' });
+        // แสดงรายละเอียดใน console หรือ alert
+        if (data.data.summary) {
+          const summary = data.data.summary;
+          console.log('📋 รายงานออเดอร์ที่ไม่มีผู้ใช้:', {
+            totalOrphaned: summary.totalOrphaned,
+            uniquePhones: summary.uniquePhones,
+            totalAmount: summary.totalAmount,
+            dateRange: summary.dateRange
+          });
+        }
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการรายงานออเดอร์ที่ไม่มีผู้ใช้', { id: 'reportOrphanedOrders' });
+      }
+    } catch (error) {
+      console.error('Error reporting orphaned orders:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'reportOrphanedOrders' });
     }
   };
 
@@ -480,17 +493,7 @@ const CustomerManagementPage: React.FC = () => {
           <p className="text-gray-600">ภาพรวมและจัดการข้อมูลลูกค้าทั้งหมด</p>
         </div>
         <div className="flex space-x-3">
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleUpdateAllCustomerStats}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              อัปเดตสถิติลูกค้าทั้งหมด
-            </button>
-          )}
+
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
             <button
               onClick={handleUpdateAllCustomerStatsFromOrders}
@@ -502,17 +505,7 @@ const CustomerManagementPage: React.FC = () => {
               อัปเดตสถิติจากออเดอร์จริงทั้งหมด
             </button>
           )}
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleSyncAllOrdersToUsers}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors ml-2"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-              ซิงค์ออเดอร์ทั้งหมด
-            </button>
-          )}
+
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
             <button
               onClick={handleSyncAllOrdersToUsersComprehensive}
@@ -523,6 +516,30 @@ const CustomerManagementPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               ซิงค์ออเดอร์แบบครอบคลุม
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleFindOrphanedOrdersAndCreateUsers}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors ml-2"
+              title="ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              สร้างผู้ใช้จากออเดอร์
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleReportOrphanedOrders}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ml-2"
+              title="ตรวจสอบและรายงานออเดอร์ที่ไม่มีผู้ใช้"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              รายงานออเดอร์ที่ไม่มีผู้ใช้
             </button>
           )}
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (

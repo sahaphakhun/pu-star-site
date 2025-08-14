@@ -9,12 +9,12 @@ import {
   updateCustomerStats,
   prepareCustomerDataForExport,
   updateCustomerStatsAutomatically,
-  updateAllCustomerStats,
   forceUpdateAllCustomerStatsFromOrders,
   syncOrdersToUser,
-  syncAllOrdersToUsers,
   updateCustomerStatsFromOrders,
   syncAllOrdersToUsersComprehensive,
+  findOrphanedOrdersAndCreateUsers,
+  reportOrphanedOrders,
 } from '@/utils/customerAnalytics';
 import { syncUserNameFromFirstOrder, migrateAllUserNamesFromOrders } from '@/utils/userNameSync';
 
@@ -319,25 +319,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, customerId, customerName, userIds } = body;
 
-    if (action === 'updateAllCustomerStats') {
-      try {
-        console.log('Starting bulk customer stats update...');
-        const result = await updateAllCustomerStats();
-        
-        return NextResponse.json({
-          success: true,
-          message: `อัปเดตสถิติลูกค้าเรียบร้อยแล้ว ${result.updated} จาก ${result.total} คน`,
-          data: result
-        });
-      } catch (error) {
-        console.error('Error updating all customer stats:', error);
-        return NextResponse.json({
-          success: false,
-          message: 'เกิดข้อผิดพลาดในการอัปเดตสถิติลูกค้าทั้งหมด',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
-      }
-    }
+
 
     if (action === 'updateAllCustomerStatsFromOrders') {
       try {
@@ -462,25 +444,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (action === 'syncAllOrdersToUsers') {
-      try {
-        console.log('Starting bulk order sync...');
-        const result = await syncAllOrdersToUsers();
-        
-        return NextResponse.json({
-          success: true,
-          message: `ซิงค์ออเดอร์สำเร็จ ${result.syncedOrders} รายการ จาก ${result.totalUsers} คน`,
-          data: result
-        });
-      } catch (error) {
-        console.error('Error syncing all orders to users:', error);
-        return NextResponse.json({
-          success: false,
-          message: 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์ทั้งหมด',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
-      }
-    }
+
 
     if (action === 'syncAllOrdersToUsersComprehensive') {
       try {
@@ -549,6 +513,46 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: false,
           message: 'เกิดข้อผิดพลาดในการดึงข้อมูลลูกค้า'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'findOrphanedOrdersAndCreateUsers') {
+      try {
+        console.log('Starting orphaned orders search and user creation...');
+        const result = await findOrphanedOrdersAndCreateUsers();
+        
+        return NextResponse.json({
+          success: true,
+          message: result.message,
+          data: result
+        });
+      } catch (error) {
+        console.error('Error finding orphaned orders and creating users:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการค้นหาออเดอร์ที่ไม่มีผู้ใช้',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'reportOrphanedOrders') {
+      try {
+        console.log('Starting orphaned orders report...');
+        const result = await reportOrphanedOrders();
+        
+        return NextResponse.json({
+          success: true,
+          message: result.message,
+          data: result
+        });
+      } catch (error) {
+        console.error('Error reporting orphaned orders:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการรายงานออเดอร์ที่ไม่มีผู้ใช้',
+          error: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
       }
     }

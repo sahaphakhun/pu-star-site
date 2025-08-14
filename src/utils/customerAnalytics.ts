@@ -362,52 +362,7 @@ export async function getCustomerStatsFromOrders(userId: string) {
   }
 }
 
-/**
- * อัปเดตสถิติลูกค้าทั้งหมดในระบบ (ใช้เป็น cron job หรือ admin function)
- */
-export async function updateAllCustomerStats() {
-  try {
-    const { default: User } = await import('@/models/User');
-    const { default: Order } = await import('@/models/Order');
 
-    console.log('Starting bulk customer stats update...');
-    
-    // ดึงลูกค้าทั้งหมด
-    const customers = await User.find({ role: 'user' }).select('_id').lean();
-    console.log(`Found ${customers.length} customers to update`);
-
-    let updatedCount = 0;
-    let errorCount = 0;
-
-    for (const customer of customers) {
-      try {
-        await updateCustomerStatsFromOrders(customer._id.toString());
-        updatedCount++;
-        
-        // แสดงความคืบหน้าทุก 100 รายการ
-        if (updatedCount % 100 === 0) {
-          console.log(`Updated ${updatedCount}/${customers.length} customers...`);
-        }
-      } catch (error) {
-        console.error(`Failed to update customer ${customer._id}:`, error);
-        errorCount++;
-      }
-    }
-
-    console.log(`Customer stats update completed: ${updatedCount} successful, ${errorCount} failed`);
-    
-    return {
-      success: true,
-      total: customers.length,
-      updated: updatedCount,
-      failed: errorCount
-    };
-
-  } catch (error) {
-    console.error('Error in bulk customer stats update:', error);
-    throw error;
-  }
-}
 
 /**
  * กรองลูกค้าตามเงื่อนไข
@@ -695,61 +650,7 @@ export async function syncOrdersToUser(userId: string, userPhoneNumber: string) 
   }
 }
 
-/**
- * ซิงค์ออเดอร์ทั้งหมดในระบบให้ตรงกับผู้ใช้
- */
-export async function syncAllOrdersToUsers() {
-  try {
-    const { default: User } = await import('@/models/User');
-    const { default: Order } = await import('@/models/Order');
-
-    console.log('Starting bulk order sync...');
-    
-    // ดึงผู้ใช้ทั้งหมด
-    const users = await User.find({ role: 'user' }).select('_id phoneNumber').lean();
-    console.log(`Found ${users.length} users to sync orders`);
-
-    let totalSynced = 0;
-    let totalDuplicates = 0;
-    let errorCount = 0;
-
-    for (const user of users) {
-      try {
-        const result = await syncOrdersToUser(user._id.toString(), user.phoneNumber);
-        totalSynced += result.syncedOrders || 0;
-        totalDuplicates += result.duplicateOrders || 0;
-        
-        if ((result.syncedOrders || 0) > 0) {
-          console.log(`User ${user.phoneNumber}: synced ${result.syncedOrders} orders`);
-        }
-        
-      } catch (error) {
-        console.error(`Failed to sync orders for user ${user._id}:`, error);
-        errorCount++;
-      }
-    }
-
-    // อัปเดตสถิติลูกค้าทั้งหมดหลังซิงค์เสร็จ
-    if (totalSynced > 0) {
-      console.log('Updating all customer stats after bulk sync...');
-      await forceUpdateAllCustomerStatsFromOrders();
-    }
-
-    console.log(`Order sync completed: ${totalSynced} synced, ${totalDuplicates} duplicates, ${errorCount} errors`);
-    
-    return {
-      success: true,
-      totalUsers: users.length,
-      syncedOrders: totalSynced,
-      duplicateOrders: totalDuplicates,
-      errors: errorCount
-    };
-
-  } catch (error) {
-    console.error('Error in bulk order sync:', error);
-    throw error;
-  }
-} 
+ 
 
 /**
  * ซิงค์ออเดอร์ทั้งหมดในระบบให้ตรงกับผู้ใช้ (แบบครอบคลุม)
@@ -855,6 +756,192 @@ export async function syncAllOrdersToUsersComprehensive() {
 
   } catch (error) {
     console.error('Error in comprehensive bulk order sync:', error);
+    throw error;
+  }
+} 
+
+/**
+ * ดึงออเดอร์ทั้งหมดและหาผู้ใช้ที่สั่งซื้อ (มองกลับกัน)
+ * ฟังก์ชันนี้จะช่วยค้นหาออเดอร์ที่ยังไม่มี userId และสร้างผู้ใช้ใหม่
+ */
+export async function findOrphanedOrdersAndCreateUsers() {
+  try {
+    const { default: User } = await import('@/models/User');
+    const { default: Order } = await import('@/models/Order');
+
+    console.log('🔍 เริ่มต้นค้นหาออเดอร์ที่ไม่มีผู้ใช้...');
+    
+    // ดึงออเดอร์ทั้งหมดที่ไม่มี userId
+    const orphanedOrders = await Order.find({
+      userId: { $exists: false }
+    }).sort({ createdAt: 1 }).lean();
+
+    console.log(`พบออเดอร์ที่ไม่มี userId: ${orphanedOrders.length} รายการ`);
+
+    if (orphanedOrders.length === 0) {
+      return {
+        success: true,
+        message: 'ไม่พบออเดอร์ที่ไม่มีผู้ใช้',
+        createdUsers: 0,
+        syncedOrders: 0,
+        skippedOrders: 0
+      };
+    }
+
+    let createdUsers = 0;
+    let syncedOrders = 0;
+    let skippedOrders = 0;
+    const processedPhones = new Set();
+
+    for (const order of orphanedOrders) {
+      try {
+        const customerPhone = order.customerPhone;
+        
+        // ข้ามหากเบอร์โทรซ้ำหรือไม่มีเบอร์โทร
+        if (!customerPhone || processedPhones.has(customerPhone)) {
+          skippedOrders++;
+          continue;
+        }
+
+        // ตรวจสอบว่ามีผู้ใช้ที่มีเบอร์โทรนี้อยู่แล้วหรือไม่
+        const existingUser = await User.findOne({
+          phoneNumber: customerPhone
+        }).lean();
+
+        if (existingUser) {
+          // มีผู้ใช้อยู่แล้ว ให้ซิงค์ออเดอร์
+          await Order.findByIdAndUpdate(order._id, {
+            $set: { userId: existingUser._id }
+          });
+          syncedOrders++;
+          console.log(`📱 ซิงค์ออเดอร์ ${order._id} ให้ผู้ใช้ ${existingUser.phoneNumber}`);
+        } else {
+          // สร้างผู้ใช้ใหม่
+          const newUser = new User({
+            name: order.customerName || 'ลูกค้า',
+            phoneNumber: customerPhone,
+            email: order.customerEmail || '',
+            role: 'user',
+            customerType: 'new',
+            totalOrders: 0,
+            totalSpent: 0,
+            averageOrderValue: 0,
+            lastOrderDate: null,
+            createdAt: order.createdAt,
+            updatedAt: new Date()
+          });
+
+          const savedUser = await newUser.save();
+          
+          // อัปเดตออเดอร์ให้มี userId
+          await Order.findByIdAndUpdate(order._id, {
+            $set: { userId: savedUser._id }
+          });
+
+          createdUsers++;
+          syncedOrders++;
+          processedPhones.add(customerPhone);
+          
+          console.log(`👤 สร้างผู้ใช้ใหม่: ${savedUser.phoneNumber} (${savedUser.name})`);
+        }
+
+      } catch (error) {
+        console.error(`❌ ไม่สามารถประมวลผลออเดอร์ ${order._id}:`, error);
+        skippedOrders++;
+      }
+    }
+
+    // อัปเดตสถิติลูกค้าทั้งหมดหลังสร้างผู้ใช้ใหม่
+    if (createdUsers > 0 || syncedOrders > 0) {
+      console.log('📊 อัปเดตสถิติลูกค้าทั้งหมด...');
+      await forceUpdateAllCustomerStatsFromOrders();
+    }
+
+    console.log(`✅ เสร็จสิ้น: สร้างผู้ใช้ ${createdUsers} คน, ซิงค์ออเดอร์ ${syncedOrders} รายการ, ข้าม ${skippedOrders} รายการ`);
+
+    return {
+      success: true,
+      message: `สร้างผู้ใช้ ${createdUsers} คน, ซิงค์ออเดอร์ ${syncedOrders} รายการ`,
+      createdUsers,
+      syncedOrders,
+      skippedOrders,
+      totalOrphanedOrders: orphanedOrders.length
+    };
+
+  } catch (error) {
+    console.error('❌ เกิดข้อผิดพลาดในการค้นหาออเดอร์ที่ไม่มีผู้ใช้:', error);
+    throw error;
+  }
+}
+
+/**
+ * ตรวจสอบและรายงานออเดอร์ที่ไม่มีผู้ใช้
+ */
+export async function reportOrphanedOrders() {
+  try {
+    const { default: Order } = await import('@/models/Order');
+
+    console.log('📋 ตรวจสอบออเดอร์ที่ไม่มีผู้ใช้...');
+    
+    // ดึงออเดอร์ทั้งหมดที่ไม่มี userId
+    const orphanedOrders = await Order.find({
+      userId: { $exists: false }
+    }).sort({ createdAt: 1 }).lean();
+
+    console.log(`พบออเดอร์ที่ไม่มี userId: ${orphanedOrders.length} รายการ`);
+
+    if (orphanedOrders.length === 0) {
+      return {
+        success: true,
+        message: 'ไม่พบออเดอร์ที่ไม่มีผู้ใช้',
+        orphanedOrders: [],
+        summary: {
+          totalOrphaned: 0,
+          uniquePhones: 0,
+          totalAmount: 0,
+          dateRange: { earliest: null, latest: null }
+        }
+      };
+    }
+
+    // สรุปข้อมูล
+    const uniquePhones = new Set(orphanedOrders.map(o => o.customerPhone)).size;
+    const totalAmount = orphanedOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const dates = orphanedOrders.map(o => new Date(o.createdAt)).sort();
+    
+    const summary = {
+      totalOrphaned: orphanedOrders.length,
+      uniquePhones,
+      totalAmount,
+      dateRange: {
+        earliest: dates[0],
+        latest: dates[dates.length - 1]
+      }
+    };
+
+    // แสดงรายละเอียดออเดอร์
+    console.log('\n📋 รายละเอียดออเดอร์ที่ไม่มีผู้ใช้:');
+    console.log(`- จำนวนออเดอร์: ${summary.totalOrphaned}`);
+    console.log(`- เบอร์โทรที่ไม่ซ้ำ: ${summary.uniquePhones}`);
+    console.log(`- ยอดรวม: ฿${summary.totalAmount.toLocaleString()}`);
+    console.log(`- ช่วงวันที่: ${summary.dateRange.earliest?.toLocaleDateString()} - ${summary.dateRange.latest?.toLocaleDateString()}`);
+
+    // แสดงตัวอย่างออเดอร์
+    const sampleOrders = orphanedOrders.slice(0, 10);
+    console.log('\n📋 ตัวอย่างออเดอร์ (10 รายการแรก):');
+    sampleOrders.forEach((order, index) => {
+      console.log(`${index + 1}. ${order.customerName || 'ไม่มีชื่อ'} - ${order.customerPhone} - ฿${order.totalAmount} - ${new Date(order.createdAt).toLocaleDateString()}`);
+    });
+
+    return {
+      success: true,
+      message: `พบออเดอร์ที่ไม่มีผู้ใช้ ${orphanedOrders.length} รายการ`,
+      orphanedOrders: orphanedOrders.slice(0, 100), // ส่งกลับแค่ 100 รายการแรก
+      summary
+    };
+
+  } catch (error) {
+    console.error('❌ เกิดข้อผิดพลาดในการตรวจสอบออเดอร์ที่ไม่มีผู้ใช้:', error);
     throw error;
   }
 } 
