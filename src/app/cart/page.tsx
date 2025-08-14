@@ -110,20 +110,27 @@ export default function CartPage() {
   };
 
   const handleSubmitOrder = async () => {
-    if (!orderForm.customerAddress.name.trim()) {
-      alert('กรุณากรอกชื่อ');
+    // ตรวจสอบข้อมูลที่จำเป็นให้เข้มงวดขึ้น
+    if (!orderForm.customerAddress.name || !orderForm.customerAddress.name.trim()) {
+      alert('กรุณากรอกชื่อ-นามสกุล');
       return;
     }
-    if (!orderForm.customerAddress.phone.trim()) {
+    if (!orderForm.customerAddress.phone || !orderForm.customerAddress.phone.trim()) {
       alert('กรุณากรอกเบอร์โทรศัพท์');
       return;
     }
-    if (!orderForm.customerAddress.province.trim()) {
+    if (!orderForm.customerAddress.province || !orderForm.customerAddress.province.trim()) {
       alert('กรุณากรอกจังหวัด');
       return;
     }
-    if (!orderForm.customerAddress.houseNumber.trim()) {
+    if (!orderForm.customerAddress.houseNumber || !orderForm.customerAddress.houseNumber.trim()) {
       alert('กรุณากรอกบ้านเลขที่');
+      return;
+    }
+    
+    // ตรวจสอบว่าชื่อไม่ใช่ค่าเริ่มต้นที่ไม่เหมาะสม
+    if (orderForm.customerAddress.name.trim() === 'ลูกค้า' || orderForm.customerAddress.name.trim() === '') {
+      alert('กรุณากรอกชื่อจริง ไม่ใช่ชื่อทั่วไป');
       return;
     }
 
@@ -144,7 +151,16 @@ export default function CartPage() {
 
     // Validate address - check if essential fields are filled
     const isAddressValid = (address: Address): boolean => {
-      return !!(address.name && address.phone && address.province && address.houseNumber);
+      return !!(
+        address.name && 
+        address.name.trim() && 
+        address.phone && 
+        address.phone.trim() && 
+        address.province && 
+        address.province.trim() && 
+        address.houseNumber && 
+        address.houseNumber.trim()
+      );
     };
 
     if (!isAddressValid(orderForm.customerAddress)) {

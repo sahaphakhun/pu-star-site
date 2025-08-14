@@ -105,7 +105,16 @@ const ShopPage = () => {
 
   // Helper function to validate address object
   const isAddressValid = (address: Address): boolean => {
-    return !!(address.name && address.phone && address.province && address.houseNumber);
+    return !!(
+      address.name && 
+      address.name.trim() && 
+      address.phone && 
+      address.phone.trim() && 
+      address.province && 
+      address.province.trim() && 
+      address.houseNumber && 
+      address.houseNumber.trim()
+    );
   };
 
   // Handle URL search parameters
@@ -119,13 +128,18 @@ const ShopPage = () => {
 
   useEffect(() => {
     if (isLoggedIn && user) {
-      setCustomerName(user.name);
-      setCustomerPhone(user.phoneNumber);
+      // ตรวจสอบว่าชื่อผู้ใช้ไม่ใช่ค่าที่ไม่เหมาะสม
+      const userName = user.name && user.name.trim() && user.name !== 'ลูกค้า' ? user.name : '';
+      const userPhone = user.phoneNumber && user.phoneNumber.trim() ? user.phoneNumber : '';
+      
+      setCustomerName(userName);
+      setCustomerPhone(userPhone);
+      
       // Sync with address form
       setCustomerAddress(prev => ({
         ...prev,
-        name: user.name || '',
-        phone: user.phoneNumber || ''
+        name: userName,
+        phone: userPhone
       }));
     }
   }, [isLoggedIn, user]);
@@ -148,8 +162,8 @@ const ShopPage = () => {
               setCustomerAddress({
                 _id: def._id,
                 label: def.label || '',
-                name: customerName,
-                phone: customerPhone,
+                name: customerName && customerName.trim() && customerName !== 'ลูกค้า' ? customerName : '',
+                phone: customerPhone && customerPhone.trim() ? customerPhone : '',
                 province: '',
                 district: '',
                 subDistrict: '',
@@ -161,7 +175,15 @@ const ShopPage = () => {
                 isDefault: def.isDefault || false
               });
             } else {
-              setCustomerAddress(def.address || customerAddress);
+              // ตรวจสอบว่าข้อมูลที่อยู่ไม่ใช่ค่าที่ไม่เหมาะสม
+              const addressName = def.address?.name && def.address.name.trim() && def.address.name !== 'ลูกค้า' ? def.address.name : '';
+              const addressPhone = def.address?.phone && def.address.phone.trim() ? def.address.phone : '';
+              
+              setCustomerAddress({
+                ...def.address,
+                name: addressName,
+                phone: addressPhone
+              });
             }
             setShowNewAddress(false);
           }
@@ -201,7 +223,15 @@ const ShopPage = () => {
             isDefault: addr.isDefault || false
           });
         } else {
-          setCustomerAddress(addr.address || customerAddress);
+          // ตรวจสอบว่าข้อมูลที่อยู่ไม่ใช่ค่าที่ไม่เหมาะสม
+          const addressName = addr.address?.name && addr.address.name.trim() && addr.address.name !== 'ลูกค้า' ? addr.address.name : '';
+          const addressPhone = addr.address?.phone && addr.address.phone.trim() ? addr.address.phone : '';
+          
+          setCustomerAddress({
+            ...addr.address,
+            name: addressName,
+            phone: addressPhone
+          });
         }
         setShowNewAddress(false);
       }
@@ -789,10 +819,44 @@ const ShopPage = () => {
       return;
     }
     
-    if (!customerName || !customerPhone || !customerAddress) {
-      toast.error('กรุณากรอกชื่อ เบอร์โทรศัพท์ และที่อยู่');
+    // ตรวจสอบข้อมูลที่จำเป็นให้เข้มงวดขึ้น
+    if (!customerName || !customerName.trim()) {
+      toast.error('กรุณากรอกชื่อ-นามสกุล');
       return;
     }
+    if (!customerPhone || !customerPhone.trim()) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์');
+      return;
+    }
+    if (!customerAddress) {
+      toast.error('กรุณากรอกที่อยู่');
+      return;
+    }
+    
+    // ตรวจสอบข้อมูลที่อยู่ให้ครบถ้วน
+    if (!customerAddress.name || !customerAddress.name.trim()) {
+      toast.error('กรุณากรอกชื่อ-นามสกุลในที่อยู่');
+      return;
+    }
+    if (!customerAddress.phone || !customerAddress.phone.trim()) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์ในที่อยู่');
+      return;
+    }
+    if (!customerAddress.province || !customerAddress.province.trim()) {
+      toast.error('กรุณากรอกจังหวัด');
+      return;
+    }
+    if (!customerAddress.houseNumber || !customerAddress.houseNumber.trim()) {
+      toast.error('กรุณากรอกบ้านเลขที่');
+      return;
+    }
+    
+    // ตรวจสอบว่าชื่อไม่ใช่ค่าเริ่มต้นที่ไม่เหมาะสม
+    if (customerName.trim() === 'ลูกค้า' || customerName.trim() === '') {
+      toast.error('กรุณากรอกชื่อจริง ไม่ใช่ชื่อทั่วไป');
+      return;
+    }
+    
     if (paymentMethod === 'transfer' && !slipFile) {
       toast.error('กรุณาแนบสลิปการโอนเงิน');
       return;
