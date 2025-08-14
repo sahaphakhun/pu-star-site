@@ -102,6 +102,20 @@ fetch('/api/admin/customers', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ action: 'updateAllCustomerStatsFromOrders' })
 });
+
+// ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่
+fetch('/api/admin/customers', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'findOrphanedOrdersAndCreateUsers' })
+});
+
+// รายงานออเดอร์ที่ไม่มีผู้ใช้
+fetch('/api/admin/customers', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'reportOrphanedOrders' })
+});
 ```
 
 ## ผลลัพธ์ที่คาดหวัง
