@@ -4,6 +4,7 @@
 1. ลูกค้าหลายคนมีการสั่งซื้อแต่ระบบแสดงว่า "ไม่เคยสั่งซื้อ" ในหน้าแอดมิน/ลูกค้า
 2. ออเดอร์ไม่ได้เชื่อมโยงกับผู้ใช้ในระบบ ทำให้สถิติไม่ถูกต้อง
 3. ข้อมูลสถิติในฐานข้อมูลไม่ตรงกับข้อมูลออเดอร์จริง
+4. **ข้อผิดพลาด "Body has already been read" ใน API route** ✅ แก้ไขแล้ว
 
 ## สาเหตุของปัญหา
 1. ระบบไม่ได้อัปเดตสถิติลูกค้า (`totalOrders`, `totalSpent`, `lastOrderDate`) อัตโนมัติเมื่อมีการเปลี่ยนแปลงออเดอร์
@@ -12,6 +13,30 @@
 4. เบอร์โทรศัพท์ในออเดอร์และผู้ใช้อาจมีรูปแบบต่างกัน (+66 vs 0)
 
 ## วิธีแก้ไข
+
+### 0. แก้ไขปัญหา "Body has already been read" ✅
+**ปัญหา**: ข้อผิดพลาด `TypeError: Body is unusable: Body has already been read` ใน API route
+**สาเหตุ**: การเรียก `request.json()` หลายครั้งในฟังก์ชัน POST เดียวกัน
+**การแก้ไข**: อ่าน request body เพียงครั้งเดียวในตอนต้นของฟังก์ชัน
+
+```typescript
+// เดิม (มีปัญหา):
+const { action, customerId, customerName } = await request.json();
+if (action === 'updateCustomerStatsById') {
+  const { customerId } = await request.json(); // ❌ อ่านซ้ำ!
+}
+
+// ใหม่ (แก้ไขแล้ว):
+const body = await request.json();
+const { action, customerId, customerName, userIds } = body;
+if (action === 'updateCustomerStatsById') {
+  if (!customerId) { // ✅ ใช้ค่าที่อ่านไว้แล้ว
+    return NextResponse.json({ error: 'ต้องระบุ customerId' }, { status: 400 });
+  }
+}
+```
+
+**ไฟล์ที่แก้ไข**: `src/app/api/admin/customers/route.ts`
 
 ### 1. อัปเดตสถิติลูกค้าทั้งหมดผ่านหน้าแอดมิน
 - ไปที่หน้าแอดมิน > ลูกค้า
@@ -127,3 +152,19 @@ const orderKey = `${order.customerPhone}_${order.totalAmount}_${orderDate}`;
 - แนะนำให้รันในช่วงเวลาที่มีผู้ใช้งานน้อย
 - ข้อมูลสถิติจะถูกอัปเดตแบบ real-time เมื่อมีการเปลี่ยนแปลงออเดอร์
 - ระบบจะป้องกันออเดอร์ซ้ำโดยอัตโนมัติ
+
+## สรุปการแก้ไขปัญหา "Body has already been read" ✅
+
+### ปัญหาที่แก้ไข
+- ข้อผิดพลาด `TypeError: Body is unusable: Body has already been read` ใน API route `/api/admin/customers`
+- เกิดจากการเรียก `request.json()` หลายครั้งในฟังก์ชัน POST เดียวกัน
+
+### การแก้ไข
+- อ่าน request body เพียงครั้งเดียวในตอนต้นของฟังก์ชัน
+- ใช้ destructuring เพื่อแยกค่าต่างๆ ออกมา
+- ใช้ค่าที่อ่านไว้แล้วตลอดทั้งฟังก์ชัน
+
+### ผลลัพธ์
+- API route ทำงานได้ปกติโดยไม่มีข้อผิดพลาด
+- การอัปเดตสถิติลูกค้าและซิงค์ข้อมูลทำงานได้อย่างถูกต้อง
+- ระบบมีความเสถียรมากขึ้น

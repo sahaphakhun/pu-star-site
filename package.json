@@ -9,7 +9,11 @@
     "lint": "next lint",
     "migrate:units": "node scripts/migrate-products-add-units.js",
     "check:orders": "node scripts/check-order-status.js",
-    "seed:categories": "node scripts/seed-categories.js"
+    "seed:categories": "node scripts/seed-categories.js",
+    "analyze": "ANALYZE=true npm run build",
+    "analyze:bundle": "node scripts/analyze-bundle.js",
+    "build:analyze": "ANALYZE=true npm run build",
+    "performance:check": "npm run build && npm run analyze:bundle"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

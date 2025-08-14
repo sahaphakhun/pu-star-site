@@ -23,10 +23,21 @@ const nextConfig: NextConfig = {
   // Compression
   compress: true,
   
+  // เพิ่ม performance budget
+  performance: {
+    maxAssetSize: 500 * 1024, // 500KB
+    maxEntrypointSize: 500 * 1024, // 500KB
+    hints: process.env.NODE_ENV === 'production' ? 'warning' : false,
+  },
+  
   // Experimental features for better performance
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['@/components', '@/utils', '@/lib'],
+    // เพิ่ม bundle analyzer ใน production
+    ...(process.env.ANALYZE === 'true' && {
+      bundlePagesExternals: true,
+    }),
   },
   
   // Headers for better caching and security
@@ -116,6 +127,28 @@ const nextConfig: NextConfig = {
         fs: false,
         net: false,
         tls: false,
+      };
+      
+      // เพิ่ม code splitting และ tree shaking
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+            },
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 5,
+            },
+          },
+        },
       };
     }
     

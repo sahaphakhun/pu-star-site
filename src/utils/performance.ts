@@ -1,10 +1,20 @@
-// Performance Monitoring และ Analytics Utilities
+// Performance Monitoring และ Analytics Utilities - Optimized Version
+import { createPerformanceMonitor } from './performance-budget';
 
-// Web Vitals Monitoring
+// Lazy load performance monitoring
+let performanceMonitor: ReturnType<typeof createPerformanceMonitor> | null = null;
+
+// Web Vitals Monitoring - แยกเป็น lazy loading
 export const measureWebVitals = () => {
   if (typeof window === 'undefined') return;
 
-  // LCP (Largest Contentful Paint)
+  // เริ่มต้น performance monitor
+  if (!performanceMonitor) {
+    performanceMonitor = createPerformanceMonitor();
+    performanceMonitor.init();
+  }
+
+  // LCP (Largest Contentful Paint) - lazy load
   if ('PerformanceObserver' in window) {
     try {
       const lcpObserver = new PerformanceObserver((entryList) => {
@@ -12,11 +22,9 @@ export const measureWebVitals = () => {
         const lastEntry = entries[entries.length - 1];
         const lcp = lastEntry.startTime;
         
-        console.log('LCP:', lcp);
-        
-        // ส่งข้อมูลไปยัง analytics
-        if (lcp > 2500) {
-          console.warn('LCP เกินมาตรฐาน:', lcp);
+        // ตรวจสอบ performance budget
+        if (performanceMonitor) {
+          performanceMonitor.checkBudget({ lcp });
         }
       });
       
@@ -26,7 +34,7 @@ export const measureWebVitals = () => {
     }
   }
 
-  // FID (First Input Delay)
+  // FID (First Input Delay) - lazy load
   if ('PerformanceObserver' in window) {
     try {
       const fidObserver = new PerformanceObserver((entryList) => {
@@ -34,11 +42,9 @@ export const measureWebVitals = () => {
         entries.forEach((entry) => {
           const fid = entry.processingStart - entry.startTime;
           
-          console.log('FID:', fid);
-          
-          // ส่งข้อมูลไปยัง analytics
-          if (fid > 100) {
-            console.warn('FID เกินมาตรฐาน:', fid);
+          // ตรวจสอบ performance budget
+          if (performanceMonitor) {
+            performanceMonitor.checkBudget({ fid });
           }
         });
       });
@@ -49,25 +55,21 @@ export const measureWebVitals = () => {
     }
   }
 
-  // CLS (Cumulative Layout Shift)
+  // CLS (Cumulative Layout Shift) - lazy load
   if ('PerformanceObserver' in window) {
     try {
       let clsValue = 0;
-      let clsEntries: any[] = [];
       
       const clsObserver = new PerformanceObserver((entryList) => {
         for (const entry of entryList.getEntries()) {
           if (!entry.hadRecentInput) {
             clsValue += (entry as any).value;
-            clsEntries.push(entry);
           }
         }
         
-        console.log('CLS:', clsValue);
-        
-        // ส่งข้อมูลไปยัง analytics
-        if (clsValue > 0.1) {
-          console.warn('CLS เกินมาตรฐาน:', clsValue);
+        // ตรวจสอบ performance budget
+        if (performanceMonitor) {
+          performanceMonitor.checkBudget({ cls: clsValue });
         }
       });
       

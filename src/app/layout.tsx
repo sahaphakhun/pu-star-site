@@ -92,10 +92,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
         
-        {/* Preload Critical Resources */}
+        {/* Preload Critical Resources - แก้ไขให้ถูกต้อง */}
         <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/globals.css" as="style" />
-        <link rel="preload" href="/favicon.ico" as="image" />
         <link rel="dns-prefetch" href="//res.cloudinary.com" />
         <link rel="dns-prefetch" href="//www.winrichdynamic.com" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
@@ -124,9 +123,7 @@ export default function RootLayout({
           }}
         />
         
-        {/* Performance Hints */}
-        <link rel="modulepreload" href="/_next/static/chunks/webpack.js" />
-        <link rel="modulepreload" href="/_next/static/chunks/main.js" />
+        {/* ลบ modulepreload ที่ไม่จำเป็นออก */}
       </head>
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>

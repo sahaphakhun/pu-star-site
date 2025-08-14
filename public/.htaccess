@@ -1,39 +1,62 @@
-# Allow access to robots.txt and sitemap.xml
-<Files "robots.txt">
-    Require all granted
-</Files>
-
-<Files "sitemap.xml">
-    Require all granted
-</Files>
-
-<Files "verification.txt">
-    Require all granted
-</Files>
-
-# Set proper MIME types
-<IfModule mod_mime.c>
-    AddType text/plain .txt
-    AddType application/xml .xml
-</IfModule>
-
-# Enable CORS for Facebook crawlers
+# Performance และ Security Headers
 <IfModule mod_headers.c>
-    Header always set Access-Control-Allow-Origin "*"
-    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
-    Header always set Access-Control-Allow-Headers "Content-Type"
-</IfModule>
-
-# Cache control for static files
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType text/plain "access plus 1 hour"
-    ExpiresByType application/xml "access plus 1 hour"
-</IfModule>
-
-# Security headers
-<IfModule mod_headers.c>
+    # Security Headers
     Header always set X-Content-Type-Options nosniff
     Header always set X-Frame-Options DENY
     Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Performance Headers
+    Header always set Cache-Control "public, max-age=31536000, immutable" env=HTTPS
+    Header always set Vary "Accept-Encoding"
+    
+    # CORS Headers
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
+
+# Gzip Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE font/woff
+    AddOutputFilterByType DEFLATE font/woff2
+</IfModule>
+
+# Browser Caching
+<IfModule mod_expires.c>
+    ExpiresActive on
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# URL Rewriting สำหรับ Next.js
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect static files ที่ไม่พบไปยัง Next.js
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /_next/static/$1 [L]
+    
+    # Handle Next.js routing
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /index.html [L]
 </IfModule>
