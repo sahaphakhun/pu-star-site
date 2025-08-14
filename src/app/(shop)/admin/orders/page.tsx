@@ -934,9 +934,6 @@ const AdminOrdersPage = () => {
                           รายการ
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ยอดรวม
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           สถานะ
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -974,79 +971,159 @@ const AdminOrdersPage = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
-                              <div className="text-sm text-gray-500">{order.customerPhone}</div>
-                              {/* แสดงชื่อลูกค้าจากระบบหากมี */}
+                            <div className="space-y-1">
+                              {/* ชื่อลูกค้าจากฟอร์มสั่งซื้อ */}
+                              <div className="text-sm font-medium text-gray-900">
+                                {order.customerName}
+                              </div>
+                              {/* ชื่อลูกค้าจากระบบ (หากมี) */}
                               {order.userId && systemCustomers.has(order.userId) && (
-                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
+                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
                                   <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
                                   {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
                                 </div>
                               )}
+                              {/* เบอร์โทรศัพท์ */}
+                              <div className="text-xs text-gray-500">
+                                📱 {order.customerPhone}
+                              </div>
+                              {/* ที่อยู่จัดส่ง (ย่อ) */}
+                              {order.customerAddress && (
+                                <div className="text-xs text-gray-500 max-w-xs truncate" title={order.customerAddress}>
+                                  📍 {order.customerAddress.length > 30 ? 
+                                    order.customerAddress.substring(0, 30) + '...' : 
+                                    order.customerAddress
+                                  }
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{order.items.length} รายการ</div>
-                            <div className="text-xs text-gray-500">
-                              {order.items.slice(0, 1).map(item => (
-                                <div key={item.productId}>
-                                  {item.name}
-                                  {item.unitLabel && <span className="text-blue-600"> ({item.unitLabel})</span>}
-                                  {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                                    <span className="text-green-600"> • มีตัวเลือก</span>
+                            <div className="space-y-2">
+                              {/* จำนวนรายการและยอดรวม */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {order.items.length} รายการ
+                                </span>
+                                <span className="text-sm font-bold text-green-600">
+                                  ฿{order.totalAmount.toLocaleString()}
+                                </span>
+                              </div>
+                              
+                              {/* รายการสินค้าสำคัญ */}
+                              <div className="space-y-1">
+                                {order.items.slice(0, 2).map((item, index) => (
+                                  <div key={item.productId} className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium truncate max-w-32">
+                                        {item.name}
+                                      </span>
+                                      <span className="text-green-600 font-semibold">
+                                        ฿{item.price.toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                      <span>จำนวน: {item.quantity}</span>
+                                      {item.unitLabel && (
+                                        <span className="text-blue-600">({item.unitLabel})</span>
+                                      )}
+                                    </div>
+                                    {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                      <div className="text-xs text-purple-600">
+                                        ⚙️ มีตัวเลือก
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {order.items.length > 2 && (
+                                  <div className="text-xs text-gray-500 text-center bg-gray-100 px-2 py-1 rounded">
+                                    + อีก {order.items.length - 2} รายการ
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* ข้อมูลเพิ่มเติม */}
+                              <div className="flex flex-wrap gap-1">
+                                {/* ใบกำกับภาษี */}
+                                {order.taxInvoice?.requestTaxInvoice && (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    ใบกำกับฯ
+                                  </span>
+                                )}
+                                
+                                {/* หลักฐานการแพ็ค */}
+                                {order.packingProofs && order.packingProofs.length > 0 && (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    แพ็ค {order.packingProofs.length}
+                                  </span>
+                                )}
+                                
+                                {/* วิธีชำระเงิน */}
+                                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                  order.paymentMethod === 'cod' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {order.paymentMethod === 'cod' ? (
+                                    <>
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                      </svg>
+                                      COD
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                      </svg>
+                                      โอนเงิน
+                                    </>
                                   )}
-                                </div>
-                              ))}
-                              {order.items.length > 1 && `... +${order.items.length - 1}`}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-500">
-                                {order.paymentMethod === 'cod' ? (
-                  <span className="inline-flex items-center gap-1">
-                    <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                    COD
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    โอนเงิน
-                  </span>
-                )}
-                              </span>
-                              {/* แสดงข้อมูลเพิ่มเติมของสินค้า */}
-                              {order.items.some(item => item.unitLabel || (item.selectedOptions && Object.keys(item.selectedOptions).length > 0)) && (
-                                <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  รายละเอียด
                                 </span>
-                              )}
-                              {order.packingProofs && order.packingProofs.length > 0 && (
-                                <span className="text-xs text-blue-600">
-                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {order.packingProofs.length}
-                                </span>
-                              )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             ฿{order.totalAmount.toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
-                              {statusIcons[order.status] || ''} {statusLabels[order.status] || ''}
-                            </span>
+                            <div className="space-y-2">
+                              {/* สถานะหลัก */}
+                              <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
+                                {statusIcons[order.status] || ''} {statusLabels[order.status] || ''}
+                              </span>
+                              
+                              {/* วันที่สั่งซื้อ */}
+                              <div className="text-xs text-gray-500">
+                                📅 {new Date(order.createdAt).toLocaleDateString('th-TH')}
+                              </div>
+                              
+                              {/* ข้อมูลเพิ่มเติม */}
+                              <div className="space-y-1">
+                                {/* ใบกำกับภาษี */}
+                                {order.taxInvoice?.requestTaxInvoice && (
+                                  <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full inline-block">
+                                    📋 ใบกำกับฯ
+                                  </div>
+                                )}
+                                
+                                {/* หลักฐานการแพ็ค */}
+                                {order.packingProofs && order.packingProofs.length > 0 && (
+                                  <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
+                                    📦 แพ็ค {order.packingProofs.length}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex flex-col space-y-1">
@@ -1170,39 +1247,81 @@ const AdminOrdersPage = () => {
                     </div>
                     
                     <div className="border-t border-gray-100 pt-3">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
-                          <div className="text-sm text-gray-500">{order.customerPhone}</div>
-                          {/* แสดงชื่อลูกค้าจากระบบหากมี */}
-                          {order.userId && systemCustomers.has(order.userId) && (
-                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
-                              <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                              {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
-                            </div>
-                          )}
-                          <div className="text-sm text-gray-500">
-                            {order.items.length} รายการ
-                            {/* แสดงข้อมูลเพิ่มเติมของสินค้า */}
-                            {order.items.some(item => item.unitLabel || (item.selectedOptions && Object.keys(item.selectedOptions).length > 0)) && (
-                              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                          {/* ชื่อลูกค้า */}
+                          <div className="space-y-1 mb-3">
+                            <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
+                            {/* ชื่อลูกค้าจากระบบ (หากมี) */}
+                            {order.userId && systemCustomers.has(order.userId) && (
+                              <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
                                 <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                รายละเอียด
+                                {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500">📱 {order.customerPhone}</div>
+                            {order.customerAddress && (
+                              <div className="text-xs text-gray-500 max-w-xs truncate" title={order.customerAddress}>
+                                📍 {order.customerAddress.length > 25 ? 
+                                  order.customerAddress.substring(0, 25) + '...' : 
+                                  order.customerAddress
+                                }
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* รายการสินค้า */}
+                          <div className="text-sm text-gray-500 mb-2">
+                            {order.items.length} รายการ
+                          </div>
+                          
+                          {/* รายการสินค้าสำคัญ */}
+                          <div className="space-y-1 mb-3">
+                            {order.items.slice(0, 1).map(item => (
+                              <div key={item.productId} className="text-xs bg-gray-50 px-2 py-1 rounded">
+                                <div className="font-medium text-gray-900">{item.name}</div>
+                                <div className="text-gray-500">
+                                  ฿{item.price.toLocaleString()} x {item.quantity}
+                                  {item.unitLabel && <span className="text-blue-600"> ({item.unitLabel})</span>}
+                                </div>
+                                {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                  <div className="text-purple-600">⚙️ มีตัวเลือก</div>
+                                )}
+                              </div>
+                            ))}
+                            {order.items.length > 1 && (
+                              <div className="text-xs text-gray-500 text-center bg-gray-100 px-2 py-1 rounded">
+                                + อีก {order.items.length - 1} รายการ
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* ข้อมูลเพิ่มเติม */}
+                          <div className="flex flex-wrap gap-1">
+                            {/* ใบกำกับภาษี */}
+                            {order.taxInvoice?.requestTaxInvoice && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                                📋 ใบกำกับฯ
                               </span>
                             )}
+                            
+                            {/* หลักฐานการแพ็ค */}
                             {order.packingProofs && order.packingProofs.length > 0 && (
-                              <span className="text-xs text-blue-600">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {order.packingProofs.length}
-                                </span>
-                              )}
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                📦 แพ็ค {order.packingProofs.length}
+                              </span>
+                            )}
+                            
+                            {/* วิธีชำระเงิน */}
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                              order.paymentMethod === 'cod' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {order.paymentMethod === 'cod' ? '💳 COD' : '🏦 โอนเงิน'}
+                            </span>
                           </div>
                         </div>
                         <div className="flex flex-col space-y-2">
@@ -1317,16 +1436,26 @@ const AdminOrdersPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">ลูกค้า</label>
-                        <p className="text-gray-900">{selectedOrder.customerName}</p>
-                        {/* แสดงชื่อลูกค้าจากระบบหากมี */}
-                        {selectedOrder.userId && systemCustomers.has(selectedOrder.userId) && (
-                          <div className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
-                            <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            ชื่อในระบบ: {systemCustomers.get(selectedOrder.userId)?.name || 'ลูกค้า'}
+                        <div className="space-y-2">
+                          {/* ชื่อลูกค้าจากฟอร์มสั่งซื้อ */}
+                          <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <div className="text-sm text-gray-500 mb-1">ชื่อจากฟอร์มสั่งซื้อ</div>
+                            <div className="text-lg font-semibold text-gray-900">{selectedOrder.customerName}</div>
                           </div>
-                        )}
+                          
+                          {/* ชื่อลูกค้าจากระบบ (หากมี) */}
+                          {selectedOrder.userId && systemCustomers.has(selectedOrder.userId) && (
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                              <div className="text-sm text-blue-600 mb-1">ชื่อในระบบ</div>
+                              <div className="text-lg font-semibold text-blue-800">
+                                {systemCustomers.get(selectedOrder.userId)?.name || 'ลูกค้า'}
+                              </div>
+                              <div className="text-xs text-blue-600 mt-1">
+                                ประเภท: {systemCustomers.get(selectedOrder.userId)?.customerType || 'ไม่ระบุ'}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">เบอร์โทร</label>
@@ -1448,100 +1577,71 @@ const AdminOrdersPage = () => {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">รายการสินค้า</label>
+                  {/* แสดงรายการสินค้าอย่างละเอียด */}
+                  <div className="mt-6">
+                    <h4 className="font-medium text-gray-900 mb-3">รายการสินค้า</h4>
                     <div className="space-y-3">
                       {selectedOrder.items.map((item, index) => (
-                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
+                        <div key={item.productId} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900 text-base">
-                                {item.name}
-                                {item.unitLabel && (
-                                  <span className="text-sm text-blue-600 ml-2 font-normal">
-                                    ({item.unitLabel})
-                                  </span>
-                                )}
-                              </h4>
-                              <div className="text-sm text-gray-600 mt-1">
-                                <span className="font-medium">จำนวน:</span> {item.quantity} {item.unitLabel || 'ชิ้น'}
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                                <h5 className="text-lg font-semibold text-gray-900">{item.name}</h5>
                               </div>
-                              {item.unitPrice && (
-                                <div className="text-sm text-gray-600">
-                                  <span className="font-medium">ราคาต่อหน่วย:</span> ฿{item.unitPrice.toLocaleString()}
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500">ราคาต่อหน่วย</label>
+                                  <p className="text-gray-900 font-semibold">฿{item.price.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500">จำนวน</label>
+                                  <p className="text-gray-900">{item.quantity}</p>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500">ยอดรวม</label>
+                                  <p className="text-gray-900 font-semibold">฿{(item.price * item.quantity).toLocaleString()}</p>
+                                </div>
+                                {item.unitLabel && (
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">หน่วย</label>
+                                    <p className="text-gray-900">{item.unitLabel}</p>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* แสดงตัวเลือกสินค้า (หากมี) */}
+                              {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <label className="block text-xs font-medium text-gray-500 mb-2">ตัวเลือกที่เลือก</label>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {Object.entries(item.selectedOptions).map(([key, value]) => (
+                                      <div key={key} className="bg-white px-3 py-2 rounded border border-gray-200">
+                                        <span className="text-xs font-medium text-gray-500">{key}:</span>
+                                        <span className="text-sm text-gray-900 ml-2">{value}</span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-gray-900 text-lg">
-                                ฿{(item.price * item.quantity).toLocaleString()}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                ฿{item.price.toLocaleString()} x {item.quantity}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* แสดงตัวเลือกที่ลูกค้าเลือก */}
-                          {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                                <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                ตัวเลือกที่เลือก:
-                              </h5>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {Object.entries(item.selectedOptions).map(([optionKey, optionValue], optionIndex) => (
-                                  <div key={optionIndex} className="bg-white px-3 py-2 rounded-md border border-green-200">
-                                    <div className="text-xs text-gray-500 font-medium">{optionKey}</div>
-                                    <div className="text-sm text-gray-900 font-medium">{optionValue}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* แสดงข้อมูลเพิ่มเติม */}
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-500">รหัสสินค้า:</span>
-                                <span className="ml-2 font-mono text-gray-900">{item.productId}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">ราคารวม:</span>
-                                <span className="ml-2 font-bold text-gray-900">฿{(item.price * item.quantity).toLocaleString()}</span>
-                              </div>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
                     
-                    {/* สรุปยอดรวมรายการ */}
-                    <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-medium text-gray-900">รวมรายการสินค้า:</span>
-                        <span className="text-xl font-bold text-blue-600">
-                          ฿{selectedOrder.items.reduce((total, item) => total + (item.price * item.quantity), 0).toLocaleString()}
-                        </span>
+                    {/* สรุปยอดรวม */}
+                    <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between text-lg font-semibold text-green-800">
+                        <span>ยอดรวมทั้งหมด</span>
+                        <span>฿{selectedOrder.totalAmount.toLocaleString()}</span>
                       </div>
-                      <div className="mt-2 text-sm text-gray-600">
-                        <div className="flex justify-between">
-                          <span>ค่าจัดส่ง:</span>
-                          <span>฿{selectedOrder.shippingFee.toLocaleString()}</span>
-                        </div>
+                      <div className="text-sm text-green-600 mt-1">
+                        รวมค่าจัดส่ง: ฿{selectedOrder.shippingFee.toLocaleString()}
                         {selectedOrder.discount && selectedOrder.discount > 0 && (
-                          <div className="flex justify-between text-red-600">
-                            <span>ส่วนลด:</span>
-                            <span>-฿{selectedOrder.discount.toLocaleString()}</span>
-                          </div>
+                          <span className="ml-4">ส่วนลด: -฿{selectedOrder.discount.toLocaleString()}</span>
                         )}
-                        <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-blue-200">
-                          <span>ยอดรวมทั้งหมด:</span>
-                          <span>฿{selectedOrder.totalAmount.toLocaleString()}</span>
-                        </div>
                       </div>
                     </div>
                   </div>
