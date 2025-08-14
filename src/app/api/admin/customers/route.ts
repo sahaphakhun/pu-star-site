@@ -330,6 +330,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (action === 'getCustomersByIds') {
+      try {
+        const { userIds } = await request.json();
+        
+        if (!userIds || !Array.isArray(userIds)) {
+          return NextResponse.json({ error: 'ต้องระบุ userIds เป็น array' }, { status: 400 });
+        }
+
+        const customers = await User.find({ 
+          _id: { $in: userIds },
+          role: 'user'
+        }).select('_id name phoneNumber customerType').lean();
+
+        return NextResponse.json({
+          success: true,
+          customers
+        });
+      } catch (error) {
+        console.error('Error getting customers by IDs:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการดึงข้อมูลลูกค้า'
+        }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({ error: 'Action ไม่ถูกต้อง' }, { status: 400 });
 
   } catch (error) {

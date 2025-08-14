@@ -253,7 +253,7 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
-  const handleSyncCustomerName = async (customerId: string, customerName: string) => {
+  const handleSyncCustomerName = async (customerId: string, customerPhone: string) => {
     try {
       const response = await fetch('/api/admin/customers', {
         method: 'POST',
@@ -261,7 +261,7 @@ const CustomerManagementPage: React.FC = () => {
         body: JSON.stringify({ 
           action: 'syncCustomerName',
           customerId,
-          customerName 
+          customerPhone 
         }),
         credentials: 'include'
       });
@@ -779,7 +779,7 @@ const CustomerManagementPage: React.FC = () => {
                       )}
                       {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
                         <button
-                          onClick={() => handleSyncCustomerName(customer._id, customer.name || '')}
+                          onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
                           className="text-purple-600 hover:text-purple-900"
                           title="ซิงค์ชื่อจากออเดอร์"
                         >
@@ -820,7 +820,7 @@ const CustomerManagementPage: React.FC = () => {
                       )}
                       {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
                         <button
-                          onClick={() => handleSyncCustomerName(customer._id, customer.name || '')}
+                          onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
                           className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full"
                           title="ซิงค์ชื่อจากออเดอร์"
                         >

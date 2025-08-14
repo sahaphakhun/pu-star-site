@@ -2,7 +2,46 @@ import User from '@/models/User';
 import Order from '@/models/Order';
 
 /**
- * อัปเดตชื่อผู้ใช้จากออเดอร์แรก หากผู้ใช้ยังไม่ได้ตั้งชื่อ
+ * แปลงเบอร์โทรศัพท์ให้เป็นรูปแบบมาตรฐาน (66)
+ * @param phoneNumber - เบอร์โทรศัพท์ที่ต้องการแปลง
+ * @returns string - เบอร์โทรศัพท์ในรูปแบบมาตรฐาน
+ */
+export function normalizePhoneNumber(phoneNumber: string): string {
+  if (!phoneNumber) return '';
+  
+  // ลบช่องว่างและเครื่องหมายพิเศษ
+  let normalized = phoneNumber.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+  
+  // แปลงเบอร์ที่ขึ้นต้นด้วย 0 เป็น 66
+  if (normalized.startsWith('0')) {
+    normalized = '66' + normalized.substring(1);
+  }
+  
+  // เพิ่ม + ถ้าไม่มี
+  if (!normalized.startsWith('+')) {
+    normalized = '+' + normalized;
+  }
+  
+  return normalized;
+}
+
+/**
+ * ตรวจสอบว่าเบอร์โทรศัพท์สองเบอร์เป็นเบอร์เดียวกันหรือไม่
+ * @param phone1 - เบอร์โทรศัพท์ที่ 1
+ * @param phone2 - เบอร์โทรศัพท์ที่ 2
+ * @returns boolean - true หากเป็นเบอร์เดียวกัน
+ */
+export function isSamePhoneNumber(phone1: string, phone2: string): boolean {
+  if (!phone1 || !phone2) return false;
+  
+  const normalized1 = normalizePhoneNumber(phone1);
+  const normalized2 = normalizePhoneNumber(phone2);
+  
+  return normalized1 === normalized2;
+}
+
+/**
+ * อัปเดตชื่อผู้ใช้จากออเดอร์ หากผู้ใช้ยังไม่ได้ตั้งชื่อ
  * @param userId - ID ของผู้ใช้
  * @param customerName - ชื่อจากออเดอร์
  * @returns Promise<boolean> - true หากอัปเดตสำเร็จ, false หากไม่ต้องอัปเดต
@@ -74,12 +113,33 @@ export async function syncUserNameFromFirstOrder(userId: string): Promise<boolea
       return false;
     }
 
-    // ดึงออเดอร์แรกของผู้ใช้
-    const firstOrder = await Order.findOne({ userId })
-      .sort({ createdAt: 1 }) // เรียงตามวันที่สร้างจากเก่าสุด
+    // ดึงออเดอร์แรกของผู้ใช้จากเบอร์โทรศัพท์ (รองรับทั้ง userId และเบอร์โทรศัพท์)
+    let firstOrder;
+    
+    // ลองหาจาก userId ก่อน
+    firstOrder = await Order.findOne({ userId })
+      .sort({ createdAt: 1 })
       .lean();
+    
+    // หากไม่พบจาก userId ให้ลองหาจากเบอร์โทรศัพท์
+    if (!firstOrder || !firstOrder.customerName) {
+      firstOrder = await Order.findOne({ 
+        customerPhone: { 
+          $in: [
+            user.phoneNumber,
+            user.phoneNumber.replace('+66', '0'),
+            user.phoneNumber.replace('+66', '66'),
+            user.phoneNumber.startsWith('+66') ? user.phoneNumber.substring(3) : `+66${user.phoneNumber}`,
+            user.phoneNumber.startsWith('0') ? `+66${user.phoneNumber.substring(1)}` : `0${user.phoneNumber.substring(3)}`
+          ]
+        }
+      })
+      .sort({ createdAt: 1 })
+      .lean();
+    }
 
     if (!firstOrder || !firstOrder.customerName) {
+      console.log(`ไม่พบออเดอร์สำหรับผู้ใช้ ${userId} หรือไม่มีชื่อลูกค้าในออเดอร์`);
       return false;
     }
 

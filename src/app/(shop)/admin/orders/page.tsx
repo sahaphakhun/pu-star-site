@@ -99,6 +99,15 @@ interface Order {
     pickingStatus?: 'pending' | 'completed' | 'incomplete' | 'not_found' | 'error';
     lastPickingCheck?: string;
   };
+  userId?: string; // เพิ่ม userId เพื่อเชื่อมต่อกับระบบลูกค้า
+}
+
+// เพิ่ม interface สำหรับข้อมูลลูกค้าจากระบบ
+interface SystemCustomer {
+  _id: string;
+  name: string;
+  phoneNumber: string;
+  customerType?: 'new' | 'regular' | 'target' | 'inactive';
 }
 
 const AdminOrdersPage = () => {
@@ -208,6 +217,9 @@ const AdminOrdersPage = () => {
   };
 
   const [expandedStockRows, setExpandedStockRows] = useState<Record<string, boolean>>({});
+
+  // เพิ่ม state สำหรับเก็บข้อมูลลูกค้าจากระบบ
+  const [systemCustomers, setSystemCustomers] = useState<Map<string, SystemCustomer>>(new Map());
 
   // Function to handle slip verification completion
   const handleSlipVerificationComplete = (verification: any) => {
@@ -440,17 +452,64 @@ const AdminOrdersPage = () => {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const response = await fetch('/api/orders', { credentials: 'include' });
+      setLoading(true);
+      const response = await fetch('/api/orders', {
+        credentials: 'include'
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setOrders(data.orders || []);
+        
+        // ดึงข้อมูลลูกค้าจากระบบสำหรับออเดอร์ที่มี userId
+        await fetchSystemCustomers(data.orders || []);
+      } else {
+        console.error('Failed to fetch orders');
+        toast.error('ไม่สามารถโหลดข้อมูลออเดอร์ได้');
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลออเดอร์');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // ฟังก์ชันสำหรับดึงข้อมูลลูกค้าจากระบบ
+  const fetchSystemCustomers = async (orders: Order[]) => {
+    try {
+      // รวบรวม userId ที่ไม่ซ้ำกันจากออเดอร์
+      const userIds = [...new Set(orders
+        .filter(order => order.userId)
+        .map(order => order.userId!)
+      )];
+
+      if (userIds.length === 0) return;
+
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'getCustomersByIds',
+          userIds 
+        }),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.customers) {
+          const customerMap = new Map<string, SystemCustomer>();
+          data.customers.forEach((customer: SystemCustomer) => {
+            customerMap.set(customer._id, customer);
+          });
+          setSystemCustomers(customerMap);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching system customers:', error);
+    }
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -918,6 +977,15 @@ const AdminOrdersPage = () => {
                             <div>
                               <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
                               <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                              {/* แสดงชื่อลูกค้าจากระบบหากมี */}
+                              {order.userId && systemCustomers.has(order.userId) && (
+                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
+                                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                  {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1106,35 +1174,35 @@ const AdminOrdersPage = () => {
                         <div className="flex-1">
                           <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
                           <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                          {/* แสดงชื่อลูกค้าจากระบบหากมี */}
+                          {order.userId && systemCustomers.has(order.userId) && (
+                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
+                              <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
+                            </div>
+                          )}
                           <div className="text-sm text-gray-500">
                             {order.items.length} รายการ
                             {/* แสดงข้อมูลเพิ่มเติมของสินค้า */}
                             {order.items.some(item => item.unitLabel || (item.selectedOptions && Object.keys(item.selectedOptions).length > 0)) && (
-                              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full ml-2">
+                              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
                                 <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 รายละเอียด
                               </span>
                             )}
-                            {order.items.slice(0, 1).map(item => (
-                              <div key={item.productId} className="text-xs mt-1">
-                                {item.name}
-                                {item.unitLabel && <span className="text-blue-600"> ({item.unitLabel})</span>}
-                                {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                                  <span className="text-green-600"> • มีตัวเลือก</span>
-                                )}
-                              </div>
-                            ))}
                             {order.packingProofs && order.packingProofs.length > 0 && (
-                              <span className="text-blue-600 ml-2 inline-flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {order.packingProofs.length}
-                </span>
-                            )}
+                              <span className="text-xs text-blue-600">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {order.packingProofs.length}
+                                </span>
+                              )}
                           </div>
                         </div>
                         <div className="flex flex-col space-y-2">
@@ -1250,6 +1318,15 @@ const AdminOrdersPage = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700">ลูกค้า</label>
                         <p className="text-gray-900">{selectedOrder.customerName}</p>
+                        {/* แสดงชื่อลูกค้าจากระบบหากมี */}
+                        {selectedOrder.userId && systemCustomers.has(selectedOrder.userId) && (
+                          <div className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-full mt-1 inline-block">
+                            <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            ชื่อในระบบ: {systemCustomers.get(selectedOrder.userId)?.name || 'ลูกค้า'}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">เบอร์โทร</label>
