@@ -11,6 +11,8 @@ import { PERMISSIONS } from '@/constants/permissions';
 import SlipVerificationButton from '@/components/SlipVerificationButton';
 import SlipVerificationDisplay from '@/components/SlipVerificationDisplay';
 import BatchSlipVerification from '@/components/BatchSlipVerification';
+import OrderMappingManager from '@/components/OrderMappingManager';
+import UserOrderHistory from '@/components/UserOrderHistory';
 
 interface OrderItem {
   productId: string;
@@ -144,6 +146,11 @@ const AdminOrdersPage = () => {
   // States for slip verification
   const [showSlipVerification, setShowSlipVerification] = useState(false);
   const [showBatchVerification, setShowBatchVerification] = useState(false);
+  
+  // States for order mapping
+  const [showOrderMapping, setShowOrderMapping] = useState(false);
+  const [showUserHistory, setShowUserHistory] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -879,6 +886,24 @@ const AdminOrdersPage = () => {
           )}
         </div>
 
+        {/* Order Mapping Management Section */}
+        {hasPermission(PERMISSIONS.ORDERS_VIEW) && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">จัดการการเชื่อมโยงออเดอร์</h3>
+              <button
+                onClick={() => setShowOrderMapping(!showOrderMapping)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                {showOrderMapping ? 'ซ่อน' : 'แสดง'} จัดการการเชื่อมโยง
+              </button>
+            </div>
+            {showOrderMapping && (
+              <OrderMappingManager onMappingComplete={fetchOrders} />
+            )}
+          </div>
+        )}
+
         {/* Batch Slip Verification Section */}
         {hasPermission(PERMISSIONS.ORDERS_VIEW) && (
           <div className="mb-6">
@@ -978,11 +1003,23 @@ const AdminOrdersPage = () => {
                               </div>
                               {/* ชื่อลูกค้าจากระบบ (หากมี) */}
                               {order.userId && systemCustomers.has(order.userId) && (
-                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
-                                  <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                  {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
+                                <div className="flex items-center gap-2">
+                                  <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
+                                    <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    {systemCustomers.get(order.userId)?.name || 'ลูกค้า'}
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedUserId(order.userId!);
+                                      setShowUserHistory(true);
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                    title="ดูประวัติออเดอร์"
+                                  >
+                                    ดูประวัติ
+                                  </button>
                                 </div>
                               )}
                               {/* เบอร์โทรศัพท์ */}
@@ -1924,6 +1961,29 @@ const AdminOrdersPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal แสดงประวัติออเดอร์ของผู้ใช้ */}
+      {showUserHistory && selectedUserId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">ประวัติออเดอร์ของผู้ใช้</h3>
+              <button
+                onClick={() => {
+                  setShowUserHistory(false);
+                  setSelectedUserId(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <UserOrderHistory userId={selectedUserId} />
           </div>
         </div>
       )}
