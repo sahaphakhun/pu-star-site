@@ -18,6 +18,10 @@ import { syncUserNameFromFirstOrder, migrateAllUserNamesFromOrders } from '@/uti
 export async function GET(request: NextRequest) {
   try {
     console.log('Starting GET /api/admin/customers');
+    console.log('Environment check:');
+    console.log('- NODE_ENV:', process.env.NODE_ENV);
+    console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('- JWT_SECRET exists:', !!process.env.JWT_SECRET);
     
     // ตรวจสอบสิทธิ์ admin
     const authResult = await verifyToken(request);
@@ -34,8 +38,19 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Connecting to DB...');
-    await connectDB();
-    console.log('DB connected successfully');
+    try {
+      await connectDB();
+      console.log('DB connected successfully');
+    } catch (dbConnectionError) {
+      console.error('Database connection failed:', dbConnectionError);
+      return NextResponse.json(
+        { 
+          error: 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้',
+          details: dbConnectionError instanceof Error ? dbConnectionError.message : 'Unknown connection error'
+        },
+        { status: 500 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

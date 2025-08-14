@@ -839,52 +839,63 @@ const CustomerManagementPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {/* Desktop: แสดงปุ่มแบบข้อความ */}
-                    <div className="hidden md:block">
-                      <button
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setShowDetailModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        ดูรายละเอียด
-                      </button>
-                      {(activeTab === 'target' || activeTab === 'all') && (
+                    {/* Desktop: แสดงปุ่มแบบข้อความใน 3 บรรทัด */}
+                    <div className="hidden md:block space-y-2">
+                      {/* บรรทัดที่ 1: 2 ปุ่ม */}
+                      <div className="flex space-x-2">
                         <button
                           onClick={() => {
                             setSelectedCustomer(customer);
-                            setAssignedTo(customer.assignedTo || '');
-                            setShowAssignModal(true);
+                            setShowDetailModal(true);
                           }}
-                          className="text-green-600 hover:text-green-900 mr-3"
+                          className="text-blue-600 hover:text-blue-900 text-sm"
                         >
-                          กำหนดผู้รับผิดชอบ
+                          ดูรายละเอียด
                         </button>
-                      )}
-                      {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                        {(activeTab === 'target' || activeTab === 'all') && (
+                          <button
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setAssignedTo(customer.assignedTo || '');
+                              setShowAssignModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900 text-sm"
+                          >
+                            กำหนดผู้รับผิดชอบ
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* บรรทัดที่ 2: 2 ปุ่ม */}
+                      <div className="flex space-x-2">
+                        {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                          <button
+                            onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
+                            className="text-purple-600 hover:text-purple-900 text-sm"
+                            title="ซิงค์ชื่อจากออเดอร์"
+                          >
+                            ซิงค์ชื่อ
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="ซิงค์ชื่อจากออเดอร์"
+                          onClick={() => handleUpdateCustomerStats(customer._id)}
+                          className="text-orange-600 hover:text-orange-900 text-sm"
+                          title="อัปเดตสถิติลูกค้า"
                         >
-                          ซิงค์ชื่อ
+                          อัปเดตสถิติ
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleUpdateCustomerStats(customer._id)}
-                        className="text-orange-600 hover:text-orange-900 ml-2"
-                        title="อัปเดตสถิติลูกค้า"
-                      >
-                        อัปเดตสถิติ
-                      </button>
-                      <button
-                        onClick={() => handleSyncOrdersToUser(customer._id)}
-                        className="text-indigo-600 hover:text-indigo-900 ml-2"
-                        title="ซิงค์ออเดอร์"
-                      >
-                        ซิงค์ออเดอร์
-                      </button>
+                      </div>
+                      
+                      {/* บรรทัดที่ 3: 1 ปุ่ม */}
+                      <div className="flex">
+                        <button
+                          onClick={() => handleSyncOrdersToUser(customer._id)}
+                          className="text-indigo-600 hover:text-indigo-900 text-sm"
+                          title="ซิงค์ออเดอร์"
+                        >
+                          ซิงค์ออเดอร์
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Mobile: แสดงปุ่มแบบไอคอน */}

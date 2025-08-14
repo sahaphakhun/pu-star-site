@@ -74,10 +74,17 @@ export async function verifyAuth(req: Request): Promise<AuthResult> {
       return { success: false, message: 'ไม่พบ token สำหรับการยืนยันตัวตน' };
     }
     
+    // ตรวจสอบ JWT_SECRET
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET ไม่ได้กำหนดใน environment variables');
+      return { success: false, message: 'การกำหนดค่าการยืนยันตัวตนไม่ถูกต้อง' };
+    }
+    
     // ตรวจสอบและถอดรหัส token
     const decoded = jwt.verify(
       token, 
-      process.env.JWT_SECRET || 'default_secret_replace_in_production'
+      jwtSecret
     ) as DecodedToken;
     
     if (!decoded || !decoded.userId) {
@@ -99,7 +106,7 @@ export async function verifyAuth(req: Request): Promise<AuthResult> {
         _id: user._id.toString(),
         phoneNumber: user.phoneNumber,
         name: user.name,
-        role: user.role || 'user',
+        role: user.role,
       } 
     };
   } catch (error) {

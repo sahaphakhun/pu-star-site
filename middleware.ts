@@ -4,7 +4,16 @@ import { jwtVerify } from 'jose';
 
 // ใช้ TextEncoder สำหรับ Edge runtime
 const encoder = new TextEncoder();
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_replace_in_production';
+
+// ตรวจสอบ JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET ไม่ได้กำหนดใน environment variables');
+  // ใน production ควร throw error
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET ไม่ได้กำหนดใน environment variables');
+  }
+}
 
 interface DecodedJwt {
   role?: string;
@@ -14,10 +23,17 @@ interface DecodedJwt {
 async function getDecodedToken(request: NextRequest): Promise<DecodedJwt | null> {
   const token = request.cookies.get('token')?.value;
   if (!token) return null;
+  
   try {
+    if (!JWT_SECRET) {
+      console.error('JWT_SECRET ไม่ได้กำหนด');
+      return null;
+    }
+    
     const { payload } = await jwtVerify(token, encoder.encode(JWT_SECRET));
     return payload as DecodedJwt;
-  } catch {
+  } catch (error) {
+    console.error('Error verifying JWT token:', error);
     return null;
   }
 }
