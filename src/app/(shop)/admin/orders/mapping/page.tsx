@@ -4,6 +4,7 @@ import React from 'react';
 import { PermissionGate } from '@/components/PermissionGate';
 import { PERMISSIONS } from '@/constants/permissions';
 import OrderMappingManager from '@/components/OrderMappingManager';
+import DatabaseStatus from '@/components/DatabaseStatus';
 
 const OrderMappingPage = () => {
   return (
@@ -16,6 +17,11 @@ const OrderMappingPage = () => {
             <p className="mt-2 text-gray-600">
               จัดการการเชื่อมโยงระหว่างออเดอร์กับผู้ใช้ในระบบ
             </p>
+          </div>
+
+          {/* Database Status */}
+          <div className="mb-8">
+            <DatabaseStatus />
           </div>
 
           {/* Order Mapping Manager */}

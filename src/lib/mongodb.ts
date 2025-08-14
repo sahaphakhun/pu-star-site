@@ -105,3 +105,14 @@ async function connectDB(): Promise<mongoose.Connection> {
 }
 
 export default connectDB;
+
+// Export function สำหรับใช้ใน API routes
+export async function connectToDatabase() {
+  try {
+    const connection = await connectDB();
+    return connection;
+  } catch (error) {
+    console.error('[DB] Failed to connect to database:', error);
+    throw error;
+  }
+}

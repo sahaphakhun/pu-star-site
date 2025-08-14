@@ -6,16 +6,23 @@ import User from '@/models/User';
 // GET: ดึงข้อมูล mapping และสถิติ
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API] Starting order mapping GET request');
+    
     await connectToDatabase();
+    console.log('[API] Database connected successfully');
     
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
+    
+    console.log('[API] Action requested:', action);
     
     if (action === 'stats') {
       // ดึงสถิติการ mapping
       const totalOrders = await Order.countDocuments();
       const mappedOrders = await Order.countDocuments({ userId: { $exists: true, $ne: null } });
       const unmappedOrders = totalOrders - mappedOrders;
+      
+      console.log('[API] Stats calculated:', { totalOrders, mappedOrders, unmappedOrders });
       
       return NextResponse.json({
         success: true,
@@ -40,6 +47,8 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(50);
       
+      console.log('[API] Found unmapped orders:', unmappedOrders.length);
+      
       return NextResponse.json({
         success: true,
         data: unmappedOrders
@@ -49,9 +58,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'API endpoint สำหรับ order mapping' });
     
   } catch (error) {
-    console.error('Error in order mapping API:', error);
+    console.error('[API] Error in order mapping GET API:', error);
+    
+    // ส่ง error response ที่มีรายละเอียดมากขึ้น
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'เกิดข้อผิดพลาดในการดึงข้อมูล',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูล' },
+      { success: false, error: 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ' },
       { status: 500 }
     );
   }
@@ -60,14 +83,21 @@ export async function GET(request: NextRequest) {
 // POST: ทำการ auto mapping หรือ manual mapping
 export async function POST(request: NextRequest) {
   try {
+    console.log('[API] Starting order mapping POST request');
+    
     await connectToDatabase();
+    console.log('[API] Database connected successfully');
     
     const body = await request.json();
     const { action, orderId, userId, phoneNumber } = body;
     
+    console.log('[API] Action requested:', action, { orderId, userId, phoneNumber });
+    
     if (action === 'auto-map') {
       // Auto mapping ตามเบอร์โทรศัพท์
       const result = await autoMapOrdersByPhone();
+      console.log('[API] Auto mapping completed:', result);
+      
       return NextResponse.json({
         success: true,
         data: result
@@ -99,6 +129,8 @@ export async function POST(request: NextRequest) {
       // อัปเดตสถิติของผู้ใช้
       await updateUserStats(userId);
       
+      console.log('[API] Manual mapping completed for order:', orderId);
+      
       return NextResponse.json({
         success: true,
         data: updatedOrder
@@ -108,6 +140,8 @@ export async function POST(request: NextRequest) {
     if (action === 'batch-sync') {
       // ซิงค์ข้อมูลเก่าทั้งหมด
       const result = await batchSyncOrders();
+      console.log('[API] Batch sync completed:', result);
+      
       return NextResponse.json({
         success: true,
         data: result
@@ -120,9 +154,23 @@ export async function POST(request: NextRequest) {
     );
     
   } catch (error) {
-    console.error('Error in order mapping API:', error);
+    console.error('[API] Error in order mapping POST API:', error);
+    
+    // ส่ง error response ที่มีรายละเอียดมากขึ้น
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'เกิดข้อผิดพลาดในการประมวลผล',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการประมวลผล' },
+      { success: false, error: 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ' },
       { status: 500 }
     );
   }
@@ -130,12 +178,16 @@ export async function POST(request: NextRequest) {
 
 // ฟังก์ชัน Auto mapping ตามเบอร์โทรศัพท์
 async function autoMapOrdersByPhone() {
+  console.log('[API] Starting auto mapping by phone');
+  
   const unmappedOrders = await Order.find({
     $or: [
       { userId: { $exists: false } },
       { userId: null }
     ]
   });
+  
+  console.log('[API] Found unmapped orders for auto mapping:', unmappedOrders.length);
   
   let successCount = 0;
   let errorCount = 0;
@@ -151,15 +203,20 @@ async function autoMapOrdersByPhone() {
       if (user) {
         await Order.findByIdAndUpdate(order._id, { userId: user._id });
         successCount++;
+        console.log(`[API] Successfully mapped order ${order._id} to user ${user._id}`);
       } else {
         errorCount++;
         errors.push(`ไม่พบผู้ใช้สำหรับเบอร์ ${order.customerPhone} (ออเดอร์: ${order._id})`);
       }
     } catch (error) {
       errorCount++;
-      errors.push(`เกิดข้อผิดพลาดในการ mapping ออเดอร์ ${order._id}: ${error}`);
+      const errorMsg = `เกิดข้อผิดพลาดในการ mapping ออเดอร์ ${order._id}: ${error}`;
+      errors.push(errorMsg);
+      console.error('[API]', errorMsg);
     }
   }
+  
+  console.log('[API] Auto mapping completed:', { successCount, errorCount });
   
   return {
     totalProcessed: unmappedOrders.length,
@@ -171,7 +228,11 @@ async function autoMapOrdersByPhone() {
 
 // ฟังก์ชัน Batch sync ข้อมูลเก่า
 async function batchSyncOrders() {
+  console.log('[API] Starting batch sync');
+  
   const allOrders = await Order.find({});
+  console.log('[API] Total orders to process:', allOrders.length);
+  
   let successCount = 0;
   let errorCount = 0;
   const errors: string[] = [];
@@ -202,11 +263,15 @@ async function batchSyncOrders() {
       }
     } catch (error) {
       errorCount++;
-      errors.push(`เกิดข้อผิดพลาดในการ sync ออเดอร์ ${order._id}: ${error}`);
+      const errorMsg = `เกิดข้อผิดพลาดในการ sync ออเดอร์ ${order._id}: ${error}`;
+      errors.push(errorMsg);
+      console.error('[API]', errorMsg);
     }
   }
   
   // อัปเดตสถิติของผู้ใช้ทั้งหมด
+  console.log('[API] Updating user stats for', Object.keys(userStats).length, 'users');
+  
   for (const [userId, stats] of Object.entries(userStats)) {
     try {
       await User.findByIdAndUpdate(userId, {
@@ -216,9 +281,13 @@ async function batchSyncOrders() {
         lastOrderDate: new Date()
       });
     } catch (error) {
-      errors.push(`เกิดข้อผิดพลาดในการอัปเดตสถิติผู้ใช้ ${userId}: ${error}`);
+      const errorMsg = `เกิดข้อผิดพลาดในการอัปเดตสถิติผู้ใช้ ${userId}: ${error}`;
+      errors.push(errorMsg);
+      console.error('[API]', errorMsg);
     }
   }
+  
+  console.log('[API] Batch sync completed:', { successCount, errorCount });
   
   return {
     totalProcessed: allOrders.length,
@@ -231,6 +300,8 @@ async function batchSyncOrders() {
 // ฟังก์ชันอัปเดตสถิติของผู้ใช้
 async function updateUserStats(userId: string) {
   try {
+    console.log('[API] Updating stats for user:', userId);
+    
     const userOrders = await Order.find({ userId });
     
     if (userOrders.length > 0) {
@@ -245,8 +316,11 @@ async function updateUserStats(userId: string) {
         averageOrderValue,
         lastOrderDate
       });
+      
+      console.log('[API] User stats updated successfully');
     }
   } catch (error) {
-    console.error('Error updating user stats:', error);
+    console.error('[API] Error updating user stats:', error);
+    throw error;
   }
 }
