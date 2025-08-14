@@ -375,6 +375,30 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
+  const handleSyncAllOrdersToUsersComprehensive = async () => {
+    try {
+      toast.loading('กำลังซิงค์ออเดอร์แบบครอบคลุม...', { id: 'syncAllOrdersComprehensive' });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncAllOrdersToUsersComprehensive' }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: 'syncAllOrdersComprehensive' });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์แบบครอบคลุม', { id: 'syncAllOrdersComprehensive' });
+      }
+    } catch (error) {
+      console.error('Error syncing all orders to users comprehensively:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'syncAllOrdersComprehensive' });
+    }
+  };
+
   const handleSyncCustomerName = async (customerId: string, customerPhone: string) => {
     try {
       const response = await fetch('/api/admin/customers', {
@@ -487,6 +511,18 @@ const CustomerManagementPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
               ซิงค์ออเดอร์ทั้งหมด
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleSyncAllOrdersToUsersComprehensive}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors ml-2"
+              title="ซิงค์ออเดอร์แบบครอบคลุม - รวมถึงออเดอร์ที่มี userId แล้วแต่ข้อมูลไม่ถูกต้อง"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              ซิงค์ออเดอร์แบบครอบคลุม
             </button>
           )}
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (

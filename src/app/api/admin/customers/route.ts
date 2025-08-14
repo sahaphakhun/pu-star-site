@@ -10,9 +10,11 @@ import {
   prepareCustomerDataForExport,
   updateCustomerStatsAutomatically,
   updateAllCustomerStats,
+  forceUpdateAllCustomerStatsFromOrders,
   syncOrdersToUser,
   syncAllOrdersToUsers,
   updateCustomerStatsFromOrders,
+  syncAllOrdersToUsersComprehensive,
 } from '@/utils/customerAnalytics';
 import { syncUserNameFromFirstOrder, migrateAllUserNamesFromOrders } from '@/utils/userNameSync';
 
@@ -340,7 +342,7 @@ export async function POST(request: NextRequest) {
     if (action === 'updateAllCustomerStatsFromOrders') {
       try {
         console.log('Starting bulk customer stats update from orders...');
-        const result = await updateAllCustomerStats();
+        const result = await forceUpdateAllCustomerStatsFromOrders();
         
         return NextResponse.json({
           success: true,
@@ -475,6 +477,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: false,
           message: 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์ทั้งหมด',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'syncAllOrdersToUsersComprehensive') {
+      try {
+        console.log('Starting comprehensive bulk order sync...');
+        const result = await syncAllOrdersToUsersComprehensive();
+        
+        return NextResponse.json({
+          success: true,
+          message: `ซิงค์ออเดอร์แบบครอบคลุมสำเร็จ ${result.syncedOrders} รายการ แก้ไข ${result.correctedOrders} รายการ จาก ${result.totalUsers} คน`,
+          data: result
+        });
+      } catch (error) {
+        console.error('Error syncing all orders to users comprehensively:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์แบบครอบคลุม',
           error: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
       }

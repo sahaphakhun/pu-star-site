@@ -152,52 +152,141 @@ export async function updateCustomerStatsFromOrders(userId: string) {
  */
 export async function updateCustomerStatsAutomatically(userId: string) {
   try {
-    // Import models dynamically เพื่อหลีกเลี่ยง circular dependency
-    const { default: Order } = await import('@/models/Order');
     const { default: User } = await import('@/models/User');
-
-    // ดึงออเดอร์ทั้งหมดของลูกค้า (ไม่จำกัดสถานะ)
-    const orders = await Order.find({ 
-      userId: userId
-    }).sort({ createdAt: 1 }).lean();
-
-    if (orders.length === 0) {
-      // หากไม่มีออเดอร์ ให้รีเซ็ตสถิติ
-      await User.findByIdAndUpdate(userId, {
-        $set: {
-          totalOrders: 0,
-          totalSpent: 0,
-          averageOrderValue: 0,
-          lastOrderDate: null,
-          customerType: 'new'
-        }
-      });
-      return;
-    }
-
-    // คำนวณสถิติใหม่
-    const analytics = calculateCustomerAnalytics(orders);
-    const customerType = classifyCustomer(analytics);
-
+    
+    // ใช้ getCustomerStatsFromOrders เพื่อดึงสถิติจากออเดอร์จริงทั้งหมด
+    const statsFromOrders = await getCustomerStatsFromOrders(userId);
+    
     // อัปเดตข้อมูลลูกค้า
     await User.findByIdAndUpdate(userId, {
       $set: {
-        customerType,
-        totalOrders: analytics.totalOrders,
-        totalSpent: analytics.totalSpent,
-        averageOrderValue: analytics.averageOrderValue,
-        lastOrderDate: analytics.lastOrderDate,
+        customerType: statsFromOrders.customerType,
+        totalOrders: statsFromOrders.totalOrders,
+        totalSpent: statsFromOrders.totalSpent,
+        averageOrderValue: statsFromOrders.averageOrderValue,
+        lastOrderDate: statsFromOrders.lastOrderDate,
       }
     });
 
     console.log(`Updated customer stats for user ${userId}:`, {
-      totalOrders: analytics.totalOrders,
-      totalSpent: analytics.totalSpent,
-      customerType
+      totalOrders: statsFromOrders.totalOrders,
+      totalSpent: statsFromOrders.totalSpent,
+      customerType: statsFromOrders.customerType
     });
 
   } catch (error) {
     console.error(`Error updating customer stats for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * ฟังก์ชันใหม่: อัปเดตสถิติลูกค้าทั้งหมดจากออเดอร์จริง (แก้ไขปัญหาหลัก)
+ */
+export async function forceUpdateAllCustomerStatsFromOrders() {
+  try {
+    const { default: User } = await import('@/models/User');
+    const { default: Order } = await import('@/models/Order');
+
+    console.log('Starting force update of all customer stats from orders...');
+    
+    // ดึงลูกค้าทั้งหมด
+    const customers = await User.find({ role: 'user' }).select('_id phoneNumber').lean();
+    console.log(`Found ${customers.length} customers to force update`);
+
+    let updatedCount = 0;
+    let errorCount = 0;
+    let totalOrdersFound = 0;
+
+    for (const customer of customers) {
+      try {
+        // ดึงออเดอร์ทั้งหมดของลูกค้า (รวมถึงออเดอร์เก่าที่อาจมี userId หรือไม่มี)
+        const customerPhone = customer.phoneNumber;
+        
+        // สร้างรูปแบบเบอร์โทรที่ตรงกัน (รองรับทั้ง +66 และ 0)
+        const phonePatterns = [];
+        if (customerPhone.startsWith('+66')) {
+          const numberWithoutPrefix = customerPhone.substring(3);
+          phonePatterns.push(customerPhone, `0${numberWithoutPrefix}`);
+        } else if (customerPhone.startsWith('0')) {
+          const numberWithoutPrefix = customerPhone.substring(1);
+          phonePatterns.push(customerPhone, `+66${numberWithoutPrefix}`);
+        } else if (customerPhone.startsWith('66')) {
+          const numberWithoutPrefix = customerPhone.substring(2);
+          phonePatterns.push(`+${customerPhone}`, `0${numberWithoutPrefix}`);
+        }
+
+        // ดึงออเดอร์ทั้งหมดที่มีเบอร์ตรงกัน
+        const allOrders = await Order.find({
+          customerPhone: { $in: phonePatterns }
+        }).sort({ createdAt: 1 }).lean();
+
+        if (allOrders.length > 0) {
+          // อัปเดต userId ในออเดอร์ที่ยังไม่มี
+          const ordersToUpdate = allOrders.filter(order => !order.userId);
+          if (ordersToUpdate.length > 0) {
+            await Order.updateMany(
+              { _id: { $in: ordersToUpdate.map(o => o._id) } },
+              { $set: { userId: customer._id } }
+            );
+            console.log(`Updated ${ordersToUpdate.length} orders for user ${customer._id}`);
+          }
+
+          // คำนวณสถิติจากออเดอร์ทั้งหมด
+          const analytics = calculateCustomerAnalytics(allOrders);
+          const customerType = classifyCustomer(analytics);
+
+          // อัปเดตข้อมูลลูกค้า
+          await User.findByIdAndUpdate(customer._id, {
+            $set: {
+              customerType,
+              totalOrders: analytics.totalOrders,
+              totalSpent: analytics.totalSpent,
+              averageOrderValue: analytics.averageOrderValue,
+              lastOrderDate: analytics.lastOrderDate,
+            }
+          });
+
+          totalOrdersFound += allOrders.length;
+          updatedCount++;
+          
+          console.log(`Force updated customer ${customer._id}: ${analytics.totalOrders} orders, ฿${analytics.totalSpent}`);
+        } else {
+          // หากไม่มีออเดอร์ ให้รีเซ็ตสถิติ
+          await User.findByIdAndUpdate(customer._id, {
+            $set: {
+              totalOrders: 0,
+              totalSpent: 0,
+              averageOrderValue: 0,
+              lastOrderDate: null,
+              customerType: 'new'
+            }
+          });
+          updatedCount++;
+        }
+        
+        // แสดงความคืบหน้าทุก 50 รายการ
+        if (updatedCount % 50 === 0) {
+          console.log(`Force updated ${updatedCount}/${customers.length} customers...`);
+        }
+      } catch (error) {
+        console.error(`Failed to force update customer ${customer._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    console.log(`Force update completed: ${updatedCount} successful, ${errorCount} failed, ${totalOrdersFound} total orders found`);
+    
+    return {
+      success: true,
+      total: customers.length,
+      updated: updatedCount,
+      failed: errorCount,
+      totalOrdersFound
+    };
+
+  } catch (error) {
+    console.error('Error in force update all customer stats:', error);
     throw error;
   }
 }
@@ -208,9 +297,36 @@ export async function updateCustomerStatsAutomatically(userId: string) {
 export async function getCustomerStatsFromOrders(userId: string) {
   try {
     const { default: Order } = await import('@/models/Order');
+    const { default: User } = await import('@/models/User');
     
-    // ดึงออเดอร์ทั้งหมดของลูกค้า
-    const orders = await Order.find({ userId }).sort({ createdAt: 1 }).lean();
+    // ดึงข้อมูลลูกค้าเพื่อใช้เบอร์โทรในการค้นหา
+    const user = await User.findById(userId).select('phoneNumber').lean();
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
+    
+    // สร้างรูปแบบเบอร์โทรที่ตรงกัน (รองรับทั้ง +66 และ 0)
+    const phonePatterns = [];
+    const customerPhone = user.phoneNumber;
+    
+    if (customerPhone.startsWith('+66')) {
+      const numberWithoutPrefix = customerPhone.substring(3);
+      phonePatterns.push(customerPhone, `0${numberWithoutPrefix}`);
+    } else if (customerPhone.startsWith('0')) {
+      const numberWithoutPrefix = customerPhone.substring(1);
+      phonePatterns.push(customerPhone, `+66${numberWithoutPrefix}`);
+    } else if (customerPhone.startsWith('66')) {
+      const numberWithoutPrefix = customerPhone.substring(2);
+      phonePatterns.push(`+${customerPhone}`, `0${numberWithoutPrefix}`);
+    }
+    
+    // ดึงออเดอร์ทั้งหมดของลูกค้า (รวมถึงออเดอร์เก่าที่อาจมี userId หรือไม่มี)
+    const orders = await Order.find({
+      $or: [
+        { userId: userId },
+        { customerPhone: { $in: phonePatterns } }
+      ]
+    }).sort({ createdAt: 1 }).lean();
     
     if (orders.length === 0) {
       return {
@@ -220,6 +336,16 @@ export async function getCustomerStatsFromOrders(userId: string) {
         lastOrderDate: null,
         customerType: 'new'
       };
+    }
+    
+    // อัปเดต userId ในออเดอร์ที่ยังไม่มี
+    const ordersToUpdate = orders.filter(order => !order.userId);
+    if (ordersToUpdate.length > 0) {
+      await Order.updateMany(
+        { _id: { $in: ordersToUpdate.map(o => o._id) } },
+        { $set: { userId: userId } }
+      );
+      console.log(`Updated ${ordersToUpdate.length} orders with userId for user ${userId}`);
     }
     
     // คำนวณสถิติจากออเดอร์จริง
@@ -551,7 +677,7 @@ export async function syncOrdersToUser(userId: string, userPhoneNumber: string) 
 
     // อัปเดตสถิติลูกค้าหลังจากซิงค์ออเดอร์
     if (syncedCount > 0) {
-      await updateCustomerStatsAutomatically(userId);
+      await updateCustomerStatsFromOrders(userId);
       console.log(`Updated customer stats after syncing ${syncedCount} orders`);
     }
 
@@ -603,6 +729,12 @@ export async function syncAllOrdersToUsers() {
       }
     }
 
+    // อัปเดตสถิติลูกค้าทั้งหมดหลังซิงค์เสร็จ
+    if (totalSynced > 0) {
+      console.log('Updating all customer stats after bulk sync...');
+      await forceUpdateAllCustomerStatsFromOrders();
+    }
+
     console.log(`Order sync completed: ${totalSynced} synced, ${totalDuplicates} duplicates, ${errorCount} errors`);
     
     return {
@@ -615,6 +747,114 @@ export async function syncAllOrdersToUsers() {
 
   } catch (error) {
     console.error('Error in bulk order sync:', error);
+    throw error;
+  }
+} 
+
+/**
+ * ซิงค์ออเดอร์ทั้งหมดในระบบให้ตรงกับผู้ใช้ (แบบครอบคลุม)
+ * รวมถึงออเดอร์ที่มี userId แล้วแต่ข้อมูลอาจไม่ถูกต้อง
+ */
+export async function syncAllOrdersToUsersComprehensive() {
+  try {
+    const { default: User } = await import('@/models/User');
+    const { default: Order } = await import('@/models/Order');
+
+    console.log('Starting comprehensive bulk order sync...');
+    
+    // ดึงผู้ใช้ทั้งหมด
+    const users = await User.find({ role: 'user' }).select('_id phoneNumber').lean();
+    console.log(`Found ${users.length} users to sync orders`);
+
+    let totalSynced = 0;
+    let totalDuplicates = 0;
+    let totalCorrected = 0;
+    let errorCount = 0;
+
+    for (const user of users) {
+      try {
+        const userPhone = user.phoneNumber;
+        
+        // สร้างรูปแบบเบอร์โทรที่ตรงกัน
+        const phonePatterns = [];
+        if (userPhone.startsWith('+66')) {
+          const numberWithoutPrefix = userPhone.substring(3);
+          phonePatterns.push(userPhone, `0${numberWithoutPrefix}`);
+        } else if (userPhone.startsWith('0')) {
+          const numberWithoutPrefix = userPhone.substring(1);
+          phonePatterns.push(userPhone, `+66${numberWithoutPrefix}`);
+        } else if (userPhone.startsWith('66')) {
+          const numberWithoutPrefix = userPhone.substring(2);
+          phonePatterns.push(`+${userPhone}`, `0${numberWithoutPrefix}`);
+        }
+
+        // ดึงออเดอร์ทั้งหมดที่มีเบอร์ตรงกัน
+        const allOrders = await Order.find({
+          customerPhone: { $in: phonePatterns }
+        }).sort({ createdAt: 1 }).lean();
+
+        let syncedCount = 0;
+        let correctedCount = 0;
+
+        for (const order of allOrders) {
+          try {
+            // ตรวจสอบว่าออเดอร์นี้ควรเป็นของ user นี้หรือไม่
+            if (!order.userId) {
+              // ออเดอร์ที่ยังไม่มี userId
+              await Order.findByIdAndUpdate(order._id, {
+                $set: { userId: user._id }
+              });
+              syncedCount++;
+              console.log(`Synced order ${order._id} to user ${user._id}`);
+            } else if (order.userId.toString() !== user._id.toString()) {
+              // ออเดอร์ที่มี userId แล้วแต่ไม่ตรงกับ user นี้
+              // ตรวจสอบว่า userId ปัจจุบันมีอยู่จริงหรือไม่
+              const currentUser = await User.findById(order.userId).lean();
+              if (!currentUser) {
+                // userId ไม่มีอยู่จริง ให้ย้ายมาที่ user นี้
+                await Order.findByIdAndUpdate(order._id, {
+                  $set: { userId: user._id }
+                });
+                correctedCount++;
+                console.log(`Corrected order ${order._id} from invalid userId to user ${user._id}`);
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to process order ${order._id}:`, error);
+          }
+        }
+
+        totalSynced += syncedCount;
+        totalCorrected += correctedCount;
+        
+        if (syncedCount > 0 || correctedCount > 0) {
+          console.log(`User ${userPhone}: synced ${syncedCount}, corrected ${correctedCount} orders`);
+        }
+        
+      } catch (error) {
+        console.error(`Failed to sync orders for user ${user._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    // อัปเดตสถิติลูกค้าทั้งหมดหลังซิงค์เสร็จ
+    if (totalSynced > 0 || totalCorrected > 0) {
+      console.log('Updating all customer stats after comprehensive sync...');
+      await forceUpdateAllCustomerStatsFromOrders();
+    }
+
+    console.log(`Comprehensive order sync completed: ${totalSynced} synced, ${totalCorrected} corrected, ${errorCount} errors`);
+    
+    return {
+      success: true,
+      totalUsers: users.length,
+      syncedOrders: totalSynced,
+      correctedOrders: totalCorrected,
+      errors: errorCount
+    };
+
+  } catch (error) {
+    console.error('Error in comprehensive bulk order sync:', error);
     throw error;
   }
 } 
