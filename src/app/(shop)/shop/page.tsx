@@ -1872,7 +1872,7 @@ const ShopPage = () => {
 
                   {/* ที่อยู่จัดส่ง */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่จัดส่ง</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อของที่อยู่จัดส่ง</label>
                     {addresses.length > 0 && !showNewAddress && (
                       <div className="mb-4 space-y-3">
                         {addresses.map((a:any) => (

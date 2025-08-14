@@ -8,6 +8,7 @@ import { sendSMS } from '@/app/notification';
 import { sendOrderStatusUpdate } from '@/app/notification';
 import { getServerSession } from 'next-auth';
 import { authOptions, verifyToken } from '@/lib/auth';
+import { updateCustomerStatsAutomatically } from '@/utils/customerAnalytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (body.shippingProvider) order.shippingProvider = body.shippingProvider;
 
     await order.save();
+
+    // อัปเดตสถิติลูกค้าอัตโนมัติเมื่อมีการเปลี่ยนแปลงออเดอร์
+    if (order.userId) {
+      try {
+        await updateCustomerStatsAutomatically(order.userId.toString());
+        console.log(`Updated customer stats for user ${order.userId}`);
+      } catch (error) {
+        console.error(`Failed to update customer stats for user ${order.userId}:`, error);
+        // ไม่ต้อง return error เพราะการอัปเดตสถิติไม่ใช่ส่วนสำคัญของออเดอร์
+      }
+    }
 
     // หากมีการใส่เลขพัสดุใหม่ ให้ส่งการแจ้งเตือนผ่านทั้ง SMS และ Messenger
     if (body.trackingNumber && (!prevTracking || prevTracking !== body.trackingNumber)) {

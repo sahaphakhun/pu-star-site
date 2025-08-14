@@ -231,8 +231,10 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
-  const handleUpdateCustomerStats = async () => {
+  const handleUpdateAllCustomerStats = async () => {
     try {
+      toast.loading('กำลังอัปเดตสถิติลูกค้าทั้งหมด...', { id: 'updateStats' });
+      
       const response = await fetch('/api/admin/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,14 +244,86 @@ const CustomerManagementPage: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message, { id: 'updateStats' });
         fetchCustomers(); // รีเฟรชข้อมูล
       } else {
-        toast.error('เกิดข้อผิดพลาดในการอัปเดตสถิติ');
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถิติ', { id: 'updateStats' });
       }
     } catch (error) {
-      console.error('Error updating stats:', error);
-      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      console.error('Error updating customer stats:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'updateStats' });
+    }
+  };
+
+  const handleUpdateCustomerStats = async (customerId: string) => {
+    try {
+      toast.loading('กำลังอัปเดตสถิติลูกค้า...', { id: `updateStats_${customerId}` });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateCustomerStatsById', customerId }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('อัปเดตสถิติลูกค้าสำเร็จแล้ว', { id: `updateStats_${customerId}` });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถิติ', { id: `updateStats_${customerId}` });
+      }
+    } catch (error) {
+      console.error('Error updating customer stats:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: `updateStats_${customerId}` });
+    }
+  };
+
+  const handleSyncOrdersToUser = async (customerId: string) => {
+    try {
+      toast.loading('กำลังซิงค์ออเดอร์...', { id: `syncOrders_${customerId}` });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncOrdersToUser', customerId }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: `syncOrders_${customerId}` });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์', { id: `syncOrders_${customerId}` });
+      }
+    } catch (error) {
+      console.error('Error syncing orders to user:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: `syncOrders_${customerId}` });
+    }
+  };
+
+  const handleSyncAllOrdersToUsers = async () => {
+    try {
+      toast.loading('กำลังซิงค์ออเดอร์ทั้งหมด...', { id: 'syncAllOrders' });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncAllOrdersToUsers' }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: 'syncAllOrders' });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์ทั้งหมด', { id: 'syncAllOrders' });
+      }
+    } catch (error) {
+      console.error('Error syncing all orders to users:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'syncAllOrders' });
     }
   };
 
@@ -336,13 +410,24 @@ const CustomerManagementPage: React.FC = () => {
         <div className="flex space-x-3">
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
             <button
-              onClick={handleUpdateCustomerStats}
+              onClick={handleUpdateAllCustomerStats}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              อัปเดตสถิติ
+              อัปเดตสถิติลูกค้าทั้งหมด
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleSyncAllOrdersToUsers}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors ml-2"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              ซิงค์ออเดอร์ทั้งหมด
             </button>
           )}
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (
@@ -786,6 +871,20 @@ const CustomerManagementPage: React.FC = () => {
                           ซิงค์ชื่อ
                         </button>
                       )}
+                      <button
+                        onClick={() => handleUpdateCustomerStats(customer._id)}
+                        className="text-orange-600 hover:text-orange-900 ml-2"
+                        title="อัปเดตสถิติลูกค้า"
+                      >
+                        อัปเดตสถิติ
+                      </button>
+                      <button
+                        onClick={() => handleSyncOrdersToUser(customer._id)}
+                        className="text-indigo-600 hover:text-indigo-900 ml-2"
+                        title="ซิงค์ออเดอร์"
+                      >
+                        ซิงค์ออเดอร์
+                      </button>
                     </div>
                     
                     {/* Mobile: แสดงปุ่มแบบไอคอน */}
@@ -829,6 +928,24 @@ const CustomerManagementPage: React.FC = () => {
                           </svg>
                         </button>
                       )}
+                      <button
+                        onClick={() => handleUpdateCustomerStats(customer._id)}
+                        className="p-2 text-orange-600 hover:text-orange-900 hover:bg-orange-50 rounded-full"
+                        title="อัปเดตสถิติลูกค้า"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleSyncOrdersToUser(customer._id)}
+                        className="p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-full"
+                        title="ซิงค์ออเดอร์"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
