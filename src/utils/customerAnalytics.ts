@@ -46,7 +46,7 @@ export function calculateCustomerAnalytics(orders: IOrder[]): CustomerAnalytics 
   
   // หาวันที่สั่งซื้อล่าสุด
   const lastOrderDate = orders.reduce((latest, order) => {
-    const orderDate = new Date(order.orderDate);
+    const orderDate = new Date(order.createdAt);
     return orderDate > latest ? orderDate : latest;
   }, new Date(0));
 
@@ -57,7 +57,7 @@ export function calculateCustomerAnalytics(orders: IOrder[]): CustomerAnalytics 
 
   // คำนวณความถี่ในการสั่งซื้อ (ออเดอร์ต่อเดือน)
   const firstOrderDate = orders.reduce((earliest, order) => {
-    const orderDate = new Date(order.orderDate);
+    const orderDate = new Date(order.createdAt);
     return orderDate < earliest ? orderDate : earliest;
   }, new Date());
 

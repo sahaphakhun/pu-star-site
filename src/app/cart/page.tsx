@@ -38,8 +38,6 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [showCheckout, setShowCheckout] = useState(false);
   const [orderForm, setOrderForm] = useState({
-    customerName: '',
-    customerPhone: '',
     customerAddress: {
       label: '',
       name: '',
@@ -112,14 +110,23 @@ export default function CartPage() {
   };
 
   const handleSubmitOrder = async () => {
-    if (!orderForm.customerName.trim()) {
+    if (!orderForm.customerAddress.name.trim()) {
       alert('กรุณากรอกชื่อ');
       return;
     }
-    if (!orderForm.customerPhone.trim()) {
+    if (!orderForm.customerAddress.phone.trim()) {
       alert('กรุณากรอกเบอร์โทรศัพท์');
       return;
     }
+    if (!orderForm.customerAddress.province.trim()) {
+      alert('กรุณากรอกจังหวัด');
+      return;
+    }
+    if (!orderForm.customerAddress.houseNumber.trim()) {
+      alert('กรุณากรอกบ้านเลขที่');
+      return;
+    }
+
     // Helper function to format address for API
     const formatAddressForAPI = (address: Address): string => {
       const parts = [
@@ -141,15 +148,29 @@ export default function CartPage() {
     };
 
     if (!isAddressValid(orderForm.customerAddress)) {
-      alert('กรุณากรอกชื่อ เบอร์โทรศัพท์ จังหวัด และบ้านเลขที่');
+      alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน:\n- ชื่อ-นามสกุล\n- เบอร์โทรศัพท์\n- จังหวัด\n- บ้านเลขที่');
       return;
     }
 
     setSubmitting(true);
     try {
+      // ดึงข้อมูล user ปัจจุบัน (ถ้ามี)
+      let currentUser = null;
+      try {
+        const userResponse = await fetch('/api/auth/me');
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (userData.success && userData.user) {
+            currentUser = userData.user;
+          }
+        }
+      } catch (error) {
+        console.log('ไม่สามารถดึงข้อมูล user ได้:', error);
+      }
+
       const orderData = {
-        customerName: orderForm.customerName,
-        customerPhone: orderForm.customerPhone,
+        customerName: orderForm.customerAddress.name,
+        customerPhone: orderForm.customerAddress.phone,
         customerAddress: formatAddressForAPI(orderForm.customerAddress),
         paymentMethod: orderForm.paymentMethod,
         deliveryMethod: orderForm.deliveryMethod,
@@ -165,7 +186,15 @@ export default function CartPage() {
         })),
         totalAmount: getTotalPrice() + orderForm.shippingFee - orderForm.discount,
         shippingFee: orderForm.shippingFee,
-        discount: orderForm.discount
+        discount: orderForm.discount,
+        // เพิ่มข้อมูล orderedBy เพื่อบันทึกข้อมูลผู้สั่งซื้อ
+        ...(currentUser && {
+          orderedBy: {
+            userId: currentUser._id,
+            name: currentUser.name || orderForm.customerAddress.name,
+            phone: currentUser.phoneNumber || orderForm.customerAddress.phone
+          }
+        })
       };
 
       const response = await fetch('/api/orders', {
@@ -182,8 +211,6 @@ export default function CartPage() {
         updateCart([]);
         setShowCheckout(false);
         setOrderForm({
-          customerName: '',
-          customerPhone: '',
           customerAddress: {
             label: '',
             name: '',
@@ -197,7 +224,7 @@ export default function CartPage() {
             moo: '',
             road: '',
             isDefault: false
-          } as Address,
+          },
           paymentMethod: 'cod',
           deliveryMethod: 'standard',
           deliveryLocation: undefined,
@@ -454,46 +481,10 @@ export default function CartPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">ข้อมูลลูกค้า</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ชื่อ-นามสกุล
-                      </label>
-                      <input
-                        type="text"
-                        value={orderForm.customerName}
-                        onChange={(e) => setOrderForm({
-                          ...orderForm, 
-                          customerName: e.target.value,
-                          customerAddress: {
-                            ...orderForm.customerAddress,
-                            name: e.target.value
-                          }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="กรอกชื่อ-นามสกุล"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        เบอร์โทรศัพท์
-                      </label>
-                      <input
-                        type="tel"
-                        value={orderForm.customerPhone}
-                        onChange={(e) => setOrderForm({
-                          ...orderForm, 
-                          customerPhone: e.target.value,
-                          customerAddress: {
-                            ...orderForm.customerAddress,
-                            phone: e.target.value
-                          }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="กรอกเบอร์โทรศัพท์"
-                      />
-                    </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>หมายเหตุ:</strong> ข้อมูลชื่อและเบอร์โทรศัพท์จะถูกดึงมาจากฟอร์มที่อยู่ด้านล่าง
+                    </p>
                   </div>
                 </div>
 
@@ -502,10 +493,7 @@ export default function CartPage() {
                   <AddressForm
                     onAddressChange={(address) => setOrderForm({
                       ...orderForm, 
-                      customerAddress: address,
-                      // Sync name and phone from address form
-                      customerName: address.name || orderForm.customerName,
-                      customerPhone: address.phone || orderForm.customerPhone
+                      customerAddress: address
                     })}
                     initialAddress={orderForm.customerAddress}
                   />
@@ -567,6 +555,17 @@ export default function CartPage() {
                 {/* Order Summary */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">สรุปคำสั่งซื้อ</h3>
+                  
+                  {/* ข้อมูลลูกค้า */}
+                  <div className="mb-4 p-3 bg-white rounded border">
+                    <h4 className="font-medium text-gray-900 mb-2">ข้อมูลลูกค้า</h4>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div><strong>ชื่อ:</strong> {orderForm.customerAddress.name || 'ยังไม่ได้กรอก'}</div>
+                      <div><strong>เบอร์โทร:</strong> {orderForm.customerAddress.phone || 'ยังไม่ได้กรอก'}</div>
+                      <div><strong>ที่อยู่:</strong> {orderForm.customerAddress.houseNumber ? 
+                        `${orderForm.customerAddress.houseNumber} ${orderForm.customerAddress.lane ? `ซ.${orderForm.customerAddress.lane}` : ''} ${orderForm.customerAddress.moo ? `หมู่ ${orderForm.customerAddress.moo}` : ''} ${orderForm.customerAddress.road ? `ถ.${orderForm.customerAddress.road}` : ''} ${orderForm.customerAddress.subDistrict ? `ต.${orderForm.customerAddress.subDistrict}` : ''} ${orderForm.customerAddress.district ? `อ.${orderForm.customerAddress.district}` : ''} ${orderForm.customerAddress.province} ${orderForm.customerAddress.postalCode}` : 'ยังไม่ได้กรอก'}</div>
+                    </div>
+                  </div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">

@@ -133,32 +133,58 @@ export async function GET(request: NextRequest) {
     const sampleUsers = await User.find({ role: 'user' }).limit(3).select('name phoneNumber customerType role').lean();
     console.log('Sample users:', sampleUsers);
     
-    const customers = await User.find(filters)
-      .sort(sortOptions)
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .select('-password') // ไม่เอาฟิลด์ password
-      .lean();
-      
-    console.log('Found customers:', customers.length);
-    console.log('Customer sample:', customers.slice(0, 2));
-
-    const totalCustomers = await User.countDocuments(filters);
-    const totalPages = Math.ceil(totalCustomers / limit);
+    let customers;
+    let totalCustomers;
+    let totalPages;
     
-    console.log('Total customers matching filters:', totalCustomers);
-    console.log('Total pages:', totalPages);
+    try {
+      customers = await User.find(filters)
+        .sort(sortOptions)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select('-password') // ไม่เอาฟิลด์ password
+        .lean();
+        
+      console.log('Found customers:', customers.length);
+      console.log('Customer sample:', customers.slice(0, 2));
+
+      totalCustomers = await User.countDocuments(filters);
+      totalPages = Math.ceil(totalCustomers / limit);
+      
+      console.log('Total customers matching filters:', totalCustomers);
+      console.log('Total pages:', totalPages);
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      return NextResponse.json(
+        { 
+          error: 'เกิดข้อผิดพลาดในการดึงข้อมูลจากฐานข้อมูล',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        },
+        { status: 500 }
+      );
+    }
 
     // หากต้องการ export
     if (export_format === 'csv') {
-      const allCustomers = await User.find(filters).sort(sortOptions).lean();
-      const csvData = prepareCustomerDataForExport(allCustomers);
-      
-      return NextResponse.json({
-        success: true,
-        data: csvData,
-        export: true
-      });
+      try {
+        const allCustomers = await User.find(filters).sort(sortOptions).lean();
+        const csvData = prepareCustomerDataForExport(allCustomers);
+        
+        return NextResponse.json({
+          success: true,
+          data: csvData,
+          export: true
+        });
+      } catch (exportError) {
+        console.error('Export error:', exportError);
+        return NextResponse.json(
+          { 
+            error: 'เกิดข้อผิดพลาดในการส่งออกข้อมูล',
+            details: exportError instanceof Error ? exportError.message : 'Unknown export error'
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // สร้างสถิติรวม
@@ -167,8 +193,24 @@ export async function GET(request: NextRequest) {
       .lean();
     console.log('All customers for stats:', allCustomersForStats.length);
     
-    const stats = generateCustomerStats(allCustomersForStats);
-    console.log('Generated stats:', stats);
+    let stats;
+    try {
+      stats = generateCustomerStats(allCustomersForStats);
+      console.log('Generated stats:', stats);
+    } catch (statsError) {
+      console.error('Error generating stats:', statsError);
+      // สร้าง stats แบบพื้นฐานหากเกิดข้อผิดพลาด
+      stats = {
+        totalCustomers: allCustomersForStats.length,
+        newCustomers: 0,
+        regularCustomers: 0,
+        targetCustomers: 0,
+        inactiveCustomers: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0,
+        topCustomers: []
+      };
+    }
 
     return NextResponse.json({
       success: true,
