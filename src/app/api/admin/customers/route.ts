@@ -312,7 +312,9 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const { action, customerId, customerName } = await request.json();
+    // อ่าน request body เพียงครั้งเดียว
+    const body = await request.json();
+    const { action, customerId, customerName, userIds } = body;
 
     if (action === 'updateAllCustomerStats') {
       try {
@@ -336,8 +338,6 @@ export async function POST(request: NextRequest) {
 
     if (action === 'updateCustomerStatsById') {
       try {
-        const { customerId } = await request.json();
-        
         if (!customerId) {
           return NextResponse.json({ error: 'ต้องระบุ customerId' }, { status: 400 });
         }
@@ -412,8 +412,6 @@ export async function POST(request: NextRequest) {
 
     if (action === 'syncOrdersToUser') {
       try {
-        const { customerId } = await request.json();
-        
         if (!customerId) {
           return NextResponse.json({ error: 'ต้องระบุ customerId' }, { status: 400 });
         }
@@ -463,8 +461,6 @@ export async function POST(request: NextRequest) {
 
     if (action === 'getCustomersByIds') {
       try {
-        const { userIds } = await request.json();
-        
         if (!userIds || !Array.isArray(userIds)) {
           return NextResponse.json({ error: 'ต้องระบุ userIds เป็น array' }, { status: 400 });
         }
