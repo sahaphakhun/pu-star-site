@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       slipUrl,
       slipVerification,
       taxInvoice,
+      userId: (session?.user?.id) || tokenResult?.userId, // เพิ่ม userId โดยตรง
       orderedBy: orderedBy || {
         userId: (session?.user?.id) || tokenResult?.userId,
         name: (session?.user?.name as any) || tokenResult?.name,

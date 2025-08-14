@@ -51,6 +51,8 @@ const CustomerManagementPage: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignedTo, setAssignedTo] = useState('');
+  const [showHeaderActions, setShowHeaderActions] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
   
   // Tab state
   const [activeTab, setActiveTab] = useState<'all' | 'new' | 'regular' | 'target' | 'inactive'>('all');
@@ -132,6 +134,49 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
+  // รวมการทำงาน: ซิงค์ออเดอร์แบบครอบคลุม -> สร้างผู้ใช้จากออเดอร์ -> รายงานออเดอร์ที่ไม่มีผู้ใช้
+  const handleSyncAndCreateUsersCombo = async () => {
+    try {
+      toast.loading('กำลังซิงค์และสร้างผู้ใช้จากออเดอร์...', { id: 'comboSyncCreate' });
+
+      // 1) ซิงค์ออเดอร์แบบครอบคลุม
+      let response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncAllOrdersToUsersComprehensive' }),
+        credentials: 'include'
+      });
+      let data = await response.json();
+      if (!data.success) throw new Error(data.message || 'ซิงค์ออเดอร์แบบครอบคลุมล้มเหลว');
+
+      // 2) ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่
+      response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'findOrphanedOrdersAndCreateUsers' }),
+        credentials: 'include'
+      });
+      data = await response.json();
+      if (!data.success) throw new Error(data.message || 'สร้างผู้ใช้จากออเดอร์ล้มเหลว');
+
+      // 3) รายงานออเดอร์ที่ไม่มีผู้ใช้
+      response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reportOrphanedOrders' }),
+        credentials: 'include'
+      });
+      data = await response.json();
+      if (!data.success) throw new Error(data.message || 'รายงานออเดอร์ที่ไม่มีผู้ใช้ล้มเหลว');
+
+      toast.success('ซิงค์ออเดอร์ + สร้างผู้ใช้ + รายงาน สำเร็จ', { id: 'comboSyncCreate' });
+      fetchCustomers();
+    } catch (error: any) {
+      console.error('Combo sync/create/report error:', error);
+      toast.error(error?.message || 'เกิดข้อผิดพลาดระหว่างการดำเนินการรวม', { id: 'comboSyncCreate' });
+    }
+  };
+
   useEffect(() => {
     fetchCustomers();
   }, [currentPage, searchTerm, activeTab, assignedToFilter, dateRange, sortBy, sortOrder, minSpent, maxSpent]);
@@ -139,7 +184,7 @@ const CustomerManagementPage: React.FC = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdownId && !(event.target as Element).closest('.relative')) {
+      if (openDropdownId && !(event.target as Element).closest('.row-actions')) {
         setOpenDropdownId(null);
       }
     };
@@ -149,6 +194,20 @@ const CustomerManagementPage: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openDropdownId]);
+
+  // ปิดเมนูการดำเนินการส่วนหัวเมื่อคลิกนอกพื้นที่
+  useEffect(() => {
+    const handleClickOutsideHeader = (event: MouseEvent) => {
+      if (showHeaderActions && !(event.target as Element).closest('.header-actions')) {
+        setShowHeaderActions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutsideHeader);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideHeader);
+    };
+  }, [showHeaderActions]);
 
   const handleTabChange = (tabId: 'all' | 'new' | 'regular' | 'target' | 'inactive') => {
     setActiveTab(tabId);
@@ -492,77 +551,39 @@ const CustomerManagementPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">จัดการลูกค้า</h1>
           <p className="text-gray-600">ภาพรวมและจัดการข้อมูลลูกค้าทั้งหมด</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="relative header-actions">
+          <button
+            onClick={() => setShowHeaderActions(prev => !prev)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            title="การดำเนินการ"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6a2 2 0 110-4 2 2 0 010 4zM12 14a2 2 0 110-4 2 2 0 010 4zM12 22a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
+            การดำเนินการ
+          </button>
 
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleUpdateAllCustomerStatsFromOrders}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              อัปเดตสถิติจากออเดอร์จริงทั้งหมด
-            </button>
-          )}
-
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleSyncAllOrdersToUsersComprehensive}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors ml-2"
-              title="ซิงค์ออเดอร์แบบครอบคลุม - รวมถึงออเดอร์ที่มี userId แล้วแต่ข้อมูลไม่ถูกต้อง"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              ซิงค์ออเดอร์แบบครอบคลุม
-            </button>
-          )}
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleFindOrphanedOrdersAndCreateUsers}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors ml-2"
-              title="ค้นหาออเดอร์ที่ไม่มีผู้ใช้และสร้างผู้ใช้ใหม่"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              สร้างผู้ใช้จากออเดอร์
-            </button>
-          )}
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
-            <button
-              onClick={handleReportOrphanedOrders}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ml-2"
-              title="ตรวจสอบและรายงานออเดอร์ที่ไม่มีผู้ใช้"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              รายงานออเดอร์ที่ไม่มีผู้ใช้
-            </button>
-          )}
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (
-            <button
-              onClick={handleExportCSV}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              ส่งออก CSV
-            </button>
-          )}
-          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EDIT)) && (
-            <button
-              onClick={handleSyncAllCustomerNames}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              ซิงค์ชื่อลูกค้าทั้งหมด
-            </button>
+          {showHeaderActions && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow border z-10">
+              <div className="py-1 text-sm text-gray-700">
+                {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EXPORT)) && (
+                  <button onClick={() => { setShowHeaderActions(false); handleExportCSV(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ส่งออก CSV</button>
+                )}
+                {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_EDIT)) && (
+                  <button onClick={() => { setShowHeaderActions(false); handleSyncAllCustomerNames(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ชื่อลูกค้าทั้งหมด</button>
+                )}
+                {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+                  <>
+                    <div className="my-1 border-t" />
+                    <button onClick={() => { setShowHeaderActions(false); handleUpdateAllCustomerStatsFromOrders(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">อัปเดตสถิติจากออเดอร์จริงทั้งหมด</button>
+                    <button onClick={() => { setShowHeaderActions(false); handleSyncAllOrdersToUsersComprehensive(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ออเดอร์แบบครอบคลุม</button>
+                    <button onClick={() => { setShowHeaderActions(false); handleFindOrphanedOrdersAndCreateUsers(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">สร้างผู้ใช้จากออเดอร์</button>
+                    <button onClick={() => { setShowHeaderActions(false); handleReportOrphanedOrders(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">รายงานออเดอร์ที่ไม่มีผู้ใช้</button>
+                    <button onClick={() => { setShowHeaderActions(false); handleSyncAndCreateUsersCombo(); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-blue-700">ซิงค์ + สร้างผู้ใช้ + รายงาน (ครบชุด)</button>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -844,6 +865,12 @@ const CustomerManagementPage: React.FC = () => {
             <p className="text-sm text-gray-600">
               แสดง {customers.length} จาก {totalCustomers.toLocaleString()} รายการ
             </p>
+            <button
+              onClick={() => setShowDebug(prev => !prev)}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              {showDebug ? 'ซ่อน Debug' : 'แสดง Debug'}
+            </button>
             {loading && (
               <div className="flex items-center text-sm text-blue-600">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
@@ -854,10 +881,12 @@ const CustomerManagementPage: React.FC = () => {
         </div>
         
         {/* Debug Information */}
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-          <p><strong>Debug Info:</strong> แท็บปัจจุบัน: {activeTab} | ค้นหา: "{searchTerm}" | จำนวนที่พบ: {customers.length}</p>
-          <p>กรอง: {assignedToFilter ? `ผู้รับผิดชอบ: ${assignedToFilter}` : ''} {minSpent ? `ยอดขั้นต่ำ: ${minSpent}` : ''} {maxSpent ? `ยอดสูงสุด: ${maxSpent}` : ''}</p>
-        </div>
+        {showDebug && (
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+            <p><strong>Debug Info:</strong> แท็บปัจจุบัน: {activeTab} | ค้นหา: "{searchTerm}" | จำนวนที่พบ: {customers.length}</p>
+            <p>กรอง: {assignedToFilter ? `ผู้รับผิดชอบ: ${assignedToFilter}` : ''} {minSpent ? `ยอดขั้นต่ำ: ${minSpent}` : ''} {maxSpent ? `ยอดสูงสุด: ${maxSpent}` : ''}</p>
+          </div>
+        )}
       </div>
 
       {/* Customer Table */}
@@ -951,74 +980,46 @@ const CustomerManagementPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {/* Desktop: แสดงปุ่มแบบข้อความใน 3 บรรทัด */}
-                    <div className="hidden md:block space-y-2">
-                      {/* บรรทัดที่ 1: 2 ปุ่ม */}
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setShowDetailModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 text-sm"
-                        >
-                          ดูรายละเอียด
-                        </button>
-                        {(activeTab === 'target' || activeTab === 'all') && (
-                          <button
-                            onClick={() => {
-                              setSelectedCustomer(customer);
-                              setAssignedTo(customer.assignedTo || '');
-                              setShowAssignModal(true);
-                            }}
-                            className="text-green-600 hover:text-green-900 text-sm"
-                          >
-                            กำหนดผู้รับผิดชอบ
-                          </button>
-                        )}
-                      </div>
-                      
-                      {/* บรรทัดที่ 2: 2 ปุ่ม */}
-                      <div className="flex space-x-2">
-                        {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
-                          <button
-                            onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
-                            className="text-purple-600 hover:text-purple-900 text-sm"
-                            title="ซิงค์ชื่อจากออเดอร์"
-                          >
-                            ซิงค์ชื่อ
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleUpdateCustomerStats(customer._id)}
-                          className="text-orange-600 hover:text-orange-900 text-sm"
-                          title="อัปเดตสถิติลูกค้า"
-                        >
-                          อัปเดตสถิติ
-                        </button>
-                      </div>
-                      
-                      {/* บรรทัดที่ 3: 2 ปุ่ม */}
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleUpdateCustomerStatsFromOrders(customer._id)}
-                          className="text-purple-600 hover:text-purple-900 text-sm"
-                          title="อัปเดตสถิติจากออเดอร์จริง"
-                        >
-                          อัปเดตจากออเดอร์
-                        </button>
-                        <button
-                          onClick={() => handleSyncOrdersToUser(customer._id)}
-                          className="text-indigo-600 hover:text-indigo-900 text-sm"
-                          title="ซิงค์ออเดอร์"
-                        >
-                          ซิงค์ออเดอร์
-                        </button>
-                      </div>
+                    {/* Desktop: ปุ่มหลัก + เมนูสามจุด */}
+                    <div className="hidden md:flex items-center gap-2 relative row-actions">
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-900 text-sm"
+                      >
+                        ดูรายละเอียด
+                      </button>
+                      <button
+                        onClick={() => setOpenDropdownId(openDropdownId === customer._id ? null : customer._id)}
+                        className="p-1 rounded hover:bg-gray-100"
+                        title="ตัวเลือกเพิ่มเติม"
+                      >
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6a2 2 0 110-4 2 2 0 010 4zM12 14a2 2 0 110-4 2 2 0 010 4zM12 22a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+
+                      {openDropdownId === customer._id && (
+                        <div className="absolute top-8 left-0 w-64 bg-white border rounded-lg shadow z-10">
+                          <div className="py-1 text-sm text-gray-700">
+                            {(activeTab === 'target' || activeTab === 'all') && (
+                              <button onClick={() => { setAssignedTo(customer.assignedTo || ''); setSelectedCustomer(customer); setShowAssignModal(true); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">กำหนดผู้รับผิดชอบ</button>
+                            )}
+                            {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                              <button onClick={() => { handleSyncCustomerName(customer._id, customer.phoneNumber); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ชื่อ</button>
+                            )}
+                            <button onClick={() => { handleUpdateCustomerStats(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">อัปเดตสถิติ</button>
+                            <button onClick={() => { handleUpdateCustomerStatsFromOrders(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">อัปเดตจากออเดอร์</button>
+                            <button onClick={() => { handleSyncOrdersToUser(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ออเดอร์</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    
-                    {/* Mobile: แสดงปุ่มแบบไอคอน */}
-                    <div className="md:hidden flex space-x-2">
+
+                    {/* Mobile: ปุ่มหลัก + เมนูสามจุด */}
+                    <div className="md:hidden relative flex items-center gap-2 row-actions">
                       <button
                         onClick={() => {
                           setSelectedCustomer(customer);
@@ -1032,59 +1033,31 @@ const CustomerManagementPage: React.FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </button>
-                      {(activeTab === 'target' || activeTab === 'all') && (
-                        <button
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            setAssignedTo(customer.assignedTo || '');
-                            setShowAssignModal(true);
-                          }}
-                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-full"
-                          title="กำหนดผู้รับผิดชอบ"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </button>
+                      <button
+                        onClick={() => setOpenDropdownId(openDropdownId === customer._id ? null : customer._id)}
+                        className="p-2 rounded-full hover:bg-gray-100"
+                        title="ตัวเลือกเพิ่มเติม"
+                      >
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6a2 2 0 110-4 2 2 0 010 4zM12 14a2 2 0 110-4 2 2 0 010 4zM12 22a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+
+                      {openDropdownId === customer._id && (
+                        <div className="absolute top-10 left-0 w-56 bg-white border rounded-lg shadow z-10">
+                          <div className="py-1 text-sm text-gray-700">
+                            {(activeTab === 'target' || activeTab === 'all') && (
+                              <button onClick={() => { setAssignedTo(customer.assignedTo || ''); setSelectedCustomer(customer); setShowAssignModal(true); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">กำหนดผู้รับผิดชอบ</button>
+                            )}
+                            {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
+                              <button onClick={() => { handleSyncCustomerName(customer._id, customer.phoneNumber); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ชื่อ</button>
+                            )}
+                            <button onClick={() => { handleUpdateCustomerStats(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">อัปเดตสถิติ</button>
+                            <button onClick={() => { handleUpdateCustomerStatsFromOrders(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">อัปเดตจากออเดอร์</button>
+                            <button onClick={() => { handleSyncOrdersToUser(customer._id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">ซิงค์ออเดอร์</button>
+                          </div>
+                        </div>
                       )}
-                      {(customer.name === 'ลูกค้า' || !customer.name || customer.name === customer.phoneNumber) && (
-                        <button
-                          onClick={() => handleSyncCustomerName(customer._id, customer.phoneNumber)}
-                          className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full"
-                          title="ซิงค์ชื่อจากออเดอร์"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleUpdateCustomerStats(customer._id)}
-                        className="p-2 text-orange-600 hover:text-orange-900 hover:bg-orange-50 rounded-full"
-                        title="อัปเดตสถิติลูกค้า"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleUpdateCustomerStatsFromOrders(customer._id)}
-                        className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full"
-                        title="อัปเดตสถิติจากออเดอร์จริง"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleSyncOrdersToUser(customer._id)}
-                        className="p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-full"
-                        title="ซิงค์ออเดอร์"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                      </button>
                     </div>
                   </td>
                 </tr>
