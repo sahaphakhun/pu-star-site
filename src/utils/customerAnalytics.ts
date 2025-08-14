@@ -118,6 +118,36 @@ export async function updateCustomerStats(userId: string, orders: IOrder[]) {
 }
 
 /**
+ * อัปเดตสถิติลูกค้าจากออเดอร์จริง (ไม่ใช้ข้อมูลที่บันทึกใน User model)
+ */
+export async function updateCustomerStatsFromOrders(userId: string) {
+  try {
+    const { default: User } = await import('@/models/User');
+    
+    // ดึงสถิติจากออเดอร์จริง
+    const statsFromOrders = await getCustomerStatsFromOrders(userId);
+    
+    // อัปเดตข้อมูลลูกค้า
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        customerType: statsFromOrders.customerType,
+        totalOrders: statsFromOrders.totalOrders,
+        totalSpent: statsFromOrders.totalSpent,
+        averageOrderValue: statsFromOrders.averageOrderValue,
+        lastOrderDate: statsFromOrders.lastOrderDate,
+      }
+    });
+
+    console.log(`Updated customer stats from orders for user ${userId}:`, statsFromOrders);
+    
+    return statsFromOrders;
+  } catch (error) {
+    console.error(`Error updating customer stats from orders for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * อัปเดตสถิติลูกค้าอัตโนมัติเมื่อมีการเปลี่ยนแปลงออเดอร์
  */
 export async function updateCustomerStatsAutomatically(userId: string) {
@@ -126,10 +156,9 @@ export async function updateCustomerStatsAutomatically(userId: string) {
     const { default: Order } = await import('@/models/Order');
     const { default: User } = await import('@/models/User');
 
-    // ดึงออเดอร์ทั้งหมดของลูกค้าที่มีสถานะที่ถือว่าเสร็จสิ้นแล้ว
+    // ดึงออเดอร์ทั้งหมดของลูกค้า (ไม่จำกัดสถานะ)
     const orders = await Order.find({ 
-      userId: userId,
-      status: { $in: ['delivered', 'confirmed', 'shipped'] }
+      userId: userId
     }).sort({ createdAt: 1 }).lean();
 
     if (orders.length === 0) {
@@ -174,6 +203,40 @@ export async function updateCustomerStatsAutomatically(userId: string) {
 }
 
 /**
+ * ดึงสถิติลูกค้าจากออเดอร์จริง (ไม่ใช้ข้อมูลที่บันทึกใน User model)
+ */
+export async function getCustomerStatsFromOrders(userId: string) {
+  try {
+    const { default: Order } = await import('@/models/Order');
+    
+    // ดึงออเดอร์ทั้งหมดของลูกค้า
+    const orders = await Order.find({ userId }).sort({ createdAt: 1 }).lean();
+    
+    if (orders.length === 0) {
+      return {
+        totalOrders: 0,
+        totalSpent: 0,
+        averageOrderValue: 0,
+        lastOrderDate: null,
+        customerType: 'new'
+      };
+    }
+    
+    // คำนวณสถิติจากออเดอร์จริง
+    const analytics = calculateCustomerAnalytics(orders);
+    const customerType = classifyCustomer(analytics);
+    
+    return {
+      ...analytics,
+      customerType
+    };
+  } catch (error) {
+    console.error(`Error getting customer stats from orders for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * อัปเดตสถิติลูกค้าทั้งหมดในระบบ (ใช้เป็น cron job หรือ admin function)
  */
 export async function updateAllCustomerStats() {
@@ -192,7 +255,7 @@ export async function updateAllCustomerStats() {
 
     for (const customer of customers) {
       try {
-        await updateCustomerStatsAutomatically(customer._id.toString());
+        await updateCustomerStatsFromOrders(customer._id.toString());
         updatedCount++;
         
         // แสดงความคืบหน้าทุก 100 รายการ
@@ -283,16 +346,38 @@ export function filterCustomers(
 /**
  * สร้างรายงานสถิติลูกค้ารวม
  */
-export function generateCustomerStats(customers: IUser[]): CustomerStats {
+export async function generateCustomerStats(customers: IUser[]) {
   const totalCustomers = customers.length;
   const newCustomers = customers.filter(c => c.customerType === 'new').length;
   const regularCustomers = customers.filter(c => c.customerType === 'regular').length;
   const targetCustomers = customers.filter(c => c.customerType === 'target').length;
   const inactiveCustomers = customers.filter(c => c.customerType === 'inactive').length;
 
-  const totalRevenue = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
-  const averageOrderValue = totalCustomers > 0 ? 
-    customers.reduce((sum, c) => sum + (c.averageOrderValue || 0), 0) / totalCustomers : 0;
+  // คำนวณยอดรวมจากออเดอร์จริง
+  let totalRevenue = 0;
+  let totalOrderValues = 0;
+  let validCustomers = 0;
+
+  for (const customer of customers) {
+    try {
+      const statsFromOrders = await getCustomerStatsFromOrders((customer as any)._id.toString());
+      totalRevenue += statsFromOrders.totalSpent || 0;
+      if (statsFromOrders.totalOrders > 0) {
+        totalOrderValues += statsFromOrders.averageOrderValue || 0;
+        validCustomers++;
+      }
+    } catch (error) {
+      console.error(`Error getting stats for customer ${(customer as any)._id}:`, error);
+      // ใช้ข้อมูลจาก User model เป็น fallback
+      totalRevenue += customer.totalSpent || 0;
+      if ((customer.totalOrders || 0) > 0) {
+        totalOrderValues += customer.averageOrderValue || 0;
+        validCustomers++;
+      }
+    }
+  }
+
+  const averageOrderValue = validCustomers > 0 ? totalOrderValues / validCustomers : 0;
 
   // ลูกค้าท็อป 10
   const topCustomers = customers

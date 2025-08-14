@@ -12,6 +12,7 @@ import {
   updateAllCustomerStats,
   syncOrdersToUser,
   syncAllOrdersToUsers,
+  updateCustomerStatsFromOrders,
 } from '@/utils/customerAnalytics';
 import { syncUserNameFromFirstOrder, migrateAllUserNamesFromOrders } from '@/utils/userNameSync';
 
@@ -214,7 +215,7 @@ export async function GET(request: NextRequest) {
     
     let stats;
     try {
-      stats = generateCustomerStats(allCustomersForStats);
+      stats = await generateCustomerStats(allCustomersForStats);
       console.log('Generated stats:', stats);
     } catch (statsError) {
       console.error('Error generating stats:', statsError);
@@ -331,6 +332,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: false,
           message: 'เกิดข้อผิดพลาดในการอัปเดตสถิติลูกค้าทั้งหมด',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'updateAllCustomerStatsFromOrders') {
+      try {
+        console.log('Starting bulk customer stats update from orders...');
+        const result = await updateAllCustomerStats();
+        
+        return NextResponse.json({
+          success: true,
+          message: `อัปเดตสถิติจากออเดอร์จริงเรียบร้อยแล้ว ${result.updated} จาก ${result.total} คน`,
+          data: result
+        });
+      } catch (error) {
+        console.error('Error updating all customer stats from orders:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการอัปเดตสถิติจากออเดอร์จริงทั้งหมด',
           error: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
       }
@@ -454,6 +475,33 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: false,
           message: 'เกิดข้อผิดพลาดในการซิงค์ออเดอร์ทั้งหมด',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'updateCustomerStatsFromOrders') {
+      try {
+        if (!customerId) {
+          return NextResponse.json({ error: 'ต้องระบุ customerId' }, { status: 400 });
+        }
+
+        const result = await updateCustomerStatsFromOrders(customerId);
+        
+        // ดึงข้อมูลลูกค้าที่อัปเดตแล้ว
+        const updatedCustomer = await User.findById(customerId).lean();
+        
+        return NextResponse.json({
+          success: true,
+          message: 'อัปเดตสถิติลูกค้าจากออเดอร์สำเร็จแล้ว',
+          data: result,
+          customer: updatedCustomer
+        });
+      } catch (error) {
+        console.error('Error updating customer stats from orders:', error);
+        return NextResponse.json({
+          success: false,
+          message: 'เกิดข้อผิดพลาดในการอัปเดตสถิติลูกค้าจากออเดอร์',
           error: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
       }

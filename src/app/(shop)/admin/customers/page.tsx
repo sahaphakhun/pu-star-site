@@ -255,6 +255,30 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
+  const handleUpdateAllCustomerStatsFromOrders = async () => {
+    try {
+      toast.loading('กำลังอัปเดตสถิติจากออเดอร์จริงทั้งหมด...', { id: 'updateStatsFromOrders' });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateAllCustomerStatsFromOrders' }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message, { id: 'updateStatsFromOrders' });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถิติจากออเดอร์', { id: 'updateStatsFromOrders' });
+      }
+    } catch (error) {
+      console.error('Error updating customer stats from orders:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: 'updateStatsFromOrders' });
+    }
+  };
+
   const handleUpdateCustomerStats = async (customerId: string) => {
     try {
       toast.loading('กำลังอัปเดตสถิติลูกค้า...', { id: `updateStats_${customerId}` });
@@ -276,6 +300,30 @@ const CustomerManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error updating customer stats:', error);
       toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: `updateStats_${customerId}` });
+    }
+  };
+
+  const handleUpdateCustomerStatsFromOrders = async (customerId: string) => {
+    try {
+      toast.loading('กำลังอัปเดตสถิติจากออเดอร์จริง...', { id: `updateStatsFromOrders_${customerId}` });
+      
+      const response = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateCustomerStatsFromOrders', customerId }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('อัปเดตสถิติจากออเดอร์จริงสำเร็จแล้ว', { id: `updateStatsFromOrders_${customerId}` });
+        fetchCustomers(); // รีเฟรชข้อมูล
+      } else {
+        toast.error(data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถิติจากออเดอร์', { id: `updateStatsFromOrders_${customerId}` });
+      }
+    } catch (error) {
+      console.error('Error updating customer stats from orders:', error);
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ', { id: `updateStatsFromOrders_${customerId}` });
     }
   };
 
@@ -417,6 +465,17 @@ const CustomerManagementPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               อัปเดตสถิติลูกค้าทั้งหมด
+            </button>
+          )}
+          {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
+            <button
+              onClick={handleUpdateAllCustomerStatsFromOrders}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              อัปเดตสถิติจากออเดอร์จริงทั้งหมด
             </button>
           )}
           {(isAdmin || hasPermission(PERMISSIONS.CUSTOMERS_STATS_UPDATE)) && (
@@ -886,8 +945,15 @@ const CustomerManagementPage: React.FC = () => {
                         </button>
                       </div>
                       
-                      {/* บรรทัดที่ 3: 1 ปุ่ม */}
-                      <div className="flex">
+                      {/* บรรทัดที่ 3: 2 ปุ่ม */}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleUpdateCustomerStatsFromOrders(customer._id)}
+                          className="text-purple-600 hover:text-purple-900 text-sm"
+                          title="อัปเดตสถิติจากออเดอร์จริง"
+                        >
+                          อัปเดตจากออเดอร์
+                        </button>
                         <button
                           onClick={() => handleSyncOrdersToUser(customer._id)}
                           className="text-indigo-600 hover:text-indigo-900 text-sm"
@@ -946,6 +1012,15 @@ const CustomerManagementPage: React.FC = () => {
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCustomerStatsFromOrders(customer._id)}
+                        className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full"
+                        title="อัปเดตสถิติจากออเดอร์จริง"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       </button>
                       <button
