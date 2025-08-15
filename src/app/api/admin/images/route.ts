@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 
 // GET /api/admin/images - ดึงรายการภาพทั้งหมด
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await verifyToken(request);
+    if (!authResult || !authResult.valid || authResult.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
     const client = await connectDB();

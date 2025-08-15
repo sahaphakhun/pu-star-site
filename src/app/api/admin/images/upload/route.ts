@@ -67,9 +67,14 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(bytes);
         await writeFile(filepath, buffer);
 
-        // สร้าง URL สำหรับเข้าถึงภาพ
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-        const imageUrl = `${baseUrl}/uploads/images/${filename}`;
+        // สร้าง URL สำหรับเข้าถึงภาพ - ใช้โดเมนของเราเอง
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                       'http://localhost:3000';
+        
+        // ตรวจสอบว่า baseUrl มี protocol หรือไม่
+        const imageUrl = baseUrl.startsWith('http') 
+          ? `${baseUrl}/uploads/images/${filename}`
+          : `https://${baseUrl}/uploads/images/${filename}`;
 
         // บันทึกข้อมูลลงฐานข้อมูล
         const imageData = {
@@ -81,7 +86,8 @@ export async function POST(request: NextRequest) {
           uploadedBy: session.user.email || session.user.name || 'Unknown',
           uploadedAt: new Date(),
           category,
-          tags: []
+          tags: [],
+          isPublic: true // ตั้งค่าให้เป็น public เพื่อให้ Facebook Bot เข้าถึงได้
         };
 
         const result = await imagesCollection.insertOne(imageData);

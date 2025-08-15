@@ -15,6 +15,7 @@ interface UploadedImage {
   uploadedAt: string;
   category?: string;
   tags?: string[];
+  isPublic?: boolean; // เพิ่มฟิลด์ isPublic
 }
 
 const ImageManagementPage: React.FC = () => {
@@ -156,6 +157,25 @@ const ImageManagementPage: React.FC = () => {
     }
   };
 
+  // สลับสถานะ public/private
+  const togglePublicStatus = async (imageId: string) => {
+    try {
+      const response = await fetch(`/api/admin/images/${imageId}/toggle-public`, {
+        method: 'PATCH',
+      });
+
+      if (response.ok) {
+        toast.success('เปลี่ยนสถานะสำเร็จ');
+        loadImages(); // โหลดรายการใหม่
+      } else {
+        toast.error('ไม่สามารถเปลี่ยนสถานะได้');
+      }
+    } catch (error) {
+      console.error('Toggle status error:', error);
+      toast.error('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
+    }
+  };
+
   // คัดกรองภาพ
   const filteredImages = images.filter(image => {
     const matchesSearch = image.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -282,6 +302,15 @@ const ImageManagementPage: React.FC = () => {
                     </svg>
                   </button>
                   <button
+                    onClick={() => togglePublicStatus(image._id)}
+                    className={`${image.isPublic ? 'bg-green-600' : 'bg-yellow-600'} bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75`}
+                    title={image.isPublic ? 'เปลี่ยนเป็น Private' : 'เปลี่ยนเป็น Public'}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={image.isPublic ? "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"} />
+                    </svg>
+                  </button>
+                  <button
                     onClick={() => deleteImage(image._id)}
                     className="bg-red-600 bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75"
                     title="ลบภาพ"
@@ -295,11 +324,20 @@ const ImageManagementPage: React.FC = () => {
               <div className="p-4">
                 <h3 className="font-medium text-gray-900 truncate">{image.originalName}</h3>
                 <p className="text-sm text-gray-500">{formatFileSize(image.size)}</p>
-                {image.category && (
-                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mt-1">
-                    {image.category}
+                <div className="flex items-center space-x-2 mt-1">
+                  {image.category && (
+                    <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      {image.category}
+                    </span>
+                  )}
+                  <span className={`inline-block text-xs px-2 py-1 rounded ${
+                    image.isPublic 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {image.isPublic ? 'Public' : 'Private'}
                   </span>
-                )}
+                </div>
                 <p className="text-xs text-gray-400 mt-1">
                   อัพโหลดเมื่อ {new Date(image.uploadedAt).toLocaleDateString('th-TH')}
                 </p>

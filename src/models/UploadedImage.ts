@@ -12,6 +12,7 @@ export interface UploadedImage {
   uploadedAt: Date;
   category?: string;
   tags?: string[];
+  isPublic?: boolean; // เพิ่มฟิลด์สำหรับควบคุมการเข้าถึง
 }
 
 class UploadedImageModel {
@@ -24,7 +25,8 @@ class UploadedImageModel {
 
     const result = await collection.insertOne({
       ...imageData,
-      uploadedAt: new Date()
+      uploadedAt: new Date(),
+      isPublic: imageData.isPublic ?? true // ตั้งค่า default เป็น true
     });
 
     return {
@@ -40,6 +42,17 @@ class UploadedImageModel {
 
     return await collection
       .find({})
+      .sort({ uploadedAt: -1 })
+      .toArray() as UploadedImage[];
+  }
+
+  async findPublicImages(): Promise<UploadedImage[]> {
+    const client = await connectDB();
+    const db = client.db();
+    const collection = db.collection(this.collectionName);
+
+    return await collection
+      .find({ isPublic: true })
       .sort({ uploadedAt: -1 })
       .toArray() as UploadedImage[];
   }
@@ -103,8 +116,29 @@ class UploadedImageModel {
     return result.modifiedCount > 0;
   }
 
+  async togglePublicStatus(id: string): Promise<boolean> {
+    const client = await connectDB();
+    const db = client.db();
+    const collection = db.collection(this.collectionName);
+
+    // ดึงข้อมูลปัจจุบัน
+    const image = await collection.findOne({ _id: new ObjectId(id) });
+    if (!image) return false;
+
+    // สลับสถานะ
+    const newStatus = !image.isPublic;
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { isPublic: newStatus } }
+    );
+
+    return result.modifiedCount > 0;
+  }
+
   async getStats(): Promise<{
     total: number;
+    public: number;
+    private: number;
     byCategory: Record<string, number>;
     totalSize: number;
   }> {
@@ -113,6 +147,8 @@ class UploadedImageModel {
     const collection = db.collection(this.collectionName);
 
     const total = await collection.countDocuments();
+    const publicCount = await collection.countDocuments({ isPublic: true });
+    const privateCount = await collection.countDocuments({ isPublic: false });
     
     const byCategory = await collection.aggregate([
       {
@@ -139,6 +175,8 @@ class UploadedImageModel {
 
     return {
       total,
+      public: publicCount,
+      private: privateCount,
       byCategory: categoryStats,
       totalSize: totalSize[0]?.totalSize || 0
     };
