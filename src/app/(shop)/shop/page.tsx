@@ -1278,7 +1278,7 @@ const ShopPage = () => {
                           setQuantityForProduct(product._id, getQuantityForProduct(product._id) - 1);
                         }}
                         disabled={product.isAvailable === false}
-                        className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-2 h-2 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         -
                       </button>
@@ -1297,7 +1297,7 @@ const ShopPage = () => {
                           setQuantityForProduct(product._id, getQuantityForProduct(product._id) + 1);
                         }}
                         disabled={product.isAvailable === false}
-                        className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-2 h-2 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 text-gray-600 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         +
                       </button>
