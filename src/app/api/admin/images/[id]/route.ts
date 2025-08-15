@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { MongoClient, ObjectId } from 'mongodb';
 import { verifyToken } from '@/lib/auth';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
-import { ObjectId } from 'mongodb';
 
 // DELETE /api/admin/images/[id] - ลบภาพ
 export async function DELETE(
@@ -26,7 +25,19 @@ export async function DELETE(
       );
     }
 
-    const client = await connectDB();
+    // เชื่อมต่อฐานข้อมูลโดยตรง
+    const MONGODB_URI = process.env.MONGODB_URI || 
+                        process.env.MONGO_URL || 
+                        process.env.DATABASE_URL || 
+                        process.env.MONGODB_URL;
+    
+    if (!MONGODB_URI) {
+      throw new Error('MongoDB connection string not found');
+    }
+
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    
     const db = client.db();
     const imagesCollection = db.collection('uploaded_images');
 
@@ -34,6 +45,7 @@ export async function DELETE(
     const image = await imagesCollection.findOne({ _id: new ObjectId(id) });
 
     if (!image) {
+      await client.close();
       return NextResponse.json(
         { error: 'Image not found' },
         { status: 404 }
@@ -51,6 +63,8 @@ export async function DELETE(
     // ลบข้อมูลจากฐานข้อมูล
     await imagesCollection.deleteOne({ _id: new ObjectId(id) });
 
+    await client.close();
+
     return NextResponse.json({
       success: true,
       message: 'Image deleted successfully'
@@ -59,7 +73,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting image:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

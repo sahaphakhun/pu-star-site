@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
+import { MongoClient } from 'mongodb';
 import { verifyToken } from '@/lib/auth';
 
 // GET /api/admin/images - ดึงรายการภาพทั้งหมด
@@ -11,7 +11,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
-    const client = await connectDB();
+    // เชื่อมต่อฐานข้อมูลโดยตรง
+    const MONGODB_URI = process.env.MONGODB_URI || 
+                        process.env.MONGO_URL || 
+                        process.env.DATABASE_URL || 
+                        process.env.MONGODB_URL;
+    
+    if (!MONGODB_URI) {
+      throw new Error('MongoDB connection string not found');
+    }
+
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    
     const db = client.db();
     const imagesCollection = db.collection('uploaded_images');
 
@@ -20,6 +32,8 @@ export async function GET(request: NextRequest) {
       .find({})
       .sort({ uploadedAt: -1 })
       .toArray();
+
+    await client.close();
 
     return NextResponse.json({
       success: true,
@@ -30,7 +44,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching images:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

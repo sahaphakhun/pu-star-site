@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { MongoClient } from 'mongodb';
 import { verifyToken } from '@/lib/auth';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -26,7 +26,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await connectDB();
+    // เชื่อมต่อฐานข้อมูลโดยตรง
+    const MONGODB_URI = process.env.MONGODB_URI || 
+                        process.env.MONGO_URL || 
+                        process.env.DATABASE_URL || 
+                        process.env.MONGODB_URL;
+    
+    if (!MONGODB_URI) {
+      throw new Error('MongoDB connection string not found');
+    }
+
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    
     const db = client.db();
     const imagesCollection = db.collection('uploaded_images');
 
@@ -101,6 +113,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await client.close();
+
     return NextResponse.json({
       success: true,
       uploadedCount: uploadedImages.length,
@@ -111,7 +125,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error uploading images:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
