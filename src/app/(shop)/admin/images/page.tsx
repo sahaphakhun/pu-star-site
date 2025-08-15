@@ -24,6 +24,25 @@ interface UploadedImage {
   cloudinaryData?: any;   // ข้อมูลเพิ่มเติมจาก Cloudinary
 }
 
+const getImageUrl = (image: UploadedImage): string | null => {
+	if (!image) return null;
+	// 1) ใช้ secureUrl ก่อน
+	if (image.secureUrl) return image.secureUrl;
+	// 2) รองลงมาใช้ url ปกติ
+	if (image.url) return image.url;
+	// 3) ถ้ามี publicId ให้สร้างลิงก์ Cloudinary
+	const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+	if (image.publicId && cloudName) {
+		return `https://res.cloudinary.com/${cloudName}/image/upload/${image.publicId}`;
+	}
+	// 4) รองรับข้อมูลเก่า: มีแต่ filename → ชี้ไปที่ API ภาพเดิม
+	if (image.filename) {
+		const base = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || '');
+		if (base) return `${base}/api/images/${image.filename}`;
+	}
+	return null;
+};
+
 const ImageManagementPage: React.FC = () => {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,7 +211,11 @@ const ImageManagementPage: React.FC = () => {
 
   // คัดลอกลิงก์ภาพ
   const copyImageLink = (image: UploadedImage) => {
-    const url = image.secureUrl || image.url;
+    const url = getImageUrl(image);
+    if (!url) {
+      toast.error('ไม่พบลิงก์รูปภาพ');
+      return;
+    }
     navigator.clipboard.writeText(url).then(() => {
       toast.success('คัดลอกลิงก์ภาพแล้ว');
     }).catch(() => {
@@ -202,7 +225,11 @@ const ImageManagementPage: React.FC = () => {
 
   // คัดลอกโค้ด [SEND_IMAGE:...]
   const copySendImageCode = (image: UploadedImage) => {
-    const url = image.secureUrl || image.url;
+    const url = getImageUrl(image);
+    if (!url) {
+      toast.error('ไม่พบลิงก์รูปภาพ');
+      return;
+    }
     const code = `[SEND_IMAGE:${url}]`;
     navigator.clipboard.writeText(code).then(() => {
       toast.success('คัดลอกโค้ด [SEND_IMAGE:...] แล้ว');
@@ -284,31 +311,40 @@ const ImageManagementPage: React.FC = () => {
             <div key={image._id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="relative aspect-square">
                 <Image
-                  src={image.secureUrl || image.url}
+                  src={getImageUrl(image) || '/favicon.ico'}
                   alt={image.originalName}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
                 <div className="absolute top-2 right-2 flex space-x-1">
-                  <button
-                    onClick={() => copyImageLink(image)}
-                    className="bg-black bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75"
-                    title="คัดลอกลิงก์"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => copySendImageCode(image)}
-                    className="bg-blue-600 bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75"
-                    title="คัดลอกโค้ด [SEND_IMAGE:...]"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                  </button>
+                  {(() => {
+                    const hasUrl = !!getImageUrl(image);
+                    return (
+                      <>
+                        <button
+                          onClick={() => copyImageLink(image)}
+                          className={`bg-black bg-opacity-50 text-white p-1 rounded ${hasUrl ? 'hover:bg-opacity-75' : 'opacity-40 cursor-not-allowed'}`}
+                          title="คัดลอกลิงก์"
+                          disabled={!hasUrl}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => copySendImageCode(image)}
+                          className={`bg-blue-600 bg-opacity-50 text-white p-1 rounded ${hasUrl ? 'hover:bg-opacity-75' : 'opacity-40 cursor-not-allowed'}`}
+                          title="คัดลอกโค้ด [SEND_IMAGE:...]"
+                          disabled={!hasUrl}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                          </svg>
+                        </button>
+                      </>
+                    );
+                  })()}
                   <button
                     onClick={() => togglePublicStatus(image._id)}
                     className={`${image.isPublic ? 'bg-green-600' : 'bg-yellow-600'} bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75`}
