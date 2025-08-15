@@ -183,6 +183,25 @@ const AddressForm: React.FC<AddressFormProps> = ({
     }
   };
 
+  // เพิ่มฟังก์ชันสำหรับจัดการ touch events บนมือถือ
+  const handleInputTouch = (e: React.TouchEvent<HTMLInputElement>) => {
+    // เปิดใช้งาน input field เมื่อถูกแตะบนมือถือ
+    if (!useCustomAddress) {
+      setUseCustomAddress(true);
+      setSelectedAddressId('');
+    }
+    
+    // Focus input field
+    e.currentTarget.focus();
+    
+    // เปิดแป้นพิมพ์บนมือถือ
+    if (e.currentTarget.type === 'tel') {
+      e.currentTarget.setAttribute('inputmode', 'numeric');
+    } else if (e.currentTarget.type === 'text') {
+      e.currentTarget.setAttribute('inputmode', 'text');
+    }
+  };
+
   if (loading) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -267,13 +286,20 @@ const AddressForm: React.FC<AddressFormProps> = ({
                 type="text"
                 value={customAddress.name}
                 onChange={(e) => handleCustomAddressChange('name', e.target.value)}
+                onTouchStart={handleInputTouch}
                 placeholder="ชื่อ-นามสกุล"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                   useCustomAddress 
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-300 bg-gray-50'
                 }`}
-                disabled={!useCustomAddress}
+                style={{
+                  // เพิ่ม CSS properties สำหรับมือถือ
+                  WebkitAppearance: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  minHeight: '44px', // ขนาดขั้นต่ำสำหรับ touch target
+                }}
               />
             </div>
 
@@ -284,67 +310,101 @@ const AddressForm: React.FC<AddressFormProps> = ({
                 type="tel"
                 value={customAddress.phone}
                 onChange={(e) => handleCustomAddressChange('phone', e.target.value)}
+                onTouchStart={handleInputTouch}
                 placeholder="เบอร์โทรศัพท์"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                   useCustomAddress 
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-300 bg-gray-50'
                 }`}
-                disabled={!useCustomAddress}
+                style={{
+                  WebkitAppearance: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  minHeight: '44px',
+                }}
               />
             </div>
 
             {/* 3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">3. จังหวัด, เขต/อำเภอ, แขวง/ตำบล, รหัสไปรษณี</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   type="text"
                   value={customAddress.province}
                   onChange={(e) => handleCustomAddressChange('province', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="จังหวัด"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.district}
                   onChange={(e) => handleCustomAddressChange('district', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="เขต/อำเภอ"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.subDistrict}
                   onChange={(e) => handleCustomAddressChange('subDistrict', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="แขวง/ตำบล"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.postalCode}
                   onChange={(e) => handleCustomAddressChange('postalCode', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="รหัสไปรษณี"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
               </div>
             </div>
@@ -352,61 +412,83 @@ const AddressForm: React.FC<AddressFormProps> = ({
             {/* 4. บ้านเลขที่, ซอย, หมู่, ถนน */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">4. บ้านเลขที่, ซอย, หมู่, ถนน</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   type="text"
                   value={customAddress.houseNumber}
                   onChange={(e) => handleCustomAddressChange('houseNumber', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="บ้านเลขที่"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.lane}
                   onChange={(e) => handleCustomAddressChange('lane', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="ซอย"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.moo}
                   onChange={(e) => handleCustomAddressChange('moo', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="หมู่"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
                 <input
                   type="text"
                   value={customAddress.road}
                   onChange={(e) => handleCustomAddressChange('road', e.target.value)}
+                  onTouchStart={handleInputTouch}
                   placeholder="ถนน"
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     useCustomAddress 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 bg-gray-50'
                   }`}
-                  disabled={!useCustomAddress}
+                  style={{
+                    WebkitAppearance: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    minHeight: '44px',
+                  }}
                 />
               </div>
             </div>
           </div>
         </div>
-
-
       </div>
     </div>
   );

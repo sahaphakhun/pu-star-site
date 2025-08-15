@@ -534,7 +534,7 @@ export async function handleEvent(event: MessagingEvent) {
         console.error(`[AI Debug] Error processing AI response:`, error);
         // ถ้า AI มีปัญหา ให้ส่งข้อความข้อผิดพลาด
         await callSendAPI(psid, {
-          text: 'ขออภัยค่ะ ระบบ AI ขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งค่ะ',
+          text: 'ระบบได้ทำการแจ้งแอดมิน โปรดรอการตอบกลับจากแอดมิน หรือเลือกเมนูด้านล่างเพื่อใช้ระบบอัตโนมัติ',
           quick_replies: [
             { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
             { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },

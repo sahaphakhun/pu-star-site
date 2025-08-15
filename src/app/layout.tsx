@@ -2,10 +2,12 @@
 
 import { Inter } from 'next/font/google';
 import './globals.css';
+import './mobile-keyboard-fix.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import React, { useEffect, useState } from 'react';
 import { startAutoCartClearScheduler } from '@/utils/scheduler';
 import { startPerformanceMonitoring } from '@/utils/performance';
+import { initMobileKeyboardFix } from '@/utils/mobile-keyboard-fix';
 import { Metadata } from 'next';
 
 const inter = Inter({ 
@@ -28,6 +30,9 @@ export default function RootLayout({
     
     // เริ่มต้น performance monitoring
     startPerformanceMonitoring();
+    
+    // เริ่มต้นการแก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนมือถือแอนดรอยด์
+    initMobileKeyboardFix();
   }, []);
 
   useEffect(() => {
