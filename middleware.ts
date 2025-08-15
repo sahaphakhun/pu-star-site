@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { imageOptimizationMiddleware } from './src/middleware/imageOptimization';
 
 // ใช้ TextEncoder สำหรับ Edge runtime
 const encoder = new TextEncoder();
@@ -41,6 +42,12 @@ async function getDecodedToken(request: NextRequest): Promise<DecodedJwt | null>
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // จัดการ image optimization ก่อน
+  const imageResponse = imageOptimizationMiddleware(request);
+  if (imageResponse) {
+    return imageResponse;
+  }
+
   // ปกป้องเส้นทาง /admin
   if (pathname.startsWith('/admin')) {
     const decoded = await getDecodedToken(request);
@@ -64,5 +71,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  matcher: ['/admin/:path*', '/login', '/_next/image'],
 }; 
