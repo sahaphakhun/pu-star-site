@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import connectDB from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 
 // PATCH /api/admin/images/[id]/toggle-public - สลับสถานะ public/private
@@ -11,9 +10,9 @@ export async function PATCH(
 ) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await verifyToken(request);
+    if (!authResult || !authResult.valid || authResult.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
     const { id } = params;
