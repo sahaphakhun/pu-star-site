@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import connectDB from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -11,9 +10,9 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(request: NextRequest) {
   try {
     // ตรวจสอบสิทธิ์
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await verifyToken(request);
+    if (!authResult || !authResult.valid || authResult.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
           url: imageUrl,
           size: file.size,
           mimetype: file.type,
-          uploadedBy: session.user.email || session.user.name || 'Unknown',
+          uploadedBy: authResult.name || authResult.phoneNumber || 'Unknown',
           uploadedAt: new Date(),
           category,
           tags: [],
