@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const errors = [];
 
     // สร้างโฟลเดอร์สำหรับเก็บภาพ
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'images');
+    const uploadDir = join('.', 'public', 'uploads', 'images');
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true });
     }

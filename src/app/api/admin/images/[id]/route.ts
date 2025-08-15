@@ -54,7 +54,7 @@ export async function DELETE(
 
     // ลบไฟล์จากระบบ
     try {
-      const filepath = join(process.cwd(), 'public', 'uploads', 'images', image.filename);
+      const filepath = join('.', 'public', 'uploads', 'images', image.filename);
       await unlink(filepath);
     } catch (fileError) {
       console.warn(`File not found or already deleted: ${image.filename}`);
