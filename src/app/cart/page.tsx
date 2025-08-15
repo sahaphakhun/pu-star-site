@@ -5,6 +5,7 @@ import Image from "next/image";
 import AddressForm from "@/components/AddressForm";
 import DeliveryMethodSelector, { DeliveryMethod } from "@/components/DeliveryMethodSelector";
 import { DeliveryLocation } from "@/schemas/order";
+import { getCartFromStorage, saveCartToStorage, cartObjectToArray, CartItem } from '@/utils/cartUtils';
 
 // Address interface for the new format
 interface Address {
@@ -21,16 +22,6 @@ interface Address {
   moo: string;
   road: string;
   isDefault: boolean;
-}
-
-interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  selectedOptions?: Record<string, string>;
-  unitLabel?: string;
-  unitPrice?: number;
 }
 
 export default function CartPage() {
@@ -66,12 +57,12 @@ export default function CartPage() {
 
   const loadCart = () => {
     try {
-      const cartData = localStorage.getItem('cart');
-      if (cartData) {
-        setCart(JSON.parse(cartData));
-      }
+      const cart = getCartFromStorage();
+      const cartArray = cartObjectToArray(cart);
+      setCart(cartArray);
     } catch (error) {
       console.error('Error loading cart:', error);
+      setCart([]);
     } finally {
       setLoading(false);
     }
@@ -79,7 +70,24 @@ export default function CartPage() {
 
   const updateCart = (newCart: CartItem[]) => {
     setCart(newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
+    try {
+      // แปลงกลับเป็น object format สำหรับการบันทึก
+      const cartObject: { [key: string]: any } = {};
+      newCart.forEach((item, index) => {
+        const key = `${item.productId}-${item.unitLabel || 'default'}-${JSON.stringify(item.selectedOptions || {})}`;
+        cartObject[key] = {
+          product: { _id: item.productId, name: item.name },
+          quantity: item.quantity,
+          selectedOptions: item.selectedOptions,
+          unitLabel: item.unitLabel,
+          unitPrice: item.unitPrice || item.price,
+        };
+      });
+      
+      saveCartToStorage(cartObject);
+    } catch (error) {
+      console.error('Error saving cart:', error);
+    }
   };
 
   const updateQuantity = (index: number, newQuantity: number) => {

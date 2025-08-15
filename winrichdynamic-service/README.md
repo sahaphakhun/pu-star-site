@@ -1,151 +1,221 @@
-# WinRich Dynamic Service
+# WinRich Dynamic Service - ระบบจัดการ B2B
 
-ระบบบริการเสริมสำหรับ WinRich Site ที่รวมฟีเจอร์การจัดการธุรกิจขั้นสูง
+## ⚠️ สิ่งสำคัญที่ต้องทราบ
 
-## 🎯 คุณสมบัติหลัก
+**โปรเจ็กนี้เป็น B2B Subdomain Service ที่รันบน Railway แยกจากโปรเจ็กหลัก**
+- **ห้ามแก้ไข** โปรเจ็กหลัก (parent directory) จากที่นี่
+- โปรเจ็กนี้เป็น subdomain B2B ที่แยก service ต่างหาก
+- การแก้ไขใดๆ ในโปรเจ็กหลักต้องทำในโปรเจ็กนั้นโดยตรง
 
-### 💼 ระบบ B2B (Business-to-Business)
-- **จัดการลูกค้า B2B** - ระบบจัดการลูกค้าสถาบัน
-- **ระบบใบเสนอราคา** - สร้างและจัดการใบเสนอราคา
-- **ระบบส่วนลด** - จัดการส่วนลดสำหรับลูกค้า B2B
-- **ระบบติดตาม KPI** - วัดประสิทธิภาพการขาย
+## 📋 รายละเอียดโปรเจ็ก
 
-### 🤖 ระบบ LINE Bot
-- **การตอบกลับอัตโนมัติ** - ตอบคำถามลูกค้าอัตโนมัติ
-- **การแจ้งเตือน** - แจ้งเตือนสถานะคำสั่งซื้อ
-- **การจัดการคำสั่งซื้อ** - ดูและอัปเดตคำสั่งซื้อผ่าน LINE
+**ชื่อโปรเจ็ก:** winrichdynamic-service  
+**เวอร์ชัน:** 1.0.0  
+**ประเภท:** Next.js B2B Service  
+**Deployment:** Railway (Subdomain)  
+**Description:** WinRich Dynamic Service - Billing, Quotation, and Business Management System
 
-### 📊 ระบบ WMS (Warehouse Management System)
-- **การซิงค์ข้อมูล** - เชื่อมต่อกับระบบคลังสินค้า
-- **การจัดการสินค้าคงคลัง** - ติดตามสินค้าในคลัง
-- **การจัดการการจัดส่ง** - ติดตามการจัดส่งสินค้า
+## 🚀 การติดตั้งและรัน
 
-### 📄 ระบบ PDF Generator
-- **สร้างใบเสนอราคา** - สร้าง PDF ใบเสนอราคา
-- **สร้างใบแจ้งหนี้** - สร้าง PDF ใบแจ้งหนี้
-- **สร้างรายงาน** - สร้างรายงานในรูปแบบ PDF
+### Prerequisites
+- Node.js >= 18
+- npm หรือ yarn
+- MongoDB database
 
-### 🧮 ระบบคำนวณภาษี
-- **คำนวณภาษีมูลค่าเพิ่ม** - คำนวณ VAT อัตโนมัติ
-- **การจัดการภาษี** - รองรับภาษีหลายประเภท
-
-## 🚀 การติดตั้ง
-
-### ความต้องการของระบบ
-- Node.js 18 หรือสูงกว่า
-- MongoDB
-- LINE Bot SDK
-- Puppeteer (สำหรับ PDF Generation)
-
-### ขั้นตอนการติดตั้ง
-
-1. **เข้าไปในโฟลเดอร์**
+### การติดตั้ง
 ```bash
+# เข้าไปในโฟลเดอร์โปรเจ็ก
 cd winrichdynamic-service
-```
 
-2. **ติดตั้ง Dependencies**
-```bash
+# ติดตั้ง dependencies
 npm install
-```
 
-3. **ตั้งค่าตัวแปรสภาพแวดล้อม**
-```bash
+# สร้างไฟล์ .env จาก env.example
 cp env.example .env
+
+# แก้ไขค่าใน .env ให้ตรงกับ environment ของคุณ
 ```
 
-4. **รันโปรเจ็ก**
+### การรันใน Development
 ```bash
 npm run dev
+```
+
+### การ Build และ Deploy
+```bash
+# Build โปรเจ็ก
+npm run build
+
+# รันใน production
+npm start
 ```
 
 ## 📁 โครงสร้างโปรเจ็ก
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── adminb2b/          # หน้าจัดการ B2B
-│   ├── wholesale/         # หน้าขายส่ง
-│   └── api/               # API Routes
-├── components/            # React Components
-│   ├── ui/               # UI Components
-│   ├── wholesale/        # Components สำหรับขายส่ง
-│   └── ...
-├── services/             # Business Logic Services
-│   ├── discount-engine/  # ระบบส่วนลด
-│   ├── kpi-calculator/   # คำนวณ KPI
-│   ├── line-bot/         # LINE Bot Service
-│   ├── pdf-generator/    # สร้าง PDF
-│   ├── tax-lookup/       # ค้นหาข้อมูลภาษี
-│   └── wms-sync/         # ซิงค์ข้อมูล WMS
-├── models/               # MongoDB Models
-├── schemas/              # Zod Validation Schemas
-└── utils/                # Helper Functions
+winrichdynamic-service/
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── adminb2b/       # B2B Admin Panel
+│   │   │   ├── customers/  # จัดการลูกค้า
+│   │   │   ├── quotations/ # จัดการใบเสนอราคา
+│   │   │   └── layout.tsx  # B2B Layout
+│   │   ├── api/            # API Routes
+│   │   │   ├── customers/  # Customer API
+│   │   │   ├── quotations/ # Quotation API
+│   │   │   └── ping/       # Health Check
+│   │   └── globals.css     # Global Styles
+│   ├── components/         # React Components
+│   │   ├── CustomerForm.tsx
+│   │   ├── CustomerList.tsx
+│   │   ├── QuotationForm.tsx
+│   │   └── ui/            # UI Components
+│   ├── lib/               # Utilities
+│   │   └── mongodb.ts     # Database connection
+│   ├── models/            # MongoDB Models
+│   │   ├── Customer.ts
+│   │   └── Quotation.ts
+│   └── schemas/           # Zod Schemas
+│       ├── customer.ts
+│       └── quotation.ts
+├── package.json
+├── next.config.js
+├── railway.json          # Railway configuration
+├── tailwind.config.js
+└── README.md
 ```
 
-## 🔧 สคริปต์ที่มีประโยชน์
+## 🔧 Scripts ที่มี
 
-```bash
-# รันในโหมด Development
-npm run dev
+- `npm run dev` - รันใน development mode
+- `npm run build` - Build โปรเจ็ก
+- `npm run start` - รันใน production mode
+- `npm run lint` - ตรวจสอบ code quality
 
-# Build สำหรับ Production
-npm run build
-
-# รันในโหมด Production
-npm start
-
-# ตรวจสอบ Code Quality
-npm run lint
-```
-
-## 🔗 การเชื่อมต่อ
-
-### LINE Bot
-- ใช้ LINE Bot SDK สำหรับการจัดการ Webhook
-- รองรับการตอบกลับอัตโนมัติ
-- การแจ้งเตือนแบบ Real-time
-
-### WMS Integration
-- เชื่อมต่อกับระบบคลังสินค้าภายนอก
-- ซิงค์ข้อมูลสินค้าคงคลัง
-- อัปเดตสถานะการจัดส่ง
-
-### PDF Generation
-- ใช้ Puppeteer สำหรับสร้าง PDF
-- รองรับเทมเพลตที่ปรับแต่งได้
-- การสร้างเอกสารแบบ Batch
-
-## 🔒 ความปลอดภัย
-
-- การยืนยันตัวตนด้วย JWT
-- การเข้ารหัสข้อมูลสำคัญ
-- การตรวจสอบสิทธิ์ตามบทบาท
-- การป้องกันการเข้าถึงที่ไม่ได้รับอนุญาต
-
-## 📊 การติดตามประสิทธิภาพ
-
-- ระบบ KPI สำหรับการขาย
-- การติดตามพฤติกรรมลูกค้า
-- รายงานการวิเคราะห์ข้อมูล
-- การแจ้งเตือนเมื่อถึงเป้าหมาย
-
-## 🌐 การ Deploy
-
-### Railway
-รองรับการ Deploy บน Railway โดยอัตโนมัติ
+## 🌐 Railway Deployment
 
 ### Environment Variables
-ตรวจสอบให้แน่ใจว่าตั้งค่าตัวแปรสภาพแวดล้อมที่จำเป็นทั้งหมด
+ตรวจสอบไฟล์ `env.example` สำหรับ environment variables ที่จำเป็น:
 
-## 📞 การสนับสนุน
+```env
+# MongoDB Connection
+MONGODB_URI=mongodb://localhost:27017/winrichdynamic
 
-หากมีปัญหาหรือคำถาม กรุณาติดต่อทีมพัฒนา
+# Next.js Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3001
 
-## 📄 License
+# API Configuration
+API_BASE_URL=http://localhost:3001/api
 
-ISC License
+# LINE Bot Configuration
+LINE_CHANNEL_SECRET=your_line_channel_secret_here
+LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token_here
+
+# WMS API Configuration
+WMS_API_URL=your_wms_api_url_here
+WMS_API_KEY=your_wms_api_key_here
+
+# JWT Secret
+JWT_SECRET=your_jwt_secret_here
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password_here
+
+# App Configuration
+NODE_ENV=development
+NEXT_TELEMETRY_DISABLED=1
+```
+
+### Health Check
+- **Path:** `/api/ping`
+- **Timeout:** 100ms
+
+### Port Configuration
+- ใช้ `$PORT` environment variable จาก Railway
+
+## 📦 Dependencies หลัก
+
+### Production Dependencies
+- **Next.js 15.3.1** - React framework
+- **React 19.1.1** - UI library
+- **Mongoose 8.17.1** - MongoDB ODM
+- **@line/bot-sdk 10.1.1** - LINE Bot integration
+- **Framer Motion 12.23.12** - Animations
+- **Tailwind CSS 4.1.11** - Styling
+- **Zod 4.0.17** - Schema validation
+- **Axios 1.11.0** - HTTP client
+- **Nodemailer 7.0.5** - Email sending
+- **Puppeteer 24.16.0** - PDF generation
+
+### Development Dependencies
+- **TypeScript** - Type checking
+- **ESLint 9.33.0** - Code linting
+- **PostCSS 8.4.49** - CSS processing
+
+## 🔒 Security
+
+- JWT tokens สำหรับ authentication
+- Environment variables สำหรับ sensitive data
+- Input validation ด้วย Zod
+- MongoDB connection security
+
+## 📊 Features
+
+### B2B Admin Panel
+- **Customer Management** - จัดการข้อมูลลูกค้า
+- **Quotation Management** - สร้างและจัดการใบเสนอราคา
+- **Business Analytics** - วิเคราะห์ข้อมูลธุรกิจ
+
+### API Endpoints
+- **Customer API** - CRUD operations สำหรับลูกค้า
+- **Quotation API** - จัดการใบเสนอราคา
+- **Health Check** - ตรวจสอบสถานะระบบ
+
+### Integration
+- **LINE Bot** - การแจ้งเตือนและตอบกลับลูกค้า
+- **Email Service** - ส่งใบเสนอราคาทางอีเมล
+- **WMS Integration** - เชื่อมต่อกับระบบคลังสินค้า
+
+## 🐛 การแก้ไขปัญหา
+
+### ปัญหาที่พบบ่อย
+
+1. **MongoDB connection issues**
+   ```bash
+   # ตรวจสอบ MONGODB_URI ใน .env
+   # ตรวจสอบ network connectivity
+   ```
+
+2. **Port conflicts**
+   ```bash
+   # ตรวจสอบ port ที่ใช้งาน
+   lsof -i :3001
+   ```
+
+3. **Build errors**
+   ```bash
+   # Clear cache และ rebuild
+   rm -rf .next
+   npm run build
+   ```
+
+4. **Environment variables**
+   - ตรวจสอบ Railway environment variables
+   - ตรวจสอบไฟล์ .env ใน development
+
+## 📞 การติดต่อ
+
+สำหรับปัญหาหรือคำถามเกี่ยวกับโปรเจ็กนี้ กรุณาติดต่อทีมพัฒนา
 
 ---
 
-**พัฒนาโดย WinRich Team** 🚀
+## ⚠️ หมายเหตุสำคัญ
+
+**โปรเจ็กนี้เป็น B2B Subdomain Service ที่แยกจากโปรเจ็กหลัก**
+- **ห้ามแก้ไข** โปรเจ็กหลัก (parent directory) จากที่นี่
+- การแก้ไขต้องทำในโปรเจ็กที่เกี่ยวข้องโดยตรง
+- เพื่อป้องกันปัญหาการ deploy และการทำงานของระบบ
+- โปรเจ็กนี้รันบน Railway เป็น subdomain แยกต่างหาก

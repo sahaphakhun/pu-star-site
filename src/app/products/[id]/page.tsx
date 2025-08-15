@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import toast, { Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { addToCart, isOnline } from '@/utils/cartUtils';
 
 interface Product {
   _id: string;
@@ -100,6 +101,23 @@ export default function ProductDetail() {
   const handleAddToCart = async () => {
     if (!product) return;
     
+    // ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต
+    if (!isOnline()) {
+      toast.error('ไม่มีการเชื่อมต่ออินเทอร์เน็ต กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง', {
+        duration: 5000,
+        position: 'bottom-right',
+        style: {
+          background: '#fef2f2',
+          color: '#dc2626',
+          border: '1px solid #fecaca',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        },
+      });
+      return;
+    }
+    
     // ตรวจสอบว่าสินค้าพร้อมขายหรือไม่
     if (product.isAvailable === false) {
       toast.error('สินค้านี้หมดแล้ว ไม่สามารถสั่งซื้อได้');
@@ -146,31 +164,12 @@ export default function ProductDetail() {
     setAddingToCart(true);
     
     try {
-      const cartItem = {
-        productId: product._id,
-        name: product.name,
-        price: selectedPrice,
-        quantity: quantity,
-        selectedOptions: selectedOptions,
-        unitLabel: selectedUnit,
-        unitPrice: selectedPrice,
-      };
-
-      // บันทึกลงตะกร้าใน localStorage สำหรับเว็บไซต์
-      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingIndex = existingCart.findIndex((item: any) => 
-        item.productId === cartItem.productId && 
-        item.unitLabel === cartItem.unitLabel &&
-        JSON.stringify(item.selectedOptions) === JSON.stringify(cartItem.selectedOptions)
-      );
-
-      if (existingIndex > -1) {
-        existingCart[existingIndex].quantity += cartItem.quantity;
-      } else {
-        existingCart.push(cartItem);
+      // ใช้ utility function ใหม่
+      const success = addToCart(product, quantity, selectedOptions, selectedUnit, selectedPrice);
+      
+      if (!success) {
+        throw new Error('ไม่สามารถบันทึกข้อมูลลงตะกร้าได้');
       }
-
-      localStorage.setItem('cart', JSON.stringify(existingCart));
       
       // แสดง toast แสดงความสำเร็จพร้อมแอนิเมชัน
       toast.success(
@@ -180,14 +179,16 @@ export default function ProductDetail() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <div>
-                            <p className="font-medium flex items-center gap-1">
-                  เพิ่มลงตะกร้าสำเร็จ!
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
-                  </svg>
-                </p>
-            <p className="text-sm text-gray-600">{product.name} จำนวน {quantity} ชิ้น</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium flex items-center gap-1 text-sm">
+              เพิ่มลงตะกร้าสำเร็จ!
+              <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+              </svg>
+            </p>
+            <p className="text-xs text-gray-600 truncate">{product.name}</p>
+            <p className="text-xs text-gray-500">จำนวน {quantity} ชิ้น</p>
+            {selectedUnit && <p className="text-xs text-blue-600">หน่วย: {selectedUnit}</p>}
           </div>
         </div>,
         {
@@ -198,7 +199,8 @@ export default function ProductDetail() {
             color: '#16a34a',
             border: '1px solid #bbf7d0',
             borderRadius: '12px',
-            padding: '16px',
+            padding: '12px',
+            maxWidth: '320px',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           },
         }
@@ -215,9 +217,29 @@ export default function ProductDetail() {
       
     } catch (error) {
       console.error('Error adding to cart:', error);
-      toast.error('เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า', {
-        duration: 3000,
+      
+      // แสดงข้อความ error ที่เหมาะสมตามประเภทของ error
+      let errorMessage = 'เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('localStorage')) {
+          errorMessage = 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง';
+        } else if (error.message.includes('ไม่สามารถบันทึกข้อมูล')) {
+          errorMessage = 'ไม่สามารถบันทึกข้อมูลลงตะกร้าได้ กรุณาลองใหม่อีกครั้ง';
+        }
+      }
+      
+      toast.error(errorMessage, {
+        duration: 4000,
         position: 'bottom-right',
+        style: {
+          background: '#fef2f2',
+          color: '#dc2626',
+          border: '1px solid #fecaca',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        },
       });
     } finally {
       setAddingToCart(false);

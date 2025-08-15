@@ -78,14 +78,14 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(bytes);
         await writeFile(filepath, buffer);
 
-        // สร้าง URL สำหรับเข้าถึงภาพ - ใช้โดเมนของเราเอง
+        // สร้าง URL สำหรับเข้าถึงภาพ - ใช้ API route ใหม่
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
                        'http://localhost:3000';
         
         // ตรวจสอบว่า baseUrl มี protocol หรือไม่
         const imageUrl = baseUrl.startsWith('http') 
-          ? `${baseUrl}/uploads/images/${filename}`
-          : `https://${baseUrl}/uploads/images/${filename}`;
+          ? `${baseUrl}/api/images/${filename}`
+          : `https://${baseUrl}/api/images/${filename}`;
 
         // บันทึกข้อมูลลงฐานข้อมูล
         const imageData = {

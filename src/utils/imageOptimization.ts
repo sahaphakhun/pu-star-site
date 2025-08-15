@@ -29,6 +29,16 @@ export function getOptimizedImageUrl(
     return src;
   }
   
+  // For local uploads, use our API route
+  if (src.includes('/uploads/images/') || src.includes('/api/images/')) {
+    // Extract filename from URL
+    const filename = src.split('/').pop();
+    if (filename) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      return `${baseUrl}/api/images/${filename}`;
+    }
+  }
+  
   // For Railway deployment, use Next.js image optimization
   const params = new URLSearchParams();
   

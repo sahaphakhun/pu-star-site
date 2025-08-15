@@ -50,6 +50,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+    # Allow direct access to uploads folder
+    RewriteCond %{REQUEST_URI} ^/uploads/
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^(.*)$ $1 [L]
+    
     # Redirect static files ที่ไม่พบไปยัง Next.js
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

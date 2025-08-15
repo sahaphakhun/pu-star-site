@@ -11,6 +11,7 @@ import Swal from 'sweetalert2';
 import TaxInvoiceForm from '@/components/TaxInvoiceForm';
 import DeliveryMethodSelector, { DeliveryMethod } from '@/components/DeliveryMethodSelector';
 import { DeliveryLocation } from '@/schemas/order';
+import { getCartFromStorage, saveCartToStorage, generateCartKey } from '@/utils/cartUtils';
 
 // Address interface for the new format
 interface Address {
@@ -270,10 +271,8 @@ const ShopPage = () => {
 
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        setCart(JSON.parse(savedCart));
-      }
+      const cart = getCartFromStorage();
+      setCart(cart);
     } catch (err) {
       console.error('โหลดข้อมูลตะกร้าจาก localStorage ไม่สำเร็จ', err);
     }
@@ -297,7 +296,7 @@ const ShopPage = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('cart', JSON.stringify(cart));
+      saveCartToStorage(cart);
     } catch (err) {
       console.error('บันทึกตะกร้าลง localStorage ไม่สำเร็จ', err);
     }
@@ -312,15 +311,6 @@ const ShopPage = () => {
       }
     }
   }, [isLoggedIn]);
-
-  const generateCartKey = (productId: string, selectedOptions?: {[key: string]: string}, unitLabel?: string) => {
-    const parts = [productId];
-    if (unitLabel) parts.push(unitLabel);
-    if (selectedOptions && Object.keys(selectedOptions).length > 0) {
-      parts.push(JSON.stringify(selectedOptions));
-    }
-    return parts.join('-');
-  };
 
   const handleAddToCart = (product: ProductWithId, options?: {[key: string]: string}, unit?: {label:string; price:number}, quantity: number = 1) => {
     const cartKey = generateCartKey(product._id, options, unit?.label);
