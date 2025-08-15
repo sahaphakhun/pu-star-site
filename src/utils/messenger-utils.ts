@@ -21,51 +21,6 @@ async function isUrlAccessible(url: string): Promise<boolean> {
 }
 
 /**
- * ตรวจสอบว่า URL รูปภาพเข้ากันได้กับ Facebook หรือไม่
- */
-async function checkFacebookImageCompatibility(imageUrl: string): Promise<boolean> {
-  try {
-    // ตรวจสอบว่าเป็น HTTPS หรือไม่
-    if (!imageUrl.startsWith('https://')) {
-      console.warn(`[WARN] Image URL must be HTTPS: ${imageUrl}`);
-      return false;
-    }
-    
-    // ตรวจสอบว่า domain ไม่ใช่ localhost หรือ private IP
-    const url = new URL(imageUrl);
-    if (url.hostname === 'localhost' || 
-        url.hostname.startsWith('192.168.') ||
-        url.hostname.startsWith('10.') ||
-        url.hostname.startsWith('172.')) {
-      console.warn(`[WARN] Image URL is private/local: ${imageUrl}`);
-      return false;
-    }
-    
-    // ตรวจสอบว่า domain มี robots.txt ที่เหมาะสมหรือไม่
-    const robotsUrl = `${url.protocol}//${url.hostname}/robots.txt`;
-    try {
-      const robotsResponse = await fetch(robotsUrl, { 
-        method: 'HEAD',
-        signal: AbortSignal.timeout(3000)
-      });
-      if (robotsResponse.ok) {
-        console.log(`[DEBUG] Robots.txt found for ${url.hostname}`);
-        return true;
-      }
-    } catch (robotsError) {
-      console.warn(`[WARN] Could not check robots.txt for ${url.hostname}:`, robotsError);
-      // ถ้าไม่มี robots.txt ก็ยังคงยอมรับได้
-      return true;
-    }
-    
-    return true;
-  } catch (error) {
-    console.warn(`[WARN] Error checking Facebook compatibility: ${imageUrl}`, error);
-    return false;
-  }
-}
-
-/**
  * ประมวลผลข้อความที่มี [cut] และ [SEND_IMAGE:...] 
  * แล้วส่งทีละส่วนไปยัง Facebook Messenger
  */
@@ -115,42 +70,52 @@ export async function sendTextMessageWithCutAndImages(
     for (const match of images) {
       const imageUrl = match[1];
       console.log(`[DEBUG] Sending image: ${imageUrl}`);
-      await sendImageMessage(recipientId, imageUrl);
-      
-      // รอเล็กน้อยระหว่างการส่งรูปภาพ
-      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        await sendImageMessage(recipientId, imageUrl);
+        // รอเล็กน้อยระหว่างการส่งรูปภาพ
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send image ${imageUrl}:`, err);
+      }
     }
 
     // ส่งวิดีโอ
     for (const match of videos) {
       const videoUrl = match[1];
       console.log(`[DEBUG] Sending video: ${videoUrl}`);
-      await sendVideoMessage(recipientId, videoUrl);
-      
-      // รอเล็กน้อยระหว่างการส่งวิดีโอ
-      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        await sendVideoMessage(recipientId, videoUrl);
+        // รอเล็กน้อยระหว่างการส่งวิดีโอ
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send video ${videoUrl}:`, err);
+      }
     }
 
     // ส่งข้อความ (ถ้ามี) พร้อมเมนูถ้าเป็นส่วนสุดท้ายและต้องการเมนู
     if (textPart) {
       console.log(`[DEBUG] Sending text part: ${textPart.substring(0, 100)}...`);
       
-      if (includeMenu && i === segments.length - 1) {
-        // ส่งข้อความพร้อมเมนูสำหรับส่วนสุดท้าย
-        await callSendAPI(recipientId, {
-          text: textPart,
-          quick_replies: [
-            { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-            { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-          ],
-        });
-      } else {
-        // ส่งข้อความธรรมดา
-        await sendSimpleTextMessage(recipientId, textPart);
+      try {
+        if (includeMenu && i === segments.length - 1) {
+          // ส่งข้อความพร้อมเมนูสำหรับส่วนสุดท้าย
+          await callSendAPI(recipientId, {
+            text: textPart,
+            quick_replies: [
+              { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+              { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+            ],
+          });
+        } else {
+          // ส่งข้อความธรรมดา
+          await sendSimpleTextMessage(recipientId, textPart);
+        }
+        
+        // รอเล็กน้อยระหว่างการส่งข้อความ
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send text part:`, err);
       }
-      
-      // รอเล็กน้อยระหว่างการส่งข้อความ
-      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     // รอระหว่างส่วนต่างๆ (ยกเว้นส่วนสุดท้าย)
@@ -180,88 +145,22 @@ async function sendSimpleTextMessage(recipientId: string, text: string): Promise
 }
 
 /**
- * โหลดภาพจาก URL มาไว้บนเซิร์ฟเวอร์
- */
-async function uploadImageToServer(imageUrl: string): Promise<string | null> {
-  try {
-    console.log(`[UPLOAD] Uploading image to server: ${imageUrl}`);
-    
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com';
-    const response = await fetch(`${baseUrl}/api/messenger/upload-image`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ imageUrl }),
-      signal: AbortSignal.timeout(60000) // 60 วินาที
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.success) {
-      console.log(`[UPLOAD] Image uploaded successfully: ${result.localUrl}`);
-      return result.localUrl;
-    } else {
-      throw new Error(result.error || 'Upload failed');
-    }
-  } catch (error) {
-    console.error('[UPLOAD] Error uploading image to server:', error);
-    return null;
-  }
-}
-
-/**
- * ส่งรูปภาพ (ปรับปรุงให้ใช้ระบบอัปโหลด)
+ * ส่งรูปภาพ (ปรับปรุงให้ทำงานได้เหมือนโค้ดตัวอย่าง)
  */
 async function sendImageMessage(recipientId: string, imageUrl: string): Promise<void> {
   console.log(`[DEBUG] Sending image to ${recipientId}: ${imageUrl}`);
   
-  // ตรวจสอบว่า URL ถูกต้องหรือไม่
+  // ตรวจสอบว่า URL ถูกต้องหรือไม่ (แบบง่ายๆ)
   if (!imageUrl || !imageUrl.startsWith('http')) {
     console.error(`[ERROR] Invalid image URL: ${imageUrl}`);
     return;
   }
 
-  // ลองอัปโหลดภาพมาบนเซิร์ฟเวอร์ก่อน
-  let finalImageUrl = imageUrl;
-  
-  try {
-    const uploadedUrl = await uploadImageToServer(imageUrl);
-    if (uploadedUrl) {
-      finalImageUrl = uploadedUrl;
-      console.log(`[DEBUG] Using uploaded image URL: ${finalImageUrl}`);
-    } else {
-      console.warn(`[WARN] Failed to upload image, using original URL: ${imageUrl}`);
-    }
-  } catch (uploadError) {
-    console.warn(`[WARN] Upload failed, using original URL: ${imageUrl}`, uploadError);
-  }
-
-  // ตรวจสอบว่าเป็น URL ที่ Facebook ยอมรับหรือไม่
-  const isFacebookCompatible = await checkFacebookImageCompatibility(finalImageUrl);
-  if (!isFacebookCompatible) {
-    console.warn(`[WARN] Image URL not Facebook compatible: ${finalImageUrl}`);
-    // ส่งข้อความแจ้งเตือนแทน
-    try {
-      const fallbackMessage: FBMessagePayload = {
-        text: `ขออภัยค่ะ รูปภาพนี้ไม่สามารถแสดงใน Messenger ได้ กรุณาลองใช้รูปภาพอื่น`
-      };
-      await callSendAPI(recipientId, fallbackMessage);
-    } catch (fallbackErr) {
-      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
-    }
-    return;
-  }
-  
   const message: FBMessagePayload = {
     attachment: {
       type: 'image',
       payload: { 
-        url: finalImageUrl, 
+        url: imageUrl, 
         is_reusable: true 
       }
     }
@@ -273,27 +172,14 @@ async function sendImageMessage(recipientId: string, imageUrl: string): Promise<
   } catch (err: any) {
     console.error("[ERROR] Failed to send image:", err);
     
-    // ตรวจสอบ error code และจัดการตามนั้น
-    if (err?.error?.code === 100 && err?.error?.error_subcode === 2018388) {
-      console.warn("[WARN] Facebook robots.txt error - sending fallback message");
-      try {
-        const fallbackMessage: FBMessagePayload = {
-          text: `ขออภัยค่ะ Facebook ไม่สามารถเข้าถึงรูปภาพนี้ได้ กรุณาลองใช้รูปภาพอื่น`
-        };
-        await callSendAPI(recipientId, fallbackMessage);
-      } catch (fallbackErr) {
-        console.error("[ERROR] Failed to send fallback message:", fallbackErr);
-      }
-    } else {
-      // ถ้าส่งรูปภาพไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
-      try {
-        const fallbackMessage: FBMessagePayload = {
-          text: `ขออภัยค่ะ ไม่สามารถแสดงรูปภาพได้ (${imageUrl})`
-        };
-        await callSendAPI(recipientId, fallbackMessage);
-      } catch (fallbackErr) {
-        console.error("[ERROR] Failed to send fallback message:", fallbackErr);
-      }
+    // ถ้าส่งรูปภาพไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนแทน
+    try {
+      const fallbackMessage: FBMessagePayload = {
+        text: `ขออภัยค่ะ ไม่สามารถแสดงรูปภาพได้ (${imageUrl})`
+      };
+      await callSendAPI(recipientId, fallbackMessage);
+    } catch (fallbackErr) {
+      console.error("[ERROR] Failed to send fallback message:", fallbackErr);
     }
   }
 }
@@ -477,7 +363,7 @@ export async function sendSmartMessage(
 ): Promise<void> {
   // ตรวจสอบว่าต้องใช้ระบบ [cut] หรือไม่
   if (hasCutOrImageCommands(response)) {
-    console.log("[DEBUG] Using cut/image system for message");
+    console.log("[DEBUG] Using cut/image system for message - will split into multiple parts");
     return sendTextMessageWithCutAndImages(recipientId, response, includeMenu);
   } else {
     // ข้อความธรรมดา
@@ -495,4 +381,86 @@ export async function sendSmartMessage(
       return sendSimpleTextMessage(recipientId, response);
     }
   }
+}
+
+/**
+ * ส่งข้อความแบบเรียบง่ายเหมือนโค้ดตัวอย่าง
+ * ใช้สำหรับระบบ [SEND_IMAGE:...] และ [SEND_VIDEO:...]
+ */
+export async function sendTextMessage(
+  recipientId: string, 
+  response: string
+): Promise<void> {
+  console.log("[DEBUG] sendTextMessage => raw response:", response);
+
+  // ทำความสะอาด [cut] ที่ซ้ำกัน
+  response = response.replace(/\[cut\]{2,}/g, "[cut]");
+  
+  // แบ่งข้อความเป็นส่วนๆ ตาม [cut]
+  let segments = response.split("[cut]")
+    .map(s => s.trim())
+    .filter(s => s);
+  
+  // จำกัดจำนวนส่วนไม่เกิน 10 ส่วน
+  if (segments.length > 10) {
+    segments = segments.slice(0, 10);
+  }
+
+  console.log(`[DEBUG] Processing ${segments.length} segments`);
+
+  // ประมวลผลแต่ละส่วน
+  for (let segment of segments) {
+    // สแกนหา [SEND_IMAGE:...] และ [SEND_VIDEO:...]
+    const imageRegex = /\[SEND_IMAGE:(https?:\/\/[^\s\]]+)\]/g;
+    const videoRegex = /\[SEND_VIDEO:(https?:\/\/[^\s\]]+)\]/g;
+
+    const images = [...segment.matchAll(imageRegex)];
+    const videos = [...segment.matchAll(videoRegex)];
+
+    // แยกข้อความออกจากรูปภาพและวิดีโอ
+    let textPart = segment
+      .replace(imageRegex, '')
+      .replace(videoRegex, '')
+      .trim();
+
+    // ส่งรูปภาพก่อน
+    for (const match of images) {
+      const imageUrl = match[1];
+      console.log(`[DEBUG] Sending image: ${imageUrl}`);
+      try {
+        await sendImageMessage(recipientId, imageUrl);
+        // รอเล็กน้อยระหว่างการส่งรูปภาพ
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send image ${imageUrl}:`, err);
+      }
+    }
+
+    // ส่งวิดีโอ
+    for (const match of videos) {
+      const videoUrl = match[1];
+      console.log(`[DEBUG] Sending video: ${videoUrl}`);
+      try {
+        await sendVideoMessage(recipientId, videoUrl);
+        // รอเล็กน้อยระหว่างการส่งวิดีโอ
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send video ${videoUrl}:`, err);
+      }
+    }
+
+    // ส่งข้อความ (ถ้ามี)
+    if (textPart) {
+      console.log(`[DEBUG] Sending text part: ${textPart.substring(0, 100)}...`);
+      try {
+        await sendSimpleTextMessage(recipientId, textPart);
+        // รอเล็กน้อยระหว่างการส่งข้อความ
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (err) {
+        console.error(`[ERROR] Failed to send text part:`, err);
+      }
+    }
+  }
+
+  console.log(`[DEBUG] Completed sending all ${segments.length} segments`);
 }

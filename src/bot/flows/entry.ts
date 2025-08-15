@@ -10,7 +10,7 @@ import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
 import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, enableAutoModeForUser, isAutoModeEnabled, addToConversationHistory, getConversationHistory, enableAutoModeAndRespond } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
-import { sendSmartMessage, hasCutOrImageCommands } from '@/utils/messenger-utils';
+import { sendTextMessage, hasCutOrImageCommands } from '@/utils/messenger-utils';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -30,6 +30,9 @@ const PAGE_ID = process.env.FB_PAGE_ID || '';
 
 export async function handleEvent(event: MessagingEvent) {
   const psid = event.sender.id;
+  
+  // เพิ่มตัวแปรเพื่อติดตามว่าได้ส่งข้อความตอบกลับแล้วหรือไม่
+  let hasResponded = false;
 
   // ถ้าผู้ส่งคือเพจเอง ไม่ต้องประมวลผลใด ๆ
   if (PAGE_ID && psid === PAGE_ID) {
@@ -37,11 +40,17 @@ export async function handleEvent(event: MessagingEvent) {
   }
 
   // ข้าม event ที่เป็น echo (บอทส่งเอง) หรือ delivery/read
-  if (event.message && ((event as any).message.is_echo || (event as any).message.app_id)) {
-    //console.log('[Flow] skip echo');
+  if (event.message && (
+    (event as any).message.is_echo || 
+    (event as any).message.app_id ||
+    (event as any).message.metadata?.is_echo ||
+    (event as any).message.metadata?.app_id
+  )) {
+    console.log('[Flow] skip echo event');
     return;
   }
   if ((event as any).delivery || (event as any).read) {
+    console.log('[Flow] skip delivery/read event');
     return;
   }
 
@@ -475,7 +484,7 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
+            await sendTextMessage(psid, answer); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
@@ -485,6 +494,7 @@ export async function handleEvent(event: MessagingEvent) {
               ],
             });
           }
+          hasResponded = true;
           return;
         }
         
@@ -500,7 +510,7 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
+            await sendTextMessage(psid, answer); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
@@ -510,6 +520,7 @@ export async function handleEvent(event: MessagingEvent) {
               ],
             });
           }
+          hasResponded = true;
           return;
         } else {
           // โหมด AI ปกติ
@@ -519,7 +530,7 @@ export async function handleEvent(event: MessagingEvent) {
           
           // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
           if (hasCutOrImageCommands(answer)) {
-            await sendSmartMessage(psid, answer, true); // ส่งพร้อมเมนู
+            await sendTextMessage(psid, answer); // ส่งพร้อมเมนู
           } else {
             await callSendAPI(psid, {
               text: answer,
@@ -528,6 +539,7 @@ export async function handleEvent(event: MessagingEvent) {
               ],
             });
           }
+          hasResponded = true;
           return;
         }
       } catch (error) {
@@ -540,11 +552,18 @@ export async function handleEvent(event: MessagingEvent) {
             { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
           ],
         });
+        hasResponded = true;
         return;
       }
     }
 
     const txt = event.message.text.toLowerCase();
+
+    // ตรวจสอบว่าได้ส่งข้อความตอบกลับแล้วหรือไม่
+    if (hasResponded) {
+      console.log('[Flow] Already responded to this message, skipping further processing');
+      return;
+    }
 
     if (txt.includes('#delete')) {
       // รีเซ็ตข้อมูลผู้ใช้ทุกอย่าง (สำหรับการทดสอบใหม่)
@@ -638,17 +657,23 @@ export async function handleEvent(event: MessagingEvent) {
     return showCategories(psid);
   }
   
-  // ถ้าอยู่ในโหมด AI แต่ไม่ได้ส่งข้อความใดๆ ให้ส่งข้อความแนะนำ
-  if (currentAiEnabled && event.message && event.message.text) {
-    await callSendAPI(psid, {
-      text: 'กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ',
-      quick_replies: [
-        { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
-        { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
-      ],
-    });
+  // ตรวจสอบว่าได้ส่งข้อความตอบกลับแล้วหรือไม่ (สำหรับกรณีที่ไม่ได้อยู่ในโหมด AI)
+  if (typeof hasResponded !== 'undefined' && hasResponded) {
+    console.log('[Flow] Already responded to this message, skipping further processing');
     return;
   }
+  
+  // ลบส่วนนี้ออกเพราะจะทำให้ส่งข้อความซ้ำหลังจากที่ AI ได้ตอบไปแล้ว
+  // if (currentAiEnabled && event.message && event.message.text) {
+  //   await callSendAPI(psid, {
+  //     text: 'กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ',
+  //     quick_replies: [
+  //       { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
+  //       { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
+  //     ],
+  //   });
+  //   return;
+  // }
 }
 
 // ฟังก์ชันแจ้งเตือนแอดมินผ่าน SMS และ LINE เมื่อผู้ใช้กด "ติดต่อแอดมิน"
