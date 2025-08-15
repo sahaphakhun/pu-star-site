@@ -1,4 +1,10 @@
 // Image optimization utilities for Railway deployment
+import { 
+  isCloudinaryUrl, 
+  optimizeCloudinaryUrl as cloudinaryOptimize, 
+  generateCloudinaryResponsiveUrls,
+  CLOUDINARY_CONFIGS 
+} from '@/utils/cloudinaryUtils';
 
 export interface ImageOptimizationConfig {
   quality: number;
@@ -23,6 +29,11 @@ export function getOptimizedImageUrl(
   config: ImageOptimizationConfig = DEFAULT_IMAGE_CONFIGS.medium
 ): string {
   if (!src) return '';
+  
+  // If it's already a Cloudinary URL, optimize it
+  if (isCloudinaryUrl(src)) {
+    return cloudinaryOptimize(src, config);
+  }
   
   // If it's already an external URL, return as is
   if (src.startsWith('http')) {
@@ -51,12 +62,28 @@ export function getOptimizedImageUrl(
   return `${baseUrl}/_next/image?url=${encodeURIComponent(src)}&${params.toString()}`;
 }
 
+
+
 /**
  * Generate responsive image srcSet for different screen sizes
  */
 export function generateResponsiveSrcSet(src: string): string {
   if (!src) return '';
   
+  // Use Cloudinary responsive URLs if it's a Cloudinary URL
+  if (isCloudinaryUrl(src)) {
+    const sizes = [
+      { width: 640, quality: 75 },
+      { width: 768, quality: 80 },
+      { width: 1024, quality: 85 },
+      { width: 1280, quality: 85 },
+      { width: 1920, quality: 90 }
+    ];
+    
+    return generateCloudinaryResponsiveUrls(src, sizes);
+  }
+  
+  // Fallback to Next.js optimization for other URLs
   const sizes = [
     { width: 640, quality: 75 },
     { width: 768, quality: 80 },

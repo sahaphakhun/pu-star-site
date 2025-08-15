@@ -7,8 +7,8 @@ export function imageOptimizationMiddleware(request: NextRequest) {
   if (url.pathname.startsWith('/_next/image')) {
     const imageUrl = url.searchParams.get('url');
     
-    // ถ้าเป็น API images ให้ bypass optimization
-    if (imageUrl && imageUrl.includes('/api/images/')) {
+    // ถ้าเป็น API images หรือ Cloudinary ให้ bypass Next.js optimization
+    if (imageUrl && (imageUrl.includes('/api/images/') || imageUrl.includes('res.cloudinary.com'))) {
       // Redirect ไปยัง original URL
       return NextResponse.redirect(imageUrl);
     }

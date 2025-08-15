@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { verifyToken } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import { uploadImage } from '@/lib/cloudinary';
 
 // POST /api/admin/images/upload - อัพโหลดภาพ
 export async function POST(request: NextRequest) {
@@ -26,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // เชื่อมต่อฐานข้อมูลโดยตรง
+    // เชื่อมต่อฐานข้อมูล
     const MONGODB_URI = process.env.MONGODB_URI || 
                         process.env.MONGO_URL || 
                         process.env.DATABASE_URL || 
@@ -45,12 +42,6 @@ export async function POST(request: NextRequest) {
     const uploadedImages = [];
     const errors = [];
 
-    // สร้างโฟลเดอร์สำหรับเก็บภาพ
-    const uploadDir = join('.', 'public', 'uploads', 'images');
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const category = categories[i] || 'others';
@@ -68,37 +59,39 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // สร้างชื่อไฟล์ใหม่
-        const fileExtension = file.name.split('.').pop();
-        const filename = `${uuidv4()}.${fileExtension}`;
-        const filepath = join(uploadDir, filename);
-
-        // บันทึกไฟล์
+        // แปลงไฟล์เป็น Buffer
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        await writeFile(filepath, buffer);
 
-        // สร้าง URL สำหรับเข้าถึงภาพ - ใช้ API route ใหม่
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                       'http://localhost:3000';
-        
-        // ตรวจสอบว่า baseUrl มี protocol หรือไม่
-        const imageUrl = baseUrl.startsWith('http') 
-          ? `${baseUrl}/api/images/${filename}`
-          : `https://${baseUrl}/api/images/${filename}`;
+        // อัพโหลดไปยัง Cloudinary
+        const cloudinaryResult = await uploadImage(buffer, {
+          folder: 'winrich-images',
+          tags: [category, 'admin-upload'],
+          context: {
+            originalName: file.name,
+            uploadedBy: authResult.name || authResult.phoneNumber || 'Unknown',
+            category: category
+          }
+        });
 
         // บันทึกข้อมูลลงฐานข้อมูล
         const imageData = {
-          filename,
+          publicId: cloudinaryResult.public_id,
+          filename: file.name,
           originalName: file.name,
-          url: imageUrl,
-          size: file.size,
+          url: cloudinaryResult.url,
+          secureUrl: cloudinaryResult.secure_url,
+          size: cloudinaryResult.bytes,
           mimetype: file.type,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+          format: cloudinaryResult.format,
           uploadedBy: authResult.name || authResult.phoneNumber || 'Unknown',
           uploadedAt: new Date(),
           category,
-          tags: [],
-          isPublic: true // ตั้งค่าให้เป็น public เพื่อให้ Facebook Bot เข้าถึงได้
+          tags: [category],
+          isPublic: true,
+          cloudinaryData: cloudinaryResult
         };
 
         const result = await imagesCollection.insertOne(imageData);

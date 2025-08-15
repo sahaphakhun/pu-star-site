@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyToken } from '@/lib/auth';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { deleteImage } from '@/lib/cloudinary';
 
 // DELETE /api/admin/images/[id] - ลบภาพ
 export async function DELETE(
@@ -52,12 +51,13 @@ export async function DELETE(
       );
     }
 
-    // ลบไฟล์จากระบบ
-    try {
-      const filepath = join('.', 'public', 'uploads', 'images', image.filename);
-      await unlink(filepath);
-    } catch (fileError) {
-      console.warn(`File not found or already deleted: ${image.filename}`);
+    // ลบไฟล์จาก Cloudinary
+    if (image.publicId) {
+      try {
+        await deleteImage(image.publicId);
+      } catch (cloudinaryError) {
+        console.warn(`Failed to delete from Cloudinary: ${image.publicId}`, cloudinaryError);
+      }
     }
 
     // ลบข้อมูลจากฐานข้อมูล

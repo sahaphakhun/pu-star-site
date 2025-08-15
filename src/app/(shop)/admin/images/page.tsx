@@ -6,16 +6,22 @@ import Image from 'next/image';
 
 interface UploadedImage {
   _id: string;
-  filename: string;
-  originalName: string;
-  url: string;
-  size: number;
-  mimetype: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  category?: string;
-  tags?: string[];
-  isPublic?: boolean; // เพิ่มฟิลด์ isPublic
+  publicId: string;        // Cloudinary public ID
+  filename: string;        // ชื่อไฟล์เดิม
+  originalName: string;    // ชื่อไฟล์เดิม
+  url: string;            // Cloudinary URL
+  secureUrl: string;      // Cloudinary secure URL
+  size: number;           // ขนาดไฟล์ (bytes)
+  mimetype: string;       // ประเภทไฟล์
+  width: number;          // ความกว้างรูปภาพ
+  height: number;         // ความสูงรูปภาพ
+  format: string;         // รูปแบบไฟล์ (jpg, png, etc.)
+  uploadedBy: string;     // ผู้อัพโหลด
+  uploadedAt: string;     // วันที่อัพโหลด
+  category?: string;      // หมวดหมู่
+  tags?: string[];        // แท็ก
+  isPublic?: boolean;     // สถานะ public/private
+  cloudinaryData?: any;   // ข้อมูลเพิ่มเติมจาก Cloudinary
 }
 
 const ImageManagementPage: React.FC = () => {
@@ -185,7 +191,8 @@ const ImageManagementPage: React.FC = () => {
   });
 
   // คัดลอกลิงก์ภาพ
-  const copyImageLink = (url: string) => {
+  const copyImageLink = (image: UploadedImage) => {
+    const url = image.secureUrl || image.url;
     navigator.clipboard.writeText(url).then(() => {
       toast.success('คัดลอกลิงก์ภาพแล้ว');
     }).catch(() => {
@@ -194,7 +201,8 @@ const ImageManagementPage: React.FC = () => {
   };
 
   // คัดลอกโค้ด [SEND_IMAGE:...]
-  const copySendImageCode = (url: string) => {
+  const copySendImageCode = (image: UploadedImage) => {
+    const url = image.secureUrl || image.url;
     const code = `[SEND_IMAGE:${url}]`;
     navigator.clipboard.writeText(code).then(() => {
       toast.success('คัดลอกโค้ด [SEND_IMAGE:...] แล้ว');
@@ -276,7 +284,7 @@ const ImageManagementPage: React.FC = () => {
             <div key={image._id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="relative aspect-square">
                 <Image
-                  src={image.url}
+                  src={image.secureUrl || image.url}
                   alt={image.originalName}
                   fill
                   className="object-cover"
@@ -284,7 +292,7 @@ const ImageManagementPage: React.FC = () => {
                 />
                 <div className="absolute top-2 right-2 flex space-x-1">
                   <button
-                    onClick={() => copyImageLink(image.url)}
+                    onClick={() => copyImageLink(image)}
                     className="bg-black bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75"
                     title="คัดลอกลิงก์"
                   >
@@ -293,7 +301,7 @@ const ImageManagementPage: React.FC = () => {
                     </svg>
                   </button>
                   <button
-                    onClick={() => copySendImageCode(image.url)}
+                    onClick={() => copySendImageCode(image)}
                     className="bg-blue-600 bg-opacity-50 text-white p-1 rounded hover:bg-opacity-75"
                     title="คัดลอกโค้ด [SEND_IMAGE:...]"
                   >
@@ -323,7 +331,9 @@ const ImageManagementPage: React.FC = () => {
               </div>
               <div className="p-4">
                 <h3 className="font-medium text-gray-900 truncate">{image.originalName}</h3>
-                <p className="text-sm text-gray-500">{formatFileSize(image.size)}</p>
+                <p className="text-sm text-gray-500">
+                  {formatFileSize(image.size)} • {image.width}×{image.height} • {image.format?.toUpperCase()}
+                </p>
                 <div className="flex items-center space-x-2 mt-1">
                   {image.category && (
                     <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
@@ -336,6 +346,9 @@ const ImageManagementPage: React.FC = () => {
                       : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {image.isPublic ? 'Public' : 'Private'}
+                  </span>
+                  <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                    Cloudinary
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
