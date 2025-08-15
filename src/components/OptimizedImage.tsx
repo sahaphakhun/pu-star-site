@@ -88,7 +88,9 @@ export default function OptimizedImage({
     placeholder: placeholder as any,
     blurDataURL: blurDataURL || defaultBlurDataURL,
     sizes: sizes || generateSizesAttribute(),
-    style: objectFit ? { objectFit } : undefined
+    style: objectFit ? { objectFit } : undefined,
+    // เพิ่มการจัดการ error สำหรับ Next.js Image
+    unoptimized: src.includes('/api/images/') // ไม่ใช้ optimization สำหรับ API images
   };
 
   if (fill) {

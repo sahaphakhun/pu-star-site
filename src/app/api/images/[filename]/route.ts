@@ -16,7 +16,7 @@ export async function GET(
     }
 
     // Construct file path
-    const filePath = join(process.cwd(), 'public', 'uploads', 'images', filename);
+    const filePath = join(process.env.PWD || '', 'public', 'uploads', 'images', filename);
     
     // Check if file exists
     if (!existsSync(filePath)) {
@@ -58,7 +58,11 @@ export async function GET(
         'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept, Accept-Encoding, Accept-Language, Cache-Control, If-Modified-Since, If-None-Match, Range',
+        // เพิ่ม headers สำหรับ Next.js Image Optimization
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
       },
     });
 

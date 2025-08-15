@@ -17,7 +17,19 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'www.winrichdynamic.com',
         port: '',
+        pathname: '/api/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.winrichdynamic.com',
+        port: '',
         pathname: '/uploads/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/api/images/**',
       },
       {
         protocol: 'http',
@@ -38,13 +50,12 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    formats: ['image/webp', 'image/avif'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    // เพิ่มการจัดการ error สำหรับ image optimization
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     unoptimized: false,
+    // เพิ่ม loader สำหรับ custom image optimization
+    loader: 'default',
   },
   
   // Compression
