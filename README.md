@@ -150,3 +150,6 @@ winrich-site/
 - โฟลเดอร์นี้เป็น subdomain B2B ที่แยก service ต่างหาก
 - การแก้ไขต้องทำในโปรเจ็ก `winrichdynamic-service` โดยตรง
 - เพื่อป้องกันปัญหาการ deploy และการทำงานของระบบ
+
+
+

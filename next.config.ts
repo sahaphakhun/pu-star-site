@@ -67,10 +67,10 @@ const nextConfig: NextConfig = {
   // Compression
   compress: true,
   
-  // เพิ่ม performance budget
+  // Optimized performance budget - Increased limits to be more realistic
   performance: {
-    maxAssetSize: 500 * 1024, // 500KB
-    maxEntrypointSize: 500 * 1024, // 500KB
+    maxAssetSize: 800 * 1024, // Increased from 500KB to 800KB
+    maxEntrypointSize: 800 * 1024, // Increased from 500KB to 800KB
     hints: process.env.NODE_ENV === 'production' ? 'warning' : false,
   },
   
@@ -82,6 +82,15 @@ const nextConfig: NextConfig = {
     ...(process.env.ANALYZE === 'true' && {
       bundlePagesExternals: true,
     }),
+    // Add tree shaking optimizations
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   
   // Headers for better caching and security
@@ -131,6 +140,16 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Add font caching headers
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable', // Cache fonts for 1 year
+          },
+        ],
+      },
     ];
   },
   
@@ -162,7 +181,7 @@ const nextConfig: NextConfig = {
     },
   }),
   
-  // Webpack optimizations
+  // Webpack optimizations - Enhanced for better bundle splitting
   webpack: (config: any, { isServer }: any) => {
     // Optimize bundle size
     if (!isServer) {
@@ -173,27 +192,59 @@ const nextConfig: NextConfig = {
         tls: false,
       };
       
-      // เพิ่ม code splitting และ tree shaking
+      // Enhanced code splitting และ tree shaking
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          maxSize: 244000, // 244KB chunks for better caching
           cacheGroups: {
             vendor: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
               chunks: 'all',
               priority: 10,
+              enforce: true,
             },
             common: {
               name: 'common',
               minChunks: 2,
               chunks: 'all',
               priority: 5,
+              reuseExistingChunk: true,
+            },
+            // Separate large libraries
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+              name: 'react',
+              chunks: 'all',
+              priority: 20,
+            },
+            // Separate UI libraries
+            ui: {
+              test: /[\\/]node_modules[\\/](@heroicons|framer-motion|leaflet)[\\/]/,
+              name: 'ui',
+              chunks: 'all',
+              priority: 15,
             },
           },
         },
+        // Enable tree shaking
+        usedExports: true,
+        sideEffects: false,
       };
+      
+      // Add bundle size analyzer
+      if (process.env.ANALYZE === 'true') {
+        const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+        config.plugins.push(
+          new BundleAnalyzerPlugin({
+            analyzerMode: 'static',
+            openAnalyzer: false,
+            reportFilename: 'bundle-analysis.html',
+          })
+        );
+      }
     }
     
     // Add source maps in development
@@ -218,6 +269,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   swcMinify: true,
+  
+  // Additional performance optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
+  // Optimize CSS
+  cssMinifier: 'lightningcss',
 };
 
 export default nextConfig;

@@ -322,6 +322,7 @@ const AdminSidebar: React.FC = () => {
   };
 
   const toggleSubmenu = (menuLabel: string) => {
+    console.log('Toggle submenu clicked:', menuLabel); // Debug log
     setExpandedMenus(prev => {
       const newSet = new Set(prev);
       if (newSet.has(menuLabel)) {
@@ -329,12 +330,26 @@ const AdminSidebar: React.FC = () => {
       } else {
         newSet.add(menuLabel);
       }
+      console.log('New expanded menus:', Array.from(newSet)); // Debug log
       return newSet;
     });
   };
 
   const isSubmenuExpanded = (menuLabel: string) => {
-    return expandedMenus.has(menuLabel);
+    const expanded = expandedMenus.has(menuLabel);
+    console.log(`Is ${menuLabel} expanded:`, expanded); // Debug log
+    return expanded;
+  };
+
+  // เพิ่มฟังก์ชัน debug สำหรับตรวจสอบสิทธิ์
+  const debugPermissions = () => {
+    console.log('=== DEBUG PERMISSIONS ===');
+    console.log('isAdmin:', isAdmin);
+    console.log('permissionsLoading:', permissionsLoading);
+    console.log('hasPermission function:', typeof hasPermission);
+    console.log('Current pathname:', pathname);
+    console.log('All menu items:', allMenuItems);
+    console.log('=======================');
   };
 
   const allMenuItems: MenuItem[] = [
@@ -361,6 +376,7 @@ const AdminSidebar: React.FC = () => {
     { label: 'ส่งการแจ้งเตือน', href: '/admin/notification', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>, permission: PERMISSIONS.NOTIFICATIONS_SEND },
     { label: 'ตั้งค่าทั่วไป', href: '/admin/settings', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0a1.724 1.724 0 002.573 1.066c.8-.488 1.78.492 1.292 1.292a1.724 1.724 0 001.066 2.573c.921.3.921 1.603 0 1.902a1.724 1.724 0 00-1.066 2.573c.488.8-.492 1.78-1.292 1.292a1.724 1.724 0 00-2.573 1.066c-.3.921-1.603.921-1.902 0a1.724 1.724 0 00-2.573-1.066c-.8.488-1.78-.492-1.292-1.292a1.724 1.724 0 00-1.066-2.573c-.921-.3-.921-1.603 0-1.902a1.724 1.724 0 001.066-2.573c-.488-.8.492-1.78 1.292-1.292.996.608 2.296.07 2.573-1.066z" /></svg>, permission: PERMISSIONS.SETTINGS_GENERAL },
     { label: 'Catalog', href: '/admin/catalog', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6l-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h6m0-14l2-2h5a2 2 0 012 2v12a2 2 0 01-2 2h-7m0-14v14" /></svg>, permission: PERMISSIONS.SETTINGS_GENERAL },
+    { label: 'Test Menu', href: '/admin/test-menu', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, adminOnly: true },
   ];
 
   // กรองเมนูตามสิทธิ์ของผู้ใช้
@@ -393,6 +409,15 @@ const AdminSidebar: React.FC = () => {
       setExpandedMenus(prev => new Set([...prev, currentMenuItem.label]));
     }
   }, [pathname, menuItems]);
+
+  // เรียกใช้ debug เมื่อ component mount และเมื่อ menuItems เปลี่ยน
+  useEffect(() => {
+    if (!permissionsLoading) {
+      debugPermissions();
+      console.log('Menu items count:', menuItems.length);
+      console.log('Filtered menu items:', menuItems);
+    }
+  }, [permissionsLoading, isAdmin, pathname, menuItems]);
 
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
   
@@ -803,7 +828,10 @@ const AdminSidebar: React.FC = () => {
               {item.submenu ? (
                 <div>
                   <button
-                    onClick={() => toggleSubmenu(item.label)}
+                    onClick={() => {
+                      console.log('Menu button clicked:', item.label, item.href);
+                      toggleSubmenu(item.label);
+                    }}
                     className={`flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors ${
                       pathname === item.href || pathname.startsWith(item.href + '/')
                         ? 'bg-blue-100 text-blue-700'
@@ -830,6 +858,7 @@ const AdminSidebar: React.FC = () => {
                         <li key={subIndex}>
                           <Link
                             href={subItem.href}
+                            onClick={() => console.log('Submenu link clicked:', subItem.label, subItem.href)}
                             className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm ${
                               pathname === subItem.href
                                 ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
@@ -847,6 +876,7 @@ const AdminSidebar: React.FC = () => {
               ) : (
                 <Link
                   href={item.href}
+                  onClick={() => console.log('Menu link clicked:', item.label, item.href)}
                   className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                     pathname === item.href
                       ? 'bg-blue-100 text-blue-700'

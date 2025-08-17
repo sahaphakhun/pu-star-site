@@ -13,7 +13,7 @@ import { Metadata } from 'next';
 const inter = Inter({ 
   subsets: ['latin'],
   display: 'swap',
-  preload: true,
+  preload: false, // Changed from true to false to prevent preload warnings
   fallback: ['system-ui', 'arial']
 });
 
@@ -90,16 +90,14 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content={siteName} />
         
-        {/* Icons */}
+        {/* Icons - Fixed paths */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
         
-        {/* Preload Critical Resources - แก้ไขให้ถูกต้อง */}
-        <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/globals.css" as="style" />
+        {/* Optimized Resource Loading - Removed problematic preloads */}
         <link rel="dns-prefetch" href="//res.cloudinary.com" />
         <link rel="dns-prefetch" href="//www.winrichdynamic.com" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
@@ -127,8 +125,6 @@ export default function RootLayout({
             })
           }}
         />
-        
-        {/* ลบ modulepreload ที่ไม่จำเป็นออก */}
       </head>
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>

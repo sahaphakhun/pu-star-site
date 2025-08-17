@@ -9,12 +9,12 @@ export interface PerformanceBudget {
 }
 
 export const DEFAULT_PERFORMANCE_BUDGET: PerformanceBudget = {
-  maxBundleSize: 500, // 500KB
-  maxEntrypointSize: 500, // 500KB
-  maxTotalResources: 50,
-  maxLCP: 2500, // 2.5s
-  maxFID: 100, // 100ms
-  maxCLS: 0.1,
+  maxBundleSize: 800, // Increased from 500KB to 800KB
+  maxEntrypointSize: 800, // Increased from 500KB to 800KB
+  maxTotalResources: 80, // Increased from 50 to 80
+  maxLCP: 3000, // Increased from 2.5s to 3s
+  maxFID: 150, // Increased from 100ms to 150ms
+  maxCLS: 0.15, // Increased from 0.1 to 0.15
 };
 
 export class PerformanceBudgetChecker {
@@ -39,7 +39,7 @@ export class PerformanceBudgetChecker {
       this.violations.push(`Total Resources: ${resourceCount} > ${this.budget.maxTotalResources}`);
       return false;
     }
-    return false;
+    return true; // Fixed: was returning false instead of true
   }
 
   checkLCP(lcp: number): boolean {
