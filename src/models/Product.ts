@@ -23,6 +23,20 @@ export interface IProduct extends Document {
     shippingFee?: number;
     unitPrice?: number;
   }[];
+  // SKU Configuration
+  skuConfig?: {
+    prefix: string;
+    separator: string;
+    autoGenerate: boolean;
+    customSku?: string;
+  };
+  skuVariants?: {
+    key: string;
+    unitLabel?: string;
+    options: Record<string, string>;
+    sku: string;
+    isActive: boolean;
+  }[];
   wmsConfig?: {
     productCode: string;
     lotGen: string;
@@ -90,6 +104,33 @@ const productSchema = new Schema<IProduct>(
       ],
       required: false,
     },
+    // SKU Configuration Schema
+    skuConfig: {
+      type: {
+        prefix: { type: String, required: false, trim: true, default: '' },
+        separator: { type: String, required: false, trim: true, default: '-' },
+        autoGenerate: { type: Boolean, required: false, default: true },
+        customSku: { type: String, required: false, trim: true },
+      },
+      required: false,
+    },
+    // SKU Variants Schema
+    skuVariants: {
+      type: [
+        new Schema(
+          {
+            key: { type: String, required: true, trim: true },
+            unitLabel: { type: String, required: false, trim: true },
+            options: { type: Schema.Types.Mixed, required: false, default: {} },
+            sku: { type: String, required: true, trim: true },
+            isActive: { type: Boolean, required: false, default: true },
+          },
+          { _id: false }
+        ),
+      ],
+      required: false,
+      default: undefined,
+    },
     wmsConfig: {
       type: {
         productCode: { type: String, required: true, trim: true },
@@ -141,5 +182,7 @@ const productSchema = new Schema<IProduct>(
 productSchema.index({ category: 1, createdAt: -1 });
 // ดัชนี full-text สำหรับค้นหาชื่อและรายละเอียดสินค้า
 productSchema.index({ name: 'text', description: 'text' });
+// ดัชนีสำหรับค้นหา SKU
+productSchema.index({ 'skuVariants.sku': 1 });
 
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', productSchema); 

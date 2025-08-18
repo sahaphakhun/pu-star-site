@@ -1,97 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/db';
 import Product from '@/models/Product';
-import { clearCache } from '@cache/simpleCache';
-import { productInputSchema } from '@schemas/product';
+import { verifyToken } from '@/lib/auth';
 
-// GET: ดึงสินค้าทั้งหมด
-export async function GET(request: NextRequest) {
-  await connectDB();
-  const searchParams = request.nextUrl.searchParams;
-  const page = Number(searchParams.get('page') || '1');
-  const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
-  const q = searchParams.get('q') || '';
-  const category = searchParams.get('category');
+export async function POST(request: NextRequest) {
+  try {
+    const authResult = await verifyToken(request);
+    if (!authResult || !authResult.valid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const filter: Record<string, any> = {};
-  if (q) {
-    filter.name = { $regex: q, $options: 'i' };
+    await connectDB();
+    const body = await request.json();
+    
+    const { name, price, description, imageUrl, units, category, options, wmsConfig, wmsVariantConfigs, skuConfig, skuVariants, isAvailable } = body;
+
+    // Validation
+    if (!name || !description || !imageUrl) {
+      return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
+    }
+
+    if (price === undefined && (!units || units.length === 0)) {
+      return NextResponse.json({ error: 'กรุณาระบุราคาเดี่ยว หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
+    }
+
+    // Create product data
+    const productData: any = {
+      name,
+      description,
+      imageUrl,
+      category: category || 'ทั่วไป',
+      isAvailable: isAvailable !== false,
+    };
+
+    if (price !== undefined) {
+      productData.price = price;
+    }
+
+    if (units && units.length > 0) {
+      productData.units = units;
+    }
+
+    if (options && options.length > 0) {
+      productData.options = options;
+    }
+
+    // Add WMS configuration if provided
+    if (wmsConfig) {
+      productData.wmsConfig = wmsConfig;
+    }
+
+    if (wmsVariantConfigs && wmsVariantConfigs.length > 0) {
+      productData.wmsVariantConfigs = wmsVariantConfigs;
+    }
+
+    // Add SKU configuration if provided
+    if (skuConfig) {
+      productData.skuConfig = skuConfig;
+    }
+
+    if (skuVariants && skuVariants.length > 0) {
+      productData.skuVariants = skuVariants;
+    }
+
+    const product = new Product(productData);
+    await product.save();
+
+    return NextResponse.json(product, { status: 201 });
+  } catch (error) {
+    console.error('Error creating product:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้างสินค้า' }, { status: 500 });
   }
-  if (category) {
-    filter.category = category;
-  }
-
-  const total = await Product.countDocuments(filter);
-  const products = await Product.find(filter)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
-
-  // ถ้าไม่ได้ส่ง query page/limit/q/category ให้คงรูปแบบ array เดิมเพื่อความเข้ากันได้
-  const hasPaginationParam = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || searchParams.has('category');
-  if (!hasPaginationParam) {
-    return NextResponse.json(products);
-  }
-
-  return NextResponse.json({ data: products, total, page, limit, totalPages: Math.ceil(total / limit) });
 }
 
-// POST: สร้างสินค้าใหม่
-export async function POST(request: NextRequest) {
-  const raw = await request.json();
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = await verifyToken(request);
+    if (!authResult || !authResult.valid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  // แปลงค่าที่อาจมาจาก client เป็น string → number ก่อน validate
-  if (raw.price === '') {
-    delete raw.price; // ให้ปล่อยให้ units ตัดสิน price แทน
-  } else if (raw.price !== undefined) {
-    raw.price = Number(raw.price);
+    await connectDB();
+    
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const search = searchParams.get('search');
+    
+    let query: any = {};
+    
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+    
+    if (search) {
+      query.$text = { $search: search };
+    }
+    
+    const products = await Product.find(query).sort({ createdAt: -1 });
+    
+    return NextResponse.json(products);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า' }, { status: 500 });
   }
-
-  if (raw.shippingFee !== undefined && raw.shippingFee !== '') {
-    raw.shippingFee = Number(raw.shippingFee);
-  }
-
-  if (Array.isArray(raw.units)) {
-    raw.units = raw.units
-      .filter((u: any) => u.label && u.price !== '')
-      .map((u: any) => {
-        const mapped: any = { ...u, price: Number(u.price) };
-        if (u.shippingFee !== undefined && u.shippingFee !== '') {
-          mapped.shippingFee = Number(u.shippingFee);
-        }
-        return mapped;
-      });
-  }
-
-  const parsed = productInputSchema.safeParse(raw);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.errors }, { status: 400 });
-  }
-  const { name, price, description, imageUrl, options, category, units, shippingFee, isAvailable, wmsConfig, wmsVariantConfigs } = parsed.data;
-
-  // ต้องมีอย่างน้อย price หรือ units
-  if (price === undefined && (!units || units.length === 0)) {
-    return NextResponse.json({ error: 'กรุณาระบุราคา หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
-  }
-
-  await connectDB();
-
-  const initialPrice = price ?? (units && units.length > 0 ? units[0].price : undefined);
-
-  const product = await Product.create({
-    name,
-    price: initialPrice,
-    description,
-    imageUrl,
-    options,
-    category,
-    units,
-    shippingFee,
-    isAvailable: isAvailable !== undefined ? isAvailable : true,
-    wmsConfig,
-    wmsVariantConfigs,
-  });
-  clearCache('products');
-  return NextResponse.json(product.toObject ? product.toObject() : product, { status: 201 });
 } 

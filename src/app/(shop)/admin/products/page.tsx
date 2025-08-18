@@ -75,6 +75,22 @@ const AdminProductsPage = () => {
   const [wmsVariantMode, setWmsVariantMode] = useState(false);
   const [wmsVariantConfigs, setWmsVariantConfigs] = useState<WMSVariantRow[]>([]);
 
+  // SKU Configuration States
+  const [skuConfig, setSkuConfig] = useState({
+    prefix: '',
+    separator: '-',
+    autoGenerate: true,
+    customSku: ''
+  });
+  const [skuVariants, setSkuVariants] = useState<{
+    key: string;
+    unitLabel?: string;
+    options: Record<string, string>;
+    sku: string;
+    isActive: boolean;
+  }[]>([]);
+  const [showSkuConfig, setShowSkuConfig] = useState(false);
+
   const buildVariantKey = (unitLabel?: string, selectedOptions?: Record<string, string>) => {
     const unitPart = unitLabel ? `unit:${unitLabel}` : 'unit:default';
     const optionsPart = selectedOptions && Object.keys(selectedOptions).length > 0
@@ -127,12 +143,84 @@ const AdminProductsPage = () => {
     setWmsVariantConfigs(rows);
   };
 
+  // Generate SKU Variants
+  const generateSkuVariants = () => {
+    const unitLabels = (units && units.length > 0) ? units.map(u => u.label) : [undefined];
+    const optionCombos = getOptionCombos(options);
+
+    const existingByKey = new Map<string, any>();
+    for (const variant of skuVariants) existingByKey.set(variant.key, variant);
+
+    const variants: any[] = [];
+    for (const unitLabel of unitLabels) {
+      for (const combo of optionCombos) {
+        const key = buildVariantKey(unitLabel, combo);
+        const prev = existingByKey.get(key);
+        
+        let sku = '';
+        if (skuConfig.autoGenerate) {
+          // สร้าง SKU อัตโนมัติ
+          const parts = [skuConfig.prefix];
+          if (unitLabel) parts.push(unitLabel);
+          Object.entries(combo).forEach(([optName, optValue]) => {
+            parts.push(optValue);
+          });
+          sku = parts.filter(p => p).join(skuConfig.separator);
+        } else {
+          sku = skuConfig.customSku || '';
+        }
+
+        variants.push({
+          key,
+          unitLabel,
+          options: combo,
+          sku: prev?.sku || sku,
+          isActive: prev?.isActive ?? true,
+        });
+      }
+    }
+    setSkuVariants(variants);
+  };
+
+  // Update SKU variant
+  const updateSkuVariant = (index: number, patch: Partial<any>) => {
+    setSkuVariants(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  };
+
+  // Prefill all SKUs from configuration
+  const prefillAllSkus = () => {
+    if (!skuConfig.autoGenerate) return;
+    
+    setSkuVariants(prev => prev.map(variant => {
+      const parts = [skuConfig.prefix];
+      if (variant.unitLabel) parts.push(variant.unitLabel);
+      Object.entries(variant.options).forEach(([optName, optValue]) => {
+        parts.push(optValue);
+      });
+      const sku = parts.filter(p => p).join(skuConfig.separator);
+      
+      return { ...variant, sku };
+    }));
+  };
+
   useEffect(() => {
     if (wmsVariantMode) {
       generateVariantRows();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wmsVariantMode, JSON.stringify(units), JSON.stringify(options), wmsProductCode, wmsLotGen, wmsLocationBin, wmsLotMfg, wmsAdminUsername]);
+
+  // Generate SKU variants when units or options change
+  useEffect(() => {
+    if (showSkuConfig) {
+      generateSkuVariants();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSkuConfig, JSON.stringify(units), JSON.stringify(options), skuConfig.prefix, skuConfig.separator, skuConfig.autoGenerate]);
 
   const updateVariantRow = (index: number, patch: Partial<WMSVariantRow>) => {
     setWmsVariantConfigs(prev => {
@@ -227,6 +315,16 @@ const AdminProductsPage = () => {
     setWmsLocationBin('');
     setWmsLotMfg('');
     setWmsAdminUsername('');
+
+    // Reset SKU fields
+    setSkuConfig({
+      prefix: '',
+      separator: '-',
+      autoGenerate: true,
+      customSku: ''
+    });
+    setSkuVariants([]);
+    setShowSkuConfig(false);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -350,6 +448,51 @@ const AdminProductsPage = () => {
       delete productData.wmsVariantConfigs;
     }
 
+    // SKU Configuration validation and setup
+    if (showSkuConfig) {
+      if (skuConfig.autoGenerate) {
+        if (!skuConfig.prefix.trim()) {
+          toast.error('กรุณาระบุตัวอักษรนำหน้า SKU');
+          return;
+        }
+        if (!skuVariants || skuVariants.length === 0) {
+          toast.error('กรุณาสร้างรายการ SKU variants อย่างน้อย 1 รายการ');
+          return;
+        }
+        const invalid = skuVariants.find(v => v.isActive && !v.sku.trim());
+        if (invalid) {
+          toast.error('รายการ SKU บางรายการกรอกไม่ครบถ้วน');
+          return;
+        }
+      } else {
+        if (!skuConfig.customSku?.trim()) {
+          toast.error('กรุณาระบุ SKU เอง');
+          return;
+        }
+      }
+      
+      productData.skuConfig = {
+        prefix: skuConfig.prefix.trim(),
+        separator: skuConfig.separator.trim(),
+        autoGenerate: skuConfig.autoGenerate,
+        customSku: skuConfig.customSku?.trim() || undefined
+      };
+      
+      if (skuConfig.autoGenerate && skuVariants.length > 0) {
+        productData.skuVariants = skuVariants.map(v => ({
+          key: v.key,
+          unitLabel: v.unitLabel,
+          options: v.options,
+          sku: v.sku.trim(),
+          isActive: v.isActive
+        }));
+      }
+    } else {
+      // ไม่ส่งฟิลด์ SKU เมื่อปิดการใช้งาน
+      delete productData.skuConfig;
+      delete productData.skuVariants;
+    }
+
     try {
       setIsUploading(true);
 
@@ -393,69 +536,42 @@ const AdminProductsPage = () => {
 
   const handleEditProduct = (product: ProductWithId) => {
     setName(product.name);
-    setPrice(product.price !== undefined ? product.price.toString() : '');
+    setPrice(product.price?.toString() || '');
     setRootShippingFee((product as any).shippingFee?.toString() || '');
+    setUnits((product.units || []).map(u => ({
+      label: u.label,
+      price: u.price.toString(),
+      shippingFee: (u as any).shippingFee?.toString() || ''
+    })));
     setDescription(product.description);
     setImageUrl(product.imageUrl);
     setCategory(product.category || 'ทั่วไป');
-    setIsAvailable(product.isAvailable !== false);
+    setOptions(product.options || []);
     setEditMode(true);
     setCurrentProductId(product._id);
     setShowForm(true);
-
-    if (product.options && product.options.length > 0) {
-      setOptions(product.options.map((option) => ({
-        name: option.name,
-        values: option.values.map((value) => ({
-          label: value.label,
-          imageUrl: value.imageUrl,
-          isAvailable: value.isAvailable !== false, // รวม availability status
-        })),
-      })));
-    } else {
-      setOptions([]);
-    }
-
-    if (product.units && product.units.length > 0) {
-      setUnits(product.units.map((u) => ({ label: u.label, price: u.price.toString(), shippingFee: (u as any).shippingFee?.toString() || '' })));
-    } else {
-      setUnits([]);
-    }
-
-    // Load WMS configuration (product-level + variant-level)
-    const anyProduct: any = product as any;
-    const hasVariantConfigs = Array.isArray(anyProduct.wmsVariantConfigs) && anyProduct.wmsVariantConfigs.length > 0;
-
-    if (hasVariantConfigs) {
+    setIsAvailable(product.isAvailable !== false);
+    
+    // Load WMS configuration
+    if (product.wmsConfig) {
       setWmsEnabled(true);
-      setWmsVariantMode(true);
-      setWmsVariantConfigs(anyProduct.wmsVariantConfigs.map((r: any) => ({
-        key: r.key,
-        unitLabel: r.unitLabel,
-        options: r.options || {},
-        productCode: r.productCode || '',
-        lotGen: r.lotGen || '',
-        locationBin: r.locationBin || '',
-        lotMfg: r.lotMfg || '',
-        adminUsername: r.adminUsername || '',
-        isEnabled: r.isEnabled !== false,
+      setWmsProductCode(product.wmsConfig.productCode);
+      setWmsLotGen(product.wmsConfig.lotGen);
+      setWmsLocationBin(product.wmsConfig.locationBin);
+      setWmsLotMfg(product.wmsConfig.lotMfg || '');
+      setWmsAdminUsername(product.wmsConfig.adminUsername);
+      setWmsVariantMode(Boolean(product.wmsVariantConfigs && product.wmsVariantConfigs.length > 0));
+      setWmsVariantConfigs((product.wmsVariantConfigs || []).map(config => ({
+        key: config.key,
+        unitLabel: config.unitLabel,
+        options: config.options || {},
+        productCode: config.productCode,
+        lotGen: config.lotGen,
+        locationBin: config.locationBin,
+        lotMfg: config.lotMfg,
+        adminUsername: config.adminUsername,
+        isEnabled: config.isEnabled ?? true
       })));
-      // เติมฟิลด์บนสุดเพื่อช่วย prefill
-      const first = anyProduct.wmsVariantConfigs[0];
-      setWmsProductCode(first?.productCode || '');
-      setWmsLotGen(first?.lotGen || '');
-      setWmsLocationBin(first?.locationBin || '');
-      setWmsLotMfg(first?.lotMfg || '');
-      setWmsAdminUsername(first?.adminUsername || '');
-    } else if (anyProduct.wmsConfig) {
-      setWmsEnabled(anyProduct.wmsConfig.isEnabled || false);
-      setWmsVariantMode(false);
-      setWmsVariantConfigs([]);
-      setWmsProductCode(anyProduct.wmsConfig.productCode || '');
-      setWmsLotGen(anyProduct.wmsConfig.lotGen || '');
-      setWmsLocationBin(anyProduct.wmsConfig.locationBin || '');
-      setWmsLotMfg(anyProduct.wmsConfig.lotMfg || '');
-      setWmsAdminUsername(anyProduct.wmsConfig.adminUsername || '');
     } else {
       setWmsEnabled(false);
       setWmsVariantMode(false);
@@ -465,6 +581,27 @@ const AdminProductsPage = () => {
       setWmsLocationBin('');
       setWmsLotMfg('');
       setWmsAdminUsername('');
+    }
+
+    // Load SKU configuration
+    if (product.skuConfig) {
+      setSkuConfig({
+        prefix: product.skuConfig.prefix || '',
+        separator: product.skuConfig.separator || '-',
+        autoGenerate: product.skuConfig.autoGenerate !== false,
+        customSku: product.skuConfig.customSku || ''
+      });
+      setSkuVariants(product.skuVariants || []);
+      setShowSkuConfig(true);
+    } else {
+      setSkuConfig({
+        prefix: '',
+        separator: '-',
+        autoGenerate: true,
+        customSku: ''
+      });
+      setSkuVariants([]);
+      setShowSkuConfig(false);
     }
   };
 
@@ -873,6 +1010,64 @@ const AdminProductsPage = () => {
                     </div>
                   </div>
                 )}
+
+                {/* SKU Status */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">SKU:</span>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      product.skuConfig 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {product.skuConfig ? (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {product.skuConfig.autoGenerate ? 'อัตโนมัติ' : 'กำหนดเอง'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          ไม่มี
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  
+                  {product.skuConfig && (
+                    <div className="mt-2 space-y-1">
+                      {product.skuConfig.autoGenerate && product.skuVariants && product.skuVariants.length > 0 ? (
+                        <div className="text-xs">
+                          <p className="text-gray-600 mb-1">
+                            <span className="font-medium">Prefix:</span> {product.skuConfig.prefix}
+                            <span className="mx-2">•</span>
+                            <span className="font-medium">Variants:</span> {product.skuVariants.length}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {product.skuVariants.slice(0, 3).map((variant, idx) => (
+                              <span key={idx} className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded border">
+                                {variant.sku}
+                              </span>
+                            ))}
+                            {product.skuVariants.length > 3 && (
+                              <span className="text-gray-500 text-xs">
+                                +{product.skuVariants.length - 3} อื่นๆ
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-600">
+                          <span className="font-medium">SKU:</span> {product.skuConfig.customSku}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex space-x-2">
                   {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_EDIT)) && (
@@ -1485,6 +1680,182 @@ const AdminProductsPage = () => {
                       <p className="text-sm text-gray-500 italic">
                         เปิดใช้งาน WMS เพื่อตรวจสอบสต็อกสินค้าอัตโนมัติผ่านระบบ WMS Thailand
                       </p>
+                    )}
+                  </div>
+
+                  {/* SKU Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium text-gray-700">การตั้งค่า SKU</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowSkuConfig(!showSkuConfig)}
+                        className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                          showSkuConfig 
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {showSkuConfig ? 'ปิดการตั้งค่า' : 'เปิดการตั้งค่า'}
+                      </button>
+                    </div>
+                    
+                    {showSkuConfig && (
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              ตัวอักษรนำหน้า SKU <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={skuConfig.prefix}
+                              onChange={(e) => setSkuConfig(prev => ({ ...prev, prefix: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="เช่น PROD, ITEM"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              ตัวอักษรที่ใช้เป็นจุดเริ่มต้นของ SKU
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              ตัวคั่น
+                            </label>
+                            <input
+                              type="text"
+                              value={skuConfig.separator}
+                              onChange={(e) => setSkuConfig(prev => ({ ...prev, separator: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="เช่น -, _, /"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              ตัวอักษรที่ใช้คั่นระหว่างส่วนประกอบของ SKU
+                            </p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            วิธีการสร้าง SKU
+                          </label>
+                          <div className="space-y-2">
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="skuGeneration"
+                                checked={skuConfig.autoGenerate}
+                                onChange={() => setSkuConfig(prev => ({ ...prev, autoGenerate: true }))}
+                                className="mr-2"
+                              />
+                              <span>สร้างอัตโนมัติจากตัวเลือกและหน่วย</span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="skuGeneration"
+                                checked={!skuConfig.autoGenerate}
+                                onChange={() => setSkuConfig(prev => ({ ...prev, autoGenerate: false }))}
+                                className="mr-2"
+                              />
+                              <span>ระบุ SKU เอง</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {!skuConfig.autoGenerate && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              SKU ที่กำหนดเอง <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={skuConfig.customSku}
+                              onChange={(e) => setSkuConfig(prev => ({ ...prev, customSku: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="เช่น PROD-001"
+                            />
+                          </div>
+                        )}
+
+                        {skuConfig.autoGenerate && (
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <h4 className="font-semibold text-gray-800">รายการ SKU Variants</h4>
+                              <div className="flex gap-2">
+                                <button 
+                                  type="button" 
+                                  onClick={generateSkuVariants} 
+                                  className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
+                                >
+                                  รีเฟรชรายการ
+                                </button>
+                                <button 
+                                  type="button" 
+                                  onClick={prefillAllSkus} 
+                                  className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                  สร้าง SKU อัตโนมัติ
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {skuVariants.length > 0 && (
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-100 text-gray-700">
+                                      <th className="px-3 py-2 text-left">Unit</th>
+                                      <th className="px-3 py-2 text-left">ตัวเลือก</th>
+                                      <th className="px-3 py-2 text-left">SKU</th>
+                                      <th className="px-3 py-2 text-left">สถานะ</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y">
+                                    {skuVariants.map((variant, idx) => (
+                                      <tr key={variant.key} className="bg-white">
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {variant.unitLabel || '-'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          {Object.keys(variant.options).length > 0
+                                            ? Object.entries(variant.options).map(([k, v]) => (
+                                                <span key={k} className="inline-block mr-2 bg-gray-100 rounded px-2 py-0.5">
+                                                  {k}: {v}
+                                                </span>
+                                              ))
+                                            : '-'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <input 
+                                            value={variant.sku} 
+                                            onChange={(e) => updateSkuVariant(idx, { sku: e.target.value })} 
+                                            className="w-40 px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500" 
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <input 
+                                            type="checkbox" 
+                                            checked={variant.isActive} 
+                                            onChange={(e) => updateSkuVariant(idx, { isActive: e.target.checked })} 
+                                          />
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                            
+                            {skuVariants.length === 0 && (
+                              <p className="text-sm text-gray-500 italic text-center py-4">
+                                ยังไม่มีรายการ SKU variants กรุณาเพิ่มหน่วยหรือตัวเลือกสินค้าก่อน
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
