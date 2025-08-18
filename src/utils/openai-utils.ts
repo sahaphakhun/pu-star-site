@@ -385,6 +385,13 @@ export async function getAssistantResponse(
     let assistantReply = json?.choices?.[0]?.message?.content ?? '';
     if (typeof assistantReply !== 'string') assistantReply = JSON.stringify(assistantReply);
 
+    // ประมวลผลแท็ก ORDER_JSON และ THAI_REPLY
+    // ถ้ามีแท็ก THAI_REPLY ให้แสดงเฉพาะเนื้อหาภายในแท็กนั้น
+    const thaiReplyMatch = assistantReply.match(/<THAI_REPLY>([\s\S]*?)<\/THAI_REPLY>/);
+    if (thaiReplyMatch && thaiReplyMatch[1]) {
+      assistantReply = thaiReplyMatch[1].trim();
+    }
+
     assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
     const parts = assistantReply.split('[cut]');
     if (parts.length > 10) assistantReply = parts.slice(0, 10).join('[cut]');
