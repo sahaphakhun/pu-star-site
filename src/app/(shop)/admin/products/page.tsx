@@ -198,9 +198,11 @@ const AdminProductsPage = () => {
     setSkuVariants(prev => prev.map(variant => {
       const parts = [skuConfig.prefix];
       if (variant.unitLabel) parts.push(variant.unitLabel);
-      Object.entries(variant.options).forEach(([optName, optValue]) => {
-        parts.push(optValue);
-      });
+      if (variant.options) {
+        Object.entries(variant.options).forEach(([optName, optValue]) => {
+          parts.push(optValue);
+        });
+      }
       const sku = parts.filter(p => p).join(skuConfig.separator);
       
       return { ...variant, sku };
@@ -1642,7 +1644,7 @@ const AdminProductsPage = () => {
                                     <tr key={row.key} className="bg-white">
                                       <td className="px-3 py-2 whitespace-nowrap">{row.unitLabel || '-'}</td>
                                       <td className="px-3 py-2">
-                                        {Object.keys(row.options).length > 0
+                                        {row.options && Object.keys(row.options).length > 0
                                           ? Object.entries(row.options).map(([k, v]) => (
                                               <span key={k} className="inline-block mr-2 bg-gray-100 rounded px-2 py-0.5">{k}: {v}</span>
                                             ))
@@ -1819,7 +1821,7 @@ const AdminProductsPage = () => {
                                           {variant.unitLabel || '-'}
                                         </td>
                                         <td className="px-3 py-2">
-                                          {Object.keys(variant.options).length > 0
+                                          {variant.options && Object.keys(variant.options).length > 0
                                             ? Object.entries(variant.options).map(([k, v]) => (
                                                 <span key={k} className="inline-block mr-2 bg-gray-100 rounded px-2 py-0.5">
                                                   {k}: {v}
