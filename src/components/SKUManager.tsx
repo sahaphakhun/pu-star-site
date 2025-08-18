@@ -1,29 +1,23 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast, Toaster } from 'react-hot-toast';
-import { PermissionGate } from '@/components/PermissionGate';
-import { usePermissions } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/constants/permissions';
+import { toast } from 'react-hot-toast';
 import { ISKU } from '@/models/SKU';
 import { IProduct } from '@/models/Product';
+import SKUCard from './SKUCard';
 
-interface SKUWithProduct extends ISKU {
-  productId: IProduct & { _id: string };
+interface SKUManagerProps {
+  product: IProduct & { _id: string };
+  onClose: () => void;
 }
 
-const AdminSKUConfigsPage = () => {
-  const { hasPermission, isAdmin } = usePermissions();
-  const [skus, setSkus] = useState<SKUWithProduct[]>([]);
-  const [products, setProducts] = useState<(IProduct & { _id: string })[]>([]);
+const SKUManager: React.FC<SKUManagerProps> = ({ product, onClose }) => {
+  const [skus, setSkus] = useState<ISKU[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentSkuId, setCurrentSkuId] = useState<string | null>(null);
   
   // Form states
-  const [selectedProductId, setSelectedProductId] = useState('');
   const [skuPrefix, setSkuPrefix] = useState('');
   const [unitLabel, setUnitLabel] = useState('');
   const [price, setPrice] = useState('');
@@ -40,12 +34,11 @@ const AdminSKUConfigsPage = () => {
 
   useEffect(() => {
     fetchSKUs();
-    fetchProducts();
-  }, []);
+  }, [product._id]);
 
   const fetchSKUs = async () => {
     try {
-      const response = await fetch('/api/admin/sku-configs');
+      const response = await fetch(`/api/admin/sku-configs?productId=${product._id}`);
       const data = await response.json();
       if (data.success) {
         setSkus(data.data);
@@ -58,20 +51,7 @@ const AdminSKUConfigsPage = () => {
     }
   };
 
-  const fetchProducts = async () => {
-    try {
-      const response = await fetch('/api/admin/products');
-      const data = await response.json();
-      if (data.success) {
-        setProducts(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
-
   const resetForm = () => {
-    setSelectedProductId('');
     setSkuPrefix('');
     setUnitLabel('');
     setPrice('');
@@ -88,14 +68,14 @@ const AdminSKUConfigsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedProductId || !skuPrefix || !price) {
+    if (!skuPrefix || !price) {
       toast.error('กรุณากรอกข้อมูลที่จำเป็น');
       return;
     }
 
     try {
       const skuData = {
-        productId: selectedProductId,
+        productId: product._id,
         skuPrefix,
         unitLabel: unitLabel || undefined,
         options: options.length > 0 ? options.reduce((acc, opt) => ({ ...acc, [opt.name]: opt.value }), {}) : undefined,
@@ -137,10 +117,9 @@ const AdminSKUConfigsPage = () => {
     }
   };
 
-  const handleEdit = (sku: SKUWithProduct) => {
+  const handleEdit = (sku: ISKU) => {
     setEditMode(true);
     setCurrentSkuId(sku._id);
-    setSelectedProductId(sku.productId._id);
     setSkuPrefix(sku.skuPrefix);
     setUnitLabel(sku.unitLabel || '');
     setPrice(sku.price.toString());
@@ -186,19 +165,7 @@ const AdminSKUConfigsPage = () => {
     }
   };
 
-  const addOption = () => {
-    if (optionName && optionValue) {
-      setOptions([...options, { name: optionName, value: optionValue }]);
-      setOptionName('');
-      setOptionValue('');
-    }
-  };
-
-  const removeOption = (index: number) => {
-    setOptions(options.filter((_, i) => i !== index));
-  };
-
-  const toggleSkuStatus = async (skuId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (skuId: string, currentStatus: boolean) => {
     try {
       const response = await fetch(`/api/admin/sku-configs/${skuId}`, {
         method: 'PUT',
@@ -220,73 +187,105 @@ const AdminSKUConfigsPage = () => {
     }
   };
 
-  if (!hasPermission(PERMISSIONS.MANAGE_PRODUCTS) && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">จัดการ SKU</h1>
-            <p className="text-gray-600">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const addOption = () => {
+    if (optionName && optionValue) {
+      setOptions([...options, { name: optionName, value: optionValue }]);
+      setOptionName('');
+      setOptionValue('');
+    }
+  };
+
+  const removeOption = (index: number) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <Toaster />
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900">จัดการ SKU</h1>
-              <button
-                onClick={() => {
-                  setShowForm(true);
-                  setEditMode(false);
-                  resetForm();
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                เพิ่ม SKU ใหม่
-              </button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">จัดการ SKU - {product.name}</h2>
+              <p className="text-sm text-gray-600">จัดการ Stock Keeping Units สำหรับสินค้านี้</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex h-[calc(90vh-120px)]">
+          {/* Left Panel - SKU List */}
+          <div className="w-1/2 border-r border-gray-200 overflow-y-auto">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">รายการ SKU</h3>
+                <button
+                  onClick={() => {
+                    setShowForm(true);
+                    setEditMode(false);
+                    resetForm();
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  เพิ่ม SKU ใหม่
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+                </div>
+              ) : skus.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>ไม่พบข้อมูล SKU สำหรับสินค้านี้</p>
+                  <p className="text-sm mt-1">คลิก "เพิ่ม SKU ใหม่" เพื่อเริ่มต้น</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {skus.map((sku) => (
+                    <SKUCard
+                      key={sku._id}
+                      sku={sku}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleStatus={handleToggleStatus}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="p-6">
-            {showForm && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-gray-50 rounded-lg p-6 mb-6"
-              >
-                <h2 className="text-xl font-semibold mb-4">
+          {/* Right Panel - Form */}
+          <div className="w-1/2 overflow-y-auto">
+            {showForm ? (
+              <div className="p-6">
+                <h3 className="text-lg font-medium mb-4">
                   {editMode ? 'แก้ไข SKU' : 'เพิ่ม SKU ใหม่'}
-                </h2>
+                </h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        สินค้า *
-                      </label>
-                      <select
-                        value={selectedProductId}
-                        onChange={(e) => setSelectedProductId(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="">เลือกสินค้า</option>
-                        {products.map((product) => (
-                          <option key={product._id} value={product._id}>
-                            {product.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         ตัวอักษรนำหน้า SKU *
@@ -404,8 +403,8 @@ const AdminSKUConfigsPage = () => {
 
                   {/* Options Section */}
                   <div className="border-t pt-4">
-                    <h3 className="text-lg font-medium mb-3">ตัวเลือกสินค้า</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <h4 className="text-md font-medium mb-3">ตัวเลือกสินค้า</h4>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
                       <input
                         type="text"
                         value={optionName}
@@ -423,7 +422,7 @@ const AdminSKUConfigsPage = () => {
                       <button
                         type="button"
                         onClick={addOption}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors"
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors text-sm"
                       >
                         เพิ่มตัวเลือก
                       </button>
@@ -432,7 +431,7 @@ const AdminSKUConfigsPage = () => {
                     {options.length > 0 && (
                       <div className="space-y-2">
                         {options.map((option, index) => (
-                          <div key={index} className="flex items-center space-x-2 bg-white p-2 rounded border">
+                          <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded border">
                             <span className="text-sm text-gray-600">
                               {option.name}: {option.value}
                             </span>
@@ -469,154 +468,18 @@ const AdminSKUConfigsPage = () => {
                     </button>
                   </div>
                 </form>
-              </motion.div>
-            )}
-
-            {/* SKU List */}
-            <div className="bg-white rounded-lg border">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium">รายการ SKU ทั้งหมด</h3>
               </div>
-              
-              {loading ? (
-                <div className="p-6 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
-                </div>
-              ) : skus.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  ไม่พบข้อมูล SKU
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          SKU Code
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          สินค้า
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          หน่วย/ตัวเลือก
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ราคา
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          สต็อก
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          สถานะ
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          จัดการ
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {skus.map((sku) => (
-                        <tr key={sku._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {sku.skuCode}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Prefix: {sku.skuPrefix}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              {sku.productId.imageUrl && (
-                                <img
-                                  src={sku.productId.imageUrl}
-                                  alt={sku.productId.name}
-                                  className="h-10 w-10 rounded-lg object-cover mr-3"
-                                />
-                              )}
-                              <div className="text-sm font-medium text-gray-900">
-                                {sku.productId.name}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {sku.unitLabel && <span className="block">หน่วย: {sku.unitLabel}</span>}
-                              {sku.options && Object.keys(sku.options).length > 0 && (
-                                <div className="mt-1">
-                                  {Object.entries(sku.options).map(([key, value]) => (
-                                    <span key={key} className="inline-block bg-gray-100 rounded px-2 py-1 text-xs mr-1 mb-1">
-                                      {key}: {value}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              ฿{sku.price.toLocaleString()}
-                            </div>
-                            {sku.shippingFee && (
-                              <div className="text-sm text-gray-500">
-                                ส่ง: ฿{sku.shippingFee.toLocaleString()}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {sku.stockQuantity || 0}
-                            </div>
-                            {sku.minStockLevel !== undefined && (
-                              <div className="text-xs text-gray-500">
-                                Min: {sku.minStockLevel}
-                              </div>
-                            )}
-                            {sku.maxStockLevel !== undefined && (
-                              <div className="text-xs text-gray-500">
-                                Max: {sku.maxStockLevel}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => toggleSkuStatus(sku._id, sku.isActive)}
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                sku.isActive
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {sku.isActive ? 'ใช้งาน' : 'ไม่ใช้งาน'}
-                            </button>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => handleEdit(sku)}
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                            >
-                              แก้ไข
-                            </button>
-                            <button
-                              onClick={() => handleDelete(sku._id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              ลบ
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                <p>เลือก SKU จากรายการด้านซ้ายเพื่อแก้ไข</p>
+                <p className="text-sm mt-1">หรือคลิก "เพิ่ม SKU ใหม่" เพื่อสร้าง SKU ใหม่</p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default AdminSKUConfigsPage;
+export default SKUManager;

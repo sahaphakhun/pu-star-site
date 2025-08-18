@@ -75,11 +75,6 @@ const AdminProductsPage = () => {
   const [wmsVariantMode, setWmsVariantMode] = useState(false);
   const [wmsVariantConfigs, setWmsVariantConfigs] = useState<WMSVariantRow[]>([]);
 
-  // SKU Configuration States
-  const [skuConfigs, setSkuConfigs] = useState<any[]>([]);
-  const [selectedSkuConfig, setSelectedSkuConfig] = useState<string>('');
-  const [autoSku, setAutoSku] = useState('');
-
   const buildVariantKey = (unitLabel?: string, selectedOptions?: Record<string, string>) => {
     const unitPart = unitLabel ? `unit:${unitLabel}` : 'unit:default';
     const optionsPart = selectedOptions && Object.keys(selectedOptions).length > 0
@@ -204,54 +199,10 @@ const AdminProductsPage = () => {
     }
   }, []);
 
-  // เพิ่มฟังก์ชันดึง SKU Configs
-  const fetchSKUConfigs = useCallback(async () => {
-    try {
-      const response = await fetch('/api/admin/sku-configs?isActive=true', { credentials: 'include' });
-      const data = await response.json();
-      setSkuConfigs(data);
-    } catch (error) {
-      console.error('ไม่สามารถดึงข้อมูล SKU Configs ได้:', error);
-    }
-  }, []);
-
-  // เพิ่มฟังก์ชันสร้าง SKU อัตโนมัติ
-  const generateAutoSku = async () => {
-    if (!selectedSkuConfig) {
-      toast.error('กรุณาเลือกรูปแบบ SKU');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/admin/sku-configs/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          configId: selectedSkuConfig,
-          productName: name,
-          category: category,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('เกิดข้อผิดพลาดในการสร้าง SKU');
-      }
-
-      const data = await response.json();
-      setAutoSku(data.sku);
-      toast.success('สร้าง SKU สำเร็จ');
-    } catch (error) {
-      console.error('เกิดข้อผิดพลาด:', error);
-      toast.error('เกิดข้อผิดพลาดในการสร้าง SKU');
-    }
-  };
-
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-    fetchSKUConfigs(); // เพิ่มบรรทัดนี้
-  }, [fetchProducts, fetchCategories, fetchSKUConfigs]);
+  }, [fetchProducts, fetchCategories]);
 
   const resetForm = () => {
     setName('');
@@ -276,10 +227,6 @@ const AdminProductsPage = () => {
     setWmsLocationBin('');
     setWmsLotMfg('');
     setWmsAdminUsername('');
-
-    // Reset SKU fields
-    setSelectedSkuConfig('');
-    setAutoSku('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -1028,38 +975,6 @@ const AdminProductsPage = () => {
                           placeholder="เช่น เสื้อยืดลายแมว"
                           required
                         />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">รูปแบบ SKU</label>
-                        <div className="flex space-x-2">
-                          <select
-                            value={selectedSkuConfig}
-                            onChange={(e) => setSelectedSkuConfig(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="">เลือกรูปแบบ SKU</option>
-                            {skuConfigs.map((config) => (
-                              <option key={config._id} value={config._id}>
-                                {config.name} ({config.prefix})
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={generateAutoSku}
-                            disabled={!selectedSkuConfig}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            สร้าง SKU
-                          </button>
-                        </div>
-                        {autoSku && (
-                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                            <span className="text-sm font-medium text-green-800">SKU ที่สร้าง: </span>
-                            <code className="text-green-700 font-mono">{autoSku}</code>
-                          </div>
-                        )}
                       </div>
 
                       <div>

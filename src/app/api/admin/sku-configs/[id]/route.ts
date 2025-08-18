@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import SKUConfig from '@/models/SKUConfig';
+import { connectDB } from '@/lib/db';
+import SKU from '@/models/SKU';
 
-// GET - ดึงข้อมูล SKU Config ตาม ID
+// GET: ดึงข้อมูล SKU เดี่ยว
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -10,26 +10,26 @@ export async function GET(
   try {
     await connectDB();
     
-    const skuConfig = await SKUConfig.findById(params.id).lean();
+    const sku = await SKU.findById(params.id).populate('productId', 'name imageUrl');
     
-    if (!skuConfig) {
+    if (!sku) {
       return NextResponse.json(
-        { error: 'ไม่พบ SKU Config' },
+        { success: false, error: 'ไม่พบ SKU ที่ระบุ' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(skuConfig);
+    return NextResponse.json({ success: true, data: sku });
   } catch (error) {
-    console.error('[SKU Config API] GET error:', error);
+    console.error('Error fetching SKU:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูล SKU' },
       { status: 500 }
     );
   }
 }
 
-// PUT - อัปเดต SKU Config
+// PUT: อัปเดต SKU
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -38,62 +38,56 @@ export async function PUT(
     await connectDB();
     
     const body = await request.json();
-    const { name, prefix, format, category, description, isActive, counter } = body;
+    const { skuPrefix, unitLabel, options, price, shippingFee, stockQuantity, minStockLevel, maxStockLevel, isActive } = body;
     
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!name || !prefix || !format) {
+    const sku = await SKU.findById(params.id);
+    
+    if (!sku) {
       return NextResponse.json(
-        { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
-        { status: 400 }
-      );
-    }
-    
-    // ตรวจสอบว่า prefix ซ้ำหรือไม่ (ยกเว้นตัวเอง)
-    const existingPrefix = await SKUConfig.findOne({
-      prefix: prefix.toUpperCase(),
-      _id: { $ne: params.id }
-    });
-    
-    if (existingPrefix) {
-      return NextResponse.json(
-        { error: 'คำนำหน้า SKU นี้มีอยู่ในระบบแล้ว' },
-        { status: 400 }
-      );
-    }
-    
-    // อัปเดต SKU Config
-    const updatedSKUConfig = await SKUConfig.findByIdAndUpdate(
-      params.id,
-      {
-        name,
-        prefix: prefix.toUpperCase(),
-        format,
-        category,
-        description,
-        isActive,
-        counter: Math.max(1, counter || 1),
-      },
-      { new: true, runValidators: true }
-    );
-    
-    if (!updatedSKUConfig) {
-      return NextResponse.json(
-        { error: 'ไม่พบ SKU Config' },
+        { success: false, error: 'ไม่พบ SKU ที่ระบุ' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(updatedSKUConfig);
-  } catch (error) {
-    console.error('[SKU Config API] PUT error:', error);
+    // อัปเดตข้อมูล
+    sku.skuPrefix = skuPrefix || sku.skuPrefix;
+    sku.unitLabel = unitLabel !== undefined ? unitLabel : sku.unitLabel;
+    sku.options = options !== undefined ? options : sku.options;
+    sku.price = price !== undefined ? price : sku.price;
+    sku.shippingFee = shippingFee !== undefined ? shippingFee : sku.shippingFee;
+    sku.stockQuantity = stockQuantity !== undefined ? stockQuantity : sku.stockQuantity;
+    sku.minStockLevel = minStockLevel !== undefined ? minStockLevel : sku.minStockLevel;
+    sku.maxStockLevel = maxStockLevel !== undefined ? maxStockLevel : sku.maxStockLevel;
+    sku.isActive = isActive !== undefined ? isActive : sku.isActive;
+    
+    await sku.save();
+    
+    // ดึงข้อมูลที่อัปเดตแล้ว
+    const updatedSku = await SKU.findById(params.id).populate('productId', 'name imageUrl');
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: updatedSku,
+      message: 'อัปเดต SKU สำเร็จ' 
+    });
+  } catch (error: any) {
+    console.error('Error updating SKU:', error);
+    
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { success: false, error: 'SKU Code ซ้ำกัน กรุณาลองใหม่อีกครั้ง' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการอัปเดต SKU' },
       { status: 500 }
     );
   }
 }
 
-// DELETE - ลบ SKU Config
+// DELETE: ลบ SKU
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -101,20 +95,25 @@ export async function DELETE(
   try {
     await connectDB();
     
-    const deletedSKUConfig = await SKUConfig.findByIdAndDelete(params.id);
+    const sku = await SKU.findById(params.id);
     
-    if (!deletedSKUConfig) {
+    if (!sku) {
       return NextResponse.json(
-        { error: 'ไม่พบ SKU Config' },
+        { success: false, error: 'ไม่พบ SKU ที่ระบุ' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json({ message: 'ลบ SKU Config สำเร็จ' });
+    await SKU.findByIdAndDelete(params.id);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'ลบ SKU สำเร็จ' 
+    });
   } catch (error) {
-    console.error('[SKU Config API] DELETE error:', error);
+    console.error('Error deleting SKU:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการลบ SKU' },
       { status: 500 }
     );
   }

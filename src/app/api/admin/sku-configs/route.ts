@@ -1,83 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import SKUConfig from '@/models/SKUConfig';
+import { connectDB } from '@/lib/db';
+import SKU from '@/models/SKU';
+import Product from '@/models/Product';
 
-// GET - ดึงข้อมูล SKU Config ทั้งหมด
+// GET: ดึงข้อมูล SKU ทั้งหมด
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
+    const productId = searchParams.get('productId');
     const isActive = searchParams.get('isActive');
     
     let query: any = {};
     
-    if (category) {
-      query.category = category;
+    if (productId) {
+      query.productId = productId;
     }
     
     if (isActive !== null) {
       query.isActive = isActive === 'true';
     }
     
-    const skuConfigs = await SKUConfig.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
+    const skus = await SKU.find(query)
+      .populate('productId', 'name imageUrl')
+      .sort({ createdAt: -1 });
     
-    return NextResponse.json(skuConfigs);
+    return NextResponse.json({ success: true, data: skus });
   } catch (error) {
-    console.error('[SKU Configs API] GET error:', error);
+    console.error('Error fetching SKUs:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูล SKU' },
       { status: 500 }
     );
   }
 }
 
-// POST - สร้าง SKU Config ใหม่
+// POST: สร้าง SKU ใหม่
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
     
     const body = await request.json();
-    const { name, prefix, format, category, description } = body;
+    const { productId, skuPrefix, unitLabel, options, price, shippingFee, stockQuantity, minStockLevel, maxStockLevel } = body;
     
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!name || !prefix || !format) {
+    // ตรวจสอบว่าสินค้าอยู่จริง
+    const product = await Product.findById(productId);
+    if (!product) {
       return NextResponse.json(
-        { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
-        { status: 400 }
+        { success: false, error: 'ไม่พบสินค้าที่ระบุ' },
+        { status: 404 }
       );
     }
     
-    // ตรวจสอบว่า prefix ซ้ำหรือไม่
-    const existingPrefix = await SKUConfig.findOne({ prefix: prefix.toUpperCase() });
-    if (existingPrefix) {
-      return NextResponse.json(
-        { error: 'คำนำหน้า SKU นี้มีอยู่ในระบบแล้ว' },
-        { status: 400 }
-      );
-    }
-    
-    // สร้าง SKU Config ใหม่
-    const skuConfig = new SKUConfig({
-      name,
-      prefix: prefix.toUpperCase(),
-      format,
-      counter: 1,
-      category,
-      description,
-      isActive: true,
+    // สร้าง SKU ใหม่
+    const sku = new SKU({
+      productId,
+      skuPrefix,
+      unitLabel,
+      options,
+      price,
+      shippingFee,
+      stockQuantity,
+      minStockLevel,
+      maxStockLevel,
     });
     
-    await skuConfig.save();
+    await sku.save();
     
-    return NextResponse.json(skuConfig, { status: 201 });
-  } catch (error) {
-    console.error('[SKU Configs API] POST error:', error);
+    // ดึงข้อมูลที่อัปเดตแล้ว
+    const savedSku = await SKU.findById(sku._id).populate('productId', 'name imageUrl');
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: savedSku,
+      message: 'สร้าง SKU สำเร็จ' 
+    });
+  } catch (error: any) {
+    console.error('Error creating SKU:', error);
+    
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { success: false, error: 'SKU Code ซ้ำกัน กรุณาลองใหม่อีกครั้ง' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการสร้าง SKU' },
       { status: 500 }
     );
   }
