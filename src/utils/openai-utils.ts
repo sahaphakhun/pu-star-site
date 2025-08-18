@@ -385,11 +385,17 @@ export async function getAssistantResponse(
     let assistantReply = json?.choices?.[0]?.message?.content ?? '';
     if (typeof assistantReply !== 'string') assistantReply = JSON.stringify(assistantReply);
 
+    // ตรวจสอบคำสั่ง /tag - ถ้าผู้ใช้พิมพ์ /tag ให้แสดงแท็กเหมือนเดิม
+    const lastUserMessage = messages[messages.length - 1]?.content;
+    const isTagCommand = typeof lastUserMessage === 'string' && lastUserMessage.trim() === '/tag';
+    
     // ประมวลผลแท็ก ORDER_JSON และ THAI_REPLY
-    // ถ้ามีแท็ก THAI_REPLY ให้แสดงเฉพาะเนื้อหาภายในแท็กนั้น
-    const thaiReplyMatch = assistantReply.match(/<THAI_REPLY>([\s\S]*?)<\/THAI_REPLY>/);
-    if (thaiReplyMatch && thaiReplyMatch[1]) {
-      assistantReply = thaiReplyMatch[1].trim();
+    // ถ้ามีแท็ก THAI_REPLY และไม่ใช่คำสั่ง /tag ให้แสดงเฉพาะเนื้อหาภายในแท็กนั้น
+    if (!isTagCommand) {
+      const thaiReplyMatch = assistantReply.match(/<THAI_REPLY>([\s\S]*?)<\/THAI_REPLY>/);
+      if (thaiReplyMatch && thaiReplyMatch[1]) {
+        assistantReply = thaiReplyMatch[1].trim();
+      }
     }
 
     assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
