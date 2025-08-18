@@ -838,17 +838,15 @@ const AdminProductsPage = () => {
   const testWMSProductStock = async (productId: string) => {
     try {
       const startedAt = performance.now();
-      console.groupCollapsed('[WMS] Test Stock - Request');
-      console.log('Request', { endpoint: '/api/wms/test-stock', productId });
-      const res = await fetch('/api/wms/test-stock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ productId })
+      console.group('[WMS] Test Stock - Start');
+      console.log('Product ID:', productId);
+      
+      const response = await fetch(`/api/admin/wms/test-stock/${productId}`, {
+        credentials: 'include'
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'ทดสอบล้มเหลว' }));
+      
+      if (!response.ok) {
+        const err = await response.json();
         console.warn('[WMS] Test Stock - Response (non-OK)', err);
         console.log('DurationMs', Math.round(performance.now() - startedAt));
         console.groupEnd();
@@ -856,7 +854,7 @@ const AdminProductsPage = () => {
         return;
       }
 
-      const data = await res.json();
+      const data = await response.json();
       console.log('[WMS] Test Stock - Response', data);
       if (Array.isArray(data?.results)) {
         try {
@@ -875,6 +873,93 @@ const AdminProductsPage = () => {
     } catch (e) {
       console.error('[WMS] Test Stock - Error', e);
       toast.error('เกิดข้อผิดพลาดในการทดสอบ WMS');
+    }
+  };
+
+  // Generate Product Content
+  const generateProductContent = async (productId: string, format: 'markdown' | 'json') => {
+    try {
+      const response = await fetch(`/api/products/${productId}/generate-content?format=${format}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างข้อความสินค้า');
+        return;
+      }
+
+      if (format === 'markdown') {
+        // ดาวน์โหลดไฟล์ Markdown
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `product-content-${productId}.md`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('ดาวน์โหลดไฟล์ Markdown สำเร็จ');
+      } else if (format === 'json') {
+        // ดาวน์โหลดไฟล์ JSON
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `product-content-${productId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('ดาวน์โหลดไฟล์ JSON สำเร็จ');
+      }
+    } catch (error) {
+      console.error('Error generating product content:', error);
+      toast.error('เกิดข้อผิดพลาดในการสร้างข้อความสินค้า');
+    }
+  };
+
+  const generateAllProductsContent = async (format: 'markdown' | 'json') => {
+    try {
+      const response = await fetch(`/api/products/generate-all-content?format=${format}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
+        return;
+      }
+
+      if (format === 'markdown') {
+        // ดาวน์โหลดไฟล์ Markdown
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `all-products-content.md`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('ดาวน์โหลดไฟล์ Markdown ทั้งหมดสำเร็จ');
+      } else if (format === 'json') {
+        // ดาวน์โหลดไฟล์ JSON
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `all-products-content.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('ดาวน์โหลดไฟล์ JSON ทั้งหมดสำเร็จ');
+      }
+    } catch (error) {
+      console.error('Error generating all products content:', error);
+      toast.error('เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
     }
   };
 
@@ -901,19 +986,44 @@ const AdminProductsPage = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">จัดการสินค้า</h1>
             <p className="text-gray-600">เพิ่ม แก้ไข และจัดการสินค้าในร้านของคุณ</p>
           </div>
-          {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_CREATE)) && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowForm(true)}
-              className="mt-4 md:mt-0 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>เพิ่มสินค้าใหม่</span>
-            </motion.button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+            {/* Generate All Products Content Buttons */}
+            {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_VIEW)) && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => generateAllProductsContent('markdown')}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2"
+                  title="สร้างข้อความสินค้าทั้งหมดในรูปแบบ Markdown"
+                >
+                  <span>📝</span>
+                  <span>Markdown ทั้งหมด</span>
+                </button>
+                <button
+                  onClick={() => generateAllProductsContent('json')}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center space-x-2"
+                  title="สร้างข้อความสินค้าทั้งหมดในรูปแบบ JSON"
+                >
+                  <span>🔧</span>
+                  <span>JSON ทั้งหมด</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Add Product Button */}
+            {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_CREATE)) && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>เพิ่มสินค้าใหม่</span>
+              </motion.button>
+            )}
+          </div>
         </div>
 
         {/* Products Grid */}
@@ -1097,6 +1207,26 @@ const AdminProductsPage = () => {
                       title="เรียก WMS ตรวจสต็อกตามการตั้งค่าของสินค้า"
                     >
                       ทดสอบ WMS
+                    </button>
+                  </div>
+                )}
+
+                {/* Generate Content Buttons */}
+                {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_VIEW)) && (
+                  <div className="mt-2 space-y-2">
+                    <button
+                      onClick={() => generateProductContent(product._id, 'markdown')}
+                      className="w-full bg-green-100 text-green-800 py-2 px-3 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                      title="สร้างข้อความสินค้าในรูปแบบ Markdown"
+                    >
+                      📝 สร้าง Markdown
+                    </button>
+                    <button
+                      onClick={() => generateProductContent(product._id, 'json')}
+                      className="w-full bg-purple-100 text-purple-800 py-2 px-3 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+                      title="สร้างข้อความสินค้าในรูปแบบ JSON"
+                    >
+                      🔧 สร้าง JSON
                     </button>
                   </div>
                 )}
