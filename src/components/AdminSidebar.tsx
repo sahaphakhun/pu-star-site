@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,6 +56,7 @@ const AdminSidebar: React.FC = () => {
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; logoUrl: string } | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ปิดเมนูมือถือและป๊อปอัปแจ้งเตือนเมื่อมีการเปลี่ยนเส้นทาง
   useEffect(() => {
@@ -264,19 +265,26 @@ const AdminSidebar: React.FC = () => {
   useEffect(() => {
     fetchPendingOrders();
     fetchNotifications();
-    
+
     if (!isInitialized) {
       setIsInitialized(true);
+      return;
     }
-    
-    // ตั้งให้เช็คออเดอร์และการแจ้งเตือนใหม่ทุก 15 วินาทีเพื่อความเร็วในการแจ้งเตือน
-    const interval = setInterval(() => {
-      fetchPendingOrders();
-      fetchNotifications();
-    }, 15000);
-    
-    return () => clearInterval(interval);
-  }, [lastOrderCount, lastNotificationCount, isInitialized]);
+
+    if (!intervalRef.current) {
+      intervalRef.current = setInterval(() => {
+        fetchPendingOrders();
+        fetchNotifications();
+      }, 15000);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isInitialized]);
 
 
 
