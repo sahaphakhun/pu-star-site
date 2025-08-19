@@ -1,281 +1,39 @@
 /* Mobile Keyboard Fix for Android Devices */
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนมือถือแอนดรอยด์ */
+/* Scope styles to elements inside .android-keyboard-fix */
 
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input fields */
-@media (max-width: 768px) {
-  /* ปรับ input fields ให้ทำงานได้ดีบนมือถือแอนดรอยด์ */
-  input[type="text"],
-  input[type="tel"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  textarea,
-  select {
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    appearance: none !important;
-    
-    /* ปรับขนาด touch target ตามมาตรฐาน Google */
-    min-height: 48px !important;
-    min-width: 48px !important;
-    
-    /* แก้ไขปัญหาการ zoom บน iOS และแอนดรอยด์ */
-    font-size: 16px !important;
-    
-    /* ปรับ touch behavior */
-    touch-action: manipulation !important;
-    
-    /* แก้ไขปัญหาการไม่ focus บนแอนดรอยด์ */
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
-    -webkit-touch-callout: none !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์ */
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    transform: translate3d(0, 0, 0) !important;
-    
-    /* ปรับ input mode สำหรับมือถือ */
-    -webkit-text-size-adjust: 100% !important;
-    -ms-text-size-adjust: 100% !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    user-select: text !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-user-modify: read-write-plaintext-only !important;
-    -moz-user-modify: read-write !important;
-    -ms-user-modify: read-write !important;
-    user-modify: read-write !important;
-  }
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี focus */
-  input:not([disabled]):focus,
-  textarea:not([disabled]):focus,
-  select:not([disabled]):focus {
-    /* บังคับให้ input field รับ focus */
-    outline: none !important;
-    border-color: #223f81 !important;
-    box-shadow: 0 0 0 3px rgba(34, 63, 129, 0.1) !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    transform: translate3d(0, 0, 0) !important;
-    
-    /* ปรับ z-index เพื่อให้ input field อยู่ด้านบนสุด */
-    z-index: 1000 !important;
-    position: relative !important;
-  }
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่ถูกแตะ */
-  input:not([disabled]):active,
-  textarea:not([disabled]):active,
-  select:not([disabled]):active {
-    /* บังคับให้ input field เปิดแป้นพิมพ์ */
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    transform: translate3d(0, 0, 0) !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-user-modify: read-write-plaintext-only !important;
-    -moz-user-modify: read-write !important;
-    -ms-user-modify: read-write !important;
-    user-modify: read-write !important;
-  }
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี touch event */
-  input:not([disabled]):hover,
-  textarea:not([disabled]):hover,
-  select:not([disabled]):hover {
-    /* ปรับ cursor และ touch behavior */
-    cursor: text !important;
-    touch-action: manipulation !important;
-  }
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์โดยเฉพาะ */
 @media (max-width: 768px) and (pointer: coarse) {
-  /* สำหรับอุปกรณ์ที่มี touch screen */
-  input[type="text"],
-  input[type="tel"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  textarea,
-  select {
-    /* บังคับให้ input field เปิดแป้นพิมพ์เมื่อถูกแตะ */
-    -webkit-user-modify: read-write-plaintext-only !important;
-    -moz-user-modify: read-write !important;
-    -ms-user-modify: read-write !important;
-    user-modify: read-write !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    transform: translate3d(0, 0, 0) !important;
-    
-    /* ปรับ touch behavior */
-    touch-action: manipulation !important;
-    
-    /* แก้ไขปัญหาการไม่ focus บนแอนดรอยด์ */
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    user-select: text !important;
+  .android-keyboard-fix input[type="text"],
+  .android-keyboard-fix input[type="tel"],
+  .android-keyboard-fix input[type="email"],
+  .android-keyboard-fix input[type="password"],
+  .android-keyboard-fix input[type="number"],
+  .android-keyboard-fix input[type="search"],
+  .android-keyboard-fix textarea,
+  .android-keyboard-fix select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 48px;
+    min-width: 48px;
+    font-size: 16px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    -webkit-touch-callout: none;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    user-select: text;
   }
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์เมื่อ input field ถูกแตะ */
-  input:not([disabled]):focus,
-  textarea:not([disabled]):focus,
-  select:not([disabled]):focus {
-    /* บังคับให้ input field เปิดแป้นพิมพ์ */
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    transform: translate3d(0, 0, 0) !important;
-    
-    /* ปรับ z-index เพื่อให้ input field อยู่ด้านบนสุด */
-    z-index: 1000 !important;
-    position: relative !important;
-    
-    /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-    -webkit-user-modify: read-write-plaintext-only !important;
-    -moz-user-modify: read-write !important;
-    -ms-user-modify: read-write !important;
-    user-modify: read-write !important;
+
+  .android-keyboard-fix input:not([disabled]):focus,
+  .android-keyboard-fix textarea:not([disabled]):focus,
+  .android-keyboard-fix select:not([disabled]):focus {
+    outline: none;
+    border-color: #223f81;
+    box-shadow: 0 0 0 3px rgba(34, 63, 129, 0.1);
+    z-index: 1000;
+    position: relative;
   }
 }
 
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี disabled state */
-input[disabled],
-textarea[disabled],
-select[disabled] {
-  /* ปรับ appearance ของ disabled input */
-  opacity: 0.6 !important;
-  cursor: not-allowed !important;
-  background-color: #f3f4f6 !important;
-  
-  /* ป้องกันการ focus และ touch */
-  pointer-events: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-only !important;
-  -moz-user-modify: read-only !important;
-  -ms-user-modify: read-only !important;
-  user-modify: read-only !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี readonly state */
-input[readonly],
-textarea[readonly] {
-  /* ปรับ appearance ของ readonly input */
-  background-color: #f9fafb !important;
-  cursor: default !important;
-  
-  /* อนุญาตให้ focus ได้แต่ไม่ให้แก้ไข */
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
-  user-select: text !important;
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-only !important;
-  -moz-user-modify: read-only !important;
-  -ms-user-modify: read-only !important;
-  user-modify: read-only !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี autocomplete */
-input[autocomplete],
-textarea[autocomplete] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี spellcheck */
-input[spellcheck],
-textarea[spellcheck] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี inputmode */
-input[inputmode],
-textarea[inputmode] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี pattern */
-input[pattern] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี required */
-input[required],
-textarea[required],
-select[required] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี placeholder */
-input[placeholder],
-textarea[placeholder] {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี value */
-input[value],
-textarea:not(:empty) {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-}
-
-/* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์สำหรับ input ที่มี onChange event */
-input:not([readonly]):not([disabled]),
-textarea:not([readonly]):not([disabled]),
-select:not([readonly]):not([disabled]) {
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-user-modify: read-write-plaintext-only !important;
-  -moz-user-modify: read-write !important;
-  -ms-user-modify: read-write !important;
-  user-modify: read-write !important;
-  
-  /* แก้ไขปัญหาการไม่ขึ้นแป้นพิมพ์บนแอนดรอยด์ */
-  -webkit-transform: translate3d(0, 0, 0) !important;
-  transform: translate3d(0, 0, 0) !important;
-  
-  /* ปรับ touch behavior */
-  touch-action: manipulation !important;
-}

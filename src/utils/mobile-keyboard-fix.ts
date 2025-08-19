@@ -166,6 +166,11 @@ export const fixReadonlyInputs = (): void => {
 export const initMobileKeyboardFix = (): void => {
   if (typeof window === 'undefined' || !isMobileDevice()) return;
 
+  // Apply scoped CSS class for Android devices
+  if (isAndroidDevice()) {
+    document.documentElement.classList.add('android-keyboard-fix');
+  }
+
   // รอให้ DOM โหลดเสร็จ
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
