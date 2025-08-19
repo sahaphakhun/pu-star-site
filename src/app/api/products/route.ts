@@ -75,11 +75,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await verifyToken(request);
-    if (!authResult || !authResult.valid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     await connectDB();
     
     const { searchParams } = new URL(request.url);
