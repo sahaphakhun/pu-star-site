@@ -711,8 +711,8 @@ const AdminSidebar: React.FC = () => {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      {/* Ensure sidebar stays above page content on all routes */}
-      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0 z-50">
+      {/* Use fixed positioning so content on other pages can't block the sidebar */}
+      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block fixed top-0 left-0 z-50">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
