@@ -57,6 +57,12 @@ const AdminSidebar: React.FC = () => {
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; logoUrl: string } | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
+  // ปิดเมนูมือถือและป๊อปอัปแจ้งเตือนเมื่อมีการเปลี่ยนเส้นทาง
+  useEffect(() => {
+    setShowNotifications(false);
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   // ฟังก์ชันเล่นเสียงแจ้งเตือน
   const playNotificationSound = () => {
     if (!hasUserInteracted) return;
