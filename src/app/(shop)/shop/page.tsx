@@ -241,25 +241,39 @@ const ShopPage = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      // เพิ่ม cache busting parameter เพื่อให้ได้ข้อมูลล่าสุด
-      const response = await fetch(`/api/products?_t=${Date.now()}`);
+      // เพิ่ม cache busting parameter เพื่อให้ได้ข้อมูลล่าสุด และส่งคุกกี้ประกอบการยืนยันตัวตน
+      const response = await fetch(`/api/products?_t=${Date.now()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(`fetch products failed: ${response.status}`);
+      }
       const data: ProductWithId[] = await response.json();
-      setProducts(data);
+      // ตรวจสอบว่าข้อมูลเป็นอาร์เรย์ก่อน
+      setProducts(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลสินค้าได้:', error);
+      setProducts([]);
       setLoading(false);
     }
   }, []);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/categories');
+      const response = await fetch('/api/categories', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(`fetch categories failed: ${response.status}`);
+      }
       const data = await response.json();
       // เพิ่ม "ทั้งหมด" เป็นตัวเลือกแรก และเรียงตาม displayOrder
-      const activeCategories = data
-        .filter((cat: any) => cat.isActive)
-        .sort((a: any, b: any) => a.displayOrder - b.displayOrder);
+      const activeCategories = Array.isArray(data)
+        ? data
+            .filter((cat: any) => cat.isActive)
+            .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
+        : [];
       setCategories(['ทั้งหมด', ...activeCategories.map((cat: any) => cat.name)]);
     } catch (error) {
       console.error('ไม่สามารถดึงข้อมูลหมวดหมู่ได้:', error);
