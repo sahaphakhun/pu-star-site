@@ -8,6 +8,8 @@ import { toast } from 'react-hot-toast';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
+import ReactMarkdown from 'react-markdown';
+import ReactJson from 'react-json-view';
 
 interface ProductWithId extends IProduct {
   _id: string;
@@ -51,6 +53,14 @@ const AdminProductsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [uploadingOptionImage, setUploadingOptionImage] = useState<{optIdx: number, valIdx: number} | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
+
+  // Preview States
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewMarkdown, setPreviewMarkdown] = useState<string>('');
+  const [previewJson, setPreviewJson] = useState<any>(null);
+  const [previewTab, setPreviewTab] = useState<'markdown' | 'json'>('markdown');
+  const [previewProductId, setPreviewProductId] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   
   // WMS Configuration States
   const [wmsEnabled, setWmsEnabled] = useState(false);
@@ -876,48 +886,60 @@ const AdminProductsPage = () => {
     }
   };
 
-  // Generate Product Content
-  const generateProductContent = async (productId: string, format: 'markdown' | 'json') => {
+  // Preview Product Content
+  const previewProductContent = async (productId: string, tab: 'markdown' | 'json' = 'markdown') => {
+    setPreviewTab(tab);
+    setPreviewProductId(productId);
+    setShowPreview(true);
+    setPreviewLoading(true);
     try {
-      const response = await fetch(`/api/products/${productId}/generate-content?format=${format}`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
+      const [mdRes, jsonRes] = await Promise.all([
+        fetch(`/api/products/${productId}/generate-content?format=markdown`, {
+          credentials: 'include'
+        }),
+        fetch(`/api/products/${productId}/generate-content?format=json`, {
+          credentials: 'include'
+        })
+      ]);
+
+      if (!mdRes.ok || !jsonRes.ok) {
+        const error = await (mdRes.ok ? jsonRes.json() : mdRes.json());
         toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างข้อความสินค้า');
+        setShowPreview(false);
         return;
       }
 
-      if (format === 'markdown') {
-        // ดาวน์โหลดไฟล์ Markdown
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `product-content-${productId}.md`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('ดาวน์โหลดไฟล์ Markdown สำเร็จ');
-      } else if (format === 'json') {
-        // ดาวน์โหลดไฟล์ JSON
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `product-content-${productId}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('ดาวน์โหลดไฟล์ JSON สำเร็จ');
-      }
+      const markdown = await mdRes.text();
+      const json = await jsonRes.json();
+      setPreviewMarkdown(markdown);
+      setPreviewJson(json);
     } catch (error) {
       console.error('Error generating product content:', error);
       toast.error('เกิดข้อผิดพลาดในการสร้างข้อความสินค้า');
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
     }
+  };
+
+  const downloadPreview = (format: 'markdown' | 'json') => {
+    if (!previewProductId) return;
+    const content =
+      format === 'markdown'
+        ? previewMarkdown
+        : JSON.stringify(previewJson, null, 2);
+    const blob = new Blob([content], {
+      type: format === 'markdown' ? 'text/markdown' : 'application/json'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `product-content-${previewProductId}.${format === 'markdown' ? 'md' : 'json'}`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success(`ดาวน์โหลดไฟล์ ${format === 'markdown' ? 'Markdown' : 'JSON'} สำเร็จ`);
   };
 
   const generateAllProductsContent = async (format: 'markdown' | 'json') => {
@@ -1199,18 +1221,18 @@ const AdminProductsPage = () => {
                 {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_VIEW)) && (
                   <div className="mt-2 space-y-2">
                     <button
-                      onClick={() => generateProductContent(product._id, 'markdown')}
+                      onClick={() => previewProductContent(product._id, 'markdown')}
                       className="w-full bg-green-100 text-green-800 py-2 px-3 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
-                      title="สร้างข้อความสินค้าในรูปแบบ Markdown"
+                      title="พรีวิวข้อความสินค้าในรูปแบบ Markdown"
                     >
-                      📝 สร้าง Markdown
+                      📝 พรีวิว Markdown
                     </button>
                     <button
-                      onClick={() => generateProductContent(product._id, 'json')}
+                      onClick={() => previewProductContent(product._id, 'json')}
                       className="w-full bg-purple-100 text-purple-800 py-2 px-3 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
-                      title="สร้างข้อความสินค้าในรูปแบบ JSON"
+                      title="พรีวิวข้อความสินค้าในรูปแบบ JSON"
                     >
-                      🔧 สร้าง JSON
+                      🔧 พรีวิว JSON
                     </button>
                   </div>
                 )}
@@ -2000,8 +2022,60 @@ const AdminProductsPage = () => {
         )}
       </AnimatePresence>
       </div>
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">พรีวิวข้อความสินค้า</h2>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex border-b">
+              <button
+                className={`flex-1 py-2 ${previewTab === 'markdown' ? 'bg-gray-200' : ''}`}
+                onClick={() => setPreviewTab('markdown')}
+              >
+                Markdown
+              </button>
+              <button
+                className={`flex-1 py-2 ${previewTab === 'json' ? 'bg-gray-200' : ''}`}
+                onClick={() => setPreviewTab('json')}
+              >
+                JSON
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex-1">
+              {previewLoading ? (
+                <p>กำลังโหลด...</p>
+              ) : previewTab === 'markdown' ? (
+                <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+              ) : (
+                <ReactJson src={previewJson} name={false} collapsed={false} enableClipboard={false} />
+              )}
+            </div>
+            <div className="flex justify-end space-x-2 p-4 border-t">
+              <button
+                onClick={() => downloadPreview('markdown')}
+                className="bg-green-500 text-white px-4 py-2 rounded"
+              >
+                ดาวน์โหลด Markdown
+              </button>
+              <button
+                onClick={() => downloadPreview('json')}
+                className="bg-purple-500 text-white px-4 py-2 rounded"
+              >
+                ดาวน์โหลด JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PermissionGate>
   );
 };
 
-export default AdminProductsPage; 
+export default AdminProductsPage;
