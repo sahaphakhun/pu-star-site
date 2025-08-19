@@ -922,7 +922,7 @@ const AdminProductsPage = () => {
 
   const generateAllProductsContent = async (format: 'markdown' | 'json') => {
     try {
-      const response = await fetch(`/api/products/generate-all-content?format=${format}`, {
+      const response = await fetch(`/api/products/generate-all-content?format=${format}&detail=summary`, {
         credentials: 'include'
       });
       

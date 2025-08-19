@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format') || 'both'; // 'markdown', 'json', 'both'
     const category = searchParams.get('category'); // กรองตามหมวดหมู่
     const includeInactive = searchParams.get('includeInactive') === 'true'; // รวมสินค้าที่ไม่เปิดใช้งาน
+    const detail = searchParams.get('detail') === 'summary' ? 'summary' : 'full';
     
     await connectDB();
     
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // สร้างข้อมูลสินค้าทั้งหมด
-    const allProductsContent = generateAllProductsContent(products);
+    const allProductsContent = generateAllProductsContent(products, detail);
 
     // ส่งข้อมูลตามรูปแบบที่ต้องการ
     if (format === 'markdown') {
@@ -61,10 +62,10 @@ export async function GET(request: NextRequest) {
 }
 
 // ฟังก์ชันสร้างข้อความสินค้าทั้งหมด
-function generateAllProductsContent(products: any[]) {
+function generateAllProductsContent(products: any[], detail: 'full' | 'summary') {
   // สร้าง Markdown content
-  const markdown = generateAllProductsMarkdown(products);
-  
+  const markdown = generateAllProductsMarkdown(products, detail);
+
   // สร้าง JSON content
   const json = generateAllProductsJSON(products);
 
@@ -72,7 +73,7 @@ function generateAllProductsContent(products: any[]) {
 }
 
 // สร้าง Markdown content สำหรับสินค้าทั้งหมด
-function generateAllProductsMarkdown(products: any[]) {
+function generateAllProductsMarkdown(products: any[], detail: 'full' | 'summary') {
   let markdown = `# รายการสินค้าทั้งหมด\n\n`;
   markdown += `**วันที่สร้าง**: ${new Date().toLocaleDateString('th-TH')}\n`;
   markdown += `**เวลาที่สร้าง**: ${new Date().toLocaleTimeString('th-TH')}\n`;
@@ -91,39 +92,64 @@ function generateAllProductsMarkdown(products: any[]) {
   // แสดงสินค้าแต่ละหมวดหมู่
   Object.keys(productsByCategory).sort().forEach(category => {
     const categoryProducts = productsByCategory[category];
-    
+
     markdown += `## 📁 ${category}\n`;
     markdown += `**จำนวนสินค้า**: ${categoryProducts.length}\n\n`;
-    
-    categoryProducts.forEach((product: any, index: number) => {
-      markdown += `### ${index + 1}. ${product.name}\n`;
-      markdown += `- **สถานะ**: ${product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}\n`;
-      markdown += `- **รายละเอียด**: ${product.description}\n`;
-      
-      if (product.price !== undefined) {
-        markdown += `- **ราคาเริ่มต้น**: ฿${product.price.toLocaleString()}\n`;
-      }
-      
-      if (product.units && product.units.length > 0) {
-        markdown += `- **หน่วยสินค้า**: ${product.units.length} หน่วย\n`;
-      }
-      
-      if (product.options && product.options.length > 0) {
-        markdown += `- **ตัวเลือก**: ${product.options.length} ประเภท\n`;
-      }
-      
-      // SKU Information
-      if (product.skuConfig) {
-        markdown += `- **SKU**: ${product.skuConfig.autoGenerate ? 'สร้างอัตโนมัติ' : 'กำหนดเอง'}\n`;
-        if (product.skuVariants && product.skuVariants.length > 0) {
-          markdown += `- **SKU Variants**: ${product.skuVariants.length} รายการ\n`;
-        }
-      } else {
-        markdown += `- **SKU**: ไม่มี\n`;
-      }
-      
+
+    if (detail === 'summary') {
+      // ตารางสรุปสินค้าแบบย่อ
+      markdown += `| ชื่อสินค้า | สถานะ | ราคาเริ่มต้น | SKU Variants |\n`;
+      markdown += `|---|---|---|---|\n`;
+      categoryProducts.forEach((product: any) => {
+        const status = product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด';
+        const price = product.price !== undefined ? `฿${product.price.toLocaleString()}` : '-';
+        const skuCount = product.skuVariants && product.skuVariants.length > 0 ? product.skuVariants.length : '-';
+        markdown += `| ${product.name} | ${status} | ${price} | ${skuCount} |\n`;
+      });
       markdown += `\n`;
-    });
+
+      // รายละเอียดแบบย่อ
+      markdown += `**รายละเอียดแบบย่อ**\n`;
+      categoryProducts.forEach((product: any) => {
+        const desc = product.description || '';
+        const shortDesc = desc.length > 100 ? desc.slice(0, 100) + '...' : desc;
+        if (shortDesc) {
+          markdown += `**${product.name}**: ${shortDesc}\n`;
+        }
+      });
+      markdown += `\n`;
+    } else {
+      // รายละเอียดสินค้าแบบเต็ม
+      categoryProducts.forEach((product: any, index: number) => {
+        markdown += `### ${index + 1}. ${product.name}\n`;
+        markdown += `- **สถานะ**: ${product.isAvailable !== false ? '✅ พร้อมขาย' : '❌ สินค้าหมด'}\n`;
+        markdown += `- **รายละเอียด**: ${product.description}\n`;
+
+        if (product.price !== undefined) {
+          markdown += `- **ราคาเริ่มต้น**: ฿${product.price.toLocaleString()}\n`;
+        }
+
+        if (product.units && product.units.length > 0) {
+          markdown += `- **หน่วยสินค้า**: ${product.units.length} หน่วย\n`;
+        }
+
+        if (product.options && product.options.length > 0) {
+          markdown += `- **ตัวเลือก**: ${product.options.length} ประเภท\n`;
+        }
+
+        // SKU Information
+        if (product.skuConfig) {
+          markdown += `- **SKU**: ${product.skuConfig.autoGenerate ? 'สร้างอัตโนมัติ' : 'กำหนดเอง'}\n`;
+          if (product.skuVariants && product.skuVariants.length > 0) {
+            markdown += `- **SKU Variants**: ${product.skuVariants.length} รายการ\n`;
+          }
+        } else {
+          markdown += `- **SKU**: ไม่มี\n`;
+        }
+
+        markdown += `\n`;
+      });
+    }
   });
 
   // สรุปข้อมูล SKU
