@@ -51,10 +51,13 @@ export async function uploadImage(
       result = await cloudinary.uploader.upload(file, uploadOptions);
     } else {
       // Upload from buffer
-      result = await cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
-        if (error) throw error;
-        return result;
-      }).end(file);
+      result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, res) => {
+          if (error) return reject(error);
+          resolve(res);
+        });
+        stream.end(file);
+      });
     }
 
     return {
