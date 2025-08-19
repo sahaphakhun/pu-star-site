@@ -4,7 +4,7 @@ import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import Image from 'next/image';
 import { IProduct } from '@/models/Product';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
@@ -977,9 +977,7 @@ const AdminProductsPage = () => {
   return (
     <PermissionGate permission={PERMISSIONS.PRODUCTS_VIEW}>
       <div className="min-h-screen bg-gray-50">
-        <Toaster position="top-right" />
-      
-      <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3">
           <div>

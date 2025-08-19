@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster, toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import PackingImageGallery from '@/components/PackingImageGallery';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -718,7 +718,6 @@ const AdminOrdersPage = () => {
   return (
     <PermissionGate permission={PERMISSIONS.ORDERS_VIEW}>
       <div className="min-h-screen bg-gray-50">
-        <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
