@@ -497,7 +497,7 @@ const AdminSidebar: React.FC = () => {
         </div>
         
         {/* Desktop Sidebar */}
-        <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0 z-50">
+        <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block sticky top-0 z-[100]">
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
@@ -554,7 +554,7 @@ const AdminSidebar: React.FC = () => {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'tween', duration: 0.3 }}
-            className="md:hidden fixed left-0 top-0 w-64 h-screen bg-white border-r border-gray-200 z-50 overflow-y-auto"
+            className="md:hidden fixed left-0 top-0 w-64 h-screen bg-white border-r border-gray-200 z-[100] overflow-y-auto"
           >
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -712,7 +712,7 @@ const AdminSidebar: React.FC = () => {
 
       {/* Desktop Sidebar */}
       {/* Use fixed positioning so content on other pages can't block the sidebar */}
-      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block fixed top-0 left-0 z-50">
+      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block fixed top-0 left-0 z-100">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
