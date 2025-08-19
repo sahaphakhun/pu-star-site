@@ -190,7 +190,9 @@ export function generateAllProductsMarkdown(products: any[], detail: 'full' | 's
   markdown += `## 🤖 คำแนะนำ \n`;
   markdown += `\`\`\`\n`;
   markdown += `- **การอัปเดต**: ข้อมูลนี้จะอัปเดต realtime ตามข้อมูลในฐานข้อมูลใน https://www.winrichdynamic.com/\n`;
-  
+  markdown += `- **ข้อมูลค่าส่ง**: แสดงค่าส่งเริ่มต้นของแต่ละสินค้า (ถ้ามี)\n`;
+  markdown += `\`\`\`\n`;
+
   return markdown;
 }
 
@@ -220,7 +222,10 @@ function generateAllProductsJSON(products: any[]) {
       isAvailable: product.isAvailable !== false,
       price: product.price !== undefined ? product.price : null,
       shippingFee: product.shippingFee !== undefined ? product.shippingFee : null,
-      units: product.units || [],
+      units: (product.units || []).map((u: any) => ({
+        ...u,
+        shippingFee: u.shippingFee !== undefined ? u.shippingFee : null,
+      })),
       options: product.options || [],
       skuConfig: product.skuConfig || null,
       skuVariants: product.skuVariants || [],
