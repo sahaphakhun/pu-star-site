@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
 interface AdminPhone {
   _id: string;
@@ -53,7 +53,6 @@ const AdminsPage = () => {
 
   return (
     <div className="max-w-lg mx-auto">
-      <Toaster />
       <h1 className="text-2xl font-bold mb-4">จัดการผู้ดูแล</h1>
 
       <div className="flex mb-6 gap-2">

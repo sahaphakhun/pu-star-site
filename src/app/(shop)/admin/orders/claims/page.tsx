@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster, toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
 interface OrderItem {
   productId: string;
@@ -163,7 +163,6 @@ const AdminClaimsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}

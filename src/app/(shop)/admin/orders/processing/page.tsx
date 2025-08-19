@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Image from 'next/image';
 
 interface OrderItem {
@@ -150,7 +150,6 @@ const ProcessingOrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">

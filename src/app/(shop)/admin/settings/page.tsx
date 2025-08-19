@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
 import Image from 'next/image';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function AdminSettingsPage() {
   const { isAdmin, hasPermission, loading } = usePermissions();
@@ -66,7 +66,6 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <Toaster position="top-right" />
       <h1 className="text-2xl font-semibold mb-6">ตั้งค่าทั่วไป</h1>
 
       <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-6">
