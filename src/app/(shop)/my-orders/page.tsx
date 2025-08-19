@@ -61,6 +61,7 @@ interface Order {
       date: string;
       time: string;
     };
+    status?: string;
   };
 }
 
@@ -827,53 +828,67 @@ const MyOrdersPage = () => {
 
                     {/* Slip Verification Status */}
                     {selectedOrder.slipVerification ? (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
-                            selectedOrder.slipVerification.verified 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {selectedOrder.slipVerification.verified ? (
-                              <>
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                ตรวจสอบแล้ว
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                ตรวจสอบไม่สำเร็จ
-                              </>
-                            )}
+                      selectedOrder.slipVerification.status === 'รอตรวจสอบ' ? (
+                        <div className="mb-4">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            กำลังตรวจสอบ...
                           </span>
-                          {selectedOrder.slipVerification.confidence > 0 && (
-                            <span className="text-xs text-gray-600">
-                              ความแม่นยำ: {selectedOrder.slipVerification.confidence}%
+                          <p className="text-xs text-gray-600 mt-1">
+                            ระบบกำลังตรวจสอบสลิป หากยังไม่ยืนยันระบบจะตรวจสอบอีกครั้งหรือเจ้าหน้าที่จะตรวจสอบให้ภายหลัง
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                              selectedOrder.slipVerification.verified
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {selectedOrder.slipVerification.verified ? (
+                                <>
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  ตรวจสอบแล้ว
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  ตรวจสอบไม่สำเร็จ
+                                </>
+                              )}
                             </span>
+                            {selectedOrder.slipVerification.confidence > 0 && (
+                              <span className="text-xs text-gray-600">
+                                ความแม่นยำ: {selectedOrder.slipVerification.confidence}%
+                              </span>
+                            )}
+                          </div>
+                          {selectedOrder.slipVerification.verifiedAt && (
+                            <p className="text-xs text-gray-600">
+                              ตรวจสอบเมื่อ: {new Date(selectedOrder.slipVerification.verifiedAt).toLocaleDateString('th-TH', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Asia/Bangkok'
+                              })}
+                            </p>
+                          )}
+                          {selectedOrder.slipVerification.error && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ข้อผิดพลาด: {selectedOrder.slipVerification.error}
+                            </p>
                           )}
                         </div>
-                        {selectedOrder.slipVerification.verifiedAt && (
-                          <p className="text-xs text-gray-600">
-                            ตรวจสอบเมื่อ: {new Date(selectedOrder.slipVerification.verifiedAt).toLocaleDateString('th-TH', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              timeZone: 'Asia/Bangkok'
-                            })}
-                          </p>
-                        )}
-                        {selectedOrder.slipVerification.error && (
-                          <p className="text-xs text-red-600 mt-1">
-                            ข้อผิดพลาด: {selectedOrder.slipVerification.error}
-                          </p>
-                        )}
-                      </div>
+                      )
                     ) : (
                       <div className="mb-4">
                         <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">

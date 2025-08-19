@@ -45,6 +45,7 @@ export interface ISlipVerification {
   verifiedAt: Date;
   verificationType: 'manual' | 'automatic' | 'batch';
   verifiedBy: string;
+  status?: string;
   slip2GoData?: {
     bank: string;
     amount: number;
@@ -258,7 +259,8 @@ const orderSchema = new Schema<IOrder>(
         confidence: { type: Number }
       },
       error: { type: String },
-      confidence: { type: Number, default: 0 }
+      confidence: { type: Number, default: 0 },
+      status: { type: String }
     },
     wmsData: {
       stockCheckStatus: { 
