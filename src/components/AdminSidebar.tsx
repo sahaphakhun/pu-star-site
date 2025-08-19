@@ -597,6 +597,7 @@ const AdminSidebar: React.FC = () => {
                     {item.submenu ? (
                       <div>
                         <button
+                          type="button"
                           onClick={() => toggleSubmenu(item.label)}
                           className={`flex items-center justify-between w-full px-3 py-3 text-left rounded-lg transition-colors ${
                             pathname === item.href || pathname.startsWith(item.href + '/')
@@ -888,6 +889,7 @@ const AdminSidebar: React.FC = () => {
               {item.submenu ? (
                 <div>
                   <button
+                    type="button"
                     onClick={() => {
                       console.log('Menu button clicked:', item.label, item.href);
                       toggleSubmenu(item.label);
