@@ -87,7 +87,7 @@ function generateMarkdownContent(product: any) {
     units.forEach((unit: any, index: number) => {
       markdown += `${index + 1}. **${unit.label}**\n`;
       markdown += `   - ราคา: ฿${unit.price.toLocaleString()}\n`;
-      if (unit.shippingFee) {
+      if (unit.shippingFee !== undefined) {
         markdown += `   - ค่าส่ง: ฿${unit.shippingFee.toLocaleString()}\n`;
       }
       if (unit.multiplier && unit.multiplier > 1) {
