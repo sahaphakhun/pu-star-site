@@ -36,7 +36,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
+    "react-json-view": "^1.21.3",
     "react-leaflet": "^5.0.0",
+    "react-markdown": "^9.0.0",
     "react-places-autocomplete": "^7.3.0",
     "sweetalert2": "^11.21.0",
     "zod": "^3.23.8"
