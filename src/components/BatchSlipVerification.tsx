@@ -9,6 +9,7 @@ interface Order {
   slipVerification?: {
     verified: boolean;
     verifiedAt: Date;
+    status?: string;
   };
 }
 
@@ -79,6 +80,7 @@ const BatchSlipVerification: React.FC<BatchSlipVerificationProps> = ({
   const getVerificationStatus = (order: Order) => {
     if (!order.slipUrl) return { status: 'no-slip', label: 'ไม่มีสลิป', color: 'text-gray-500' };
     if (!order.slipVerification) return { status: 'not-verified', label: 'ยังไม่ตรวจสอบ', color: 'text-yellow-600' };
+    if (order.slipVerification.status === 'รอตรวจสอบ') return { status: 'pending', label: 'รอตรวจสอบ', color: 'text-yellow-600' };
     if (order.slipVerification.verified) return { status: 'verified', label: 'ตรวจสอบแล้ว', color: 'text-green-600' };
     return { status: 'failed', label: 'ตรวจสอบไม่สำเร็จ', color: 'text-red-600' };
   };

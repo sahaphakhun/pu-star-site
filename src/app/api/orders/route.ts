@@ -29,15 +29,23 @@ async function verifySlipWithSlip2Go(slipUrl: string) {
       // สามารถเพิ่ม options อื่นๆ ได้ตาม Slip2Go API
     }));
 
-    // เรียก Slip2Go API: /verify-slip/qr-image/info
-    const response = await fetch(`${baseUrl}/verify-slip/qr-image/info`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiSecret}`
-        // ไม่ต้องใส่ Content-Type เพราะ FormData จะตั้งให้เอง
-      },
-      body: formData
-    });
+    // เรียก Slip2Go API: /verify-slip/qr-image/info พร้อม timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/verify-slip/qr-image/info`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiSecret}`
+          // ไม่ต้องใส่ Content-Type เพราะ FormData จะตั้งให้เอง
+        },
+        body: formData,
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -80,7 +88,15 @@ async function verifySlipWithSlip2Go(slipUrl: string) {
       error: isSuccess ? undefined : (message || 'Slip verification not valid')
     };
 
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('Slip2Go API timeout');
+      return {
+        success: false,
+        error: 'timeout',
+        timeout: true
+      };
+    }
     console.error('Slip2Go API error:', error);
     return {
       success: false,
@@ -110,16 +126,30 @@ export async function POST(request: NextRequest) {
     if (paymentMethod === 'transfer' && slipUrl) {
       console.log('Auto-verifying slip for new order...');
       const slip2GoResponse = await verifySlipWithSlip2Go(slipUrl);
-      
-      slipVerification = {
-        verified: slip2GoResponse.success,
-        verifiedAt: new Date(),
-        verificationType: 'automatic',
-        verifiedBy: 'system',
-        slip2GoData: slip2GoResponse.data || null,
-        error: slip2GoResponse.error || null,
-        confidence: slip2GoResponse.data?.confidence || 0
-      };
+
+      if (slip2GoResponse.timeout) {
+        slipVerification = {
+          verified: false,
+          status: 'รอตรวจสอบ',
+          verifiedAt: new Date(),
+          verificationType: 'automatic',
+          verifiedBy: 'system',
+          slip2GoData: null,
+          error: 'timeout',
+          confidence: 0
+        };
+      } else {
+        slipVerification = {
+          verified: slip2GoResponse.success,
+          status: slip2GoResponse.success ? 'success' : 'failed',
+          verifiedAt: new Date(),
+          verificationType: 'automatic',
+          verifiedBy: 'system',
+          slip2GoData: slip2GoResponse.data || null,
+          error: slip2GoResponse.error || null,
+          confidence: slip2GoResponse.data?.confidence || 0
+        };
+      }
     }
 
     const order = new Order({
@@ -151,7 +181,8 @@ export async function POST(request: NextRequest) {
       order,
       slipVerification: slipVerification ? {
         verified: slipVerification.verified,
-        confidence: slipVerification.confidence
+        confidence: slipVerification.confidence,
+        status: slipVerification.status
       } : null
     });
 

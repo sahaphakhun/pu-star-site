@@ -6,6 +6,7 @@ interface SlipVerificationData {
   verifiedAt: Date;
   verificationType: 'manual' | 'automatic' | 'batch';
   verifiedBy: string;
+  status?: string;
   slip2GoData?: {
     bank: string;
     amount: number;
@@ -62,15 +63,22 @@ const SlipVerificationDisplay: React.FC<SlipVerificationDisplayProps> = ({
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-700">สถานะการตรวจสอบสลิป</h4>
         <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-          verification.verified 
-            ? 'bg-green-100 text-green-800 border border-green-200' 
-            : 'bg-red-100 text-red-800 border border-red-200'
+          verification.status === 'รอตรวจสอบ'
+            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+            : verification.verified
+              ? 'bg-green-100 text-green-800 border border-green-200'
+              : 'bg-red-100 text-red-800 border border-red-200'
         }`}>
-          {verification.verified ? 'ตรวจสอบแล้ว' : 'ตรวจสอบไม่สำเร็จ'}
+          {verification.status === 'รอตรวจสอบ'
+            ? 'รอตรวจสอบ'
+            : verification.verified
+              ? 'ตรวจสอบแล้ว'
+              : 'ตรวจสอบไม่สำเร็จ'}
         </div>
       </div>
-
-      {verification.verified && verification.slip2GoData ? (
+      {verification.status === 'รอตรวจสอบ' ? (
+        <p className="text-sm text-gray-600">ระบบกำลังตรวจสอบสลิป หากยังไม่ยืนยันระบบจะตรวจสอบอีกครั้งหรือเจ้าหน้าที่จะตรวจสอบให้ภายหลัง</p>
+      ) : verification.verified && verification.slip2GoData ? (
         <div className="space-y-3">
           {/* ข้อมูลธนาคาร */}
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -167,25 +175,26 @@ const SlipVerificationDisplay: React.FC<SlipVerificationDisplayProps> = ({
         </div>
       )}
 
-      {/* ข้อมูลการตรวจสอบ */}
-      <div className="border-t mt-4 pt-3">
-        <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
-          <div>
-            <span>ตรวจสอบโดย:</span>
-            <p className="font-medium">{verification.verifiedBy}</p>
-          </div>
-          <div>
-            <span>ประเภท:</span>
-            <p className="font-medium">{getVerificationTypeLabel(verification.verificationType)}</p>
-          </div>
-          <div className="col-span-2">
-            <span>วันที่ตรวจสอบ:</span>
-            <p className="font-medium">
-              {new Date(verification.verifiedAt).toLocaleString('th-TH')}
-            </p>
+      {verification.status !== 'รอตรวจสอบ' && (
+        <div className="border-t mt-4 pt-3">
+          <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
+            <div>
+              <span>ตรวจสอบโดย:</span>
+              <p className="font-medium">{verification.verifiedBy}</p>
+            </div>
+            <div>
+              <span>ประเภท:</span>
+              <p className="font-medium">{getVerificationTypeLabel(verification.verificationType)}</p>
+            </div>
+            <div className="col-span-2">
+              <span>วันที่ตรวจสอบ:</span>
+              <p className="font-medium">
+                {new Date(verification.verifiedAt).toLocaleString('th-TH')}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 };

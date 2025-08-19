@@ -70,6 +70,7 @@ interface Order {
     verifiedAt: Date;
     verificationType: 'manual' | 'automatic' | 'batch';
     verifiedBy: string;
+    status?: string;
     slip2GoData?: {
       bank: string;
       amount: number;

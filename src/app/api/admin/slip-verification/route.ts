@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
       verifiedBy: (session?.user as any)?.email || tokenResult?.phoneNumber || 'system',
       slip2GoData: slip2GoResponse.data || null,
       error: slip2GoResponse.error || null,
-      confidence: slip2GoResponse.data?.confidence || 0
+      confidence: slip2GoResponse.data?.confidence || 0,
+      status: slip2GoResponse.success ? 'success' : 'failed'
     };
 
     await Order.findByIdAndUpdate(orderId, {
@@ -211,7 +212,8 @@ export async function PUT(request: NextRequest) {
           verifiedBy: (session?.user as any)?.email || tokenResult?.phoneNumber || 'system',
           slip2GoData: slip2GoResponse.data || null,
           error: slip2GoResponse.error || null,
-          confidence: slip2GoResponse.data?.confidence || 0
+          confidence: slip2GoResponse.data?.confidence || 0,
+          status: slip2GoResponse.success ? 'success' : 'failed'
         };
 
         await Order.findByIdAndUpdate(orderId, {
