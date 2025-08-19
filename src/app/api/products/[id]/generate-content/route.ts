@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, context: unknown) {
 
 // ฟังก์ชันสร้างข้อความสินค้า
 function generateProductContent(product: any) {
-  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable } = product;
+  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable, shippingFee } = product;
 
   // สร้าง Markdown content
   const markdown = generateMarkdownContent(product);
@@ -64,7 +64,7 @@ function generateProductContent(product: any) {
 
 // สร้าง Markdown content
 function generateMarkdownContent(product: any) {
-  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable } = product;
+  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable, shippingFee } = product;
   
   let markdown = `# ${name}\n\n`;
   
@@ -76,9 +76,15 @@ function generateMarkdownContent(product: any) {
   markdown += `- **รายละเอียด**: ${description}\n\n`;
   
   // ราคา
-  if (price !== undefined) {
+  if (price !== undefined || shippingFee !== undefined) {
     markdown += `## ราคา\n`;
-    markdown += `- **ราคาเริ่มต้น**: ฿${price.toLocaleString()}\n\n`;
+    if (price !== undefined) {
+      markdown += `- **ราคาเริ่มต้น**: ฿${price.toLocaleString()}\n`;
+    }
+    if (shippingFee !== undefined) {
+      markdown += `- **ค่าส่งมาตรฐาน**: ฿${shippingFee.toLocaleString()}\n`;
+    }
+    markdown += `\n`;
   }
   
   // หน่วยสินค้า
@@ -186,7 +192,7 @@ function generateMarkdownContent(product: any) {
 
 // สร้าง JSON content
 function generateJSONContent(product: any) {
-  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable } = product;
+  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable, shippingFee } = product;
   
   const jsonContent = {
     product: {
@@ -196,6 +202,7 @@ function generateJSONContent(product: any) {
       category: category || 'ทั่วไป',
       isAvailable: isAvailable !== false,
       price: price !== undefined ? price : null,
+      shippingFee: shippingFee !== undefined ? shippingFee : null,
       units: units || [],
       options: options || [],
       createdAt: product.createdAt,
