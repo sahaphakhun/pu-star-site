@@ -73,7 +73,7 @@ function generateAllProductsContent(products: any[], detail: 'full' | 'summary')
 }
 
 // สร้าง Markdown content สำหรับสินค้าทั้งหมด
-function generateAllProductsMarkdown(products: any[], detail: 'full' | 'summary') {
+export function generateAllProductsMarkdown(products: any[], detail: 'full' | 'summary') {
   let markdown = `# รายการสินค้าทั้งหมด\n\n`;
   markdown += `**วันที่สร้าง**: ${new Date().toLocaleDateString('th-TH')}\n`;
   markdown += `**เวลาที่สร้าง**: ${new Date().toLocaleTimeString('th-TH')}\n`;
@@ -131,10 +131,31 @@ function generateAllProductsMarkdown(products: any[], detail: 'full' | 'summary'
 
         if (product.units && product.units.length > 0) {
           markdown += `- **หน่วยสินค้า**: ${product.units.length} หน่วย\n`;
+          product.units.forEach((unit: any) => {
+            const unitDetails = [
+              `ราคา ฿${unit.price.toLocaleString()}`,
+              unit.shippingFee !== undefined
+                ? `ค่าจัดส่ง ฿${unit.shippingFee.toLocaleString()}`
+                : null,
+              unit.multiplier !== undefined ? `ตัวคูณ ${unit.multiplier}` : null,
+            ]
+              .filter(Boolean)
+              .join(', ');
+            markdown += `  - ${unit.label}: ${unitDetails}\n`;
+          });
         }
 
         if (product.options && product.options.length > 0) {
           markdown += `- **ตัวเลือก**: ${product.options.length} ประเภท\n`;
+          product.options.forEach((option: any) => {
+            const values = (option.values || [])
+              .map(
+                (v: any) =>
+                  `${v.label} (${v.isAvailable === false ? '❌' : '✅'})`
+              )
+              .join(', ');
+            markdown += `  - ${option.name}: ${values}\n`;
+          });
         }
 
         // SKU Information
