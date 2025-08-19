@@ -47,20 +47,19 @@ const menu = [
 export default function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean>(
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
   const { siteName, logoUrl } = useSiteInfo();
 
-  // ตรวจจับขนาดหน้าจอเพื่อกำหนด Mobile mode
+  // อัปเดตสถานะเมื่อขนาดหน้าจอเปลี่ยน
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    // เรียกครั้งแรกเมื่อโหลดหน้า
-    handleResize();
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    // อัปเดตค่าเริ่มต้น
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
 
@@ -69,37 +68,32 @@ export default function Sidebar() {
   return (
     <>
       {/* ปุ่มแฮมเบอร์เกอร์สำหรับมือถือ */}
-      {isMobile && (
-        <button
-          className="fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md border border-primary/20"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="เปิด/ปิดเมนู"
-        >
-          <div className="w-6 h-0.5 bg-primary mb-1.5"></div>
-          <div className="w-6 h-0.5 bg-primary mb-1.5"></div>
-          <div className="w-6 h-0.5 bg-primary"></div>
-        </button>
-      )}
+      <button
+        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md border border-primary/20 md:hidden"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="เปิด/ปิดเมนู"
+      >
+        <div className="w-6 h-0.5 bg-primary mb-1.5"></div>
+        <div className="w-6 h-0.5 bg-primary mb-1.5"></div>
+        <div className="w-6 h-0.5 bg-primary"></div>
+      </button>
 
       {/* แถบด้านซ้าย - แสดงตลอดเวลาบน Desktop หรือแสดงเมื่อเปิดเมนูบน Mobile */}
-      <aside 
-        className={`${isMobile ? 'fixed inset-0 z-40' : 'w-64 min-h-screen'} 
-                  ${isMobile && !isMobileMenuOpen ? 'translate-x-[-100%]' : 'translate-x-0'}
-                  bg-white border-r border-primary/20 flex flex-col items-center py-8 shadow-md
-                  transition-transform duration-300 ease-in-out`}
+      <aside
+        className={`fixed inset-0 z-40 w-full transform bg-white border-r border-primary/20 flex flex-col items-center py-8 shadow-md transition-transform duration-300 ease-in-out
+                  ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                  md:static md:translate-x-0 md:w-64 md:min-h-screen`}
       >
         {/* ปุ่มปิดเมนูบนมือถือ */}
-        {isMobile && (
-          <button
-            className="absolute top-4 right-4 text-2xl"
-            onClick={() => setIsMobileMenuOpen(false)}
-            aria-label="ปิดเมนู"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
+        <button
+          className="absolute top-4 right-4 text-2xl md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-label="ปิดเมนู"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
         <div className="mb-10">
           <Link href="/" onClick={() => isMobile && setIsMobileMenuOpen(false)} className="flex flex-col items-center gap-2">
