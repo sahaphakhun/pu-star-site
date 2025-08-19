@@ -925,38 +925,24 @@ const AdminProductsPage = () => {
       const response = await fetch(`/api/products/generate-all-content?format=${format}`, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
         return;
       }
 
-      if (format === 'markdown') {
-        // ดาวน์โหลดไฟล์ Markdown
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `all-products-content.md`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('ดาวน์โหลดไฟล์ Markdown ทั้งหมดสำเร็จ');
-      } else if (format === 'json') {
-        // ดาวน์โหลดไฟล์ JSON
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `all-products-content.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('ดาวน์โหลดไฟล์ JSON ทั้งหมดสำเร็จ');
-      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = `all-products-content.${format === 'markdown' ? 'md' : 'json'}`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`ดาวน์โหลดไฟล์ ${format === 'markdown' ? 'Markdown' : 'JSON'} ทั้งหมดสำเร็จ`);
     } catch (error) {
       console.error('Error generating all products content:', error);
       toast.error('เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
