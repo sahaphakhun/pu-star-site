@@ -712,7 +712,7 @@ const AdminSidebar: React.FC = () => {
 
       {/* Desktop Sidebar */}
       {/* Use fixed positioning so content on other pages can't block the sidebar */}
-      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block fixed top-0 left-0 z-[100]">
+      <aside className="w-56 h-screen bg-white border-r border-gray-200 hidden md:block fixed top-0 left-0 z-100">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
