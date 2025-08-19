@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,7 +45,7 @@ interface Notification {
 const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
+  const { permissions, hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -336,7 +336,6 @@ const AdminSidebar: React.FC = () => {
   };
 
   const toggleSubmenu = (menuLabel: string) => {
-    console.log('Toggle submenu clicked:', menuLabel); // Debug log
     setExpandedMenus(prev => {
       const newSet = new Set(prev);
       if (newSet.has(menuLabel)) {
@@ -344,29 +343,15 @@ const AdminSidebar: React.FC = () => {
       } else {
         newSet.add(menuLabel);
       }
-      console.log('New expanded menus:', Array.from(newSet)); // Debug log
       return newSet;
     });
   };
 
   const isSubmenuExpanded = (menuLabel: string) => {
-    const expanded = expandedMenus.has(menuLabel);
-    console.log(`Is ${menuLabel} expanded:`, expanded); // Debug log
-    return expanded;
+    return expandedMenus.has(menuLabel);
   };
 
-  // เพิ่มฟังก์ชัน debug สำหรับตรวจสอบสิทธิ์
-  const debugPermissions = () => {
-    console.log('=== DEBUG PERMISSIONS ===');
-    console.log('isAdmin:', isAdmin);
-    console.log('permissionsLoading:', permissionsLoading);
-    console.log('hasPermission function:', typeof hasPermission);
-    console.log('Current pathname:', pathname);
-    console.log('All menu items:', allMenuItems);
-    console.log('=======================');
-  };
-
-  const allMenuItems: MenuItem[] = [
+  const allMenuItems: MenuItem[] = useMemo(() => [
     // 1. ภาพรวมและแดชบอร์ด
     { 
       label: '📊 ภาพรวม', 
@@ -444,27 +429,19 @@ const AdminSidebar: React.FC = () => {
       icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, 
       adminOnly: true 
     },
-  ];
+  ], []);
 
   // กรองเมนูตามสิทธิ์ของผู้ใช้
-  const menuItems: MenuItem[] = allMenuItems.filter(item => {
-    // ถ้ากำลังโหลดสิทธิ์ อย่าแสดงเมนูใดๆ เลย
-    if (permissionsLoading) return false;
-    
-    // ถ้าเป็นแอดมิน แสดงทุกเมนู
-    if (isAdmin) return true;
-    
-    // ถ้าเป็นเมนูเฉพาะแอดมิน และไม่ใช่แอดมิน ไม่แสดง
-    if (item.adminOnly && !isAdmin) return false;
-    
-    // ถ้ามี permission และผู้ใช้มีสิทธิ์นั้น ให้แสดง
-    if (item.permission && hasPermission(item.permission)) return true;
-    
-    // ถ้าไม่มี permission กำหนด (เช่น เมนูทั่วไป) ให้แสดง
-    if (!item.permission && !item.adminOnly) return true;
-    
-    return false;
-  });
+  const menuItems: MenuItem[] = useMemo(() => {
+    return allMenuItems.filter(item => {
+      if (permissionsLoading) return false;
+      if (isAdmin) return true;
+      if (item.adminOnly && !isAdmin) return false;
+      if (item.permission) return permissions.includes(item.permission);
+      if (!item.permission && !item.adminOnly) return true;
+      return false;
+    });
+  }, [allMenuItems, permissionsLoading, isAdmin, permissions]);
 
   // ขยายเมนูย่อยอัตโนมัติเมื่อผู้ใช้อยู่ที่หน้าหนึ่งในเมนูย่อยนั้น
   useEffect(() => {
@@ -477,14 +454,6 @@ const AdminSidebar: React.FC = () => {
     }
   }, [pathname, menuItems]);
 
-  // เรียกใช้ debug เมื่อ component mount และเมื่อ menuItems เปลี่ยน
-  useEffect(() => {
-    if (!permissionsLoading) {
-      debugPermissions();
-      console.log('Menu items count:', menuItems.length);
-      console.log('Filtered menu items:', menuItems);
-    }
-  }, [permissionsLoading, isAdmin, pathname, menuItems]);
 
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
   
@@ -898,10 +867,7 @@ const AdminSidebar: React.FC = () => {
                 <div>
                   <button
                     type="button"
-                    onClick={() => {
-                      console.log('Menu button clicked:', item.label, item.href);
-                      toggleSubmenu(item.label);
-                    }}
+                    onClick={() => toggleSubmenu(item.label)}
                     className={`flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors ${
                       pathname === item.href || pathname.startsWith(item.href + '/')
                         ? 'bg-blue-100 text-blue-700'
@@ -928,7 +894,6 @@ const AdminSidebar: React.FC = () => {
                         <li key={subIndex}>
                           <Link
                             href={subItem.href}
-                            onClick={() => console.log('Submenu link clicked:', subItem.label, subItem.href)}
                             className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm ${
                               pathname === subItem.href
                                 ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
@@ -946,7 +911,6 @@ const AdminSidebar: React.FC = () => {
               ) : (
                 <Link
                   href={item.href}
-                  onClick={() => console.log('Menu link clicked:', item.label, item.href)}
                   className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                     pathname === item.href
                       ? 'bg-blue-100 text-blue-700'
