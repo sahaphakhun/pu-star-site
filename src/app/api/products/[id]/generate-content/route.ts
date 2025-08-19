@@ -157,6 +157,9 @@ function generateMarkdownContent(product: any) {
   markdown += `- Name: ${name}\n`;
   markdown += `- Category: ${category || 'ทั่วไป'}\n`;
   markdown += `- Description: ${description}\n`;
+  if (typeof shippingFee === 'number') {
+    markdown += `- Shipping Fee: ฿${shippingFee.toLocaleString()}\n`;
+  }
   
   if (skuConfig) {
     markdown += `- SKU Prefix: ${skuConfig.prefix}\n`;
@@ -201,7 +204,10 @@ function generateJSONContent(product: any) {
       isAvailable: isAvailable !== false,
       price: price !== undefined ? price : null,
       shippingFee: shippingFee !== undefined ? shippingFee : null,
-      units: units || [],
+      units: (units || []).map((u: any) => ({
+        ...u,
+        shippingFee: u.shippingFee !== undefined ? u.shippingFee : null,
+      })),
       options: options || [],
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
