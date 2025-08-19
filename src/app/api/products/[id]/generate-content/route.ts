@@ -64,7 +64,7 @@ function generateProductContent(product: any) {
 
 // สร้าง Markdown content
 function generateMarkdownContent(product: any) {
-  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable } = product;
+  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable, shippingFee } = product;
   
   let markdown = `# ${name}\n\n`;
   
@@ -78,7 +78,11 @@ function generateMarkdownContent(product: any) {
   // ราคา
   if (price !== undefined) {
     markdown += `## ราคา\n`;
-    markdown += `- **ราคาเริ่มต้น**: ฿${price.toLocaleString()}\n\n`;
+    markdown += `- **ราคาเริ่มต้น**: ฿${price.toLocaleString()}\n`;
+    if (typeof shippingFee === 'number') {
+      markdown += `- **ค่าส่งเริ่มต้น**: ฿${shippingFee.toLocaleString()}\n`;
+    }
+    markdown += `\n`;
   }
   
   // หน่วยสินค้า
@@ -186,7 +190,7 @@ function generateMarkdownContent(product: any) {
 
 // สร้าง JSON content
 function generateJSONContent(product: any) {
-  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable } = product;
+  const { name, description, price, units, options, skuConfig, skuVariants, category, isAvailable, shippingFee } = product;
   
   const jsonContent = {
     product: {
@@ -196,6 +200,7 @@ function generateJSONContent(product: any) {
       category: category || 'ทั่วไป',
       isAvailable: isAvailable !== false,
       price: price !== undefined ? price : null,
+      shippingFee: shippingFee !== undefined ? shippingFee : null,
       units: units || [],
       options: options || [],
       createdAt: product.createdAt,
@@ -239,3 +244,5 @@ function generateJSONContent(product: any) {
   
   return jsonContent;
 }
+
+export { generateMarkdownContent, generateJSONContent };
