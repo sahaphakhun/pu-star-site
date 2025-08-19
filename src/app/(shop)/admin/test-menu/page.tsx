@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@/constants/permissions';
 export default function TestMenuPage() {
   const { hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
   const [debugInfo, setDebugInfo] = useState<any>({});
+  const [instructions, setInstructions] = useState<string>('');
 
   useEffect(() => {
     // ทดสอบการทำงานของ permissions
@@ -105,7 +106,29 @@ export default function TestMenuPage() {
           >
             Test Permissions in Console
           </button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/test-build-instructions?refresh=true');
+                const data = await res.json();
+                setInstructions(data.instructions || '');
+              } catch (err) {
+                console.error('Error building instructions:', err);
+              }
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Build Instructions from Google
+          </button>
         </div>
+        {instructions && (
+          <div className="mt-4">
+            <h3 className="font-semibold mb-2">Generated Instructions</h3>
+            <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto whitespace-pre-wrap">
+              {instructions}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
