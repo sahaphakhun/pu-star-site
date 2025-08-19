@@ -9,7 +9,6 @@ import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
 import ReactMarkdown from 'react-markdown';
-import ReactJson from 'react-json-view';
 
 interface ProductWithId extends IProduct {
   _id: string;
@@ -2054,7 +2053,9 @@ const AdminProductsPage = () => {
               ) : previewTab === 'markdown' ? (
                 <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
               ) : (
-                <ReactJson src={previewJson} name={false} collapsed={false} enableClipboard={false} />
+                <pre className="text-sm whitespace-pre-wrap break-words">
+                  {JSON.stringify(previewJson, null, 2)}
+                </pre>
               )}
             </div>
             <div className="flex justify-end space-x-2 p-4 border-t">
