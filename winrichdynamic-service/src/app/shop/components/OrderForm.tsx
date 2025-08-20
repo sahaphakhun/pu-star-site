@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { IProduct } from '@/models/Product';
+import type { IProduct } from '@/models/Product';
 
 interface ProductWithId extends IProduct { _id: string; }
 interface CartItem { product: ProductWithId; quantity: number; }
@@ -22,7 +22,7 @@ interface OrderFormProps {
 	setPaymentMethod: (m: 'cod' | 'transfer') => void;
 }
 
-const OrderForm: React.FC<OrderFormProps> = ({
+export default function OrderForm({
 	setShowOrderForm,
 	handleSubmitOrder,
 	customerName,
@@ -35,7 +35,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 	calculateGrandTotal,
 	paymentMethod,
 	setPaymentMethod,
-}) => {
+}: OrderFormProps) {
 	return (
 		<div
 			className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
@@ -95,6 +95,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 								<span className="text-blue-600">฿{calculateGrandTotal().toLocaleString()}</span>
 							</div>
 						</div>
+					</div>
 					<div className="flex space-x-3">
 						<button type="button" onClick={() => setShowOrderForm(false)} className="flex-1 bg-white text-gray-700 border border-gray-300 py-3 rounded-lg">ยกเลิก</button>
 						<button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-lg">ยืนยัน</button>
@@ -103,8 +104,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 			</div>
 		</div>
 	);
-};
-
-export default OrderForm;
+}
 
 
