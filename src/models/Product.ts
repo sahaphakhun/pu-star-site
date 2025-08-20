@@ -46,6 +46,7 @@ export interface IProduct extends Document {
     isEnabled: boolean;
   };
   wmsVariantConfigs?: WMSVariantConfig[];
+  shippingFee?: number;
   isAvailable?: boolean;
   createdAt: Date;
   updatedAt: Date;
