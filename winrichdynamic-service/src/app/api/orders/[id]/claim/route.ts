@@ -3,13 +3,14 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import { verifyToken } from '@/lib/auth';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // optional: require auth for claim submission depending on policy
     await connectDB();
     const { claimReason, claimImages = [] } = await request.json();
+    const resolvedParams = await params;
     const doc = await Order.findByIdAndUpdate(
-      params.id,
+      resolvedParams.id,
       {
         $set: {
           'claimInfo.claimDate': new Date(),

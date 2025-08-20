@@ -4,7 +4,7 @@ import Order from '@/models/Order';
 import cloudinary from '@/lib/cloudinary';
 import { verifyToken } from '@/lib/auth';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = verifyToken(request);
     if (!auth.valid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,8 +24,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       });
       stream.end(buffer);
     });
+    const resolvedParams = await params;
     const doc = await Order.findByIdAndUpdate(
-      params.id,
+      resolvedParams.id,
       { $push: { packingProofs: { url: upload.secure_url, type, addedAt: new Date() } } },
       { new: true }
     );

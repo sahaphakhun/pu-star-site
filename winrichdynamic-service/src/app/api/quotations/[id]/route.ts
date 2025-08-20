@@ -6,12 +6,12 @@ import { updateQuotationSchema } from '@/schemas/quotation';
 // GET: ดึงข้อมูลใบเสนอราคาตาม ID
 export async function GET(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    
-    const quotation = await Quotation.findById(context.params.id).lean();
+    const resolvedParams = await params;
+    const quotation = await Quotation.findById(resolvedParams.id).lean();
     
     if (!quotation) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 // PUT: อัพเดทข้อมูลใบเสนอราคา
 export async function PUT(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const raw = await request.json();
@@ -54,9 +54,10 @@ export async function PUT(
     const updateData = parsed.data;
     
     await connectDB();
+    const resolvedParams = await params;
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(context.params.id);
+    const existingQuotation = await Quotation.findById(resolvedParams.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -66,7 +67,7 @@ export async function PUT(
     
     // อัพเดทข้อมูลใบเสนอราคา
     const updatedQuotation = await Quotation.findByIdAndUpdate(
-      context.params.id,
+      resolvedParams.id,
       updateData,
       { 
         new: true, 
@@ -96,13 +97,14 @@ export async function PUT(
 // DELETE: ลบใบเสนอราคา
 export async function DELETE(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
+    const resolvedParams = await params;
     
     // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(context.params.id);
+    const existingQuotation = await Quotation.findById(resolvedParams.id);
     if (!existingQuotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคานี้' },
@@ -119,7 +121,7 @@ export async function DELETE(
     }
     
     // ลบใบเสนอราคา
-    await Quotation.findByIdAndDelete(context.params.id);
+    await Quotation.findByIdAndDelete(resolvedParams.id);
     
     return NextResponse.json({
       message: 'ลบใบเสนอราคาเรียบร้อยแล้ว'

@@ -6,12 +6,12 @@ import { updateCustomerSchema } from '@/schemas/customer';
 // GET: ดึงข้อมูลลูกค้าตาม ID
 export async function GET(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    
-    const customer = await Customer.findById(context.params.id).lean();
+    const resolvedParams = await params;
+    const customer = await Customer.findById(resolvedParams.id).lean();
     
     if (!customer) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 // PUT: อัพเดทข้อมูลลูกค้า
 export async function PUT(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const raw = await request.json();
@@ -54,9 +54,10 @@ export async function PUT(
     const updateData = parsed.data;
     
     await connectDB();
+    const resolvedParams = await params;
     
     // ตรวจสอบว่าลูกค้ามีอยู่จริงหรือไม่
-    const existingCustomer = await Customer.findById(context.params.id);
+    const existingCustomer = await Customer.findById(resolvedParams.id);
     if (!existingCustomer) {
       return NextResponse.json(
         { error: 'ไม่พบลูกค้านี้' },
@@ -66,7 +67,7 @@ export async function PUT(
     
     // ตรวจสอบว่าเบอร์โทร, Tax ID, หรือ Email ซ้ำกับลูกค้าอื่นหรือไม่
     if (updateData.phoneNumber || updateData.taxId || updateData.email) {
-      const duplicateFilter: any = { _id: { $ne: context.params.id } };
+      const duplicateFilter: any = { _id: { $ne: resolvedParams.id } };
       
       if (updateData.phoneNumber) {
         duplicateFilter.phoneNumber = updateData.phoneNumber;
@@ -99,7 +100,7 @@ export async function PUT(
     
     // อัพเดทข้อมูลลูกค้า
     const updatedCustomer = await Customer.findByIdAndUpdate(
-      context.params.id,
+      resolvedParams.id,
       updateData,
       { 
         new: true, 
@@ -129,13 +130,14 @@ export async function PUT(
 // DELETE: ลบลูกค้า (Soft Delete)
 export async function DELETE(
   request: Request,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
+    const resolvedParams = await params;
     
     // ตรวจสอบว่าลูกค้ามีอยู่จริงหรือไม่
-    const existingCustomer = await Customer.findById(context.params.id);
+    const existingCustomer = await Customer.findById(resolvedParams.id);
     if (!existingCustomer) {
       return NextResponse.json(
         { error: 'ไม่พบลูกค้านี้' },
@@ -145,7 +147,7 @@ export async function DELETE(
     
     // Soft Delete โดยเปลี่ยนสถานะ isActive เป็น false
     const deletedCustomer = await Customer.findByIdAndUpdate(
-      context.params.id,
+      resolvedParams.id,
       { isActive: false },
       { new: true }
     ).lean();
