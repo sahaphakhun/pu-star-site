@@ -2,13 +2,23 @@
 
 import React, { useEffect, useState } from 'react';
 
-export default function AdminB2BOrderDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function AdminB2BOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const [id, setId] = useState<string | null>(null);
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
+    resolveParams();
+  }, [params]);
+
+  useEffect(() => {
+    if (!id) return;
+    
     const load = async () => {
       setLoading(true);
       setError(null);
