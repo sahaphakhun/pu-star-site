@@ -8,7 +8,6 @@ import { toast } from 'react-hot-toast';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
-import ReactMarkdown from 'react-markdown';
 
 interface ProductWithId extends IProduct {
   _id: string;
@@ -2051,7 +2050,7 @@ const AdminProductsPage = () => {
               {previewLoading ? (
                 <p>กำลังโหลด...</p>
               ) : previewTab === 'markdown' ? (
-                <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                <pre className="text-sm whitespace-pre-wrap break-words">{previewMarkdown}</pre>
               ) : (
                 <pre className="text-sm whitespace-pre-wrap break-words">
                   {JSON.stringify(previewJson, null, 2)}
