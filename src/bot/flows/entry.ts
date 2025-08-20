@@ -194,7 +194,7 @@ export async function handleEvent(event: MessagingEvent) {
         
         // เรียก AI ตอบคำถาม
           const conversationHistory = await getConversationHistory(psid);
-          const systemInstructions = await buildSystemInstructions('Basic');
+          const systemInstructions = await buildSystemInstructions();
           const answer = await getAssistantResponse(systemInstructions, conversationHistory, question);
           
           // เพิ่มข้อความ AI ลงในประวัติ
@@ -237,7 +237,7 @@ export async function handleEvent(event: MessagingEvent) {
         ]));
         
         const conversationHistory = await getConversationHistory(psid);
-        const systemInstructions = await buildSystemInstructions('Basic');
+        const systemInstructions = await buildSystemInstructions();
         const answer = await getAssistantResponse(systemInstructions, conversationHistory, [
           { type: 'text', text: 'กรุณาวิเคราะห์รูปภาพนี้' },
           { type: 'image_url', image_url: { url: (attachment.payload as any).url } }

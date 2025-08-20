@@ -283,7 +283,7 @@ export async function getGoogleExtraData() {
 }
 
 // ---------- System Instructions (สไตล์ฉบับแรก) ----------
-export function buildSystemInstructions(extraNote: string = 'Rules about images, privacy, etc...') {
+export function buildSystemInstructions(extraNote: string = '') {
   try {
     const sheetsDataString = _sheetJSON && _sheetJSON.length > 0 
       ? JSON.stringify(_sheetJSON, null, 2) 
@@ -296,14 +296,14 @@ Below is additional data from Google Sheets (INSTRUCTIONS) - all tabs:
 ---
 ${sheetsDataString}
 
-${extraNote}
+${extraNote ? extraNote : ''}
 `.trim();
   } catch (error) {
     console.error('[buildSystemInstructions] Error:', error);
     return `
 ${_googleDocInstructions || 'Google Docs instructions temporarily unavailable'}
 
-${extraNote}
+${extraNote ? extraNote : ''}
 `.trim();
   }
 }
@@ -654,7 +654,7 @@ export async function enableAutoModeAndRespond(
   const conversationHistory = await getConversationHistory(psid);
   
   // สร้าง system instructions และเรียก AI
-  const systemInstructions = await buildSystemInstructions('Basic');
+  const systemInstructions = await buildSystemInstructions();
   const answer = await getAssistantResponse(systemInstructions, conversationHistory, question);
   
   // เพิ่มข้อความ AI ลงในประวัติ
