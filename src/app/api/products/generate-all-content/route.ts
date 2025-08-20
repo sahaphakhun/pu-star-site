@@ -197,7 +197,7 @@ export function generateAllProductsMarkdown(products: any[], detail: 'full' | 's
 }
 
 // สร้าง JSON content สำหรับสินค้าทั้งหมด
-function generateAllProductsJSON(products: any[]) {
+export function generateAllProductsJSON(products: any[]) {
   const skuStats = getSkuStatistics(products);
   
   const jsonContent = {
@@ -264,7 +264,7 @@ function generateAllProductsJSON(products: any[]) {
   return jsonContent;
 }
 
-export { generateAllProductsMarkdown, generateAllProductsJSON };
+ 
 
 // ฟังก์ชันคำนวณสถิติ SKU
 function getSkuStatistics(products: any[]) {
