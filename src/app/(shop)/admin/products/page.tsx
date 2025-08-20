@@ -60,6 +60,13 @@ const AdminProductsPage = () => {
   const [previewProductId, setPreviewProductId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
+  // All Products Preview States
+  const [showAllPreview, setShowAllPreview] = useState(false);
+  const [allPreviewMarkdown, setAllPreviewMarkdown] = useState<string>('');
+  const [allPreviewJson, setAllPreviewJson] = useState<any>(null);
+  const [allPreviewTab, setAllPreviewTab] = useState<'markdown' | 'json'>('markdown');
+  const [allPreviewLoading, setAllPreviewLoading] = useState(false);
+  
   // WMS Configuration States
   const [wmsEnabled, setWmsEnabled] = useState(false);
   const [wmsProductCode, setWmsProductCode] = useState('');
@@ -969,6 +976,45 @@ const AdminProductsPage = () => {
     }
   };
 
+  // Preview all products content in modal
+  const previewAllProductsContent = async (tab: 'markdown' | 'json' = 'markdown') => {
+    setAllPreviewTab(tab);
+    setShowAllPreview(true);
+    setAllPreviewLoading(true);
+    try {
+      const [mdRes, jsonRes] = await Promise.all([
+        fetch(`/api/products/generate-all-content?format=markdown&detail=full`, { credentials: 'include' }),
+        fetch(`/api/products/generate-all-content?format=json&detail=full`, { credentials: 'include' }),
+      ]);
+      if (!mdRes.ok || !jsonRes.ok) {
+        const error = await (mdRes.ok ? jsonRes.json() : mdRes.json());
+        toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
+        setShowAllPreview(false);
+        return;
+      }
+      const markdown = await mdRes.text();
+      const json = await jsonRes.json();
+      setAllPreviewMarkdown(markdown);
+      setAllPreviewJson(json);
+    } catch (error) {
+      console.error('Error generating all products content:', error);
+      toast.error('เกิดข้อผิดพลาดในการสร้างข้อความสินค้าทั้งหมด');
+      setShowAllPreview(false);
+    } finally {
+      setAllPreviewLoading(false);
+    }
+  };
+
+  const copyAllPreview = async (format: 'markdown' | 'json') => {
+    try {
+      const content = format === 'markdown' ? allPreviewMarkdown : JSON.stringify(allPreviewJson, null, 2);
+      await navigator.clipboard.writeText(content);
+      toast.success(`คัดลอก${format === 'markdown' ? ' Markdown' : ' JSON'} แล้ว`);
+    } catch {
+      toast.error('คัดลอกไม่สำเร็จ');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -995,7 +1041,7 @@ const AdminProductsPage = () => {
             {(isAdmin || hasPermission(PERMISSIONS.PRODUCTS_VIEW)) && (
               <div className="flex gap-2">
                 <button
-                  onClick={() => generateAllProductsContent('markdown')}
+                  onClick={() => previewAllProductsContent('markdown')}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center space-x-2"
                   title="สร้างข้อความสินค้าทั้งหมดในรูปแบบ Markdown"
                 >
@@ -1003,7 +1049,7 @@ const AdminProductsPage = () => {
                   <span>Markdown ทั้งหมด</span>
                 </button>
                 <button
-                  onClick={() => generateAllProductsContent('json')}
+                  onClick={() => previewAllProductsContent('json')}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center space-x-2"
                   title="สร้างข้อความสินค้าทั้งหมดในรูปแบบ JSON"
                 >
@@ -2070,6 +2116,73 @@ const AdminProductsPage = () => {
               >
                 ดาวน์โหลด JSON
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAllPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">พรีวิวข้อความสินค้าทั้งหมด</h2>
+              <button
+                onClick={() => setShowAllPreview(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex border-b">
+              <button
+                className={`flex-1 py-2 ${allPreviewTab === 'markdown' ? 'bg-gray-200' : ''}`}
+                onClick={() => setAllPreviewTab('markdown')}
+              >
+                Markdown
+              </button>
+              <button
+                className={`flex-1 py-2 ${allPreviewTab === 'json' ? 'bg-gray-200' : ''}`}
+                onClick={() => setAllPreviewTab('json')}
+              >
+                JSON
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex-1">
+              {allPreviewLoading ? (
+                <p>กำลังโหลด...</p>
+              ) : allPreviewTab === 'markdown' ? (
+                <pre className="text-sm whitespace-pre-wrap break-words">{allPreviewMarkdown}</pre>
+              ) : (
+                <pre className="text-sm whitespace-pre-wrap break-words">{JSON.stringify(allPreviewJson, null, 2)}</pre>
+              )}
+            </div>
+            <div className="flex justify-between items-center p-4 border-t">
+              <div className="text-xs text-gray-500">สามารถคัดลอกหรือดาวน์โหลดเนื้อหาได้</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyAllPreview('markdown')}
+                  className="bg-gray-100 text-gray-800 px-4 py-2 rounded border"
+                >
+                  คัดลอก Markdown
+                </button>
+                <button
+                  onClick={() => copyAllPreview('json')}
+                  className="bg-gray-100 text-gray-800 px-4 py-2 rounded border"
+                >
+                  คัดลอก JSON
+                </button>
+                <button
+                  onClick={() => generateAllProductsContent('markdown')}
+                  className="bg-green-500 text-white px-4 py-2 rounded"
+                >
+                  ดาวน์โหลด Markdown
+                </button>
+                <button
+                  onClick={() => generateAllProductsContent('json')}
+                  className="bg-purple-500 text-white px-4 py-2 rounded"
+                >
+                  ดาวน์โหลด JSON
+                </button>
+              </div>
             </div>
           </div>
         </div>
