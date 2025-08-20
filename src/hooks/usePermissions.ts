@@ -50,6 +50,7 @@ export function usePermissions() {
 
   return {
     ...permissionsContext,
+    permissions,
     loading,
     userPhone,
   };

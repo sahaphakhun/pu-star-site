@@ -5,7 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/constants/permissions';
 
 export default function TestMenuPage() {
-  const { hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
+  const { hasPermission, isAdmin, loading: permissionsLoading, userPhone, permissions } = usePermissions();
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [instructions, setInstructions] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
@@ -18,19 +18,12 @@ export default function TestMenuPage() {
         const meResponse = await fetch('/api/auth/me');
         const meData = await meResponse.json();
         
-        // ทดสอบ API permissions
-        let permissionsData = null;
-        if (meData.user?.phoneNumber) {
-          const permResponse = await fetch(`/api/admin/permissions/${encodeURIComponent(meData.user.phoneNumber)}`);
-          if (permResponse.ok) {
-            permissionsData = await permResponse.json();
-          }
-        }
+        // หลีกเลี่ยงการเรียก permissions ซ้ำ เพราะ hook ได้ดึงมาแล้ว
 
         setDebugInfo({
           timestamp: new Date().toISOString(),
           me: meData,
-          permissions: permissionsData,
+          permissions,
           hasPermission: typeof hasPermission,
           isAdmin,
           permissionsLoading,
