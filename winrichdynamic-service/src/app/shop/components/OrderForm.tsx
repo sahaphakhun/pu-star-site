@@ -47,48 +47,26 @@ const OrderForm: React.FC<OrderFormProps> = ({
 			>
 				<div className="flex justify-between items-center mb-6">
 					<h3 className="text-xl font-bold">ข้อมูลการสั่งซื้อ</h3>
-					<button onClick={() => setShowOrderForm(false)} className="p-2">
-						✕
-					</button>
+					<button onClick={() => setShowOrderForm(false)} className="p-2">✕</button>
 				</div>
 				<form onSubmit={handleSubmitOrder} className="space-y-4">
 					<div>
 						<label className="block text-sm font-medium mb-1">ชื่อ-นามสกุล</label>
-						<input
-							value={customerName}
-							onChange={(e) => setCustomerName(e.target.value)}
-							className="w-full border px-3 py-2 rounded"
-						/>
+						<input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full border px-3 py-2 rounded" />
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-1">เบอร์โทรศัพท์</label>
-						<input
-							value={customerPhone}
-							onChange={(e) => setCustomerPhone(e.target.value)}
-							className="w-full border px-3 py-2 rounded"
-						/>
+						<input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full border px-3 py-2 rounded" />
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-2">วิธีการชำระเงิน</label>
 						<div className="space-y-2">
 							<label className="flex items-center">
-								<input
-									type="radio"
-									value="cod"
-									checked={paymentMethod === 'cod'}
-									onChange={() => setPaymentMethod('cod')}
-									className="mr-2"
-								/>
+								<input type="radio" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="mr-2" />
 								เก็บเงินปลายทาง
 							</label>
 							<label className="flex items-center">
-								<input
-									type="radio"
-									value="transfer"
-									checked={paymentMethod === 'transfer'}
-									onChange={() => setPaymentMethod('transfer')}
-									className="mr-2"
-								/>
+								<input type="radio" value="transfer" checked={paymentMethod === 'transfer'} onChange={() => setPaymentMethod('transfer')} className="mr-2" />
 								โอนเงินผ่านธนาคาร
 							</label>
 						</div>
@@ -98,12 +76,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
 						<div className="space-y-1 text-sm">
 							{Object.values(cart).map((item, index) => (
 								<div key={index} className="flex justify-between">
-									<span>
-										{item.product.name} x{item.quantity}
-									</span>
-									<span>
-										฿{((item.product.price || 0) * item.quantity).toLocaleString()}
-									</span>
+									<span>{item.product.name} x{item.quantity}</span>
+									<span>฿{((item.product.price || 0) * item.quantity).toLocaleString()}</span>
 								</div>
 							))}
 						</div>
@@ -114,33 +88,16 @@ const OrderForm: React.FC<OrderFormProps> = ({
 							</div>
 							<div className="flex justify-between">
 								<span>ค่าจัดส่ง:</span>
-								<span>
-									{calculateShippingFee() === 0
-										? 'ฟรี'
-										: `฿${calculateShippingFee().toLocaleString()}`}
-								</span>
+								<span>{calculateShippingFee() === 0 ? 'ฟรี' : `฿${calculateShippingFee().toLocaleString()}`}</span>
 							</div>
-							<div className="flex justify-between font-bold text;base pt-1 border-t">
+							<div className="flex justify-between font-bold text-base pt-1 border-t">
 								<span>ยอดรวม:</span>
-								<span className="text-blue-600">
-									฿{calculateGrandTotal().toLocaleString()}
-								</span>
+								<span className="text-blue-600">฿{calculateGrandTotal().toLocaleString()}</span>
 							</div>
 						</div>
 					<div className="flex space-x-3">
-						<button
-							type="button"
-							onClick={() => setShowOrderForm(false)}
-							className="flex-1 bg-white text-gray-700 border border-gray-300 py-3 rounded-lg"
-						>
-							ยกเลิก
-						</button>
-						<button
-							type="submit"
-							className="flex-1 bg-blue-600 text-white py-3 rounded-lg"
-						>
-							ยืนยัน
-						</button>
+						<button type="button" onClick={() => setShowOrderForm(false)} className="flex-1 bg-white text-gray-700 border border-gray-300 py-3 rounded-lg">ยกเลิก</button>
+						<button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-lg">ยืนยัน</button>
 					</div>
 				</form>
 			</div>
