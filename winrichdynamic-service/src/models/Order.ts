@@ -21,6 +21,39 @@ export interface IOrder extends Document {
 	createdAt: Date;
 	updatedAt: Date;
 	paymentMethod?: 'cod' | 'transfer';
+  status?: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled';
+  trackingNumber?: string;
+  shippingProvider?: string;
+  deliveryMethod?: 'standard' | 'lalamove';
+  // Packing proofs
+  packingProofs?: { url: string; type: 'image' | 'video'; addedAt: Date }[];
+  // Tax invoice request
+  taxInvoice?: {
+    requestTaxInvoice: boolean;
+    companyName?: string;
+    taxId?: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+  };
+  // Claim info
+  claimInfo?: {
+    claimDate: Date;
+    claimReason: string;
+    claimImages: string[];
+    claimStatus: 'pending' | 'approved' | 'rejected';
+    adminResponse?: string;
+    responseDate?: Date;
+  };
+  // Slip verification (simplified)
+  slipVerification?: {
+    verified: boolean;
+    verifiedAt?: Date;
+    verificationType?: 'manual' | 'automatic';
+    verifiedBy?: string;
+    status?: string;
+    error?: string;
+  };
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -43,6 +76,44 @@ const orderSchema = new Schema<IOrder>(
 		discount: { type: Number, default: 0 },
 		orderDate: { type: Date, default: Date.now },
 		paymentMethod: { type: String, enum: ['cod', 'transfer'], default: 'cod' },
+    status: { type: String, enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
+    trackingNumber: { type: String },
+    shippingProvider: { type: String },
+    deliveryMethod: { type: String, enum: ['standard', 'lalamove'], default: 'standard' },
+    packingProofs: {
+      type: [
+        {
+          url: { type: String, required: true },
+          type: { type: String, enum: ['image', 'video'], default: 'image' },
+          addedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    taxInvoice: {
+      requestTaxInvoice: { type: Boolean, default: false },
+      companyName: { type: String },
+      taxId: { type: String },
+      companyAddress: { type: String },
+      companyPhone: { type: String },
+      companyEmail: { type: String },
+    },
+    claimInfo: {
+      claimDate: { type: Date },
+      claimReason: { type: String },
+      claimImages: { type: [String], default: [] },
+      claimStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      adminResponse: { type: String },
+      responseDate: { type: Date },
+    },
+    slipVerification: {
+      verified: { type: Boolean, default: false },
+      verifiedAt: { type: Date },
+      verificationType: { type: String, enum: ['manual', 'automatic'] },
+      verifiedBy: { type: String },
+      status: { type: String },
+      error: { type: String },
+    },
 	},
 	{ timestamps: true }
 );

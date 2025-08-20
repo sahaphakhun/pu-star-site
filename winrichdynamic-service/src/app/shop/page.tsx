@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import toast from 'react-hot-toast';
 import { IProduct } from '@/models/Product';
 import ProductList from './components/ProductList';
 import CartDrawer from './components/CartDrawer';
@@ -20,13 +21,31 @@ const ShopPage = () => {
 	const [customerName, setCustomerName] = useState('');
 	const [customerPhone, setCustomerPhone] = useState('');
 	const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer'>('cod');
+  const [categories, setCategories] = useState<string[]>(['ทั้งหมด']);
+  const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
 	useEffect(() => {
-		fetch('/api/products')
+		fetch('/api/categories')
+			.then((res) => res.json())
+			.then((data) => {
+				if (Array.isArray(data) && data.length > 0) {
+					const names = ['ทั้งหมด', ...data.map((c: any) => c.name).filter(Boolean)];
+					setCategories(Array.from(new Set(names)));
+				}
+			})
+			.catch(() => {});
+	}, []);
+
+	useEffect(() => {
+		const params = new URLSearchParams();
+		if (selectedCategory && selectedCategory !== 'ทั้งหมด') params.set('category', selectedCategory);
+		if (searchTerm) params.set('search', searchTerm);
+		fetch('/api/products' + (params.toString() ? `?${params.toString()}` : ''))
 			.then((res) => res.json())
 			.then((data) => setProducts(Array.isArray(data) ? data : []))
 			.catch(() => setProducts([]));
-	}, []);
+	}, [selectedCategory, searchTerm]);
 
 	const getQuantityForProduct = (id: string) => quantities[id] || 1;
 	const setQuantityForProduct = (id: string, qty: number) =>
@@ -89,7 +108,7 @@ const ShopPage = () => {
 				price: item.product.price,
 				quantity: item.quantity,
 			}));
-			await fetch('/api/orders', {
+			const res = await fetch('/api/orders', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -101,6 +120,11 @@ const ShopPage = () => {
 					paymentMethod,
 				}),
 			});
+			if (!res.ok) {
+				toast.error('สั่งซื้อไม่สำเร็จ');
+			} else {
+				toast.success('สั่งซื้อสำเร็จ');
+			}
 		} finally {
 			setShowOrderForm(false);
 			setCart({});
@@ -112,15 +136,24 @@ const ShopPage = () => {
 			<div className="container mx-auto px-4 py-8">
 				<ProductList
 					products={products}
-					categories={['ทั้งหมด']}
-					selectedCategory={'ทั้งหมด'}
-					setSelectedCategory={() => {}}
-					searchTerm={''}
+					categories={categories}
+					selectedCategory={selectedCategory}
+					setSelectedCategory={setSelectedCategory}
+					searchTerm={searchTerm}
 					getQuantityForProduct={getQuantityForProduct}
 					setQuantityForProduct={setQuantityForProduct}
 					handleProductClick={() => {}}
 					handleAddToCart={handleAddToCart}
 				/>
+
+				<div className="mt-4">
+					<input
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						placeholder="ค้นหาสินค้า..."
+						className="w-full border px-3 py-2 rounded"
+					/>
+				</div>
 			</div>
 
 			<CartDrawer

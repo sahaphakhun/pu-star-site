@@ -12,6 +12,9 @@ export default function AdminB2BLayout({ children }: { children: React.ReactNode
           <Link href="/adminb2b" className="block px-3 py-2 rounded hover:bg-gray-100">ภาพรวม</Link>
           <Link href="/adminb2b/customers" className="block px-3 py-2 rounded hover:bg-gray-100">ลูกค้า</Link>
           <Link href="/adminb2b/quotations" className="block px-3 py-2 rounded hover:bg-gray-100">ใบเสนอราคา</Link>
+          <Link href="/adminb2b/categories" className="block px-3 py-2 rounded hover:bg-gray-100">หมวดหมู่</Link>
+          <Link href="/adminb2b/products" className="block px-3 py-2 rounded hover:bg-gray-100">สินค้า</Link>
+          <Link href="/adminb2b/orders" className="block px-3 py-2 rounded hover:bg-gray-100">คำสั่งซื้อ</Link>
         </nav>
       </aside>
 

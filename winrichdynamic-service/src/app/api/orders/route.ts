@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
+import { verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
 	try {
@@ -28,6 +29,17 @@ export async function POST(request: NextRequest) {
 		console.error('[B2B] Error creating order:', error);
 		return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ' }, { status: 500 });
 	}
+}
+
+export async function GET() {
+  try {
+    await connectDB();
+    const orders = await Order.find({}).sort({ createdAt: -1 });
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error('[B2B] Error fetching orders:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ' }, { status: 500 });
+  }
 }
 
 

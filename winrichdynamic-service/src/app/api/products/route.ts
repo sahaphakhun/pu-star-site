@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
 	try {
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
+		const auth = verifyToken(request);
+		if (!auth.valid) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
 		await connectDB();
 		const body = await request.json();
 		const { name, price, description, imageUrl, units, category, options, isAvailable } = body;
