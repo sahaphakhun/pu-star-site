@@ -22,6 +22,7 @@ export interface IProduct extends Document {
 		shippingFee?: number;
 		unitPrice?: number;
 	}[];
+	shippingFee?: number;
 	isAvailable?: boolean;
 	createdAt: Date;
 	updatedAt: Date;
