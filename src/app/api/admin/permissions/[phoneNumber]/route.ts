@@ -37,11 +37,25 @@ export async function GET(
     // ดึงข้อมูลสิทธิ์
     const permission = await UserPermission.findOne({ phoneNumber }).lean();
     
+    // ถ้าไม่พบ ให้ส่ง permissions ว่าง เพื่อหลีกเลี่ยง 404 บน client
     if (!permission) {
-      return NextResponse.json(
-        { success: false, message: 'ไม่พบข้อมูลสิทธิ์ของผู้ใช้นี้' },
-        { status: 404 }
-      );
+      const user = await User.findOne({ phoneNumber })
+        .select('phoneNumber name email profileImageUrl role')
+        .lean();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          phoneNumber,
+          permissions: [],
+          isActive: false,
+          note: '',
+          userName: user?.name || 'ไม่ระบุชื่อ',
+          userEmail: user?.email || '',
+          userProfileImage: user?.profileImageUrl || '',
+          userRole: user?.role || 'user',
+        },
+      });
     }
 
     // ดึงข้อมูลผู้ใช้

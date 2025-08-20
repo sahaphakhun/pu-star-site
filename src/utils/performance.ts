@@ -1,8 +1,14 @@
 // Performance Monitoring และ Analytics Utilities - Optimized Version
 import { createPerformanceMonitor } from './performance-budget';
 
+// Debug flag for controlling console output
+const isPerformanceDebug: boolean =
+  process.env.NODE_ENV === 'development' ||
+  (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_DEBUG_PERFORMANCE === 'true');
+
 // Lazy load performance monitoring
 let performanceMonitor: ReturnType<typeof createPerformanceMonitor> | null = null;
+let isPerformanceMonitoringStarted = false;
 
 // Web Vitals Monitoring - แยกเป็น lazy loading
 export const measureWebVitals = () => {
@@ -160,11 +166,15 @@ export const measureBundleSize = () => {
     }
   });
   
-  console.log('Estimated bundle size:', totalSize + 'KB');
+  if (isPerformanceDebug) {
+    console.log('Estimated bundle size:', totalSize + 'KB');
+  }
   
   // Increased threshold to match Next.js config
   if (totalSize > 800) {
-    console.warn('Bundle size ใหญ่เกินไป:', totalSize + 'KB');
+    if (isPerformanceDebug) {
+      console.warn('Bundle size ใหญ่เกินไป:', totalSize + 'KB');
+    }
   }
 };
 
@@ -182,11 +192,15 @@ export const detectMemoryLeaks = () => {
     
     // Only warn for very high memory usage
     if (usagePercentage > 90) {
-      console.warn('Memory usage สูง:', usagePercentage.toFixed(2) + '%');
+      if (isPerformanceDebug) {
+        console.warn('Memory usage สูง:', usagePercentage.toFixed(2) + '%');
+      }
     }
     
     if (used > 100 * 1024 * 1024) { // 100MB
-      console.warn('Memory usage สูง:', (used / 1024 / 1024).toFixed(2) + 'MB');
+      if (isPerformanceDebug) {
+        console.warn('Memory usage สูง:', (used / 1024 / 1024).toFixed(2) + 'MB');
+      }
     }
   }
 };
@@ -228,7 +242,9 @@ export const checkPerformanceBudget = () => {
   }
 
   if (violations.length > 0) {
-    console.warn('Performance Budget Violations:', violations);
+    if (isPerformanceDebug) {
+      console.warn('Performance Budget Violations:', violations);
+    }
   }
 
   return violations;
@@ -253,7 +269,9 @@ export const reportPerformance = () => {
   };
 
   // ส่งข้อมูลไปยัง analytics service
-  console.log('Performance Report:', report);
+  if (isPerformanceDebug) {
+    console.log('Performance Report:', report);
+  }
   
   // สามารถส่งไปยัง Google Analytics, Custom API, หรือ Logging Service ได้
   return report;
@@ -262,6 +280,9 @@ export const reportPerformance = () => {
 // Auto Performance Monitoring - Optimized frequency
 export const startPerformanceMonitoring = () => {
   if (typeof window === 'undefined') return;
+
+  if (isPerformanceMonitoringStarted) return;
+  isPerformanceMonitoringStarted = true;
 
   // เริ่มต้น monitoring เมื่อ page load เสร็จ
   if (document.readyState === 'loading') {

@@ -8,6 +8,7 @@ export default function TestMenuPage() {
   const { hasPermission, isAdmin, loading: permissionsLoading } = usePermissions();
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [instructions, setInstructions] = useState<string>('');
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     // ทดสอบการทำงานของ permissions
@@ -123,8 +124,36 @@ export default function TestMenuPage() {
         </div>
         {instructions && (
           <div className="mt-4">
-            <h3 className="font-semibold mb-2">Generated Instructions</h3>
-            <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto whitespace-pre-wrap">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold">Generated Instructions</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(instructions);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch {
+                      try {
+                        const el = document.createElement('textarea');
+                        el.value = instructions;
+                        document.body.appendChild(el);
+                        el.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(el);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      } catch {}
+                    }
+                  }}
+                  className="bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700"
+                >
+                  คัดลอกทั้งหมด
+                </button>
+                {copied && <span className="text-xs text-green-600">คัดลอกแล้ว</span>}
+              </div>
+            </div>
+            <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
               {instructions}
             </pre>
           </div>
