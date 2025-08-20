@@ -1,0 +1,55 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IOrderItem {
+	productId: Schema.Types.ObjectId;
+	name: string;
+	price: number;
+	quantity: number;
+	selectedOptions?: Record<string, string>;
+	unitLabel?: string;
+	unitPrice?: number;
+}
+
+export interface IOrder extends Document {
+	customerName: string;
+	customerPhone: string;
+	items: IOrderItem[];
+	totalAmount: number;
+	shippingFee: number;
+	discount?: number;
+	orderDate: Date;
+	createdAt: Date;
+	updatedAt: Date;
+	paymentMethod?: 'cod' | 'transfer';
+}
+
+const orderItemSchema = new Schema<IOrderItem>({
+	productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+	name: { type: String, required: true },
+	price: { type: Number, required: true },
+	quantity: { type: Number, required: true, min: 1 },
+	selectedOptions: { type: Schema.Types.Mixed, default: {} },
+	unitLabel: { type: String },
+	unitPrice: { type: Number },
+});
+
+const orderSchema = new Schema<IOrder>(
+	{
+		customerName: { type: String, required: true, trim: true },
+		customerPhone: { type: String, required: true, trim: true },
+		items: [orderItemSchema],
+		totalAmount: { type: Number, required: true },
+		shippingFee: { type: Number, required: true, default: 0 },
+		discount: { type: Number, default: 0 },
+		orderDate: { type: Date, default: Date.now },
+		paymentMethod: { type: String, enum: ['cod', 'transfer'], default: 'cod' },
+	},
+	{ timestamps: true }
+);
+
+orderSchema.index({ orderDate: -1 });
+orderSchema.index({ customerPhone: 1 });
+
+export default mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema);
+
+

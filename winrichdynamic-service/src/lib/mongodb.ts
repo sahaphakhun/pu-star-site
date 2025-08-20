@@ -13,6 +13,7 @@ console.log('[DB] MONGODB_URI exists:', !!process.env.MONGODB_URI);
 console.log('[DB] MONGO_URL exists:', !!process.env.MONGO_URL);
 console.log('[DB] DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('[DB] MONGODB_URL exists:', !!process.env.MONGODB_URL);
+console.log('[DB] B2B_DB_NAME exists:', !!process.env.B2B_DB_NAME);
 
 if (MONGODB_URI && process.env.NODE_ENV !== 'production') {
   console.log('[DB] using connection string =', MONGODB_URI.slice(0, 30) + '...');
@@ -49,9 +50,14 @@ async function connectDB(): Promise<mongoose.Connection> {
         'กรุณากำหนดค่า MONGODB_URI, MONGO_URL, DATABASE_URL หรือ MONGODB_URL ในตัวแปรสภาพแวดล้อม'
       );
     }
-    const opts = {
+    const dbName = process.env.B2B_DB_NAME || process.env.DB_NAME;
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[DB] selected dbName =', dbName || '(from connection string)');
+    }
+    const opts: Parameters<typeof mongoose.connect>[1] = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 30000, // 30 วินาที หากหาเซิร์ฟเวอร์ไม่เจอจะ throw เร็วขึ้น
+      ...(dbName ? { dbName } : {}),
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
