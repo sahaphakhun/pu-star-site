@@ -112,24 +112,30 @@ export async function POST(request: NextRequest) {
     }
 
     // สร้าง JWT token
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
+    const secret = process.env.JWT_SECRET || 'b2b-winrichdynamic-jwt-secret-2024';
+    console.log('[B2B] Using JWT secret:', secret ? 'configured' : 'fallback');
+
+    let token: string;
+    try {
+      token = await new jose.SignJWT({
+        adminId: admin._id.toString(),
+        phone: admin.phone,
+        role: admin.role.name,
+        roleLevel: admin.role.level
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(new TextEncoder().encode(secret));
+      
+      console.log('[B2B] JWT token created successfully');
+    } catch (jwtError) {
+      console.error('[B2B] JWT creation error:', jwtError);
       return NextResponse.json(
-        { success: false, error: 'JWT secret ไม่ถูกต้อง' },
+        { success: false, error: 'เกิดข้อผิดพลาดในการสร้าง token' },
         { status: 500 }
       );
     }
-
-    const token = await new jose.SignJWT({
-      adminId: admin._id.toString(),
-      phone: admin.phone,
-      role: admin.role.name,
-      roleLevel: admin.role.level
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(new TextEncoder().encode(secret));
 
     // อัปเดต lastLoginAt
     admin.lastLoginAt = new Date();
@@ -159,6 +165,13 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[B2B] Verify OTP error:', error);
+    
+    // Log detailed error for debugging
+    if (error instanceof Error) {
+      console.error('[B2B] Error message:', error.message);
+      console.error('[B2B] Error stack:', error.stack);
+    }
+    
     return NextResponse.json(
       { success: false, error: 'เกิดข้อผิดพลาดในการยืนยัน OTP' },
       { status: 500 }
