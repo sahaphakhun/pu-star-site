@@ -96,11 +96,16 @@ const ProductsPage: React.FC = () => {
   const handleCreateProduct = async () => {
     try {
       const token = localStorage.getItem('b2b_auth_token');
+      console.log('[B2B] Token from localStorage:', token ? 'exists' : 'not found');
+      
       if (!token) {
         toast.error('กรุณาเข้าสู่ระบบใหม่');
         location.href = '/adminb2b/login';
         return;
       }
+
+      console.log('[B2B] Sending request to /api/products with token');
+      console.log('[B2B] Form data:', formData);
 
       const response = await fetch('/api/products', {
         method: 'POST',
@@ -111,7 +116,12 @@ const ProductsPage: React.FC = () => {
         body: JSON.stringify(formData)
       });
       
+      console.log('[B2B] Response status:', response.status);
+      console.log('[B2B] Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (response.status === 401) {
+        const errorText = await response.text();
+        console.error('[B2B] 401 Unauthorized response:', errorText);
         toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
         localStorage.removeItem('b2b_auth_token');
         location.href = '/adminb2b/login';
@@ -119,6 +129,7 @@ const ProductsPage: React.FC = () => {
       }
       
       const result = await response.json();
+      console.log('[B2B] Response result:', result);
       
       if (result.success) {
         toast.success('สร้างสินค้าเรียบร้อยแล้ว');
@@ -129,7 +140,7 @@ const ProductsPage: React.FC = () => {
         toast.error(result.error || 'เกิดข้อผิดพลาดในการสร้างสินค้า');
       }
     } catch (error) {
-      console.error('Error creating product:', error);
+      console.error('[B2B] Error creating product:', error);
       toast.error('เกิดข้อผิดพลาดในการสร้างสินค้า');
     }
   };

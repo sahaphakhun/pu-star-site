@@ -23,6 +23,12 @@ export default function WMSLayout({
               <Link href="/wms/inventory" className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
                 สินค้าคงคลัง
               </Link>
+              <Link href="/wms/inbound" className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+                รับสินค้า
+              </Link>
+              <Link href="/wms/outbound" className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+                เบิกจ่าย
+              </Link>
               <Link href="/wms/movements" className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
                 การเคลื่อนไหว
               </Link>

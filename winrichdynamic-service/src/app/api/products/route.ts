@@ -35,7 +35,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
+		console.log('[B2B] POST /api/products - Starting request');
+		console.log('[B2B] Request headers:', Object.fromEntries(request.headers.entries()));
+		
 		const auth = verifyToken(request);
+		console.log('[B2B] Auth result:', auth);
+		
 		if (!auth.valid) {
 			console.log('[B2B] Auth failed:', auth.error);
 			return NextResponse.json({ 

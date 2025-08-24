@@ -12,15 +12,21 @@ interface AuthResult {
 
 export function verifyToken(request: NextRequest): AuthResult {
   try {
+    console.log('[B2B] verifyToken - Starting verification');
+    
     const authHeader = request.headers.get('authorization');
+    console.log('[B2B] Authorization header:', authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[B2B] No or invalid authorization header');
       return { valid: false, error: 'No authorization header' };
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('[B2B] Token extracted:', token ? `${token.substring(0, 20)}...` : 'empty');
     
     if (!token) {
+      console.log('[B2B] No token provided');
       return { valid: false, error: 'No token provided' };
     }
 
