@@ -13,7 +13,7 @@ const categorySchema = new Schema<ICategory>(
       type: String,
       required: [true, 'กรุณาระบุชื่อหมวดหมู่'],
       trim: true,
-      unique: true,
+      maxlength: [100, 'ชื่อหมวดหมู่ต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
     },
     slug: {
       type: String,
