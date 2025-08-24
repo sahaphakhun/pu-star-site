@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import Role from '@/models/Role';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,10 +18,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ตรวจสอบเบอร์โทรศัพท์
-    if (phone.length < 10) {
+    // ตรวจสอบและแปลงเบอร์โทรศัพท์
+    if (!isValidPhoneNumber(phone)) {
       return NextResponse.json(
-        { success: false, error: 'เบอร์โทรศัพท์ไม่ถูกต้อง' },
+        { success: false, error: 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอก 9-10 หลัก' },
+        { status: 400 }
+      );
+    }
+
+    let formattedPhone: string;
+    try {
+      formattedPhone = formatPhoneNumber(phone);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: error instanceof Error ? error.message : 'เบอร์โทรศัพท์ไม่ถูกต้อง' },
         { status: 400 }
       );
     }
@@ -36,11 +47,11 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบว่าเบอร์โทรศัพท์หรืออีเมลซ้ำหรือไม่
     const existingAdmin = await Admin.findOne({
-      $or: [{ phone }, { email }]
+      $or: [{ phone: formattedPhone }, { email }]
     });
 
     if (existingAdmin) {
-      if (existingAdmin.phone === phone) {
+      if (existingAdmin.phone === formattedPhone) {
         return NextResponse.json(
           { success: false, error: 'เบอร์โทรศัพท์นี้ถูกใช้งานแล้ว' },
           { status: 400 }
@@ -69,7 +80,7 @@ export async function POST(request: NextRequest) {
     // สร้างแอดมินใหม่
     const newAdmin = await Admin.create({
       name,
-      phone,
+      phone: formattedPhone, // ใช้เบอร์โทรศัพท์ที่แปลงแล้ว
       email,
       company: company || '',
       role: adminRole._id,

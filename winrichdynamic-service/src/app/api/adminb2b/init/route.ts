@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const defaultAdmin = await Admin.create({
       name: 'Super Administrator',
-      phone: '0812345678', // เปลี่ยนเป็นเบอร์จริง
+      phone: '66812345678', // ใช้รูปแบบ 66xxxxxxxxx สำหรับแอดมินเริ่มต้น
       email: 'admin@winrichdynamic.com', // เปลี่ยนเป็นอีเมลจริง
       company: 'WinRich Dynamic',
       role: superAdminRole._id,

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { isValidPhoneNumber } from '@/utils/phoneUtils';
 
 export default function AdminB2BRegisterPage() {
   const [formData, setFormData] = useState({
@@ -22,8 +23,9 @@ export default function AdminB2BRegisterPage() {
       return;
     }
 
-    if (formData.phone.length < 10) {
-      toast.error('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง');
+    // ตรวจสอบเบอร์โทรศัพท์
+    if (!isValidPhoneNumber(formData.phone)) {
+      toast.error('กรุณากรอกเบอร์โทรศัพท์ 9-10 หลัก');
       return;
     }
 
@@ -91,17 +93,20 @@ export default function AdminB2BRegisterPage() {
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
               เบอร์โทรศัพท์ *
             </label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0812345678"
-              value={formData.phone}
-              onChange={handleInputChange}
-              maxLength={10}
-            />
+                         <input
+               id="phone"
+               name="phone"
+               type="tel"
+               required
+               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="0995429353 หรือ 0812345678"
+               value={formData.phone}
+               onChange={handleInputChange}
+               maxLength={10}
+             />
+             <p className="text-xs text-gray-500 mt-1">
+               รองรับเบอร์โทรศัพท์ 9-10 หลัก (เช่น 0995429353, 0812345678)
+             </p>
           </div>
 
           <div>
