@@ -13,7 +13,6 @@ const categorySchema = new Schema<ICategory>(
       type: String,
       required: [true, 'กรุณาระบุชื่อหมวดหมู่'],
       trim: true,
-      unique: true,
     },
     slug: {
       type: String,
