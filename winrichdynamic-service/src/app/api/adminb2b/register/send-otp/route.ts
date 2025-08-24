@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendOTP } from '@/utils/deesmsx';
+import { requestOTP } from '@/utils/deesmsx';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
 
 // Global OTP cache สำหรับการสมัครสมาชิก
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // ส่งคำขอ OTP ผ่าน DeeSMSx
     try {
-      const result = await sendOTP(formattedPhone);
+      const result = await requestOTP(formattedPhone);
       
       // เก็บ OTP ใน cache พร้อมข้อมูลผู้ใช้
       if (!global.registerOtpCache) {
