@@ -231,95 +231,92 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             font-family: 'Sarabun', 'Tahoma', sans-serif;
             font-size: 14px;
             line-height: 1.6;
-            color: #333;
+            color: #2d3748;
             background: white;
         }
         
         .container {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 20px;
+            padding: 30px;
             background: white;
         }
         
         .header {
-            text-align: center;
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
             position: relative;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 25px;
+            margin-bottom: 35px;
         }
         
         .logo {
-            width: 120px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 80px;
             height: auto;
-            margin: 0 auto 15px;
-            display: block;
+        }
+        
+        .header-content {
+            text-align: center;
+            margin-left: 100px;
         }
         
         .header h1 {
             margin: 0;
-            font-size: 32px;
-            font-weight: 700;
-            color: #1e40af;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a202c;
+            letter-spacing: 1px;
         }
         
         .header p {
-            margin: 5px 0;
-            color: #6b7280;
+            margin: 5px 0 0 0;
+            color: #718096;
             font-size: 16px;
+            font-weight: 400;
         }
         
         .company-info {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 30px;
-            background: #f8fafc;
-            padding: 25px;
-            border-radius: 12px;
-            border-left: 5px solid #2563eb;
+            gap: 50px;
+            margin-bottom: 35px;
         }
         
         .info-section h3 {
             margin: 0 0 15px 0;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
-            color: #1e40af;
-            border-bottom: 2px solid #dbeafe;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
             padding-bottom: 8px;
         }
         
         .info-section p {
-            margin: 8px 0;
-            color: #374151;
+            margin: 6px 0;
+            color: #4a5568;
             font-size: 14px;
         }
         
         .quotation-details {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            gap: 25px;
+            margin-bottom: 35px;
+            background: #f7fafc;
             padding: 25px;
-            border-radius: 12px;
-            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
         }
         
         .detail-item {
             text-align: center;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .detail-item .label {
             font-size: 12px;
-            color: #6b7280;
+            color: #718096;
             margin-bottom: 8px;
             font-weight: 500;
             text-transform: uppercase;
@@ -329,43 +326,43 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         .detail-item .value {
             font-size: 16px;
             font-weight: 600;
-            color: #1e40af;
+            color: #2d3748;
         }
         
         .subject {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
             text-align: center;
-            color: #1f2937;
-            background: #f3f4f6;
+            color: #1a202c;
+            background: #f7fafc;
             padding: 20px;
             border-radius: 8px;
-            border-left: 5px solid #10b981;
+            border-left: 4px solid #4299e1;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
             background: white;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         th, td {
-            border: 1px solid #e5e7eb;
-            padding: 15px 12px;
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
             text-align: left;
             vertical-align: top;
         }
         
         th {
-            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            background: #4a5568;
             color: white;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -376,7 +373,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         }
         
         tr:nth-child(even) td {
-            background: #f9fafb;
+            background: #f7fafc;
         }
         
         .text-center { text-align: center; }
@@ -386,22 +383,22 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         .summary {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
         
         .summary-table {
             width: 350px;
-            background: #f8fafc;
-            border-radius: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
             padding: 25px;
-            border: 2px solid #dbeafe;
+            border: 1px solid #e2e8f0;
         }
         
         .summary-table .row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
             font-size: 14px;
         }
         
@@ -411,54 +408,54 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         
         .summary-table .total {
             font-weight: 700;
-            font-size: 18px;
-            border-top: 3px solid #2563eb;
-            padding-top: 15px;
-            margin-top: 15px;
-            color: #1e40af;
+            font-size: 16px;
+            border-top: 2px solid #4a5568;
+            padding-top: 12px;
+            margin-top: 12px;
+            color: #1a202c;
         }
         
         .terms {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 30px;
+            gap: 50px;
+            margin-bottom: 35px;
         }
         
         .terms h3 {
-            margin: 0 0 15px 0;
-            font-size: 16px;
+            margin: 0 0 12px 0;
+            font-size: 15px;
             font-weight: 600;
-            color: #1e40af;
-            border-bottom: 2px solid #dbeafe;
-            padding-bottom: 8px;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
         }
         
         .terms p {
             margin: 0;
-            color: #374151;
-            line-height: 1.8;
+            color: #4a5568;
+            line-height: 1.7;
         }
         
         .notes {
-            margin-bottom: 30px;
-            background: #fef3c7;
+            margin-bottom: 35px;
+            background: #fef5e7;
             padding: 20px;
             border-radius: 8px;
-            border-left: 5px solid #f59e0b;
+            border-left: 4px solid #ed8936;
         }
         
         .notes h3 {
-            margin: 0 0 15px 0;
-            font-size: 16px;
+            margin: 0 0 12px 0;
+            font-size: 15px;
             font-weight: 600;
-            color: #92400e;
+            color: #744210;
         }
         
         .notes p {
             margin: 0;
-            color: #78350f;
-            line-height: 1.8;
+            color: #744210;
+            line-height: 1.7;
         }
         
         .signatures {
@@ -466,7 +463,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             justify-content: space-between;
             margin-top: 50px;
             padding-top: 30px;
-            border-top: 2px solid #e5e7eb;
+            border-top: 1px solid #e2e8f0;
         }
         
         .signature-box {
@@ -476,23 +473,23 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         
         .signature-line {
             width: 150px;
-            height: 2px;
-            background: #374151;
+            height: 1px;
+            background: #4a5568;
             margin: 0 auto 15px auto;
         }
         
         .signature-label {
-            font-size: 14px;
-            color: #6b7280;
+            font-size: 13px;
+            color: #718096;
             font-weight: 500;
         }
         
         .footer {
             margin-top: 40px;
             text-align: center;
-            color: #6b7280;
+            color: #718096;
             font-size: 12px;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid #e2e8f0;
             padding-top: 20px;
         }
         
@@ -508,9 +505,11 @@ export function generateQuotationHTML(quotation: QuotationData): string {
 <body>
     <div class="container">
         <div class="header">
-            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTIiIGZpbGw9IiMyNTYzZWIiLz4KPHN2ZyB4PSIzMCIgeT0iMzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMTIgMkMxMy4wOTEgMiAxNCAyLjkwOSAxNCA0VjZIMTZWNEMxNiAyLjkwOSAxNy4wOTEgMiAxOCAyQzE5LjA5MSAyIDIwIDIuOTA5IDIwIDRWNkgxOFY4QzE4IDkuMTA5IDE3LjA5MSAxMCAxNiAxMEg4QzYuOTA5IDEwIDYgOS4xMDkgNiA4VjZINEMyLjkwOSA2IDIgNS4wOTEgMiA0QzIgMi45MDkgMi45MDkgMiA0IDJINiA0VjJIMTJaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTIgMTJDMTAuMzQzIDEyIDkgMTMuMzQzIDkgMTVWMTdIMTVWMTVDMTUgMTMuMzQzIDEzLjY1NyAxMiAxMiAxMloiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo8L3N2Zz4K" alt="Logo" class="logo">
-            <h1>ใบเสนอราคา</h1>
-            <p>Quotation</p>
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iIzQyOTllMSIvPgo8cGF0aCBkPSJNMjAgMjBDMTguODk1NCAyMCAxOCAyMC44OTU0IDE4IDIyVjI2SDE0VjIyQzE0IDE5Ljc5MDkgMTUuNzkwOSAxOCAxOCAxOEgyMkMyNC4yMDkxIDE4IDI2IDE5Ljc5MDkgMjYgMjJWMjZIMjJWMjJDMjIgMjAuODk1NCAyMS4xMDQ2IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTIwIDMwQzE4LjM0MyAzMCAxNyAzMS4zNDMgMTcgMzNWMzVIMjNWMzNDMjMgMzEuMzQzIDIxLjY1NyAzMCAyMCAzMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0zMCAyMEMyOC44OTU0IDIwIDI4IDIwLjg5NTQgMjggMjJWMjZIMjRWMjJDMjQgMTkuNzkwOSAyNS43OTA5IDE4IDI4IDE4SDMyQzM0LjIwOTEgMTggMzYgMTkuNzkwOSAzNiAyMlYyNkgzMlYyMkMzMiAyMC44OTU0IDMxLjEwNDYgMjAgMzAgMjBaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMzAgMzBDMjguMzQzIDMwIDI3IDMxLjM0MyAyNyAzM1YzNUgzM1YzM0MzMyAzMS4zNDMgMzEuNjU3IDMwIDMwIDMwWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTQwIDIwQzM4Ljg5NTQgMjAgMzggMjAuODk1NCAzOCAyMlYyNkgzNFYyMkMzNCAxOS43OTA5IDM1Ljc5MDkgMTggMzggMThINDJDMjQuMjA5MSAxOCAyNiAxOS43OTA5IDI2IDIyVjI2SDQyVjIyQzQyIDIwLjg5NTQgNDEuMTA0NiAyMCA0MCAyMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik00MCAzMEMzOC4zNDMgMzAgMzcgMzEuMzQzIDM3IDMzVjM1SDQzVjMzNDNjMgMzEuMzQzIDQxLjY1NyAzMCA0MCAzMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik02MCAyMEw1OCAyMC44OTU0IDU4IDIyVjI2SDU0VjIyQzU0IDE5Ljc5MDkgNTUuNzkwOSAxOCA1OCAxOEg2MkM2NC4yMDkxIDE4IDY2IDE5Ljc5MDkgNjYgMjJWMjZINjJWMjJDNjIgMjAuODk1NCA2MS4xMDQ2IDIwIDYwIDIwWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTYwIDMwQzU4LjM0MyAzMCA1NyAzMS4zNDMgNTcgMzNWMzVINjNWMzNDNjMgMzEuMzQzIDYxLjY1NyAzMCA2MCAzMFoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=" alt="Logo" class="logo">
+            <div class="header-content">
+                <h1>ใบเสนอราคา</h1>
+                <p>Quotation</p>
+            </div>
         </div>
 
         <div class="company-info">
