@@ -146,30 +146,37 @@ export default function AdminB2BQuotations() {
     }
   }
 
-  // ส่งใบเสนอราคา
-  const handleSendQuotation = async (quotationId: string) => {
+  // ดูใบเสนอราคา
+  const handleViewQuotation = (quotation: Quotation) => {
+    // เปิดหน้าใหม่เพื่อดูใบเสนอราคา
+    window.open(`/adminb2b/quotations/${quotation._id}/view`, '_blank')
+  }
+
+  // โหลด PDF
+  const handleDownloadPDF = async (quotation: Quotation) => {
     try {
-      const response = await fetch(`/api/quotations/${quotationId}/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          method: 'email',
-          sentBy: 'Admin',
-        }),
+      const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
+        method: 'GET',
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการส่งใบเสนอราคา')
+        throw new Error('เกิดข้อผิดพลาดในการสร้าง PDF')
       }
 
-      await fetchQuotations()
-      toast.success('ส่งใบเสนอราคาเรียบร้อยแล้ว')
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ใบเสนอราคา_${quotation.quotationNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast.success('ดาวน์โหลด PDF เรียบร้อยแล้ว')
     } catch (error) {
-      console.error('Error sending quotation:', error)
-      toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการส่งใบเสนอราคา')
+      console.error('Error downloading PDF:', error)
+      toast.error('เกิดข้อผิดพลาดในการดาวน์โหลด PDF')
     }
   }
 
@@ -385,25 +392,30 @@ export default function AdminB2BQuotations() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
+                                                <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewQuotation(quotation)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            ดูใบเสนอราคา
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPDF(quotation)}
+                            className="text-green-600 hover:text-green-800 transition-colors"
+                          >
+                            โหลด PDF
+                          </button>
                           <button
                             onClick={() => handleEditQuotation(quotation)}
                             className="text-gray-600 hover:text-gray-900 transition-colors"
                           >
                             แก้ไข
                           </button>
-                          {quotation.status === 'draft' && (
-                            <button
-                              onClick={() => handleSendQuotation(quotation._id)}
-                              className="text-gray-600 hover:text-gray-900 transition-colors"
-                            >
-                              ส่ง
-                            </button>
-                          )}
+ 
                           {quotation.status === 'draft' && (
                             <button
                               onClick={() => handleDeleteQuotation(quotation._id)}
-                              className="text-gray-600 hover:text-gray-900 transition-colors"
+                              className="text-red-600 hover:text-red-800 transition-colors"
                             >
                               ลบ
                             </button>

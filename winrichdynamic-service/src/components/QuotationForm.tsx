@@ -42,7 +42,7 @@ interface Customer {
 interface QuotationFormProps {
   initialData?: Partial<QuotationFormData>;
   customers: Customer[];
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: any) => Promise<any>;
   onCancel: () => void;
   isEditing?: boolean;
   loading?: boolean;
@@ -245,8 +245,19 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       }
       
       console.log('Submitting quotation data:', submitData);
-      await onSubmit(submitData);
-      toast.success(isEditing ? 'อัพเดทใบเสนอราคาเรียบร้อยแล้ว' : 'สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว');
+      const result = await onSubmit(submitData);
+      
+      if (result && result._id && !isEditing) {
+        // หลังสร้างใบเสนอราคาใหม่ ให้แสดง PDF
+        toast.success('สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว กำลังเปิด PDF...');
+        
+        // รอสักครู่แล้วเปิด PDF
+        setTimeout(() => {
+          window.open(`/adminb2b/quotations/${result._id}/view`, '_blank');
+        }, 1000);
+      } else {
+        toast.success(isEditing ? 'อัพเดทใบเสนอราคาเรียบร้อยแล้ว' : 'สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว');
+      }
     } catch (error) {
       console.error('Error submitting quotation:', error);
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');

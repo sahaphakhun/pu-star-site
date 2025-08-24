@@ -1,21 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
-import { updateQuotationSchema } from '@/schemas/quotation';
 
-// GET: ดึงข้อมูลใบเสนอราคาตาม ID
+// GET: ดึงข้อมูลใบเสนอราคาเดียว
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
+    
     const resolvedParams = await params;
     const quotation = await Quotation.findById(resolvedParams.id).lean();
     
     if (!quotation) {
       return NextResponse.json(
-        { error: 'ไม่พบใบเสนอราคานี้' },
+        { error: 'ไม่พบใบเสนอราคา' },
         { status: 404 }
       );
     }
@@ -31,64 +31,36 @@ export async function GET(
   }
 }
 
-// PUT: อัพเดทข้อมูลใบเสนอราคา
+// PUT: อัพเดทใบเสนอราคา
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const raw = await request.json();
-    
-    // Validate input data
-    const parsed = updateQuotationSchema.safeParse(raw);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { 
-          error: 'รูปแบบข้อมูลไม่ถูกต้อง', 
-          details: parsed.error.issues 
-        },
-        { status: 400 }
-      );
-    }
-
-    const updateData = parsed.data;
-    
     await connectDB();
-    const resolvedParams = await params;
     
-    // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(resolvedParams.id);
-    if (!existingQuotation) {
+    const body = await request.json();
+    
+    const resolvedParams = await params;
+    const quotation = await Quotation.findByIdAndUpdate(
+      resolvedParams.id,
+      body,
+      { new: true, runValidators: true }
+    ).lean();
+    
+    if (!quotation) {
       return NextResponse.json(
-        { error: 'ไม่พบใบเสนอราคานี้' },
+        { error: 'ไม่พบใบเสนอราคา' },
         { status: 404 }
       );
     }
     
-    // อัพเดทข้อมูลใบเสนอราคา
-    const updatedQuotation = await Quotation.findByIdAndUpdate(
-      resolvedParams.id,
-      updateData,
-      { 
-        new: true, 
-        runValidators: true 
-      }
-    ).lean();
-    
-    return NextResponse.json(updatedQuotation);
+    return NextResponse.json(quotation);
     
   } catch (error) {
     console.error('[Quotation API] PUT Error:', error);
-    
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      return NextResponse.json(
-        { error: 'ข้อมูลใบเสนอราคาซ้ำกับที่มีอยู่ในระบบ' },
-        { status: 409 }
-      );
-    }
-    
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการอัพเดทข้อมูลใบเสนอราคา' },
+      { error: 'เกิดข้อผิดพลาดในการอัพเดทใบเสนอราคา' },
       { status: 500 }
     );
   }
@@ -96,36 +68,23 @@ export async function PUT(
 
 // DELETE: ลบใบเสนอราคา
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const resolvedParams = await params;
     
-    // ตรวจสอบว่าใบเสนอราคามีอยู่จริงหรือไม่
-    const existingQuotation = await Quotation.findById(resolvedParams.id);
-    if (!existingQuotation) {
+    const resolvedParams = await params;
+    const quotation = await Quotation.findByIdAndDelete(resolvedParams.id);
+    
+    if (!quotation) {
       return NextResponse.json(
-        { error: 'ไม่พบใบเสนอราคานี้' },
+        { error: 'ไม่พบใบเสนอราคา' },
         { status: 404 }
       );
     }
     
-    // ตรวจสอบว่าใบเสนอราคาสามารถลบได้หรือไม่
-    if (existingQuotation.status === 'sent' || existingQuotation.status === 'accepted') {
-      return NextResponse.json(
-        { error: 'ไม่สามารถลบใบเสนอราคาที่ส่งแล้วหรือลูกค้ายอมรับแล้วได้' },
-        { status: 400 }
-      );
-    }
-    
-    // ลบใบเสนอราคา
-    await Quotation.findByIdAndDelete(resolvedParams.id);
-    
-    return NextResponse.json({
-      message: 'ลบใบเสนอราคาเรียบร้อยแล้ว'
-    });
+    return NextResponse.json({ message: 'ลบใบเสนอราคาเรียบร้อยแล้ว' });
     
   } catch (error) {
     console.error('[Quotation API] DELETE Error:', error);
