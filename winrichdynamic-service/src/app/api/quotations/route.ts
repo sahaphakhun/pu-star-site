@@ -92,10 +92,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const raw = await request.json();
+    console.log('[Quotation API] Received data:', JSON.stringify(raw, null, 2));
     
     // Validate input data
     const parsed = createQuotationSchema.safeParse(raw);
     if (!parsed.success) {
+      console.error('[Quotation API] Validation failed:', {
+        raw,
+        errors: parsed.error.issues
+      });
       return NextResponse.json(
         { 
           error: 'รูปแบบข้อมูลไม่ถูกต้อง', 

@@ -41,15 +41,20 @@ export const createQuotationSchema = z.object({
   customerTaxId: z.string()
     .regex(/^\d{13}$/, 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine((val) => !val || /^\d{13}$/.test(val), {
+      message: 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก'
+    }),
   customerAddress: z.string()
     .max(500, 'ที่อยู่ลูกค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร')
     .optional()
     .or(z.literal('')),
   customerPhone: z.string()
-    .regex(/^\+?66\d{9}$/, 'รูปแบบเบอร์โทรศัพท์ลูกค้าไม่ถูกต้อง')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .refine((val) => !val || /^(\+?66|0)\d{9}$/.test(val), {
+      message: 'รูปแบบเบอร์โทรศัพท์ลูกค้าไม่ถูกต้อง'
+    }),
   subject: z.string()
     .min(1, 'กรุณาระบุหัวข้อใบเสนอราคา')
     .max(200, 'หัวข้อใบเสนอราคาต้องมีความยาวไม่เกิน 200 ตัวอักษร')
@@ -80,6 +85,13 @@ export const createQuotationSchema = z.object({
     .max(1000, 'หมายเหตุต้องมีความยาวไม่เกิน 1000 ตัวอักษร')
     .optional()
     .or(z.literal('')),
+  // Add calculated fields that the model expects
+  subtotal: z.number().optional(),
+  totalDiscount: z.number().optional(),
+  totalAmount: z.number().optional(),
+  vatAmount: z.number().optional(),
+  grandTotal: z.number().optional(),
+  status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']).optional().default('draft'),
 });
 
 // Schema สำหรับการอัพเดทใบเสนอราคา

@@ -119,7 +119,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }, 0);
     
     const totalDiscount = formData.items.reduce((sum, item) => {
-      return sum + calculateItemTotal(item) * (parseFloat(item.discount) || 0) / 100;
+      const itemTotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
+      return sum + (itemTotal * (parseFloat(item.discount) || 0) / 100);
     }, 0);
     
     const totalAmount = subtotal - totalDiscount;
@@ -181,21 +182,44 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }
 
     try {
+      // Calculate totals first
+      const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal } = calculateTotals();
+      
       const submitData = {
         ...formData,
         items: formData.items.map(item => ({
           ...item,
-          quantity: parseFloat(item.quantity),
-          unitPrice: parseFloat(item.unitPrice),
-          discount: parseFloat(item.discount),
+          quantity: parseFloat(item.quantity) || 0,
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          discount: parseFloat(item.discount) || 0,
           totalPrice: calculateItemTotal(item),
         })),
-        vatRate: parseFloat(formData.vatRate),
+        vatRate: parseFloat(formData.vatRate) || 7,
+        // Add calculated fields that the model expects
+        subtotal,
+        totalDiscount,
+        totalAmount,
+        vatAmount,
+        grandTotal,
+        // Add status field
+        status: 'draft' as const,
       };
       
+      // Validate that all required numeric fields are valid numbers
+      const hasInvalidNumbers = submitData.items.some(item => 
+        isNaN(item.quantity) || isNaN(item.unitPrice) || isNaN(item.discount)
+      );
+      
+      if (hasInvalidNumbers) {
+        toast.error('กรุณาตรวจสอบข้อมูลตัวเลขให้ถูกต้อง');
+        return;
+      }
+      
+      console.log('Submitting quotation data:', submitData);
       await onSubmit(submitData);
       toast.success(isEditing ? 'อัพเดทใบเสนอราคาเรียบร้อยแล้ว' : 'สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว');
     } catch (error) {
+      console.error('Error submitting quotation:', error);
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
     }
   };
