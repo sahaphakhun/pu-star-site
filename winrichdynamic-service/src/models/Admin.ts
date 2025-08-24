@@ -21,6 +21,7 @@ const AdminSchema: Schema = new Schema({
   phone: {
     type: String,
     required: true,
+    unique: true,
     trim: true
   },
   email: {
@@ -52,7 +53,7 @@ const AdminSchema: Schema = new Schema({
 });
 
 // Indexes
-AdminSchema.index({ phone: 1 }, { unique: true });
+// ลบ index ของ phone ออกเพราะมี unique: true ใน field definition อยู่แล้ว
 AdminSchema.index({ email: 1 });
 AdminSchema.index({ role: 1 });
 AdminSchema.index({ isActive: 1 });

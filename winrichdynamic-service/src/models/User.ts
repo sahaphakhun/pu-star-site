@@ -54,7 +54,7 @@ const UserSchema: Schema = new Schema({
 });
 
 // สร้าง index สำหรับการค้นหา (เฉพาะที่จำเป็น)
-UserSchema.index({ phoneNumber: 1 }, { unique: true });
+// ลบ index ของ phoneNumber ออกเพราะมี unique: true ใน field definition อยู่แล้ว
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 

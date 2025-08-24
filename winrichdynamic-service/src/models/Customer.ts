@@ -123,7 +123,8 @@ const customerSchema = new Schema<ICustomer>(
 );
 
 // สร้าง Indexes สำหรับการค้นหา
-customerSchema.index({ name: 'text', phoneNumber: 'text', taxId: 'text' });
+customerSchema.index({ name: 'text', taxId: 'text' }); // ลบ phoneNumber ออกจาก text index
+customerSchema.index({ phoneNumber: 1 }); // เพิ่ม index แยกสำหรับ phoneNumber
 customerSchema.index({ email: 1 }, { unique: true, sparse: true });
 customerSchema.index({ taxId: 1 }, { unique: true, sparse: true });
 customerSchema.index({ customerType: 1 });
