@@ -108,6 +108,7 @@ const quotationSchema = new Schema<IQuotation>(
     quotationNumber: {
       type: String,
       required: [true, 'กรุณาระบุเลขที่ใบเสนอราคา'],
+      unique: true,
       trim: true,
     },
     customerId: {
