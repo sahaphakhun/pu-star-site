@@ -98,7 +98,7 @@ ProductSchema.index({
 });
 
 // Virtual for profit margin
-ProductSchema.virtual('profitMargin').get(function() {
+ProductSchema.virtual('profitMargin').get(function(this: any) {
   if (this.cost > 0) {
     return ((this.price - this.cost) / this.cost * 100).toFixed(2);
   }
@@ -106,12 +106,12 @@ ProductSchema.virtual('profitMargin').get(function() {
 });
 
 // Virtual for profit
-ProductSchema.virtual('profit').get(function() {
+ProductSchema.virtual('profit').get(function(this: any) {
   return this.price - this.cost;
 });
 
 // Virtual for stock status
-ProductSchema.virtual('stockStatus').get(function() {
+ProductSchema.virtual('stockStatus').get(function(this: any) {
   if (this.stock === 0) return 'out_of_stock';
   if (this.stock < 10) return 'low_stock';
   return 'in_stock';

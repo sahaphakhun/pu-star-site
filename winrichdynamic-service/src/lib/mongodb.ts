@@ -13,7 +13,7 @@ if (!MONGODB_URI) {
  */
 declare global {
   var mongoose: {
-    conn: mongoose.Connection | null;
+    conn: mongoose.Mongoose | null;
     promise: Promise<mongoose.Mongoose> | null;
   };
 }
@@ -41,7 +41,7 @@ async function connectDB() {
     family: 4
   };
 
-  global.mongoose.promise = mongoose.connect(MONGODB_URI, opts);
+  global.mongoose.promise = mongoose.connect(MONGODB_URI!, opts);
   
   try {
     global.mongoose.conn = await global.mongoose.promise;
