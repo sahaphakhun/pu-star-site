@@ -1,24 +1,27 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 export interface IAdmin extends Document {
   name: string;
+  phone: string;
   email: string;
-  password: string;
+  company?: string;
   role: mongoose.Types.ObjectId; // อ้างอิงไปยัง Role ID
   isActive: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  
-  // Methods
-  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const AdminSchema = new Schema<IAdmin>({
   name: {
     type: String,
     required: true,
+    trim: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
     trim: true
   },
   email: {
@@ -28,10 +31,9 @@ const AdminSchema = new Schema<IAdmin>({
     lowercase: true,
     trim: true
   },
-  password: {
+  company: {
     type: String,
-    required: true,
-    minlength: 6
+    trim: true
   },
   role: {
     type: Schema.Types.ObjectId,
@@ -49,22 +51,6 @@ const AdminSchema = new Schema<IAdmin>({
   timestamps: true
 });
 
-// Hash password ก่อนบันทึก
-AdminSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error as Error);
-  }
-});
 
-// Method สำหรับเปรียบเทียบรหัสผ่าน
-AdminSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
-};
 
 export default mongoose.models.Admin || mongoose.model<IAdmin>('Admin', AdminSchema);

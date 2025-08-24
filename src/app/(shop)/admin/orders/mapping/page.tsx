@@ -4,7 +4,7 @@ import React from 'react';
 import { PermissionGate } from '@/components/PermissionGate';
 import { PERMISSIONS } from '@/constants/permissions';
 import OrderMappingManager from '@/components/OrderMappingManager';
-import DatabaseStatus from '@/components/DatabaseStatus';
+
 
 const AdminOrderMappingPage = () => {
   return (

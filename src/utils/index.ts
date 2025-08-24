@@ -13,8 +13,4 @@ export * from './openai-utils';
 export * from './cache-manager';
 
 // ตัวอย่างการใช้งาน
-export * from './messenger-example';
 export * from './cache-example';
-
-// ระบบทดสอบ
-export * from './messenger-test';
