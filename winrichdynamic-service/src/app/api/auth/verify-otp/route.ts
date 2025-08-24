@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
-import jwt from 'jsonwebtoken';
 import { verifyOTP } from '@/utils/deesmsx';
+import * as jose from 'jose';
+
+// Global OTP cache (ใน production ควรใช้ Redis)
+declare global {
+  var otpCache: Map<string, {
+    otp: string;
+    expiresAt: number;
+    attempts: number;
+    token: string;
+    ref: string;
+  }> | undefined;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,27 +23,32 @@ export async function POST(request: NextRequest) {
 
     if (!phone || !otp) {
       return NextResponse.json(
-        { success: false, error: 'กรุณากรอกเบอร์โทรศัพท์และ OTP' },
+        { success: false, error: 'กรุณาระบุเบอร์โทรศัพท์และรหัส OTP' },
         { status: 400 }
       );
     }
 
-    // ตรวจสอบ OTP จาก cache
-    global.otpCache = global.otpCache || new Map();
-    const otpData = global.otpCache.get(phone);
+    // ตรวจสอบ OTP ใน cache
+    if (!global.otpCache) {
+      return NextResponse.json(
+        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
+        { status: 400 }
+      );
+    }
 
+    const otpData = global.otpCache.get(phone);
     if (!otpData) {
       return NextResponse.json(
-        { success: false, error: 'OTP หมดอายุหรือไม่ถูกต้อง' },
+        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
         { status: 400 }
       );
     }
 
-    // ตรวจสอบ OTP หมดอายุ
+    // ตรวจสอบว่า OTP หมดอายุหรือไม่
     if (Date.now() > otpData.expiresAt) {
       global.otpCache.delete(phone);
       return NextResponse.json(
-        { success: false, error: 'OTP หมดอายุแล้ว กรุณาส่งใหม่' },
+        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
         { status: 400 }
       );
     }
@@ -41,28 +57,40 @@ export async function POST(request: NextRequest) {
     if (otpData.attempts >= 3) {
       global.otpCache.delete(phone);
       return NextResponse.json(
-        { success: false, error: 'ลอง OTP เกินจำนวนครั้งที่กำหนด กรุณาส่งใหม่' },
+        { success: false, error: 'ลอง OTP เกินจำนวนครั้งที่กำหนด กรุณาขอใหม่' },
         { status: 400 }
       );
     }
 
-    // ยืนยัน OTP ผ่าน DeeSMSx API
-    try {
-      await verifyOTP(otpData.token, otp);
-    } catch (error) {
-      otpData.attempts += 1;
-      global.otpCache.set(phone, otpData);
-      
-      console.error('[B2B] OTP verification failed:', error);
-      return NextResponse.json(
-        { success: false, error: 'OTP ไม่ถูกต้อง' },
-        { status: 400 }
-      );
-    }
+    // เพิ่มจำนวนครั้งที่ลอง
+    otpData.attempts++;
 
-    // ค้นหาผู้ดูแลระบบ
-    const admin = await Admin.findOne({ phone }).populate('role', 'name level');
+    // ตรวจสอบ OTP
+    let isValidOtp = false;
     
+    try {
+      if (otpData.token !== 'mock-token') {
+        // ตรวจสอบ OTP ผ่าน DeeSMSx
+        await verifyOTP(otpData.token, otp);
+        isValidOtp = true;
+      } else {
+        // ตรวจสอบ OTP จำลอง
+        isValidOtp = otp === otpData.otp;
+      }
+    } catch (verifyError) {
+      console.error('[B2B] OTP verification error:', verifyError);
+      isValidOtp = false;
+    }
+
+    if (!isValidOtp) {
+      return NextResponse.json(
+        { success: false, error: 'รหัส OTP ไม่ถูกต้อง' },
+        { status: 400 }
+      );
+    }
+
+    // ค้นหา admin
+    const admin = await Admin.findOne({ phone }).populate('role', 'name level');
     if (!admin) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบผู้ใช้ในระบบ' },
@@ -70,44 +98,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!admin.isActive) {
+    // สร้าง JWT token
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
       return NextResponse.json(
-        { success: false, error: 'บัญชีผู้ใช้ถูกระงับการใช้งาน' },
-        { status: 401 }
+        { success: false, error: 'JWT secret ไม่ถูกต้อง' },
+        { status: 500 }
       );
     }
+
+    const token = await new jose.SignJWT({
+      adminId: admin._id.toString(),
+      phone: admin.phone,
+      role: admin.role.name,
+      roleLevel: admin.role.level
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(new TextEncoder().encode(secret));
+
+    // อัปเดต lastLoginAt
+    admin.lastLoginAt = new Date();
+    await admin.save();
 
     // ลบ OTP จาก cache
     global.otpCache.delete(phone);
 
-    // อัปเดตเวลาล็อกอินล่าสุด
-    admin.lastLoginAt = new Date();
-    await admin.save();
-
-    // สร้าง JWT token
-    const secret = process.env.JWT_SECRET || 'your-secret-key';
-    const token = jwt.sign(
-      {
-        adminId: admin._id,
-        phone: admin.phone,
-        role: admin.role?.name || 'admin',
-        roleLevel: admin.role?.level || 1
-      },
-      secret,
-      { expiresIn: '7d' }
-    );
+    console.log(`[B2B] Admin logged in: ${admin.name} (${phone})`);
 
     return NextResponse.json({
       success: true,
       message: 'เข้าสู่ระบบสำเร็จ',
-      token,
       data: {
+        token,
         admin: {
           id: admin._id,
           name: admin.name,
           phone: admin.phone,
-          role: admin.role?.name || 'admin',
-          roleLevel: admin.role?.level || 1
+          email: admin.email,
+          company: admin.company,
+          role: admin.role.name,
+          roleLevel: admin.role.level
         }
       }
     });
