@@ -50,7 +50,7 @@ function sanitizeString(str: any): string {
   if (!str) return '';
   
   try {
-    // แปลงเป็น string และทำความสะอาด
+    // แปลงเป็น string
     let cleanStr = String(str);
     
     // ลบ control characters และ replacement characters
@@ -62,12 +62,14 @@ function sanitizeString(str: any): string {
     // ตรวจสอบว่าเป็น string ที่ถูกต้อง
     if (cleanStr.length === 0) return '';
     
-    // ลองแปลงเป็น Buffer และกลับมาเป็น string
-    const buffer = Buffer.from(cleanStr, 'utf8');
-    const result = buffer.toString('utf8');
+    // ใช้วิธีที่ง่ายกว่า: ตรวจสอบว่าเป็น ASCII หรือ Thai characters เท่านั้น
+    const safeChars = /^[\u0E00-\u0E7F\u0020-\u007E]*$/;
+    if (safeChars.test(cleanStr)) {
+      return cleanStr;
+    }
     
-    // ตรวจสอบว่าผลลัพธ์ไม่เป็น empty
-    return result || cleanStr;
+    // ถ้าไม่ปลอดภัย ให้ลบตัวอักษรที่ไม่ได้กำหนด
+    return cleanStr.replace(/[^\u0E00-\u0E7F\u0020-\u007E]/g, '');
   } catch (error) {
     console.warn('Error sanitizing string:', error);
     // Fallback: ใช้เฉพาะตัวอักษรที่ปลอดภัย
