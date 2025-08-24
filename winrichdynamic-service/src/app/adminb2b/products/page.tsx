@@ -51,6 +51,13 @@ const ProductsPage: React.FC = () => {
   });
 
   useEffect(() => {
+    // ตรวจสอบ token เมื่อโหลดหน้า
+    const token = localStorage.getItem('b2b_auth_token');
+    if (!token) {
+      location.href = '/adminb2b/login';
+      return;
+    }
+    
     loadProducts();
     loadCategories();
   }, []);
@@ -88,11 +95,28 @@ const ProductsPage: React.FC = () => {
 
   const handleCreateProduct = async () => {
     try {
+      const token = localStorage.getItem('b2b_auth_token');
+      if (!token) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        location.href = '/adminb2b/login';
+        return;
+      }
+
       const response = await fetch('/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
+      
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        localStorage.removeItem('b2b_auth_token');
+        location.href = '/adminb2b/login';
+        return;
+      }
       
       const result = await response.json();
       
@@ -114,11 +138,28 @@ const ProductsPage: React.FC = () => {
     if (!editingProduct) return;
     
     try {
+      const token = localStorage.getItem('b2b_auth_token');
+      if (!token) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        location.href = '/adminb2b/login';
+        return;
+      }
+
       const response = await fetch(`/api/products/${editingProduct._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
+      
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        localStorage.removeItem('b2b_auth_token');
+        location.href = '/adminb2b/login';
+        return;
+      }
       
       const result = await response.json();
       
@@ -140,9 +181,26 @@ const ProductsPage: React.FC = () => {
     if (!confirm('คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?')) return;
     
     try {
+      const token = localStorage.getItem('b2b_auth_token');
+      if (!token) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        location.href = '/adminb2b/login';
+        return;
+      }
+
       const response = await fetch(`/api/products/${productId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        }
       });
+      
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        localStorage.removeItem('b2b_auth_token');
+        location.href = '/adminb2b/login';
+        return;
+      }
       
       const result = await response.json();
       
@@ -189,6 +247,23 @@ const ProductsPage: React.FC = () => {
     });
   };
 
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('b2b_auth_token');
+      if (token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('b2b_auth_token');
+      location.href = '/adminb2b/login';
+    }
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase());
@@ -226,13 +301,21 @@ const ProductsPage: React.FC = () => {
             จัดการข้อมูลสินค้าและสต็อกในระบบ B2B
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          + เพิ่มสินค้าใหม่
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            + เพิ่มสินค้าใหม่
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          >
+            ออกจากระบบ
+          </button>
         </div>
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg border shadow-sm p-6">

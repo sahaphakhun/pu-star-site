@@ -2,14 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Category from '@/models/Category';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    const categories = await Category.find({}).sort({ createdAt: -1 });
-    return NextResponse.json(categories);
+    const categories = await Category.find({ isActive: true }).sort({ name: 1 });
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: categories,
+      message: 'ดึงข้อมูลหมวดหมู่เรียบร้อยแล้ว'
+    });
   } catch (error) {
     console.error('[B2B] Error fetching categories:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงหมวดหมู่' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false,
+      error: 'เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่' 
+    }, { status: 500 });
   }
 }
 

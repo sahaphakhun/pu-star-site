@@ -19,10 +19,17 @@ export async function GET(request: NextRequest) {
 		}
 
 		const products = await Product.find(query).sort({ createdAt: -1 });
-		return NextResponse.json(products);
+		return NextResponse.json({ 
+			success: true, 
+			data: products,
+			message: 'ดึงข้อมูลสินค้าเรียบร้อยแล้ว'
+		});
 	} catch (error) {
 		console.error('[B2B] Error fetching products:', error);
-		return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า' }, { status: 500 });
+		return NextResponse.json({ 
+			success: false,
+			error: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า' 
+		}, { status: 500 });
 	}
 }
 
@@ -54,10 +61,17 @@ export async function POST(request: NextRequest) {
 			isAvailable: isAvailable !== false,
 		});
 
-		return NextResponse.json(product, { status: 201 });
+		return NextResponse.json({ 
+			success: true, 
+			data: product,
+			message: 'สร้างสินค้าเรียบร้อยแล้ว'
+		}, { status: 201 });
 	} catch (error) {
 		console.error('[B2B] Error creating product:', error);
-		return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้างสินค้า' }, { status: 500 });
+		return NextResponse.json({ 
+			success: false,
+			error: 'เกิดข้อผิดพลาดในการสร้างสินค้า' 
+		}, { status: 500 });
 	}
 }
 

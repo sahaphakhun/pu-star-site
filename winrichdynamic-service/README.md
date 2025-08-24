@@ -122,6 +122,11 @@ WMS_API_KEY=your_wms_api_key_here
 # JWT Secret
 JWT_SECRET=your_jwt_secret_here
 
+# SMS Configuration (DeeSMSx)
+DEESMSX_API_KEY=your_deesmsx_api_key_here
+DEESMSX_SECRET_KEY=your_deesmsx_secret_key_here
+DEESMSX_SENDER_NAME=deeSMS.OTP
+
 # Email Configuration
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -182,6 +187,7 @@ NEXT_TELEMETRY_DISABLED=1
 - **LINE Bot** - การแจ้งเตือนและตอบกลับลูกค้า
 - **Email Service** - ส่งใบเสนอราคาทางอีเมล
 - **WMS Integration** - เชื่อมต่อกับระบบคลังสินค้า
+- **SMS Service (DeeSMSx)** - ส่ง OTP และข้อความ SMS
 
 ## 🐛 การแก้ไขปัญหา
 
