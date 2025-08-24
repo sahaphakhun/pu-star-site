@@ -65,18 +65,12 @@ export async function POST(request: NextRequest) {
     // เพิ่มจำนวนครั้งที่ลอง
     otpData.attempts++;
 
-    // ตรวจสอบ OTP
+    // ตรวจสอบ OTP ผ่าน DeeSMSx
     let isValidOtp = false;
     
     try {
-      if (otpData.token !== 'mock-token') {
-        // ตรวจสอบ OTP ผ่าน DeeSMSx
-        await verifyOTP(otpData.token, otp);
-        isValidOtp = true;
-      } else {
-        // ตรวจสอบ OTP จำลอง
-        isValidOtp = otp === otpData.otp;
-      }
+      await verifyOTP(otpData.token, otp);
+      isValidOtp = true;
     } catch (verifyError) {
       console.error('[B2B] OTP verification error:', verifyError);
       isValidOtp = false;

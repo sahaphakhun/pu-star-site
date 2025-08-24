@@ -53,62 +53,31 @@ export async function POST(request: NextRequest) {
       global.otpCache.delete(phone);
     }
 
-    try {
-      // ส่ง OTP ผ่าน DeeSMSx
-      const otpResult = await requestOTP(phone);
-      
-      // เก็บ OTP ใน cache
-      if (global.otpCache) {
-        global.otpCache.set(phone, {
-          otp: otpResult.result.ref, // ใช้ ref เป็น OTP
-          expiresAt: Date.now() + 5 * 60 * 1000, // 5 นาที
-          attempts: 0,
-          token: otpResult.result.token,
-          ref: otpResult.result.ref
-        });
-      }
-
-      console.log(`[B2B] OTP sent to ${phone} for admin: ${admin.name}`);
-
-      return NextResponse.json({
-        success: true,
-        message: 'ส่ง OTP สำเร็จ',
-        data: {
-          phone,
-          expiresIn: 5 * 60, // 5 นาที
-          adminName: admin.name
-        }
-      });
-
-    } catch (smsError) {
-      console.error('[B2B] SMS error:', smsError);
-      
-      // Fallback: สร้าง OTP จำลองสำหรับการทดสอบ
-      const mockOtp = Math.random().toString().slice(2, 8);
-      
-      if (global.otpCache) {
-        global.otpCache.set(phone, {
-          otp: mockOtp,
-          expiresAt: Date.now() + 5 * 60 * 1000, // 5 นาที
-          attempts: 0,
-          token: 'mock-token',
-          ref: mockOtp
-        });
-      }
-
-      console.log(`[B2B] Mock OTP created for ${phone}: ${mockOtp}`);
-
-      return NextResponse.json({
-        success: true,
-        message: 'ส่ง OTP สำเร็จ (จำลอง)',
-        data: {
-          phone,
-          expiresIn: 5 * 60, // 5 นาที
-          adminName: admin.name,
-          mockOtp: mockOtp // สำหรับการทดสอบ
-        }
+    // ส่ง OTP ผ่าน DeeSMSx
+    const otpResult = await requestOTP(phone);
+    
+    // เก็บ OTP ใน cache
+    if (global.otpCache) {
+      global.otpCache.set(phone, {
+        otp: otpResult.result.ref, // ใช้ ref เป็น OTP
+        expiresAt: Date.now() + 5 * 60 * 1000, // 5 นาที
+        attempts: 0,
+        token: otpResult.result.token,
+        ref: otpResult.result.ref
       });
     }
+
+    console.log(`[B2B] OTP sent to ${phone} for admin: ${admin.name}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'ส่ง OTP สำเร็จ',
+      data: {
+        phone,
+        expiresIn: 5 * 60, // 5 นาที
+        adminName: admin.name
+      }
+    });
 
   } catch (error) {
     console.error('[B2B] Send OTP error:', error);
