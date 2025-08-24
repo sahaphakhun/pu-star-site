@@ -24,7 +24,6 @@ const CategorySchema: Schema = new Schema({
   slug: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     lowercase: true
   },
@@ -38,7 +37,7 @@ const CategorySchema: Schema = new Schema({
 
 // Indexes
 CategorySchema.index({ name: 1 });
-CategorySchema.index({ slug: 1 });
+CategorySchema.index({ slug: 1 }, { unique: true });
 CategorySchema.index({ isActive: 1 });
 
 // Pre-save middleware to generate slug

@@ -43,7 +43,6 @@ const ProductSchema: Schema = new Schema({
   sku: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   category: {
@@ -84,7 +83,7 @@ const ProductSchema: Schema = new Schema({
 
 // Indexes
 ProductSchema.index({ name: 1 });
-ProductSchema.index({ sku: 1 });
+ProductSchema.index({ sku: 1 }, { unique: true });
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ status: 1 });
 ProductSchema.index({ price: 1 });

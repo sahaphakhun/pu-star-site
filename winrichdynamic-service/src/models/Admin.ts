@@ -21,7 +21,6 @@ const AdminSchema: Schema = new Schema({
   phone: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   email: {
@@ -53,7 +52,7 @@ const AdminSchema: Schema = new Schema({
 });
 
 // Indexes
-AdminSchema.index({ phone: 1 });
+AdminSchema.index({ phone: 1 }, { unique: true });
 AdminSchema.index({ email: 1 });
 AdminSchema.index({ role: 1 });
 AdminSchema.index({ isActive: 1 });

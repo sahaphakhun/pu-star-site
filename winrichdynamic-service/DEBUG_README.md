@@ -165,3 +165,128 @@ console.log('[B2B] Token validation result:', token ? 'valid' : 'invalid');
 2. **Refresh Token** - เพิ่ม refresh token mechanism
 3. **Rate Limiting** - เพิ่มการจำกัดจำนวนครั้งในการเรียก API
 4. **Audit Log** - เพิ่มการบันทึกการเข้าถึงระบบ
+
+## ปัญหาที่พบและวิธีแก้ไข
+
+### 1. MongoDB Connection Error
+
+**ปัญหา:** `MongooseServerSelectionError: getaddrinfo ENOTFOUND mongodb-s3ss.railway.internal`
+
+**สาเหตุ:** 
+- MONGODB_URI ไม่ถูกต้องหรือไม่มีการตั้งค่าใน Railway
+- MongoDB service ไม่ได้ถูกเชื่อมต่อกับโปรเจ็ก
+
+**วิธีแก้ไข:**
+
+#### ใน Railway Dashboard:
+1. ไปที่โปรเจ็ก B2B Service
+2. ไปที่แท็บ "Variables"
+3. เพิ่ม environment variable:
+   ```
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/winrichdynamic_b2b?retryWrites=true&w=majority
+   ```
+
+#### หรือเพิ่ม MongoDB Service:
+1. ไปที่แท็บ "New Service"
+2. เลือก "Database" > "MongoDB"
+3. Railway จะสร้าง MONGODB_URI ให้อัตโนมัติ
+4. คัดลอก MONGODB_URI ไปใส่ใน environment variables
+
+### 2. Duplicate Schema Index Warnings
+
+**ปัญหา:** 
+```
+[MONGOOSE] Warning: Duplicate schema index on {"phone":1} found
+[MONGOOSE] Warning: Duplicate schema index on {"name":1} found
+[MONGOOSE] Warning: Duplicate schema index on {"slug":1} found
+[MONGOOSE] Warning: Duplicate schema index on {"sku":1} found
+```
+
+**สาเหตุ:** การประกาศ index ซ้ำใน Mongoose schema
+
+**วิธีแก้ไข:**
+- ✅ **แก้ไขแล้ว:** ลบ `unique: true` ออกจาก field definition
+- ✅ **แก้ไขแล้ว:** ย้าย unique constraint ไปที่ `schema.index()` แทน
+
+**ไฟล์ที่แก้ไข:**
+- `src/models/Admin.ts` - ลบ unique จาก phone field
+- `src/models/Product.ts` - ลบ unique จาก sku field  
+- `src/models/Category.ts` - ลบ unique จาก slug field
+
+### 3. การตรวจสอบ Environment Variables
+
+**ตรวจสอบใน Railway:**
+```bash
+# ตรวจสอบ environment variables ที่จำเป็น
+MONGODB_URI=✅ (ต้องมี)
+JWT_SECRET=✅ (ต้องมี)
+NODE_ENV=production
+PORT=8080 (Railway จะตั้งให้อัตโนมัติ)
+```
+
+### 4. การ Debug MongoDB Connection
+
+**เพิ่ม logging ใน `src/lib/mongodb.ts`:**
+```typescript
+console.log('[B2B] MONGODB_URI:', MONGODB_URI?.substring(0, 20) + '...');
+```
+
+**ตรวจสอบ connection:**
+```bash
+# ตรวจสอบ logs ใน Railway
+railway logs
+
+# ตรวจสอบ environment variables
+railway variables
+```
+
+### 5. การ Restart Service
+
+**หลังจากแก้ไข environment variables:**
+1. ไปที่ Railway Dashboard
+2. กด "Deploy" เพื่อ restart service
+3. ตรวจสอบ logs ว่าการเชื่อมต่อสำเร็จ
+
+### 6. Health Check
+
+**ตรวจสอบว่า service ทำงาน:**
+```bash
+curl https://your-railway-app.railway.app/api/ping
+```
+
+**ควรได้ผลลัพธ์:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "service": "winrichdynamic-b2b"
+}
+```
+
+## การแก้ไขที่ทำไปแล้ว
+
+### ✅ แก้ไข Duplicate Index Warnings
+1. **Admin.ts** - ย้าย unique constraint จาก field definition ไปที่ index
+2. **Product.ts** - ย้าย unique constraint จาก field definition ไปที่ index  
+3. **Category.ts** - ย้าย unique constraint จาก field definition ไปที่ index
+
+### ✅ ปรับปรุง MongoDB Connection
+1. เพิ่ม error logging
+2. เพิ่ม connection options สำหรับ Railway
+3. เพิ่ม retry logic
+
+### ✅ ปรับปรุง Error Handling
+1. เพิ่ม detailed error messages
+2. เพิ่ม connection timeout settings
+3. เพิ่ม graceful shutdown
+
+## หมายเหตุสำคัญ
+
+**โปรเจ็กนี้เป็น B2B Subdomain Service ที่แยกจากโปรเจ็กหลัก**
+- ห้ามแก้ไขไฟล์นอกโฟลเดอร์ `winrichdynamic-service`
+- การแก้ไขต้องทำในโปรเจ็กนี้เท่านั้น
+- โปรเจ็กนี้รันบน Railway เป็น subdomain แยกต่างหาก
+
+## การติดต่อ
+
+หากยังมีปัญหาหลังจากแก้ไขตามคำแนะนำข้างต้น กรุณาติดต่อทีมพัฒนา

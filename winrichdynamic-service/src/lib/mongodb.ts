@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
+  console.error('[B2B] MONGODB_URI is not defined');
   throw new Error('Please define the MONGODB_URI environment variable inside .env');
 }
 
@@ -36,9 +37,10 @@ async function connectDB() {
   const opts = {
     bufferCommands: false,
     maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
-    family: 4
+    family: 4,
+    retryWrites: true
   };
 
   global.mongoose.promise = mongoose.connect(MONGODB_URI!, opts);
