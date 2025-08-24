@@ -14,7 +14,6 @@ const RoleSchema: Schema = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   description: {
@@ -42,7 +41,7 @@ const RoleSchema: Schema = new Schema({
 });
 
 // Indexes
-RoleSchema.index({ name: 1 });
+RoleSchema.index({ name: 1 }, { unique: true });
 RoleSchema.index({ level: 1 });
 RoleSchema.index({ isActive: 1 });
 

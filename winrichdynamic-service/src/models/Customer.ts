@@ -40,7 +40,6 @@ const customerSchema = new Schema<ICustomer>(
     email: {
       type: String,
       required: false,
-      unique: true,
       sparse: true,
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
@@ -50,7 +49,6 @@ const customerSchema = new Schema<ICustomer>(
     taxId: {
       type: String,
       required: false,
-      unique: true,
       sparse: true,
       trim: true,
       match: [
@@ -128,6 +126,8 @@ const customerSchema = new Schema<ICustomer>(
 
 // สร้าง Indexes สำหรับการค้นหา
 customerSchema.index({ name: 'text', phoneNumber: 'text', taxId: 'text' });
+customerSchema.index({ email: 1 }, { unique: true, sparse: true });
+customerSchema.index({ taxId: 1 }, { unique: true, sparse: true });
 customerSchema.index({ customerType: 1 });
 customerSchema.index({ assignedTo: 1 });
 customerSchema.index({ isActive: 1 });
