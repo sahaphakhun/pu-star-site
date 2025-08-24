@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 
 export default function AdminB2BLoginPage() {
   const [phone, setPhone] = useState('');
@@ -178,6 +179,15 @@ export default function AdminB2BLoginPage() {
             </div>
           </form>
         )}
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            ยังไม่มีบัญชี?{' '}
+            <Link href="/adminb2b/register" className="text-blue-600 hover:text-blue-800 font-medium">
+              สมัครสมาชิก
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

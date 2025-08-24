@@ -9,8 +9,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // อนุญาตหน้า login โดยไม่ต้องตรวจสอบ token
-  if (pathname.startsWith('/adminb2b/login')) {
+  // อนุญาตหน้า login และ register โดยไม่ต้องตรวจสอบ token
+  if (pathname.startsWith('/adminb2b/login') || pathname.startsWith('/adminb2b/register')) {
+    return NextResponse.next();
+  }
+
+  // อนุญาต API init โดยไม่ต้องตรวจสอบ token
+  if (pathname.startsWith('/api/adminb2b/init')) {
     return NextResponse.next();
   }
 
