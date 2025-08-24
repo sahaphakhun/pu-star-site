@@ -1,4 +1,6 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
+import path from 'path';
 
 export interface PDFOptions {
   format?: 'A4' | 'A3' | 'Letter' | 'Legal';
@@ -42,26 +44,86 @@ export interface QuotationData {
 }
 
 /**
+ * อ่านไฟล์ font และแปลงเป็น base64
+ */
+function getFontBase64(fontFileName: string): string {
+  try {
+    const fontPath = path.join(process.cwd(), 'public', 'fonts', fontFileName);
+    const fontBuffer = fs.readFileSync(fontPath);
+    return fontBuffer.toString('base64');
+  } catch (error) {
+    console.error(`Error reading font file ${fontFileName}:`, error);
+    return '';
+  }
+}
+
+/**
+ * ทำความสะอาดข้อมูลเพื่อป้องกันปัญหา encoding
+ */
+function sanitizeString(str: any): string {
+  if (!str) return '';
+  
+  try {
+    const cleanStr = String(str)
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // ลบ control characters
+      .replace(/[\uFFFD]/g, '') // ลบ replacement characters
+      .trim();
+    
+    // ตรวจสอบว่าเป็น string ที่ถูกต้อง
+    return Buffer.from(cleanStr, 'utf8').toString('utf8');
+  } catch {
+    return String(str).replace(/[^\u0E00-\u0E7F\u0020-\u007E]/g, '');
+  }
+}
+
+/**
+ * ทำความสะอาดข้อมูล quotation
+ */
+function sanitizeQuotationData(quotation: any): any {
+  const sanitizeArray = (arr: any[]): any[] => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => ({
+      ...item,
+      productName: sanitizeString(item.productName),
+      description: sanitizeString(item.description),
+      unit: sanitizeString(item.unit)
+    }));
+  };
+
+  return {
+    ...quotation,
+    quotationNumber: sanitizeString(quotation.quotationNumber),
+    customerName: sanitizeString(quotation.customerName),
+    customerTaxId: sanitizeString(quotation.customerTaxId),
+    customerAddress: sanitizeString(quotation.customerAddress),
+    customerPhone: sanitizeString(quotation.customerPhone),
+    subject: sanitizeString(quotation.subject),
+    paymentTerms: sanitizeString(quotation.paymentTerms),
+    deliveryTerms: sanitizeString(quotation.deliveryTerms),
+    notes: sanitizeString(quotation.notes),
+    items: sanitizeArray(quotation.items || [])
+  };
+}
+
+/**
  * สร้าง PDF จาก HTML ด้วย Puppeteer
  */
 export async function generatePDFFromHTML(
   html: string, 
   options: PDFOptions = {}
 ): Promise<Buffer> {
-  let browser;
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--font-render-hinting=none'
+    ]
+  });
+  
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
-    });
-    
     const page = await browser.newPage();
     
     // ตั้งค่า viewport
@@ -70,25 +132,15 @@ export async function generatePDFFromHTML(
       height: 1600 
     });
     
-    // ตั้งค่า content พร้อม error handling
-    try {
-      await page.setContent(html, { 
-        waitUntil: 'networkidle0',
-        timeout: 30000
-      });
-    } catch (error) {
-      console.error('Error setting page content:', error);
-      // ลองใช้วิธีอื่น
-      await page.setContent(html, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
-    }
+    // ตั้งค่า content
+    await page.setContent(html, { 
+      waitUntil: 'networkidle0' 
+    });
     
     // รอให้ font โหลดเสร็จ
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // สร้าง PDF พร้อม error handling
+    // สร้าง PDF
     const pdfBuffer = await page.pdf({
       format: options.format || 'A4',
       printBackground: options.printBackground !== false,
@@ -98,22 +150,12 @@ export async function generatePDFFromHTML(
         bottom: options.margin?.bottom || '20mm',
         left: options.margin?.left || '20mm'
       },
-      landscape: options.landscape || false,
-      timeout: 30000
+      landscape: options.landscape || false
     });
     
     return Buffer.from(pdfBuffer);
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error(`Failed to generate PDF: ${error.message}`);
   } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeError) {
-        console.error('Error closing browser:', closeError);
-      }
-    }
+    await browser.close();
   }
 }
 
@@ -121,6 +163,9 @@ export async function generatePDFFromHTML(
  * สร้าง HTML สำหรับใบเสนอราคา
  */
 export function generateQuotationHTML(quotation: QuotationData): string {
+  // ทำความสะอาดข้อมูลก่อน
+  const sanitizedQuotation = sanitizeQuotationData(quotation);
+  
   const formatDate = (dateString: string | Date) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
@@ -143,9 +188,42 @@ export function generateQuotationHTML(quotation: QuotationData): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ใบเสนอราคา ${quotation.quotationNumber}</title>
+    <title>ใบเสนอราคา ${sanitizedQuotation.quotationNumber}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Regular.ttf')}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Bold.ttf')}') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Medium.ttf')}') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-SemiBold.ttf')}') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Light.ttf')}') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+        }
         
         * {
             margin: 0;
@@ -154,7 +232,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         }
         
         body {
-            font-family: 'Sarabun', 'Noto Sans Thai', 'Tahoma', sans-serif;
+            font-family: 'Sarabun', 'Tahoma', sans-serif;
             font-size: 14px;
             line-height: 1.6;
             color: #333;
@@ -450,29 +528,29 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             </div>
             <div class="info-section">
                 <h3>ข้อมูลลูกค้า</h3>
-                <p><strong>${quotation.customerName}</strong></p>
-                ${quotation.customerTaxId ? `<p>เลขประจำตัวผู้เสียภาษี: ${quotation.customerTaxId}</p>` : ''}
-                ${quotation.customerAddress ? `<p>ที่อยู่: ${quotation.customerAddress}</p>` : ''}
-                ${quotation.customerPhone ? `<p>โทร: ${quotation.customerPhone}</p>` : ''}
+                <p><strong>${sanitizedQuotation.customerName}</strong></p>
+                ${sanitizedQuotation.customerTaxId ? `<p>เลขประจำตัวผู้เสียภาษี: ${sanitizedQuotation.customerTaxId}</p>` : ''}
+                ${sanitizedQuotation.customerAddress ? `<p>ที่อยู่: ${sanitizedQuotation.customerAddress}</p>` : ''}
+                ${sanitizedQuotation.customerPhone ? `<p>โทร: ${sanitizedQuotation.customerPhone}</p>` : ''}
             </div>
         </div>
 
         <div class="quotation-details">
             <div class="detail-item">
                 <div class="label">เลขที่ใบเสนอราคา</div>
-                <div class="value">${quotation.quotationNumber}</div>
+                <div class="value">${sanitizedQuotation.quotationNumber}</div>
             </div>
             <div class="detail-item">
                 <div class="label">วันที่สร้าง</div>
-                <div class="value">${formatDate(quotation.createdAt)}</div>
+                <div class="value">${formatDate(sanitizedQuotation.createdAt)}</div>
             </div>
             <div class="detail-item">
                 <div class="label">วันหมดอายุ</div>
-                <div class="value">${formatDate(quotation.validUntil)}</div>
+                <div class="value">${formatDate(sanitizedQuotation.validUntil)}</div>
             </div>
         </div>
 
-        <div class="subject">${quotation.subject}</div>
+        <div class="subject">${sanitizedQuotation.subject}</div>
 
         <table>
             <thead>
@@ -487,7 +565,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
                 </tr>
             </thead>
             <tbody>
-                ${quotation.items.map((item) => `
+                ${sanitizedQuotation.items.map((item: any) => `
                     <tr>
                         <td><strong>${item.productName}</strong></td>
                         <td>${item.description || '-'}</td>
@@ -505,23 +583,23 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             <div class="summary-table">
                 <div class="row">
                     <span>ราคารวม:</span>
-                    <span>${formatCurrency(quotation.subtotal)}</span>
+                    <span>${formatCurrency(sanitizedQuotation.subtotal)}</span>
                 </div>
                 <div class="row">
                     <span>ส่วนลดรวม:</span>
-                    <span>${formatCurrency(quotation.totalDiscount)}</span>
+                    <span>${formatCurrency(sanitizedQuotation.totalDiscount)}</span>
                 </div>
                 <div class="row">
                     <span>ราคาหลังหักส่วนลด:</span>
-                    <span>${formatCurrency(quotation.totalAmount)}</span>
+                    <span>${formatCurrency(sanitizedQuotation.totalAmount)}</span>
                 </div>
                 <div class="row">
-                    <span>ภาษีมูลค่าเพิ่ม (${quotation.vatRate}%):</span>
-                    <span>${formatCurrency(quotation.vatAmount)}</span>
+                    <span>ภาษีมูลค่าเพิ่ม (${sanitizedQuotation.vatRate}%):</span>
+                    <span>${formatCurrency(sanitizedQuotation.vatAmount)}</span>
                 </div>
                 <div class="row total">
                     <span>ราคารวมทั้งสิ้น:</span>
-                    <span>${formatCurrency(quotation.grandTotal)}</span>
+                    <span>${formatCurrency(sanitizedQuotation.grandTotal)}</span>
                 </div>
             </div>
         </div>
@@ -529,20 +607,20 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="terms">
             <div>
                 <h3>เงื่อนไขการชำระเงิน</h3>
-                <p>${quotation.paymentTerms}</p>
+                <p>${sanitizedQuotation.paymentTerms}</p>
             </div>
-            ${quotation.deliveryTerms ? `
+            ${sanitizedQuotation.deliveryTerms ? `
                 <div>
                     <h3>เงื่อนไขการส่งมอบ</h3>
-                    <p>${quotation.deliveryTerms}</p>
+                    <p>${sanitizedQuotation.deliveryTerms}</p>
                 </div>
             ` : ''}
         </div>
 
-        ${quotation.notes ? `
+        ${sanitizedQuotation.notes ? `
             <div class="notes">
                 <h3>หมายเหตุ</h3>
-                <p>${quotation.notes}</p>
+                <p>${sanitizedQuotation.notes}</p>
             </div>
         ` : ''}
 
@@ -560,7 +638,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         </div>
 
         <div class="footer">
-            <p>ใบเสนอราคานี้มีผลบังคับใช้จนถึงวันที่ ${formatDate(quotation.validUntil)}</p>
+            <p>ใบเสนอราคานี้มีผลบังคับใช้จนถึงวันที่ ${formatDate(sanitizedQuotation.validUntil)}</p>
             <p>Generated by WinRich Dynamic Service - ${new Date().toLocaleDateString('th-TH')}</p>
         </div>
     </div>

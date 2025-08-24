@@ -24,7 +24,7 @@ const unitSchema = z.object({
 const skuVariantSchema = z.object({
   key: z.string(),
   unitLabel: z.string().optional(),
-  options: z.record(z.string()),
+  options: z.record(z.string(), z.string()),
   sku: z.string().min(1, 'SKU ไม่สามารถว่างได้'),
   isActive: z.boolean()
 });

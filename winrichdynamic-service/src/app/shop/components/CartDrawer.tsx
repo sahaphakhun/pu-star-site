@@ -77,7 +77,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
 								{Object.entries(cart).map(([id, item]) => (
 									<div key={id} className="flex items-center space-x-4">
 										<div className="relative w-16 h-16">
-											<Image src={item.product.images?.[0] || '/placeholder-image.jpg'} alt={item.product.name} fill className="object-cover rounded" />
+											<Image src={item.product.imageUrl || '/placeholder-image.jpg'} alt={item.product.name} fill className="object-cover rounded" />
 										</div>
 										<div className="flex-1">
 											<h4 className="font-medium">{item.product.name}</h4>

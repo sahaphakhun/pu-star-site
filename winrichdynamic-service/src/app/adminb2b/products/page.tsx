@@ -5,23 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useTokenManager } from '@/utils/tokenManager';
 import AdminModal from '@/components/AdminModal';
 import ProductForm from '@/components/ProductForm';
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  cost: number;
-  sku: string;
-  category: string;
-  stock: number;
-  unit: string;
-  status: 'active' | 'inactive';
-  images: string[];
-  specifications: Record<string, string>;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Product, CreateProduct } from '@/schemas/product';
 
 interface Category {
   _id: string;
@@ -29,30 +13,22 @@ interface Category {
   description: string;
 }
 
+// Extended Product interface with _id for database
+interface ProductWithId extends Product {
+  _id: string;
+}
+
 const ProductsPage: React.FC = () => {
   const { getValidToken, logout, isAuthenticated, loading } = useTokenManager();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithId[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductWithId | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
-  const [formLoading, setFormLoading] = useState(false); // Added formLoading state
-
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: 0,
-    cost: 0,
-    sku: '',
-    category: '',
-    stock: 0,
-    unit: 'ชิ้น',
-    status: 'active' as 'active' | 'inactive',
-    specifications: {} as Record<string, string>
-  });
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     // ตรวจสอบ authentication เมื่อโหลดหน้า
@@ -128,11 +104,10 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleCreateProduct = async () => {
-    setFormLoading(true); // Start loading
+  const handleCreateProduct = async (productData: CreateProduct) => {
+    setFormLoading(true);
     try {
       const token = await getValidToken();
-      console.log('[B2B] Token validation result:', token ? 'valid' : 'invalid');
       
       if (!token) {
         toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
@@ -140,50 +115,40 @@ const ProductsPage: React.FC = () => {
         return;
       }
 
-      console.log('[B2B] Sending request to /api/products with token');
-      console.log('[B2B] Form data:', formData);
-
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(productData)
       });
       
-      console.log('[B2B] Response status:', response.status);
-      console.log('[B2B] Response headers:', Object.fromEntries(response.headers.entries()));
-      
       if (response.status === 401) {
-        const errorText = await response.text();
-        console.error('[B2B] 401 Unauthorized response:', errorText);
         toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
         logout();
         return;
       }
       
       const result = await response.json();
-      console.log('[B2B] Response result:', result);
       
       if (result.success) {
         toast.success('สร้างสินค้าเรียบร้อยแล้ว');
         setShowCreateForm(false);
-        resetForm();
         loadProducts();
       } else {
         toast.error(result.error || 'เกิดข้อผิดพลาดในการสร้างสินค้า');
       }
     } catch (error) {
-      console.error('[B2B] Error creating product:', error);
+      console.error('Error creating product:', error);
       toast.error('เกิดข้อผิดพลาดในการสร้างสินค้า');
     } finally {
-      setFormLoading(false); // End loading
+      setFormLoading(false);
     }
   };
 
-  const handleUpdateProduct = async () => {
-    setFormLoading(true); // Start loading
+  const handleUpdateProduct = async (productData: CreateProduct) => {
+    setFormLoading(true);
     if (!editingProduct) return;
     
     try {
@@ -200,7 +165,7 @@ const ProductsPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(productData)
       });
       
       if (response.status === 401) {
@@ -214,7 +179,6 @@ const ProductsPage: React.FC = () => {
       if (result.success) {
         toast.success('อัปเดตสินค้าเรียบร้อยแล้ว');
         setEditingProduct(null);
-        resetForm();
         loadProducts();
       } else {
         toast.error(result.error || 'เกิดข้อผิดพลาดในการอัปเดตสินค้า');
@@ -223,7 +187,7 @@ const ProductsPage: React.FC = () => {
       console.error('Error updating product:', error);
       toast.error('เกิดข้อผิดพลาดในการอัปเดตสินค้า');
     } finally {
-      setFormLoading(false); // End loading
+      setFormLoading(false);
     }
   };
 
@@ -265,35 +229,8 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = (product: ProductWithId) => {
     setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      cost: product.cost,
-      sku: product.sku,
-      category: product.category,
-      stock: product.stock,
-      unit: product.unit,
-      status: product.status,
-      specifications: product.specifications
-    });
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      price: 0,
-      cost: 0,
-      sku: '',
-      category: '',
-      stock: 0,
-      unit: 'ชิ้น',
-      status: 'active',
-      specifications: {}
-    });
   };
 
   const handleLogout = async () => {
@@ -319,9 +256,11 @@ const ProductsPage: React.FC = () => {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+                         (product.skuConfig?.prefix && product.skuConfig.prefix.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'all' || product.status === selectedStatus;
+    const matchesStatus = selectedStatus === 'all' || 
+                         (selectedStatus === 'available' && product.isAvailable) ||
+                         (selectedStatus === 'unavailable' && !product.isAvailable);
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -385,12 +324,12 @@ const ProductsPage: React.FC = () => {
           </select>
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive')}
+            onChange={(e) => setSelectedStatus(e.target.value as 'all' | 'available' | 'unavailable')}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">ทุกสถานะ</option>
-            <option value="active">เปิดใช้งาน</option>
-            <option value="inactive">ปิดใช้งาน</option>
+            <option value="available">พร้อมขาย</option>
+            <option value="unavailable">สินค้าหมด</option>
           </select>
         </div>
       </div>
@@ -446,10 +385,10 @@ const ProductsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          {product.images && product.images.length > 0 ? (
+                          {product.imageUrl ? (
                             <img
                               className="h-10 w-10 rounded-full object-cover"
-                              src={product.images[0]}
+                              src={product.imageUrl}
                               alt={product.name}
                             />
                           ) : (
@@ -465,20 +404,20 @@ const ProductsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.sku}
+                      {product.skuConfig?.prefix || 'ไม่มี SKU'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(product.price)}
+                      {formatCurrency(product.price || (product.units && product.units.length > 0 ? product.units[0].price : 0))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.stock} {product.unit}
+                      {product.units && product.units.length > 0 ? `${product.units.length} หน่วย` : 'ไม่มีหน่วย'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.status)}`}>
-                        {product.status === 'active' ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.isAvailable ? 'available' : 'unavailable')}`}>
+                        {product.isAvailable ? 'พร้อมขาย' : 'สินค้าหมด'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -515,19 +454,18 @@ const ProductsPage: React.FC = () => {
             name: editingProduct.name,
             description: editingProduct.description,
             price: editingProduct.price,
-            cost: editingProduct.cost,
-            sku: editingProduct.sku,
+            shippingFee: editingProduct.shippingFee,
             category: editingProduct.category,
-            stock: editingProduct.stock,
-            unit: editingProduct.unit,
-            status: editingProduct.status,
-            specifications: editingProduct.specifications,
+            imageUrl: editingProduct.imageUrl,
+            isAvailable: editingProduct.isAvailable,
+            units: editingProduct.units,
+            options: editingProduct.options,
+            skuConfig: editingProduct.skuConfig,
           } : undefined}
           onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
           onCancel={() => {
             setShowCreateForm(false);
             setEditingProduct(null);
-            resetForm();
           }}
           isEditing={!!editingProduct}
           loading={formLoading}

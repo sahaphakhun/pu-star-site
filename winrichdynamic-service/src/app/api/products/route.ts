@@ -1,49 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import { createProductSchema, productSearchSchema } from '@/schemas/product';
+import { verifyToken } from '@/lib/auth';
 
-// GET /api/products - ดึงรายการสินค้าทั้งหมด
+// GET /api/products - ดึงรายการสินค้า
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    
+
+    // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
-    
-    // สร้าง query filter
+    const search = searchParams.get('search') || '';
+    const category = searchParams.get('category') || '';
+    const isAvailable = searchParams.get('isAvailable');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    // Validate query parameters
+    const queryValidation = productSearchSchema.safeParse({
+      search,
+      category: category || undefined,
+      isAvailable: isAvailable ? isAvailable === 'true' : undefined,
+      page,
+      limit
+    });
+
+    if (!queryValidation.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid query parameters' },
+        { status: 400 }
+      );
+    }
+
+    // Build filter
     const filter: any = {};
-    
-    if (category) {
-      filter.category = category;
-    }
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { description: { $regex: search, $options: 'i' } },
+        { 'skuConfig.prefix': { $regex: search, $options: 'i' } }
       ];
     }
-    
-    const products = await Product.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(100);
-    
+
+    if (category) {
+      filter.category = category;
+    }
+
+    if (isAvailable !== undefined) {
+      filter.isAvailable = isAvailable;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Execute query
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(filter)
+    ]);
+
     return NextResponse.json({
       success: true,
-      data: products
+      data: products,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
     });
-    
+
   } catch (error) {
-    console.error('[B2B] Error fetching products:', error);
+    console.error('Error fetching products:', error);
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -52,56 +88,57 @@ export async function GET(request: NextRequest) {
 // POST /api/products - สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    
-    const body = await request.json();
-    const { name, description, price, cost, sku, category, stock, unit, status, specifications } = body;
-    
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!name || !sku || price === undefined || stock === undefined) {
+    // Verify authentication
+    const auth = verifyToken(request);
+    if (!auth.valid) {
       return NextResponse.json(
-        { success: false, error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' },
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+
+    const body = await request.json();
+
+    // Validate request body
+    const validation = createProductSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid data',
+          details: validation.error.issues 
+        },
         { status: 400 }
       );
     }
-    
-    // ตรวจสอบว่า SKU ซ้ำหรือไม่
-    const existingProduct = await Product.findOne({ sku });
+
+    const productData = validation.data;
+
+    // Check if product with same name already exists
+    const existingProduct = await Product.findOne({ name: productData.name });
     if (existingProduct) {
       return NextResponse.json(
-        { success: false, error: 'SKU นี้มีอยู่ในระบบแล้ว กรุณาใช้ SKU อื่น' },
+        { success: false, error: 'สินค้าชื่อนี้มีอยู่แล้ว' },
         { status: 400 }
       );
     }
-    
-    // สร้างสินค้าใหม่
-    const product = new Product({
-      name,
-      description: description || '',
-      price: parseFloat(price) || 0,
-      cost: parseFloat(cost) || 0,
-      sku,
-      category: category || '',
-      stock: parseInt(stock) || 0,
-      unit: unit || 'ชิ้น',
-      status: status || 'active',
-      specifications: specifications || {}
-    });
-    
+
+    // Create new product
+    const product = new Product(productData);
     await product.save();
-    
-    console.log(`[B2B] Product created: ${product.name} (${product.sku})`);
-    
+
     return NextResponse.json({
       success: true,
-      message: 'สร้างสินค้าเรียบร้อยแล้ว',
-      data: product
-    });
-    
+      data: product,
+      message: 'สร้างสินค้าสำเร็จ'
+    }, { status: 201 });
+
   } catch (error) {
-    console.error('[B2B] Error creating product:', error);
+    console.error('Error creating product:', error);
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการสร้างสินค้า' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

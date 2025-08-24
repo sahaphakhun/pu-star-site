@@ -1,95 +1,162 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import { updateProductSchema } from '@/schemas/product';
 import { verifyToken } from '@/lib/auth';
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// GET /api/products/[id] - ดึงข้อมูลสินค้าเฉพาะรายการ
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     await connectDB();
+
     const resolvedParams = await params;
-    const doc = await Product.findById(resolvedParams.id);
-    if (!doc) return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
-    return NextResponse.json(doc);
+    const product = await Product.findById(resolvedParams.id).lean();
+    
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบสินค้า' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: product
+    });
+
   } catch (error) {
-    console.error('[B2B] Error get product:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงสินค้า' }, { status: 500 });
+    console.error('Error fetching product:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
+// PUT /api/products/[id] - อัพเดทข้อมูลสินค้า
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
     const auth = verifyToken(request);
     if (!auth.valid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     await connectDB();
-    const resolvedParams = await params;
-    const body = await request.json();
-    const { name, price, description, images, units, category, options, isAvailable } = body;
 
-    if (!name || !description || !images || images.length === 0) {
-      return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
+    const body = await request.json();
+
+    // Validate request body
+    const validation = updateProductSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid data',
+          details: validation.error.issues 
+        },
+        { status: 400 }
+      );
     }
 
-    const product = await Product.findByIdAndUpdate(
+    const resolvedParams = await params;
+    const updateData = validation.data;
+
+    // Check if product exists
+    const existingProduct = await Product.findById(resolvedParams.id);
+    if (!existingProduct) {
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบสินค้า' },
+        { status: 404 }
+      );
+    }
+
+    // Check if name is being changed and if it conflicts with another product
+    if (updateData.name && updateData.name !== existingProduct.name) {
+      const nameConflict = await Product.findOne({ 
+        name: updateData.name,
+        _id: { $ne: resolvedParams.id }
+      });
+      if (nameConflict) {
+        return NextResponse.json(
+          { success: false, error: 'สินค้าชื่อนี้มีอยู่แล้ว' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update product
+    const updatedProduct = await Product.findByIdAndUpdate(
       resolvedParams.id,
-      {
-        name,
-        price,
-        description,
-        images,
-        units,
-        category: category || 'ทั่วไป',
-        options,
-        isAvailable: isAvailable !== false,
-      },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
-    if (!product) {
-      return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      data: product,
-      message: 'อัปเดตสินค้าเรียบร้อยแล้ว'
+    return NextResponse.json({
+      success: true,
+      data: updatedProduct,
+      message: 'อัพเดทสินค้าสำเร็จ'
     });
+
   } catch (error) {
-    console.error('[B2B] Error updating product:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการอัปเดตสินค้า' }, { status: 500 });
+    console.error('Error updating product:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
+// DELETE /api/products/[id] - ลบสินค้า
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
     const auth = verifyToken(request);
     if (!auth.valid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    await connectDB();
     const resolvedParams = await params;
-    const product = await Product.findByIdAndDelete(resolvedParams.id);
+    await connectDB();
 
+    // Check if product exists
+    const product = await Product.findById(resolvedParams.id);
     if (!product) {
-      return NextResponse.json({ error: 'ไม่พบสินค้า' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบสินค้า' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'ลบสินค้าเรียบร้อยแล้ว'
+    // Delete product
+    await Product.findByIdAndDelete(resolvedParams.id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'ลบสินค้าสำเร็จ'
     });
+
   } catch (error) {
-    console.error('[B2B] Error deleting product:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการลบสินค้า' }, { status: 500 });
+    console.error('Error deleting product:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

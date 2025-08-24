@@ -71,12 +71,12 @@ const ProductList: React.FC<ProductListProps> = ({
 							className="relative aspect-square cursor-pointer"
 							onClick={() => handleProductClick(product._id)}
 						>
-							<Image
-								src={product.images?.[0] || '/placeholder-image.jpg'}
-								alt={product.name}
-								fill
-								className="object-cover"
-							/>
+							                                                <Image
+                                                    src={product.imageUrl || '/placeholder-image.jpg'}
+                                                    alt={product.name}
+                                                    fill
+                                                    className="object-cover"
+                                                />
 						</div>
 						<div className="p-4">
 							<h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm md:text-base">
