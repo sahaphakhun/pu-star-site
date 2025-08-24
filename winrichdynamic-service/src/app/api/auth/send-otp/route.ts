@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import { requestOTP } from '@/utils/deesmsx';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
 
 // Global OTP cache (ใน production ควรใช้ Redis)
 declare global {
@@ -31,8 +32,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ตรวจสอบและแปลงเบอร์โทรศัพท์
+    if (!isValidPhoneNumber(phone)) {
+      return NextResponse.json(
+        { success: false, error: 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอก 9-10 หลัก' },
+        { status: 400 }
+      );
+    }
+
+    let formattedPhone: string;
+    try {
+      formattedPhone = formatPhoneNumber(phone);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: error instanceof Error ? error.message : 'เบอร์โทรศัพท์ไม่ถูกต้อง' },
+        { status: 400 }
+      );
+    }
+
     // ตรวจสอบว่าเบอร์โทรศัพท์มีในระบบหรือไม่
-    const admin = await Admin.findOne({ phone });
+    const admin = await Admin.findOne({ phone: formattedPhone });
     if (!admin) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบผู้ใช้ในระบบ กรุณาสมัครสมาชิกก่อน' },
@@ -50,15 +69,15 @@ export async function POST(request: NextRequest) {
 
     // ลบ OTP เก่าหากมี
     if (global.otpCache) {
-      global.otpCache.delete(phone);
+      global.otpCache.delete(formattedPhone);
     }
 
     // ส่ง OTP ผ่าน DeeSMSx
-    const otpResult = await requestOTP(phone);
+    const otpResult = await requestOTP(formattedPhone);
     
     // เก็บ OTP ใน cache
     if (global.otpCache) {
-      global.otpCache.set(phone, {
+      global.otpCache.set(formattedPhone, {
         otp: otpResult.result.ref, // ใช้ ref เป็น OTP
         expiresAt: Date.now() + 5 * 60 * 1000, // 5 นาที
         attempts: 0,
@@ -67,13 +86,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`[B2B] OTP sent to ${phone} for admin: ${admin.name}`);
+    console.log(`[B2B] OTP sent to ${formattedPhone} for admin: ${admin.name}`);
 
     return NextResponse.json({
       success: true,
       message: 'ส่ง OTP สำเร็จ',
       data: {
-        phone,
+        phone: formattedPhone,
         expiresIn: 5 * 60, // 5 นาที
         adminName: admin.name
       }

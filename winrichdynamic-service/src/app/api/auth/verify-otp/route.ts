@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import { verifyOTP } from '@/utils/deesmsx';
 import * as jose from 'jose';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
 
 // Global OTP cache (ใน production ควรใช้ Redis)
 declare global {
@@ -28,6 +29,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ตรวจสอบและแปลงเบอร์โทรศัพท์
+    if (!isValidPhoneNumber(phone)) {
+      return NextResponse.json(
+        { success: false, error: 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอก 9-10 หลัก' },
+        { status: 400 }
+      );
+    }
+
+    let formattedPhone: string;
+    try {
+      formattedPhone = formatPhoneNumber(phone);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: error instanceof Error ? error.message : 'เบอร์โทรศัพท์ไม่ถูกต้อง' },
+        { status: 400 }
+      );
+    }
+
     // ตรวจสอบ OTP ใน cache
     if (!global.otpCache) {
       return NextResponse.json(
@@ -36,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const otpData = global.otpCache.get(phone);
+    const otpData = global.otpCache.get(formattedPhone);
     if (!otpData) {
       return NextResponse.json(
         { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
@@ -46,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบว่า OTP หมดอายุหรือไม่
     if (Date.now() > otpData.expiresAt) {
-      global.otpCache.delete(phone);
+      global.otpCache.delete(formattedPhone);
       return NextResponse.json(
         { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
         { status: 400 }
@@ -55,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบจำนวนครั้งที่ลอง
     if (otpData.attempts >= 3) {
-      global.otpCache.delete(phone);
+      global.otpCache.delete(formattedPhone);
       return NextResponse.json(
         { success: false, error: 'ลอง OTP เกินจำนวนครั้งที่กำหนด กรุณาขอใหม่' },
         { status: 400 }
@@ -84,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ค้นหา admin
-    const admin = await Admin.findOne({ phone }).populate('role', 'name level');
+    const admin = await Admin.findOne({ phone: formattedPhone }).populate('role', 'name level');
     if (!admin) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบผู้ใช้ในระบบ' },
@@ -117,9 +136,9 @@ export async function POST(request: NextRequest) {
     await admin.save();
 
     // ลบ OTP จาก cache
-    global.otpCache.delete(phone);
+    global.otpCache.delete(formattedPhone);
 
-    console.log(`[B2B] Admin logged in: ${admin.name} (${phone})`);
+    console.log(`[B2B] Admin logged in: ${admin.name} (${formattedPhone})`);
 
     return NextResponse.json({
       success: true,
