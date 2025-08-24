@@ -40,7 +40,6 @@ const customerSchema = new Schema<ICustomer>(
     email: {
       type: String,
       required: false,
-      sparse: true,
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
         'รูปแบบอีเมลไม่ถูกต้อง',
@@ -49,7 +48,6 @@ const customerSchema = new Schema<ICustomer>(
     taxId: {
       type: String,
       required: false,
-      sparse: true,
       trim: true,
       match: [
         /^\d{13}$/,
