@@ -1,35 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Mock database - ในอนาคตจะใช้ MongoDB
-let settings = {
-  companyName: 'WinRich Dynamic Co., Ltd.',
-  companyAddress: '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110',
-  companyPhone: '+66 2 123 4567',
-  companyEmail: 'info@winrich.com',
-  companyTaxId: '0123456789012',
-  quotationPrefix: 'QT',
-  quotationValidityDays: 30,
-  defaultVatRate: 7,
-  defaultPaymentTerms: 'ชำระเงินภายใน 30 วัน',
-  defaultDeliveryTerms: 'จัดส่งภายใน 7 วันหลังจากยืนยันออเดอร์',
-  emailSettings: {
-    smtpHost: 'smtp.gmail.com',
-    smtpPort: 587,
-    smtpUser: '',
-    smtpPass: '',
-    fromEmail: 'noreply@winrich.com',
-    fromName: 'WinRich Dynamic'
-  },
-  notificationSettings: {
-    emailNotifications: true,
-    lineNotifications: false,
-    lineChannelSecret: '',
-    lineChannelAccessToken: ''
-  }
-};
+import connectDB from '@/lib/mongodb';
+import Settings from '@/models/Settings';
 
 export async function GET() {
   try {
+    await connectDB();
+    
+    // ดึงการตั้งค่าจาก MongoDB หรือสร้างใหม่ถ้ายังไม่มี
+    let settings = await Settings.findOne();
+    
+    if (!settings) {
+      // สร้างการตั้งค่าเริ่มต้นถ้ายังไม่มี
+      settings = await Settings.create({});
+    }
+    
     return NextResponse.json({
       success: true,
       data: settings
@@ -45,13 +29,19 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await connectDB();
     const body = await request.json();
     
-    // อัปเดตการตั้งค่า
-    settings = { ...settings, ...body };
-    
-    // ในอนาคตจะบันทึกลง MongoDB
-    // await Settings.findOneAndUpdate({}, settings, { upsert: true });
+    // อัปเดตการตั้งค่าใน MongoDB
+    const settings = await Settings.findOneAndUpdate(
+      {}, // ค้นหา record แรก (เพราะมี unique index)
+      body,
+      { 
+        upsert: true, // สร้างใหม่ถ้ายังไม่มี
+        new: true, // ส่งคืนข้อมูลที่อัปเดตแล้ว
+        runValidators: true // รัน validation
+      }
+    );
     
     return NextResponse.json({
       success: true,

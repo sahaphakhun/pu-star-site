@@ -39,17 +39,26 @@ const AdminsPage: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
-      const savedRoles = localStorage.getItem('b2b_roles');
-      const savedAdmins = localStorage.getItem('b2b_admins');
+      // ดึงข้อมูลบทบาทจาก API
+      const rolesResponse = await fetch('/api/adminb2b/roles');
+      const rolesResult = await rolesResponse.json();
       
-      if (savedRoles) {
-        setRoles(JSON.parse(savedRoles));
+      if (rolesResult.success) {
+        setRoles(rolesResult.data.roles);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลบทบาท');
       }
       
-      if (savedAdmins) {
-        setAdmins(JSON.parse(savedAdmins));
+      // ดึงข้อมูลผู้ดูแลระบบจาก API
+      const adminsResponse = await fetch('/api/adminb2b/admins');
+      const adminsResult = await adminsResponse.json();
+      
+      if (adminsResult.success) {
+        setAdmins(adminsResult.data);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
       }
     } catch (error) {
       console.error('Error loading data:', error);

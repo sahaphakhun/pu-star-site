@@ -118,44 +118,35 @@ const PermissionsPage: React.FC = () => {
 
   useEffect(() => {
     // โหลดข้อมูลจาก localStorage หรือ API
-    const loadData = () => {
-      try {
-        const savedRoles = localStorage.getItem('b2b_roles');
-        const savedAdmins = localStorage.getItem('b2b_admins');
-        
-        if (savedRoles) {
-          setRoles(JSON.parse(savedRoles));
-        } else {
-          setRoles(baseRoles);
-          localStorage.setItem('b2b_roles', JSON.stringify(baseRoles));
-        }
-        
-        if (savedAdmins) {
-          setAdmins(JSON.parse(savedAdmins));
-        } else {
-          // สร้างแอดมินเริ่มต้น
-          const defaultAdmins: Admin[] = [
-            {
-              id: '1',
-              name: 'Super Admin',
-              email: 'admin@winrich.com',
-              role: 'super_admin',
-              isActive: true,
-              createdAt: new Date().toISOString()
-            }
-          ];
-          setAdmins(defaultAdmins);
-          localStorage.setItem('b2b_admins', JSON.stringify(defaultAdmins));
-        }
-        
-        setPermissions(basePermissions);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
-      } finally {
-        setLoading(false);
+      const loadData = async () => {
+    try {
+      // ดึงข้อมูลบทบาทและสิทธิ์จาก API
+      const rolesResponse = await fetch('/api/adminb2b/roles');
+      const rolesResult = await rolesResponse.json();
+      
+      if (rolesResult.success) {
+        setRoles(rolesResult.data.roles);
+        setPermissions(rolesResult.data.permissions);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลบทบาท');
       }
-    };
+      
+      // ดึงข้อมูลผู้ดูแลระบบจาก API
+      const adminsResponse = await fetch('/api/adminb2b/admins');
+      const adminsResult = await adminsResponse.json();
+      
+      if (adminsResult.success) {
+        setAdmins(adminsResult.data);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    } finally {
+      setLoading(false);
+    }
+  };
 
     loadData();
   }, []);
