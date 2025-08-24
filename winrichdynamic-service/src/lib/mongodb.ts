@@ -13,8 +13,8 @@ if (!MONGODB_URI) {
  */
 declare global {
   var mongoose: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
+    conn: mongoose.Connection | null;
+    promise: Promise<mongoose.Mongoose> | null;
   };
 }
 

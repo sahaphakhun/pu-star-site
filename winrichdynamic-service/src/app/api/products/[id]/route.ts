@@ -29,9 +29,9 @@ export async function PUT(
     await connectDB();
     const resolvedParams = await params;
     const body = await request.json();
-    const { name, price, description, imageUrl, units, category, options, isAvailable } = body;
+    const { name, price, description, images, units, category, options, isAvailable } = body;
 
-    if (!name || !description || !imageUrl) {
+    if (!name || !description || !images || images.length === 0) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
     }
 
@@ -41,7 +41,7 @@ export async function PUT(
         name,
         price,
         description,
-        imageUrl,
+        images,
         units,
         category: category || 'ทั่วไป',
         options,

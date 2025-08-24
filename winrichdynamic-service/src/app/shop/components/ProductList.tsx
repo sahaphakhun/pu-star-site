@@ -72,7 +72,7 @@ const ProductList: React.FC<ProductListProps> = ({
 							onClick={() => handleProductClick(product._id)}
 						>
 							<Image
-								src={product.imageUrl}
+								src={product.images?.[0] || '/placeholder-image.jpg'}
 								alt={product.name}
 								fill
 								className="object-cover"
