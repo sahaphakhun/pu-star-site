@@ -3,6 +3,7 @@
 // =============================
 
 import { callSendAPI, FBMessagePayload } from './messenger';
+import { filterThaiReplyContent } from './openai-utils';
 
 /**
  * ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
@@ -31,11 +32,15 @@ export async function sendTextMessageWithCutAndImages(
 ): Promise<void> {
   console.log("[DEBUG] sendTextMessageWithCutAndImages => raw response:", response);
 
+  // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
+  const filteredResponse = filterThaiReplyContent(response, false);
+  console.log("[DEBUG] sendTextMessageWithCutAndImages => filtered response:", filteredResponse);
+
   // ทำความสะอาด [cut] ที่ซ้ำกัน
-  response = response.replace(/\[cut\]{2,}/g, "[cut]");
+  const cleanResponse = filteredResponse.replace(/\[cut\]{2,}/g, "[cut]");
   
   // แบ่งข้อความเป็นส่วนๆ ตาม [cut]
-  let segments = response.split("[cut]")
+  let segments = cleanResponse.split("[cut]")
     .map(s => s.trim())
     .filter(s => s);
   
@@ -98,7 +103,7 @@ export async function sendTextMessageWithCutAndImages(
       
       try {
         if (includeMenu && i === segments.length - 1) {
-          // ส่งข้อความพร้อมเมนูสำหรับส่วนสุดท้าย
+          // ส่งข้อความพร้อมเมนู
           await callSendAPI(recipientId, {
             text: textPart,
             quick_replies: [
@@ -107,21 +112,13 @@ export async function sendTextMessageWithCutAndImages(
             ],
           });
         } else {
-          // ส่งข้อความธรรมดา
           await sendSimpleTextMessage(recipientId, textPart);
         }
-        
         // รอเล็กน้อยระหว่างการส่งข้อความ
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (err) {
         console.error(`[ERROR] Failed to send text part:`, err);
       }
-    }
-
-    // รอระหว่างส่วนต่างๆ (ยกเว้นส่วนสุดท้าย)
-    if (i < segments.length - 1) {
-      console.log(`[DEBUG] Waiting between segments...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
@@ -393,11 +390,15 @@ export async function sendTextMessage(
 ): Promise<void> {
   console.log("[DEBUG] sendTextMessage => raw response:", response);
 
+  // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
+  const filteredResponse = filterThaiReplyContent(response, false);
+  console.log("[DEBUG] sendTextMessage => filtered response:", filteredResponse);
+
   // ทำความสะอาด [cut] ที่ซ้ำกัน
-  response = response.replace(/\[cut\]{2,}/g, "[cut]");
+  const cleanResponse = filteredResponse.replace(/\[cut\]{2,}/g, "[cut]");
   
   // แบ่งข้อความเป็นส่วนๆ ตาม [cut]
-  let segments = response.split("[cut]")
+  let segments = cleanResponse.split("[cut]")
     .map(s => s.trim())
     .filter(s => s);
   

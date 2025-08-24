@@ -49,6 +49,27 @@ function normalizeRoleContent(role: string = 'user', content: any = '') {
   return { role, content: content.toString() } as const;
 }
 
+/**
+ * กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY (ยกเว้นคำสั่ง /tag)
+ * @param text ข้อความที่ต้องการกรอง
+ * @param isTagCommand เป็นคำสั่ง /tag หรือไม่
+ * @returns ข้อความที่กรองแล้ว
+ */
+export function filterThaiReplyContent(text: string, isTagCommand: boolean = false): string {
+  if (isTagCommand) {
+    return text; // ถ้าเป็นคำสั่ง /tag ให้แสดงข้อความทั้งหมด
+  }
+  
+  // ตรวจสอบว่ามีแท็ก THAI_REPLY หรือไม่
+  const thaiReplyMatch = text.match(/<THAI_REPLY>([\s\S]*?)<\/THAI_REPLY>/);
+  if (thaiReplyMatch && thaiReplyMatch[1]) {
+    return thaiReplyMatch[1].trim();
+  }
+  
+  // ถ้าไม่มีแท็ก THAI_REPLY ให้ส่งคืนข้อความเดิม
+  return text;
+}
+
 function _ensure(userId: string): UserState {
   if (!_userState.has(userId)) {
     _userState.set(userId, { aiEnabled: false, autoModeEnabled: false, history: [] });
@@ -389,14 +410,8 @@ export async function getAssistantResponse(
     const lastUserMessage = messages[messages.length - 1]?.content;
     const isTagCommand = typeof lastUserMessage === 'string' && lastUserMessage.trim() === '/tag';
     
-    // ประมวลผลแท็ก ORDER_JSON และ THAI_REPLY
-    // ถ้ามีแท็ก THAI_REPLY และไม่ใช่คำสั่ง /tag ให้แสดงเฉพาะเนื้อหาภายในแท็กนั้น
-    if (!isTagCommand) {
-      const thaiReplyMatch = assistantReply.match(/<THAI_REPLY>([\s\S]*?)<\/THAI_REPLY>/);
-      if (thaiReplyMatch && thaiReplyMatch[1]) {
-        assistantReply = thaiReplyMatch[1].trim();
-      }
-    }
+    // ใช้ฟังก์ชัน helper ในการกรองข้อความ
+    assistantReply = filterThaiReplyContent(assistantReply, isTagCommand);
 
     assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
     const parts = assistantReply.split('[cut]');
