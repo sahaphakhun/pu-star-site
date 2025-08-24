@@ -29,51 +29,22 @@ export async function PUT(
     await connectDB();
     const resolvedParams = await params;
     const body = await request.json();
-    const { 
-      name, 
-      price, 
-      description, 
-      imageUrl, 
-      units, 
-      category, 
-      options, 
-      skuConfig,
-      skuVariants,
-      isAvailable 
-    } = body;
+    const { name, price, description, images, units, category, options, isAvailable } = body;
 
-    if (!name || !description || !imageUrl) {
+    if (!name || !description || !images || images.length === 0) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
-    }
-
-    // ตรวจสอบว่ามี SKU variants หรือไม่
-    if (skuVariants && skuVariants.length > 0) {
-      // ตรวจสอบว่า SKU ซ้ำหรือไม่ (ยกเว้นสินค้าปัจจุบัน)
-      const existingSkus = await Product.find({
-        _id: { $ne: resolvedParams.id },
-        'skuVariants.sku': { $in: skuVariants.map((v: any) => v.sku) }
-      });
-      
-      if (existingSkus.length > 0) {
-        return NextResponse.json(
-          { error: 'มี SKU ที่ซ้ำกันในระบบ กรุณาใช้ SKU อื่น' },
-          { status: 400 }
-        );
-      }
     }
 
     const product = await Product.findByIdAndUpdate(
       resolvedParams.id,
       {
         name,
-        price: parseFloat(price) || 0,
+        price,
         description,
-        imageUrl,
-        units: units || [],
+        images,
+        units,
         category: category || 'ทั่วไป',
-        options: options || [],
-        skuConfig: skuConfig || null,
-        skuVariants: skuVariants || [],
+        options,
         isAvailable: isAvailable !== false,
       },
       { new: true }

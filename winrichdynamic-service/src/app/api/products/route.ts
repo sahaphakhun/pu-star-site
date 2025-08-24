@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const isAvailable = searchParams.get('isAvailable');
+    const status = searchParams.get('status');
     const search = searchParams.get('search');
     
     // สร้าง query filter
@@ -19,13 +19,14 @@ export async function GET(request: NextRequest) {
       filter.category = category;
     }
     
-    if (isAvailable && isAvailable !== 'all') {
-      filter.isAvailable = isAvailable === 'true';
+    if (status && status !== 'all') {
+      filter.status = status;
     }
     
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
+        { sku: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } }
       ];
     }
@@ -54,59 +55,42 @@ export async function POST(request: NextRequest) {
     await connectDB();
     
     const body = await request.json();
-    const { 
-      name, 
-      description, 
-      price, 
-      imageUrl, 
-      units, 
-      category, 
-      options, 
-      skuConfig, 
-      skuVariants,
-      isAvailable 
-    } = body;
+    const { name, description, price, cost, sku, category, stock, unit, status, specifications } = body;
     
     // ตรวจสอบข้อมูลที่จำเป็น
-    if (!name || !description || !imageUrl) {
+    if (!name || !sku || price === undefined || stock === undefined) {
       return NextResponse.json(
-        { success: false, error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ชื่อ, รายละเอียด, รูปภาพ)' },
+        { success: false, error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' },
         { status: 400 }
       );
     }
-
-    // ตรวจสอบว่ามี SKU variants หรือไม่
-    if (skuVariants && skuVariants.length > 0) {
-      // ตรวจสอบว่า SKU ซ้ำหรือไม่
-      const existingSkus = await Product.find({
-        'skuVariants.sku': { $in: skuVariants.map((v: any) => v.sku) }
-      });
-      
-      if (existingSkus.length > 0) {
-        return NextResponse.json(
-          { success: false, error: 'มี SKU ที่ซ้ำกันในระบบ กรุณาใช้ SKU อื่น' },
-          { status: 400 }
-        );
-      }
+    
+    // ตรวจสอบว่า SKU ซ้ำหรือไม่
+    const existingProduct = await Product.findOne({ sku });
+    if (existingProduct) {
+      return NextResponse.json(
+        { success: false, error: 'SKU นี้มีอยู่ในระบบแล้ว กรุณาใช้ SKU อื่น' },
+        { status: 400 }
+      );
     }
     
     // สร้างสินค้าใหม่
     const product = new Product({
       name,
-      description,
+      description: description || '',
       price: parseFloat(price) || 0,
-      imageUrl,
-      units: units || [],
-      category: category || 'ทั่วไป',
-      options: options || [],
-      skuConfig: skuConfig || null,
-      skuVariants: skuVariants || [],
-      isAvailable: isAvailable !== false
+      cost: parseFloat(cost) || 0,
+      sku,
+      category: category || '',
+      stock: parseInt(stock) || 0,
+      unit: unit || 'ชิ้น',
+      status: status || 'active',
+      specifications: specifications || {}
     });
     
     await product.save();
     
-    console.log(`[B2B] Product created: ${product.name}`);
+    console.log(`[B2B] Product created: ${product.name} (${product.sku})`);
     
     return NextResponse.json({
       success: true,
