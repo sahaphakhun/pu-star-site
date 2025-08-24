@@ -1,6 +1,4 @@
 import puppeteer from 'puppeteer';
-import fs from 'fs';
-import path from 'path';
 
 export interface PDFOptions {
   format?: 'A4' | 'A3' | 'Letter' | 'Legal';
@@ -43,19 +41,7 @@ export interface QuotationData {
   createdAt: Date;
 }
 
-/**
- * อ่านไฟล์ font และแปลงเป็น base64
- */
-function getFontBase64(fontFileName: string): string {
-  try {
-    const fontPath = path.join(process.cwd(), 'public', 'fonts', fontFileName);
-    const fontBuffer = fs.readFileSync(fontPath);
-    return fontBuffer.toString('base64');
-  } catch (error) {
-    console.error(`Error reading font file ${fontFileName}:`, error);
-    return '';
-  }
-}
+
 
 /**
  * ทำความสะอาดข้อมูลเพื่อป้องกันปัญหา encoding
@@ -64,14 +50,27 @@ function sanitizeString(str: any): string {
   if (!str) return '';
   
   try {
-    const cleanStr = String(str)
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // ลบ control characters
-      .replace(/[\uFFFD]/g, '') // ลบ replacement characters
+    // แปลงเป็น string และทำความสะอาด
+    let cleanStr = String(str);
+    
+    // ลบ control characters และ replacement characters
+    cleanStr = cleanStr
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+      .replace(/[\uFFFD]/g, '')
       .trim();
     
     // ตรวจสอบว่าเป็น string ที่ถูกต้อง
-    return Buffer.from(cleanStr, 'utf8').toString('utf8');
-  } catch {
+    if (cleanStr.length === 0) return '';
+    
+    // ลองแปลงเป็น Buffer และกลับมาเป็น string
+    const buffer = Buffer.from(cleanStr, 'utf8');
+    const result = buffer.toString('utf8');
+    
+    // ตรวจสอบว่าผลลัพธ์ไม่เป็น empty
+    return result || cleanStr;
+  } catch (error) {
+    console.warn('Error sanitizing string:', error);
+    // Fallback: ใช้เฉพาะตัวอักษรที่ปลอดภัย
     return String(str).replace(/[^\u0E00-\u0E7F\u0020-\u007E]/g, '');
   }
 }
@@ -80,29 +79,42 @@ function sanitizeString(str: any): string {
  * ทำความสะอาดข้อมูล quotation
  */
 function sanitizeQuotationData(quotation: any): any {
-  const sanitizeArray = (arr: any[]): any[] => {
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => ({
-      ...item,
-      productName: sanitizeString(item.productName),
-      description: sanitizeString(item.description),
-      unit: sanitizeString(item.unit)
-    }));
-  };
+  try {
+    const sanitizeArray = (arr: any[]): any[] => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map(item => ({
+        ...item,
+        productName: sanitizeString(item.productName),
+        description: sanitizeString(item.description),
+        unit: sanitizeString(item.unit)
+      }));
+    };
 
-  return {
-    ...quotation,
-    quotationNumber: sanitizeString(quotation.quotationNumber),
-    customerName: sanitizeString(quotation.customerName),
-    customerTaxId: sanitizeString(quotation.customerTaxId),
-    customerAddress: sanitizeString(quotation.customerAddress),
-    customerPhone: sanitizeString(quotation.customerPhone),
-    subject: sanitizeString(quotation.subject),
-    paymentTerms: sanitizeString(quotation.paymentTerms),
-    deliveryTerms: sanitizeString(quotation.deliveryTerms),
-    notes: sanitizeString(quotation.notes),
-    items: sanitizeArray(quotation.items || [])
-  };
+    const sanitized = {
+      ...quotation,
+      quotationNumber: sanitizeString(quotation.quotationNumber),
+      customerName: sanitizeString(quotation.customerName),
+      customerTaxId: sanitizeString(quotation.customerTaxId),
+      customerAddress: sanitizeString(quotation.customerAddress),
+      customerPhone: sanitizeString(quotation.customerPhone),
+      subject: sanitizeString(quotation.subject),
+      paymentTerms: sanitizeString(quotation.paymentTerms),
+      deliveryTerms: sanitizeString(quotation.deliveryTerms),
+      notes: sanitizeString(quotation.notes),
+      items: sanitizeArray(quotation.items || [])
+    };
+
+    // ตรวจสอบว่าข้อมูลที่ sanitize แล้วไม่เป็น empty
+    if (!sanitized.customerName || !sanitized.subject) {
+      console.warn('Critical fields are empty after sanitization');
+    }
+
+    return sanitized;
+  } catch (error) {
+    console.error('Error sanitizing quotation data:', error);
+    // Fallback: ส่งคืนข้อมูลต้นฉบับ
+    return quotation;
+  }
 }
 
 /**
@@ -119,7 +131,9 @@ export async function generatePDFFromHTML(
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
-      '--font-render-hinting=none'
+      '--font-render-hinting=none',
+      '--disable-web-security',
+      '--allow-running-insecure-content'
     ]
   });
   
@@ -138,7 +152,7 @@ export async function generatePDFFromHTML(
     });
     
     // รอให้ font โหลดเสร็จ
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // สร้าง PDF
     const pdfBuffer = await page.pdf({
@@ -163,24 +177,37 @@ export async function generatePDFFromHTML(
  * สร้าง HTML สำหรับใบเสนอราคา
  */
 export function generateQuotationHTML(quotation: QuotationData): string {
-  // ทำความสะอาดข้อมูลก่อน
-  const sanitizedQuotation = sanitizeQuotationData(quotation);
-  
-  const formatDate = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+  try {
+    // ทำความสะอาดข้อมูลก่อน
+    const sanitizedQuotation = sanitizeQuotationData(quotation);
+    
+    console.log('Original quotation:', {
+      customerName: quotation.customerName,
+      subject: quotation.subject,
+      itemsCount: quotation.items?.length
     });
-  };
+    
+    console.log('Sanitized quotation:', {
+      customerName: sanitizedQuotation.customerName,
+      subject: sanitizedQuotation.subject,
+      itemsCount: sanitizedQuotation.items?.length
+    });
+    
+    const formatDate = (dateString: string | Date) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-    }).format(amount);
-  };
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('th-TH', {
+        style: 'currency',
+        currency: 'THB',
+      }).format(amount);
+    };
 
   return `
 <!DOCTYPE html>
@@ -190,40 +217,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ใบเสนอราคา ${sanitizedQuotation.quotationNumber}</title>
     <style>
-        @font-face {
-            font-family: 'Sarabun';
-            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Regular.ttf')}') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-        
-        @font-face {
-            font-family: 'Sarabun';
-            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Bold.ttf')}') format('truetype');
-            font-weight: 700;
-            font-style: normal;
-        }
-        
-        @font-face {
-            font-family: 'Sarabun';
-            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Medium.ttf')}') format('truetype');
-            font-weight: 500;
-            font-style: normal;
-        }
-        
-        @font-face {
-            font-family: 'Sarabun';
-            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-SemiBold.ttf')}') format('truetype');
-            font-weight: 600;
-            font-style: normal;
-        }
-        
-        @font-face {
-            font-family: 'Sarabun';
-            src: url('data:font/ttf;base64,${getFontBase64('Sarabun-Light.ttf')}') format('truetype');
-            font-weight: 300;
-            font-style: normal;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
         
         * {
             margin: 0;
@@ -645,4 +639,26 @@ export function generateQuotationHTML(quotation: QuotationData): string {
 </body>
 </html>
   `;
+  } catch (error) {
+    console.error('Error generating HTML:', error);
+    // Fallback: สร้าง HTML แบบง่าย
+    return `
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ใบเสนอราคา</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>ใบเสนอราคา</h1>
+    <p class="error">เกิดข้อผิดพลาดในการสร้าง PDF</p>
+    <p>กรุณาลองใหม่อีกครั้ง</p>
+</body>
+</html>
+    `;
+  }
 }
