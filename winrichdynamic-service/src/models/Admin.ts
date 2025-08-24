@@ -5,7 +5,7 @@ export interface IAdmin extends Document {
   name: string;
   email: string;
   password: string;
-  role: string; // อ้างอิงไปยัง Role ID
+  role: mongoose.Types.ObjectId; // อ้างอิงไปยัง Role ID
   isActive: boolean;
   lastLoginAt?: Date;
   createdAt: Date;

@@ -63,8 +63,9 @@ export async function POST(request: NextRequest) {
 
     // 2. สร้าง Super Admin เริ่มต้น
     const superAdminRole = createdRoles.find(role => role.name === 'Super Admin');
+    let existingSuperAdmin = null;
     if (superAdminRole) {
-      const existingSuperAdmin = await Admin.findOne({ email: 'admin@winrich.com' });
+      existingSuperAdmin = await Admin.findOne({ email: 'admin@winrich.com' });
       if (!existingSuperAdmin) {
         await Admin.create({
           name: 'Super Admin',

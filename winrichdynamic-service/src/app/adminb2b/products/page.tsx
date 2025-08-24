@@ -210,7 +210,7 @@ const ProductsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
+  return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
@@ -232,23 +232,23 @@ const ProductsPage: React.FC = () => {
         >
           + เพิ่มสินค้าใหม่
         </button>
-      </div>
+        </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg border shadow-sm p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+        <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">ค้นหา</label>
-            <input
+          <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="ชื่อสินค้าหรือ SKU"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          />
+        </div>
           
-          <div>
+        <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
             <select
               value={selectedCategory}
@@ -260,9 +260,9 @@ const ProductsPage: React.FC = () => {
                 <option key={category._id} value={category._id}>
                   {category.name}
                 </option>
-              ))}
-            </select>
-          </div>
+            ))}
+          </select>
+        </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
@@ -275,7 +275,7 @@ const ProductsPage: React.FC = () => {
               <option value="active">เปิดใช้งาน</option>
               <option value="inactive">ปิดใช้งาน</option>
             </select>
-          </div>
+        </div>
           
           <div className="flex items-end">
             <button
@@ -365,7 +365,7 @@ const ProductsPage: React.FC = () => {
                     >
                       แก้ไข
                     </button>
-                    <button
+                <button
                       onClick={() => handleDeleteProduct(product._id)}
                       className="text-red-600 hover:text-red-900"
                     >
@@ -401,7 +401,7 @@ const ProductsPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900">
                 {editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}
               </h2>
-              <button
+                <button
                 onClick={() => {
                   setShowCreateForm(false);
                   setEditingProduct(null);
