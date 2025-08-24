@@ -185,10 +185,39 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       // Calculate totals first
       const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal } = calculateTotals();
       
+      // Validate required fields
+      if (!formData.customerId || !formData.subject || !formData.validUntil) {
+        toast.error('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+        return;
+      }
+
+      // Validate date
+      const validUntilDate = new Date(formData.validUntil);
+      if (isNaN(validUntilDate.getTime()) || validUntilDate <= new Date()) {
+        toast.error('วันหมดอายุต้องเป็นวันที่ในอนาคต');
+        return;
+      }
+
+      // Validate items
+      const hasInvalidItems = formData.items.some(item => 
+        !item.productName.trim() || 
+        !item.quantity || 
+        parseFloat(item.quantity) <= 0 ||
+        !item.unit.trim() ||
+        !item.unitPrice ||
+        parseFloat(item.unitPrice) < 0
+      );
+
+      if (hasInvalidItems) {
+        toast.error('กรุณาตรวจสอบข้อมูลรายการสินค้าให้ถูกต้อง');
+        return;
+      }
+      
       const submitData = {
         ...formData,
         items: formData.items.map(item => ({
           ...item,
+          productId: item.productId || `PROD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate temporary ID if empty
           quantity: parseFloat(item.quantity) || 0,
           unitPrice: parseFloat(item.unitPrice) || 0,
           discount: parseFloat(item.discount) || 0,

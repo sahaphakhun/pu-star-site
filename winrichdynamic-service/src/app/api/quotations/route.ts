@@ -129,11 +129,29 @@ export async function POST(request: Request) {
     
     const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
     
-    // สร้างใบเสนอราคาใหม่
-    const quotation = await Quotation.create({
+    // แปลงข้อมูลให้ตรงกับ Model
+    const modelData = {
       ...quotationData,
       quotationNumber,
-    });
+      validUntil: new Date(quotationData.validUntil),
+      // แปลงข้อมูลตัวเลขให้เป็น number
+      items: quotationData.items.map(item => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        discount: Number(item.discount),
+        totalPrice: Number(item.totalPrice),
+      })),
+      vatRate: Number(quotationData.vatRate),
+      subtotal: Number(quotationData.subtotal || 0),
+      totalDiscount: Number(quotationData.totalDiscount || 0),
+      totalAmount: Number(quotationData.totalAmount || 0),
+      vatAmount: Number(quotationData.vatAmount || 0),
+      grandTotal: Number(quotationData.grandTotal || 0),
+    };
+    
+    // สร้างใบเสนอราคาใหม่
+    const quotation = await Quotation.create(modelData);
     
     return NextResponse.json(
       quotation.toObject ? quotation.toObject() : quotation,
@@ -143,10 +161,30 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Quotation API] POST Error:', error);
     
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('[Quotation API] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
+    
     if (error instanceof Error && error.message.includes('duplicate key')) {
       return NextResponse.json(
         { error: 'เลขที่ใบเสนอราคาซ้ำกับที่มีอยู่ในระบบ' },
         { status: 409 }
+      );
+    }
+    
+    // Check for validation errors from Mongoose
+    if (error instanceof Error && error.message.includes('validation failed')) {
+      return NextResponse.json(
+        { 
+          error: 'ข้อมูลไม่ถูกต้องตามรูปแบบที่กำหนด',
+          details: error.message
+        },
+        { status: 400 }
       );
     }
     

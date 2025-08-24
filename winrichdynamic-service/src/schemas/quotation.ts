@@ -53,7 +53,7 @@ export const createQuotationSchema = z.object({
     .optional()
     .or(z.literal(''))
     .refine((val) => !val || /^(\+?66|0)\d{9}$/.test(val), {
-      message: 'รูปแบบเบอร์โทรศัพท์ลูกค้าไม่ถูกต้อง'
+      message: 'รูปแบบเบอร์โทรศัพท์ลูกค้าไม่ถูกต้อง (ตัวอย่าง: 0812345678, +66812345678)'
     }),
   subject: z.string()
     .min(1, 'กรุณาระบุหัวข้อใบเสนอราคา')
@@ -61,7 +61,10 @@ export const createQuotationSchema = z.object({
     .trim(),
   validUntil: z.string()
     .min(1, 'กรุณาระบุวันหมดอายุ')
-    .transform((str) => new Date(str)),
+    .refine((str) => {
+      const date = new Date(str);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, 'วันหมดอายุต้องเป็นวันที่ในอนาคต'),
   paymentTerms: z.string()
     .min(1, 'กรุณาระบุเงื่อนไขการชำระเงิน')
     .max(200, 'เงื่อนไขการชำระเงินต้องมีความยาวไม่เกิน 200 ตัวอักษร')

@@ -37,17 +37,30 @@ export async function POST(request: NextRequest) {
 	try {
 		const auth = verifyToken(request);
 		if (!auth.valid) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+			console.log('[B2B] Auth failed:', auth.error);
+			return NextResponse.json({ 
+				success: false,
+				error: 'Unauthorized - กรุณาเข้าสู่ระบบใหม่' 
+			}, { status: 401 });
 		}
+
+		console.log('[B2B] Auth successful for admin:', auth.adminId);
+
 		await connectDB();
 		const body = await request.json();
 		const { name, price, description, imageUrl, units, category, options, isAvailable } = body;
 
 		if (!name || !description || !imageUrl) {
-			return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
+			return NextResponse.json({ 
+				success: false,
+				error: 'กรุณากรอกข้อมูลให้ครบถ้วน' 
+			}, { status: 400 });
 		}
 		if (price === undefined && (!units || units.length === 0)) {
-			return NextResponse.json({ error: 'กรุณาระบุราคาเดี่ยว หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' }, { status: 400 });
+			return NextResponse.json({ 
+				success: false,
+				error: 'กรุณาระบุราคาเดี่ยว หรือ เพิ่มหน่วยอย่างน้อย 1 หน่วย' 
+			}, { status: 400 });
 		}
 
 		const product = await Product.create({
@@ -59,7 +72,12 @@ export async function POST(request: NextRequest) {
 			category: category || 'ทั่วไป',
 			options,
 			isAvailable: isAvailable !== false,
+			createdBy: auth.adminId, // เพิ่มข้อมูลผู้สร้าง
+			createdAt: new Date(),
+			updatedAt: new Date()
 		});
+
+		console.log('[B2B] Product created successfully:', product._id);
 
 		return NextResponse.json({ 
 			success: true, 
