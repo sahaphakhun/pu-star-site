@@ -53,12 +53,10 @@ const UserSchema: Schema = new Schema({
   timestamps: true,
 });
 
-// สร้าง index สำหรับการค้นหา
-UserSchema.index({ phoneNumber: 1 });
+// สร้าง index สำหรับการค้นหา (เฉพาะที่จำเป็น)
+UserSchema.index({ phoneNumber: 1 }, { unique: true });
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
-UserSchema.index({ isVerified: 1 });
-UserSchema.index({ isActive: 1 });
 
 // ป้องกัน Error: OverwriteModelError
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

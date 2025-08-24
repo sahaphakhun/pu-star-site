@@ -41,7 +41,7 @@ const OTPVerificationSchema: Schema = new Schema({
   },
 });
 
-// ลบ indexes เก่าและสร้างใหม่
+// สร้าง index สำหรับการค้นหาและ TTL
 OTPVerificationSchema.index({ phoneNumber: 1 });
 OTPVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // จะลบอัตโนมัติเมื่อถึงเวลา expiresAt
 
