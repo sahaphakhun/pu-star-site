@@ -24,3 +24,25 @@ body {
 .input-field {
   @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent;
 }
+
+/* Admin B2B Modal Fixes */
+@media (min-width: 768px) {
+  .adminb2b-modal {
+    margin-left: 14rem; /* 56 = 14rem */
+  }
+  
+  .adminb2b-modal .fixed.inset-0 {
+    margin-left: 14rem;
+  }
+}
+
+/* Ensure modals don't overlap with sidebar */
+.adminb2b-modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 z-50;
+}
+
+@media (min-width: 768px) {
+  .adminb2b-modal-overlay {
+    margin-left: 14rem;
+  }
+}

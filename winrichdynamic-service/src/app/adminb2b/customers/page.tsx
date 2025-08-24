@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import CustomerForm from '@/components/CustomerForm'
 import CustomerList, { Customer as ListCustomer } from '@/components/CustomerList'
+import AdminModal from '@/components/AdminModal'
 
 interface Customer {
   _id: string
@@ -179,46 +179,35 @@ export default function AdminB2BCustomers() {
         </div>
 
         {/* Customer Form Modal */}
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg border shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-              >
-                <CustomerForm
-                  initialData={editingCustomer ? {
-                    name: editingCustomer.name,
-                    phoneNumber: editingCustomer.phoneNumber,
-                    email: editingCustomer.email || '',
-                    taxId: editingCustomer.taxId || '',
-                    companyName: editingCustomer.companyName || '',
-                    companyAddress: editingCustomer.companyAddress || '',
-                    companyPhone: editingCustomer.companyPhone || '',
-                    companyEmail: editingCustomer.companyEmail || '',
-                    customerType: editingCustomer.customerType,
-                    assignedTo: editingCustomer.assignedTo || '',
-                    creditLimit: editingCustomer.creditLimit !== undefined ? String(editingCustomer.creditLimit) : '',
-                    paymentTerms: editingCustomer.paymentTerms,
-                    notes: editingCustomer.notes || '',
-                    isActive: editingCustomer.isActive,
-                  } : undefined}
-                  onSubmit={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
-                  onCancel={editingCustomer ? handleCancelEdit : handleCancelCreate}
-                  isEditing={!!editingCustomer}
-                  loading={formLoading}
-                />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <AdminModal
+          isOpen={showForm}
+          onClose={editingCustomer ? handleCancelEdit : handleCancelCreate}
+          maxWidth="max-w-4xl"
+          maxHeight="max-h-[90vh]"
+        >
+          <CustomerForm
+            initialData={editingCustomer ? {
+              name: editingCustomer.name,
+              phoneNumber: editingCustomer.phoneNumber,
+              email: editingCustomer.email || '',
+              taxId: editingCustomer.taxId || '',
+              companyName: editingCustomer.companyName || '',
+              companyAddress: editingCustomer.companyAddress || '',
+              companyPhone: editingCustomer.companyPhone || '',
+              companyEmail: editingCustomer.companyEmail || '',
+              customerType: editingCustomer.customerType,
+              assignedTo: editingCustomer.assignedTo || '',
+              creditLimit: editingCustomer.creditLimit !== undefined ? String(editingCustomer.creditLimit) : '',
+              paymentTerms: editingCustomer.paymentTerms,
+              notes: editingCustomer.notes || '',
+              isActive: editingCustomer.isActive,
+            } : undefined}
+            onSubmit={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
+            onCancel={editingCustomer ? handleCancelEdit : handleCancelCreate}
+            isEditing={!!editingCustomer}
+            loading={formLoading}
+          />
+        </AdminModal>
 
         {/* Customer List */}
         <CustomerList

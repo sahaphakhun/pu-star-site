@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import QuotationForm from '@/components/QuotationForm'
+import AdminModal from '@/components/AdminModal'
 
 interface Quotation {
   _id: string
@@ -265,32 +265,21 @@ export default function AdminB2BQuotations() {
         </div>
 
         {/* Quotation Form Modal */}
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
-              >
-                <QuotationForm
-                  initialData={editingQuotation || undefined}
-                  customers={customers}
-                  onSubmit={editingQuotation ? handleUpdateQuotation : handleCreateQuotation}
-                  onCancel={editingQuotation ? handleCancelEdit : handleCancelCreate}
-                  isEditing={!!editingQuotation}
-                  loading={formLoading}
-                />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <AdminModal
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          maxWidth="max-w-6xl"
+          maxHeight="max-h-[90vh]"
+        >
+          <QuotationForm
+            initialData={editingQuotation || undefined}
+            customers={customers}
+            onSubmit={editingQuotation ? handleUpdateQuotation : handleCreateQuotation}
+            onCancel={editingQuotation ? handleCancelEdit : handleCancelCreate}
+            isEditing={!!editingQuotation}
+            loading={formLoading}
+          />
+        </AdminModal>
 
         {/* Quotations List */}
         <div className="bg-white rounded-lg border shadow-sm">
@@ -345,10 +334,8 @@ export default function AdminB2BQuotations() {
                 </thead>
                 <tbody className="bg-white divide-y">
                   {quotations.map((quotation) => (
-                    <motion.tr
+                    <tr
                       key={quotation._id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
                       className="hover:bg-gray-50"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -422,7 +409,7 @@ export default function AdminB2BQuotations() {
                           )}
                         </div>
                       </td>
-                    </motion.tr>
+                    </tr>
                   ))}
                 </tbody>
               </table>
