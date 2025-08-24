@@ -20,7 +20,7 @@ export default function AdminB2BLoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/send-otp', {
+              const res = await fetch('/api/adminb2b/login/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
@@ -61,7 +61,7 @@ export default function AdminB2BLoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+              const res = await fetch('/api/adminb2b/login/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp }),

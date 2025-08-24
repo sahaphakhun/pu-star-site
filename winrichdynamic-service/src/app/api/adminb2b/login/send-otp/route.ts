@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
+import Admin from '@/models/Admin';
 import OTPVerification from '@/models/OTPVerification';
 import { requestOTP, formatPhoneNumber } from '@/utils/deesmsx';
 
@@ -9,33 +10,33 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 // ใช้ sender ที่ได้รับอนุมัติ
 const SENDER_NAME = process.env.DEESMSX_SENDER_NAME || 'deeSMS.OTP';
 
-// API Handler สำหรับส่ง OTP
+// API Handler สำหรับส่ง OTP สำหรับ Admin Login
 export async function POST(req: Request) {
   try {
-    const { phoneNumber } = await req.json();
-    console.log('[B2B] ได้รับคำขอส่ง OTP สำหรับเบอร์:', phoneNumber);
+    const { phone } = await req.json();
+    console.log('[B2B] ได้รับคำขอส่ง OTP สำหรับ Admin Login เบอร์:', phone);
 
-    if (!phoneNumber) {
+    if (!phone) {
       console.log('[B2B] ไม่ได้ระบุเบอร์โทรศัพท์');
       return NextResponse.json(
-        { success: false, message: 'กรุณาระบุเบอร์โทรศัพท์' },
+        { success: false, error: 'กรุณาระบุเบอร์โทรศัพท์' },
         { status: 400 }
       );
     }
 
     // แปลงและตรวจสอบเบอร์โทรศัพท์ให้เป็นรูปแบบ E.164 (66xxxxxxxxx)
-    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    const formattedPhone = formatPhoneNumber(phone);
 
     // หากไม่ตรงตามรูปแบบ 66 + 9 หลัก ให้แจ้งข้อผิดพลาด
-    if (!/^66\d{9}$/.test(formattedPhoneNumber)) {
-      console.log('[B2B] รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง:', phoneNumber, '→', formattedPhoneNumber);
+    if (!/^66\d{9}$/.test(formattedPhone)) {
+      console.log('[B2B] รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง:', phone, '→', formattedPhone);
       return NextResponse.json(
-        { success: false, message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง' },
+        { success: false, error: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง' },
         { status: 400 }
       );
     }
 
-    console.log('[B2B] เบอร์โทรศัพท์หลังจากแปลง:', formattedPhoneNumber);
+    console.log('[B2B] เบอร์โทรศัพท์หลังจากแปลง:', formattedPhone);
 
     try {
       // เชื่อมต่อกับฐานข้อมูล
@@ -43,8 +44,25 @@ export async function POST(req: Request) {
       await connectDB();
       console.log('[B2B] เชื่อมต่อกับฐานข้อมูลสำเร็จ');
 
+      // ตรวจสอบว่าเบอร์โทรศัพท์มีในระบบหรือไม่
+      const admin = await Admin.findOne({ phone: formattedPhone });
+      if (!admin) {
+        return NextResponse.json(
+          { success: false, error: 'ไม่พบผู้ใช้ในระบบ กรุณาสมัครสมาชิกก่อน' },
+          { status: 404 }
+        );
+      }
+
+      // ตรวจสอบว่า admin ยังใช้งานได้หรือไม่
+      if (!admin.isActive) {
+        return NextResponse.json(
+          { success: false, error: 'บัญชีนี้ถูกระงับการใช้งาน' },
+          { status: 403 }
+        );
+      }
+
       // ตรวจสอบว่าเบอร์นี้เคยขอ OTP ไปแล้วหรือไม่
-      const existingOtp = await OTPVerification.findOne({ phoneNumber: formattedPhoneNumber });
+      const existingOtp = await OTPVerification.findOne({ phoneNumber: formattedPhone });
       if (existingOtp) {
         console.log('[B2B] พบ OTP เดิมสำหรับเบอร์นี้:', existingOtp);
         // ถ้ามีการขอ OTP ไปแล้ว ตรวจสอบว่าหมดอายุหรือยัง
@@ -56,7 +74,7 @@ export async function POST(req: Request) {
           return NextResponse.json(
             { 
               success: false, 
-              message: `กรุณารอ ${timeRemaining} วินาทีก่อนขอรหัส OTP ใหม่` 
+              error: `กรุณารอ ${timeRemaining} วินาทีก่อนขอรหัส OTP ใหม่` 
             },
             { status: 429 }
           );
@@ -69,14 +87,14 @@ export async function POST(req: Request) {
 
       // ส่งคำขอ OTP ไปยัง DeeSMSx API
       console.log('[B2B] กำลังส่งคำขอ OTP ไปยัง DeeSMSx API ด้วย Sender:', SENDER_NAME);
-      const otpResponse = await requestOTP(formattedPhoneNumber, SENDER_NAME);
+      const otpResponse = await requestOTP(formattedPhone, SENDER_NAME);
       console.log('[B2B] ได้รับการตอบกลับจาก DeeSMSx API:', otpResponse);
 
       const errorCode = otpResponse.error !== undefined ? otpResponse.error : otpResponse.code;
       if (String(errorCode) !== '0') {
         console.error('[B2B] DeeSMSx API ส่งค่า error กลับมา:', errorCode, otpResponse.msg);
         return NextResponse.json(
-          { success: false, message: otpResponse.msg || 'เกิดข้อผิดพลาดในการส่ง OTP' },
+          { success: false, error: otpResponse.msg || 'เกิดข้อผิดพลาดในการส่ง OTP' },
           { status: 500 }
         );
       }
@@ -88,7 +106,7 @@ export async function POST(req: Request) {
 
       try {
         await OTPVerification.create({
-          phoneNumber: formattedPhoneNumber,
+          phoneNumber: formattedPhone,
           token: otpResponse.result.token,
           ref: otpResponse.result.ref,
           requestNo: otpResponse.result.requestNo,
@@ -104,10 +122,17 @@ export async function POST(req: Request) {
         throw dbError;
       }
 
+      console.log(`[B2B] Login OTP sent to ${formattedPhone} for admin: ${admin.name}`);
+
       // สำหรับโหมดพัฒนา อาจจะส่ง ref มาด้วยเพื่อความสะดวก
-      const response: { success: boolean; message: string; otp?: string } = {
+      const response: { success: boolean; message: string; otp?: string; data?: any } = {
         success: true,
-        message: 'ส่งรหัส OTP ไปยังเบอร์โทรศัพท์ของคุณแล้ว',
+        message: 'ส่ง OTP เรียบร้อยแล้ว',
+        data: {
+          phone: formattedPhone,
+          expiresIn: '5 นาที',
+          adminName: admin.name
+        }
       };
 
       if (isDevelopment) {
@@ -131,14 +156,14 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             success: false,
-            message: 'กรุณารอ 30 วินาทีก่อนส่งรหัส OTP ใหม่',
+            error: 'กรุณารอ 30 วินาทีก่อนส่งรหัส OTP ใหม่',
           },
           { status: 429 }
         );
       }
 
       return NextResponse.json(
-        { success: false, message: `เกิดข้อผิดพลาดในการส่ง OTP: ${errorMessage}` },
+        { success: false, error: `เกิดข้อผิดพลาดในการส่ง OTP: ${errorMessage}` },
         { status: 500 }
       );
     }
@@ -150,7 +175,7 @@ export async function POST(req: Request) {
     }
     
     return NextResponse.json(
-      { success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลคำขอ' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการประมวลผลคำขอ' },
       { status: 500 }
     );
   }
