@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import connectDB from '@/lib/mongodb';
+import OTPVerification from '@/models/OTPVerification';
 import { requestOTP } from '@/utils/deesmsx';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
-
-// Global OTP cache สำหรับการสมัครสมาชิก
-declare global {
-  var registerOtpCache: Map<string, {
-    otp: string;
-    expiresAt: number;
-    attempts: number;
-    token: string;
-    ref: string;
-    userData: {
-      name: string;
-      phone: string;
-      email: string;
-      company: string;
-      role: string;
-    };
-  }> | undefined;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,40 +34,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // เชื่อมต่อกับฐานข้อมูล
+    await connectDB();
+
+    // ตรวจสอบว่าเบอร์นี้เคยขอ OTP ไปแล้วหรือไม่
+    const existingOtp = await OTPVerification.findOne({ phoneNumber: formattedPhone });
+    if (existingOtp) {
+      console.log('[B2B] พบ OTP เดิมสำหรับเบอร์นี้:', existingOtp);
+      // ถ้ามีการขอ OTP ไปแล้ว ตรวจสอบว่าหมดอายุหรือยัง
+      if (existingOtp.expiresAt > new Date()) {
+        // ถ้ายังไม่หมดอายุให้รอจนกว่าจะหมดอายุ (ป้องกันการขอ OTP ถี่เกินไป)
+        const timeRemaining = Math.ceil((existingOtp.expiresAt.getTime() - new Date().getTime()) / 1000);
+        console.log('[B2B] OTP ยังไม่หมดอายุ เหลือเวลาอีก:', timeRemaining, 'วินาที');
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `กรุณารอ ${timeRemaining} วินาทีก่อนขอรหัส OTP ใหม่` 
+          },
+          { status: 429 }
+        );
+      } else {
+        // ถ้าหมดอายุแล้ว ลบ OTP เก่าออก
+        console.log('[B2B] OTP หมดอายุแล้ว กำลังลบออกจากฐานข้อมูล');
+        await OTPVerification.deleteOne({ _id: existingOtp._id });
+      }
+    }
+
     // ส่งคำขอ OTP ผ่าน DeeSMSx
     try {
       const result = await requestOTP(formattedPhone);
       
-      // เก็บ OTP ใน cache พร้อมข้อมูลผู้ใช้
-      if (!global.registerOtpCache) {
-        global.registerOtpCache = new Map();
+      // ตรวจสอบผลลัพธ์จาก DeeSMSx
+      const errorCode = result.error !== undefined ? result.error : result.code;
+      if (String(errorCode) !== '0') {
+        console.error('[B2B] DeeSMSx API ส่งค่า error กลับมา:', errorCode, result.msg);
+        return NextResponse.json(
+          { success: false, error: result.msg || 'เกิดข้อผิดพลาดในการส่ง OTP' },
+          { status: 500 }
+        );
       }
-      
-      global.registerOtpCache.set(formattedPhone, {
-        otp: result.result.ref, // ใช้ ref เป็น OTP
-        expiresAt: Date.now() + (5 * 60 * 1000), // หมดอายุใน 5 นาที
-        attempts: 0,
-        token: result.result.token,
-        ref: result.result.ref,
-        userData: {
-          name: name.trim(),
-          phone: formattedPhone,
-          email: email.trim().toLowerCase(),
-          company: company?.trim() || '',
-          role: role || 'admin'
+
+      // เก็บข้อมูล OTP ลงฐานข้อมูล
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5); // OTP หมดอายุใน 5 นาที
+      console.log('[B2B] กำลังบันทึกข้อมูล OTP ลงฐานข้อมูล');
+
+      try {
+        await OTPVerification.create({
+          phoneNumber: formattedPhone,
+          token: result.result.token,
+          ref: result.result.ref,
+          requestNo: result.result.requestNo,
+          expiresAt,
+        });
+        console.log('[B2B] บันทึกข้อมูล OTP สำเร็จ');
+      } catch (dbError) {
+        console.error('[B2B] เกิดข้อผิดพลาดในการบันทึกข้อมูล OTP:', dbError);
+        if (dbError instanceof Error) {
+          console.error('[B2B] Error message:', dbError.message);
+          console.error('[B2B] Error stack:', dbError.stack);
         }
-      });
+        throw dbError;
+      }
 
       console.log(`[B2B] Registration OTP sent to ${formattedPhone}: ${result.result.ref}`);
       
-      return NextResponse.json({
+      // สำหรับโหมดพัฒนา อาจจะส่ง ref มาด้วยเพื่อความสะดวก
+      const response: { success: boolean; message: string; data: any; ref?: string } = {
         success: true,
         message: 'ส่ง OTP เรียบร้อยแล้ว',
         data: {
           phone: formattedPhone,
           expiresIn: '5 นาที'
         }
-      });
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        // ในโหมดพัฒนาส่ง ref มาด้วยเพื่อความสะดวก (ไม่ควรทำในโหมด production)
+        response.ref = result.result.ref;
+        console.log('[B2B] โหมดพัฒนา ส่ง ref กลับไปด้วย:', result.result.ref);
+      }
+
+      return NextResponse.json(response);
 
     } catch (smsError) {
       console.error('[B2B] SMS sending error:', smsError);

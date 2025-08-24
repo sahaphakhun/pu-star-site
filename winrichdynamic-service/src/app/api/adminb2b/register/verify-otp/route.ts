@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import Role from '@/models/Role';
+import OTPVerification from '@/models/OTPVerification';
 import { verifyOTP } from '@/utils/deesmsx';
 import { formatPhoneNumber } from '@/utils/phoneUtils';
 
@@ -29,55 +30,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ตรวจสอบ OTP ใน cache
-    if (!global.registerOtpCache) {
-      return NextResponse.json(
-        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
-        { status: 400 }
-      );
-    }
+    // ค้นหาข้อมูล OTP ในฐานข้อมูล
+    const otpRecord = await OTPVerification.findOne({ phoneNumber: formattedPhone });
 
-    const otpData = global.registerOtpCache.get(formattedPhone);
-    if (!otpData) {
+    // ตรวจสอบว่า OTP record มีอยู่จริงหรือไม่
+    if (!otpRecord) {
       return NextResponse.json(
-        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
+        { success: false, error: 'ไม่พบข้อมูล OTP สำหรับเบอร์โทรศัพท์นี้ กรุณาขอรหัส OTP ใหม่' },
         { status: 400 }
       );
     }
 
     // ตรวจสอบว่า OTP หมดอายุหรือไม่
-    if (Date.now() > otpData.expiresAt) {
-      global.registerOtpCache.delete(formattedPhone);
+    if (otpRecord.expiresAt < new Date()) {
+      await OTPVerification.deleteOne({ _id: otpRecord._id });
       return NextResponse.json(
-        { success: false, error: 'OTP หมดอายุ กรุณาขอใหม่' },
+        { success: false, error: 'รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่' },
         { status: 400 }
       );
     }
-
-    // ตรวจสอบจำนวนครั้งที่ลอง
-    if (otpData.attempts >= 3) {
-      global.registerOtpCache.delete(formattedPhone);
-      return NextResponse.json(
-        { success: false, error: 'ลอง OTP เกินจำนวนครั้งที่กำหนด กรุณาขอใหม่' },
-        { status: 400 }
-      );
-    }
-
-    // เพิ่มจำนวนครั้งที่ลอง
-    otpData.attempts++;
 
     // ตรวจสอบ OTP ผ่าน DeeSMSx
-    let isValidOtp = false;
-    
     try {
-      await verifyOTP(otpData.token, otp);
-      isValidOtp = true;
+      await verifyOTP(otpRecord.token, otp);
     } catch (verifyError) {
       console.error('[B2B] Registration OTP verification error:', verifyError);
-      isValidOtp = false;
-    }
-
-    if (!isValidOtp) {
       return NextResponse.json(
         { success: false, error: 'รหัส OTP ไม่ถูกต้อง' },
         { status: 400 }
@@ -124,8 +101,8 @@ export async function POST(request: NextRequest) {
 
     await admin.save();
 
-    // ลบ OTP จาก cache
-    global.registerOtpCache.delete(formattedPhone);
+    // ลบ OTP record เมื่อยืนยันเสร็จสิ้น
+    await OTPVerification.deleteOne({ _id: otpRecord._id });
 
     console.log(`[B2B] New admin registered: ${admin.name} (${formattedPhone})`);
 
