@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
+import { useTokenManager } from '@/utils/tokenManager';
 
 interface MenuItem {
   label: string;
@@ -21,6 +22,7 @@ interface MenuItem {
 const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout, isAuthenticated } = useTokenManager();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; logoUrl: string } | null>(null);
@@ -52,6 +54,13 @@ const AdminSidebar: React.FC = () => {
 
   const isSubmenuExpanded = (menuLabel: string) => {
     return expandedMenus.has(menuLabel);
+  };
+
+  const handleLogout = async () => {
+    if (confirm('คุณแน่ใจหรือไม่ที่จะออกจากระบบ?')) {
+      await logout();
+      toast.success('ออกจากระบบเรียบร้อยแล้ว');
+    }
   };
 
   const menuItems: MenuItem[] = [
@@ -99,58 +108,28 @@ const AdminSidebar: React.FC = () => {
     
     // 6. การตั้งค่าและระบบ
     { 
-      label: '⚙️ การตั้งค่าและระบบ', 
+      label: '⚙️ การตั้งค่า', 
       href: '/adminb2b/settings', 
-      icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0a1.724 1.724 0 002.573 1.066c.8-.488 1.78.492 1.292 1.292a1.724 1.724 0 001.066 2.573c.921.3.921 1.603 0 1.902a1.724 1.724 0 00-1.066 2.573c.488.8-.492 1.78-1.292 1.292a1.724 1.724 0 00-2.573 1.066c-.3.921-1.603.921-1.902 0a1.724 1.724 0 00-2.573-1.066c-.8.488-1.78-.492-1.292-1.292a1.724 1.724 0 00-1.066-2.573c-.921-.3-.921-1.603 0-1.902a1.724 1.724 0 001.066-2.573c-.488-.8.492-1.78 1.292-1.292.996.608 2.296.07 2.573-1.066z" /></svg>,
-      submenu: [
-        { label: '🔧 ตั้งค่าทั่วไป', href: '/adminb2b/settings', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0a1.724 1.724 0 002.573 1.066c.8-.488 1.78.492 1.292 1.292a1.724 1.724 0 001.066 2.573c.921.3.921 1.603 0 1.902a1.724 1.724 0 00-1.066 2.573c.488.8-.492 1.78-1.292 1.292a1.724 1.724 0 00-2.573 1.066c-.3.921-1.603.921-1.902 0a1.724 1.724 0 00-2.573-1.066c-.8.488-1.78-.492-1.292-1.292a1.724 1.724 0 00-1.066-2.573c-.921-.3-.921-1.603 0-1.902a1.724 1.724 0 001.066-2.573c-.488-.8.492-1.78 1.292-1.292.996.608 2.296.07 2.573-1.066z" /></svg> },
-        { label: '🔐 บทบาทและสิทธิ์', href: '/adminb2b/permissions', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> },
-        { label: '👨‍💼 จัดการแอดมิน', href: '/adminb2b/admins', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg> }
-      ]
-    },
+      icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    }
   ];
 
-  // ขยายเมนูย่อยอัตโนมัติเมื่อผู้ใช้อยู่ที่หน้าหนึ่งในเมนูย่อยนั้น
-  useEffect(() => {
-    const currentMenuItem = menuItems.find(item => 
-      item.submenu && item.submenu.some(subItem => pathname === subItem.href)
-    );
-    
-    if (currentMenuItem) {
-      setExpandedMenus(prev => new Set([...prev, currentMenuItem.label]));
-    }
-  }, [pathname]);
+  // แสดง sidebar เฉพาะเมื่อ authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
       {/* Mobile Menu Button */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white p-2 rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {isMobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-[9999] p-2 bg-white rounded-lg shadow-lg border border-gray-200"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
       {/* Mobile Sidebar */}
       <AnimatePresence>
@@ -159,88 +138,111 @@ const AdminSidebar: React.FC = () => {
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
-            transition={{ type: 'tween', duration: 0.3 }}
-            className="md:hidden fixed left-0 top-0 w-64 h-screen bg-white border-r border-gray-200 z-[9999] overflow-y-auto"
+            className="fixed inset-0 z-[9998] md:hidden"
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                {siteInfo?.logoUrl ? (
-                  <div className="relative w-6 h-6">
-                    <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="24px" className="object-contain" />
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {siteInfo?.logoUrl ? (
+                      <div className="relative w-7 h-7">
+                        <Image src={siteInfo.logoUrl} alt="Site Logo" fill sizes="28px" className="object-contain" />
+                      </div>
+                    ) : null}
+                    <h1 className="text-xl font-bold text-blue-600">{siteInfo?.siteName || 'B2B Admin'}</h1>
                   </div>
-                ) : null}
-                <h1 className="text-xl font-bold text-blue-600">{siteInfo?.siteName || 'B2B Admin'}</h1>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-1 rounded-lg hover:bg-gray-100"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Mobile Menu Items */}
-            <nav className="p-4">
-              <div className="space-y-2">
-                {menuItems.map((item, index) => (
-                  <div key={index}>
-                    {item.submenu ? (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => toggleSubmenu(item.label)}
-                          className={`flex items-center justify-between w-full px-3 py-3 text-left rounded-lg transition-colors ${
-                            pathname === item.href || pathname.startsWith(item.href + '/')
-                              ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-500'
+              <nav className="p-4">
+                <ul className="space-y-2">
+                  {menuItems.map((item) => (
+                    <li key={item.href}>
+                      {item.submenu ? (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => toggleSubmenu(item.label)}
+                            className={`flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors ${
+                              pathname === item.href || pathname.startsWith(item.href + '/')
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <span className="text-lg">{item.icon}</span>
+                              <span className="font-medium">{item.label}</span>
+                            </div>
+                            <svg
+                              className={`w-4 h-4 transition-transform ${isSubmenuExpanded(item.label) ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          
+                          {isSubmenuExpanded(item.label) && (
+                            <ul className="ml-6 mt-2 space-y-1">
+                              {item.submenu.map((subItem, subIndex) => (
+                                <li key={subIndex}>
+                                  <Link
+                                    href={subItem.href}
+                                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                                      pathname === subItem.href
+                                        ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <span className="text-sm">{subItem.icon}</span>
+                                    <span>{subItem.label}</span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                            pathname === item.href
+                              ? 'bg-blue-100 text-blue-700'
                               : 'text-gray-700 hover:bg-gray-100'
                           }`}
                         >
-                          <div className="flex items-center space-x-3">
-                            <span className="text-lg">{item.icon}</span>
-                            <span className="font-medium">{item.label}</span>
-                          </div>
-                          <svg
-                            className={`w-4 h-4 transition-transform ${isSubmenuExpanded(item.label) ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        
-                        {isSubmenuExpanded(item.label) && (
-                          <div className="ml-6 mt-2 space-y-1">
-                            {item.submenu.map((subItem, subIndex) => (
-                              <Link
-                                key={subIndex}
-                                href={subItem.href}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center space-x-3 w-full px-3 py-2 text-left rounded-lg transition-colors text-sm ${
-                                  pathname === subItem.href
-                                    ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-500'
-                                    : 'text-gray-600 hover:bg-gray-50'
-                                }`}
-                              >
-                                <span className="text-sm">{subItem.icon}</span>
-                                <span>{subItem.label}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <Link
-                        href={item.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 w-full px-3 py-3 text-left rounded-lg transition-colors ${
-                          pathname === item.href
-                            ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-500'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className="text-lg">{item.icon}</span>
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </nav>
+                          <span className="text-lg">{item.icon}</span>
+                          <span className="font-medium">{item.label}</span>
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                  
+                  {/* Logout Button */}
+                  <li className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center space-x-3 w-full px-3 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span className="font-medium">ออกจากระบบ</span>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
           </motion.aside>
         )}
       </AnimatePresence>
@@ -322,6 +324,19 @@ const AdminSidebar: React.FC = () => {
                 )}
               </li>
             ))}
+            
+            {/* Logout Button */}
+            <li className="pt-4 border-t border-gray-200">
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-3 w-full px-3 py-2 rounded-lg transition-colors text-red-600 hover:bg-red-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="font-medium">ออกจากระบบ</span>
+              </button>
+            </li>
           </ul>
         </nav>
       </aside>

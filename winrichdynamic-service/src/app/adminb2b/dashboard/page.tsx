@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { useTokenManager } from '@/utils/tokenManager';
 
 interface SystemStatus {
   isInitialized: boolean;
@@ -12,17 +13,42 @@ interface SystemStatus {
 }
 
 export default function DashboardPage() {
+  const { getValidToken, logout, isAuthenticated, loading: authLoading } = useTokenManager();
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
 
   useEffect(() => {
-    checkSystemStatus();
-  }, []);
+    // ตรวจสอบ authentication เมื่อโหลดหน้า
+    if (!authLoading && !isAuthenticated) {
+      logout();
+      return;
+    }
+    
+    if (isAuthenticated) {
+      checkSystemStatus();
+    }
+  }, [isAuthenticated, authLoading, logout]);
 
   const checkSystemStatus = async () => {
     try {
-      const response = await fetch('/api/adminb2b/init');
+      const token = await getValidToken();
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch('/api/adminb2b/init', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        logout();
+        return;
+      }
+      
       const result = await response.json();
       
       if (result.success) {
@@ -45,9 +71,26 @@ export default function DashboardPage() {
 
     setInitializing(true);
     try {
+      const token = await getValidToken();
+      if (!token) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        logout();
+        return;
+      }
+
       const response = await fetch('/api/adminb2b/init', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
+      
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        logout();
+        return;
+      }
+      
       const result = await response.json();
       
       if (result.success) {
@@ -63,6 +106,23 @@ export default function DashboardPage() {
       setInitializing(false);
     }
   };
+
+  // แสดง loading ถ้ายังไม่เสร็จการตรวจสอบ authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">กำลังตรวจสอบการเข้าสู่ระบบ...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // แสดงหน้า login ถ้าไม่ได้ authentication
+  if (!isAuthenticated) {
+    return null; // useTokenManager จะจัดการ redirect ไปหน้า login
+  }
 
   if (loading) {
     return (
@@ -136,20 +196,20 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-green-700 mb-4">
-                  ระบบได้ถูกเริ่มต้นแล้ว คุณสามารถเข้าสู่ระบบและใช้งานได้
+                  ระบบได้ถูกเริ่มต้นแล้ว คุณสามารถใช้งานได้ตามปกติ
                 </p>
                 <div className="space-x-3">
                   <Link
-                    href="/adminb2b/login"
+                    href="/adminb2b/products"
                     className="inline-block bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700"
                   >
-                    เข้าสู่ระบบ
+                    จัดการสินค้า
                   </Link>
                   <Link
-                    href="/adminb2b/register"
+                    href="/adminb2b/customers"
                     className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
                   >
-                    สมัครสมาชิกเพิ่ม
+                    จัดการลูกค้า
                   </Link>
                 </div>
               </div>
@@ -159,21 +219,53 @@ export default function DashboardPage() {
           {/* Quick Links */}
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">ลิงก์ด่วน</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Link
-                href="/adminb2b/login"
+                href="/adminb2b/products"
                 className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
               >
-                <div className="text-blue-600 font-medium">เข้าสู่ระบบ</div>
-                <div className="text-sm text-gray-600">เข้าสู่ระบบด้วยเบอร์โทรศัพท์</div>
+                <div className="text-blue-600 font-medium">จัดการสินค้า</div>
+                <div className="text-sm text-gray-600">สร้าง แก้ไข และลบสินค้า</div>
               </Link>
               
               <Link
-                href="/adminb2b/register"
+                href="/adminb2b/customers"
                 className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
               >
-                <div className="text-blue-600 font-medium">สมัครสมาชิก</div>
-                <div className="text-sm text-gray-600">สร้างบัญชีแอดมินใหม่</div>
+                <div className="text-blue-600 font-medium">จัดการลูกค้า</div>
+                <div className="text-sm text-gray-600">จัดการข้อมูลลูกค้า B2B</div>
+              </Link>
+
+              <Link
+                href="/adminb2b/quotations"
+                className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              >
+                <div className="text-blue-600 font-medium">ใบเสนอราคา</div>
+                <div className="text-sm text-gray-600">สร้างและจัดการใบเสนอราคา</div>
+              </Link>
+
+              <Link
+                href="/adminb2b/orders"
+                className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              >
+                <div className="text-blue-600 font-medium">จัดการออเดอร์</div>
+                <div className="text-sm text-gray-600">ติดตามและจัดการออเดอร์</div>
+              </Link>
+
+              <Link
+                href="/adminb2b/categories"
+                className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              >
+                <div className="text-blue-600 font-medium">หมวดหมู่สินค้า</div>
+                <div className="text-sm text-gray-600">จัดการหมวดหมู่และประเภทสินค้า</div>
+              </Link>
+
+              <Link
+                href="/adminb2b/settings"
+                className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+              >
+                <div className="text-blue-600 font-medium">การตั้งค่า</div>
+                <div className="text-sm text-gray-600">ตั้งค่าระบบและบัญชีผู้ใช้</div>
               </Link>
             </div>
           </div>

@@ -1,74 +1,78 @@
 import mongoose from 'mongoose';
 
-// รองรับได้หลายชื่อ เพื่อให้ทำงานได้ทั้งใน Railway, Vercel, Docker ฯลฯ
-const MONGODB_URI =
-  (process.env.MONGODB_URI ||
-    process.env.MONGO_URL ||
-    process.env.DATABASE_URL ||
-    process.env.MONGODB_URL) as string;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// log ใน production ด้วยเพื่อดีบัก Railway
-console.log('[DB] Environment variables check:');
-console.log('[DB] MONGODB_URI exists:', !!process.env.MONGODB_URI);
-console.log('[DB] MONGO_URL exists:', !!process.env.MONGO_URL);
-console.log('[DB] DATABASE_URL exists:', !!process.env.DATABASE_URL);
-console.log('[DB] MONGODB_URL exists:', !!process.env.MONGODB_URL);
-console.log('[DB] B2B_DB_NAME exists:', !!process.env.B2B_DB_NAME);
-
-if (MONGODB_URI && process.env.NODE_ENV !== 'production') {
-  console.log('[DB] using connection string =', MONGODB_URI.slice(0, 30) + '...');
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable inside .env');
 }
 
-// อย่า throw ระหว่าง build; ตรวจสอบตอน connect แทน
-
-// กำหนดรูปแบบ interface สำหรับค่า cached
-interface MongooseCache {
-  conn: mongoose.Connection | null;
-  promise: Promise<mongoose.Mongoose> | null;
-}
-
-// กำหนด global namespace
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development. This prevents connections growing exponentially
+ * during API Route usage.
+ */
 declare global {
-  // eslint-disable-next-line no-var
-  var mongoose: MongooseCache | undefined;
+  var mongoose: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
 }
 
-const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+global.mongoose = global.mongoose || { conn: null, promise: null };
 
-if (!global.mongoose) {
-  global.mongoose = cached;
-}
-
-async function connectDB(): Promise<mongoose.Connection> {
-  if (cached.conn) {
-    return cached.conn;
+async function connectDB() {
+  if (global.mongoose.conn) {
+    console.log('[B2B] Using existing MongoDB connection');
+    return global.mongoose.conn;
   }
 
-  if (!cached.promise) {
-    if (!MONGODB_URI) {
-      throw new Error(
-        'กรุณากำหนดค่า MONGODB_URI, MONGO_URL, DATABASE_URL หรือ MONGODB_URL ในตัวแปรสภาพแวดล้อม'
-      );
-    }
-    const dbName = process.env.B2B_DB_NAME || process.env.DB_NAME;
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[DB] selected dbName =', dbName || '(from connection string)');
-    }
-    const opts: Parameters<typeof mongoose.connect>[1] = {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 30000, // 30 วินาที หากหาเซิร์ฟเวอร์ไม่เจอจะ throw เร็วขึ้น
-      ...(dbName ? { dbName } : {}),
-    };
+  if (global.mongoose.promise) {
+    console.log('[B2B] Waiting for existing MongoDB connection promise');
+    return global.mongoose.promise;
+  }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
+  console.log('[B2B] Creating new MongoDB connection');
+  
+  const opts = {
+    bufferCommands: false,
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4
+  };
+
+  global.mongoose.promise = mongoose.connect(MONGODB_URI, opts);
+  
+  try {
+    global.mongoose.conn = await global.mongoose.promise;
+    console.log('[B2B] MongoDB connected successfully');
+    
+    // ตั้งค่า event listeners
+    mongoose.connection.on('connected', () => {
+      console.log('[B2B] MongoDB connection established');
     });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('[B2B] MongoDB connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('[B2B] MongoDB connection disconnected');
+    });
+
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      console.log('[B2B] MongoDB connection closed through app termination');
+      process.exit(0);
+    });
+
+    return global.mongoose.conn;
+  } catch (error) {
+    global.mongoose.promise = null;
+    console.error('[B2B] MongoDB connection failed:', error);
+    throw error;
   }
-  
-  const instance = await cached.promise;
-  cached.conn = instance.connection;
-  
-  return cached.conn;
 }
 
 export default connectDB;

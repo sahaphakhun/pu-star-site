@@ -1,105 +1,126 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IProduct extends Document {
-	name: string;
-	price: number;
-	description: string;
-	imageUrl: string;
-	units?: {
-		label: string;
-		price: number;
-		multiplier?: number;
-		shippingFee?: number;
-	}[];
-	category?: string;
-	options?: {
-		name: string;
-		values: {
-			label: string;
-			imageUrl?: string;
-			isAvailable?: boolean;
-		}[];
-		shippingFee?: number;
-		unitPrice?: number;
-	}[];
-	shippingFee?: number;
-	isAvailable?: boolean;
-	createdAt: Date;
-	updatedAt: Date;
+  name: string;
+  description: string;
+  price: number;
+  cost: number;
+  sku: string;
+  category: string;
+  stock: number;
+  unit: string;
+  status: 'active' | 'inactive';
+  images: string[];
+  specifications: Record<string, string>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const productSchema = new Schema<IProduct>(
-	{
-		name: {
-			type: String,
-			required: [true, 'กรุณาระบุชื่อสินค้า'],
-			trim: true,
-		},
-		price: {
-			type: Number,
-			required: true,
-			min: [0, 'ราคาต้องไม่ต่ำกว่า 0'],
-		},
-		description: {
-			type: String,
-			required: [true, 'กรุณาระบุรายละเอียดสินค้า'],
-			trim: true,
-		},
-		imageUrl: {
-			type: String,
-			required: [true, 'กรุณาระบุรูปภาพสินค้า'],
-		},
-		units: {
-			type: [
-				{
-					label: { type: String, required: true },
-					price: { type: Number, required: true, min: [0, 'ราคาต้องไม่ต่ำกว่า 0'] },
-					multiplier: { type: Number, required: false, min: 1, default: 1 },
-					shippingFee: { type: Number, required: false, min: 0 },
-				},
-			],
-			required: false,
-		},
-		category: {
-			type: String,
-			required: false,
-			trim: true,
-			default: 'ทั่วไป',
-		},
-		options: {
-			type: [
-				{
-					name: { type: String, required: true },
-					values: [
-						{
-							label: { type: String, required: true },
-							imageUrl: { type: String, required: false },
-							isAvailable: { type: Boolean, required: false, default: true },
-						},
-					],
-				},
-			],
-			required: false,
-		},
-		shippingFee: {
-			type: Number,
-			required: false,
-			min: 0,
-		},
-		isAvailable: {
-			type: Boolean,
-			required: false,
-			default: true,
-		},
-	},
-	{
-		timestamps: true,
-	}
-);
+const ProductSchema: Schema = new Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  cost: {
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  },
+  sku: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  category: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
+  stock: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  unit: {
+    type: String,
+    required: false,
+    trim: true,
+    default: 'ชิ้น'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+  images: [{
+    type: String,
+    required: false
+  }],
+  specifications: {
+    type: Map,
+    of: String,
+    default: {}
+  }
+}, {
+  timestamps: true
+});
 
-productSchema.index({ category: 1, createdAt: -1 });
-productSchema.index({ name: 'text', description: 'text' });
+// Indexes
+ProductSchema.index({ name: 1 });
+ProductSchema.index({ sku: 1 });
+ProductSchema.index({ category: 1 });
+ProductSchema.index({ status: 1 });
+ProductSchema.index({ price: 1 });
+ProductSchema.index({ stock: 1 });
 
-export default mongoose.models.Product || mongoose.model<IProduct>('Product', productSchema);
+// Text search index
+ProductSchema.index({
+  name: 'text',
+  description: 'text',
+  sku: 'text'
+});
+
+// Virtual for profit margin
+ProductSchema.virtual('profitMargin').get(function() {
+  if (this.cost > 0) {
+    return ((this.price - this.cost) / this.cost * 100).toFixed(2);
+  }
+  return 0;
+});
+
+// Virtual for profit
+ProductSchema.virtual('profit').get(function() {
+  return this.price - this.cost;
+});
+
+// Virtual for stock status
+ProductSchema.virtual('stockStatus').get(function() {
+  if (this.stock === 0) return 'out_of_stock';
+  if (this.stock < 10) return 'low_stock';
+  return 'in_stock';
+});
+
+// Ensure virtual fields are serialized
+ProductSchema.set('toJSON', { virtuals: true });
+ProductSchema.set('toObject', { virtuals: true });
+
+export default mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
 
 

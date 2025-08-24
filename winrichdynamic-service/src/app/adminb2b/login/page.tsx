@@ -71,9 +71,14 @@ export default function AdminB2BLoginPage() {
       
       if (result.success) {
         toast.success('เข้าสู่ระบบสำเร็จ');
+        
         // เก็บ token ใน localStorage สำหรับใช้กับ API
-        localStorage.setItem('b2b_auth_token', result.token);
-        location.href = '/adminb2b';
+        localStorage.setItem('b2b_auth_token', result.data.token);
+        
+        // รอสักครู่แล้ว redirect เพื่อให้ cookie ถูกตั้งค่า
+        setTimeout(() => {
+          window.location.href = '/adminb2b';
+        }, 500);
       } else {
         toast.error(result.error || 'OTP ไม่ถูกต้อง');
       }

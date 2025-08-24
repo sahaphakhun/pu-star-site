@@ -3,98 +3,6 @@ import connectDB from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import Role from '@/models/Role';
 
-export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
-    
-    // ตรวจสอบว่ามีแอดมินในระบบหรือไม่
-    const adminCount = await Admin.countDocuments();
-    
-    if (adminCount > 0) {
-      return NextResponse.json({
-        success: false,
-        message: 'ระบบได้ถูกเริ่มต้นแล้ว',
-        data: { adminCount }
-      });
-    }
-
-    // สร้าง roles เริ่มต้น
-    const roles = [
-      {
-        name: 'superadmin',
-        level: 0,
-        description: 'Super Administrator - มีสิทธิ์สูงสุดในระบบ',
-        permissions: ['*']
-      },
-      {
-        name: 'admin',
-        level: 1,
-        description: 'Administrator - ผู้ดูแลระบบ',
-        permissions: ['admin.*', 'products.*', 'customers.*', 'orders.*', 'quotations.*']
-      },
-      {
-        name: 'manager',
-        level: 2,
-        description: 'Manager - ผู้จัดการ',
-        permissions: ['products.read', 'customers.*', 'orders.*', 'quotations.*']
-      },
-      {
-        name: 'staff',
-        level: 3,
-        description: 'Staff - พนักงาน',
-        permissions: ['products.read', 'customers.read', 'orders.read', 'quotations.read']
-      }
-    ];
-
-    const createdRoles = await Role.insertMany(roles);
-    console.log('[B2B] Created roles:', createdRoles.map(r => r.name));
-
-    // สร้างแอดมินเริ่มต้น
-    const superAdminRole = createdRoles.find(r => r.name === 'superadmin');
-    if (!superAdminRole) {
-      throw new Error('ไม่สามารถสร้าง superadmin role ได้');
-    }
-
-    const defaultAdmin = await Admin.create({
-      name: 'Super Administrator',
-      phone: '66812345678', // ใช้รูปแบบ 66xxxxxxxxx สำหรับแอดมินเริ่มต้น
-      email: 'admin@winrichdynamic.com', // เปลี่ยนเป็นอีเมลจริง
-      company: 'WinRich Dynamic',
-      role: superAdminRole._id,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-
-    await defaultAdmin.populate('role', 'name level');
-
-    console.log(`[B2B] Created default admin: ${defaultAdmin.name} (${defaultAdmin.phone})`);
-
-    return NextResponse.json({
-      success: true,
-      message: 'เริ่มต้นระบบสำเร็จ',
-      data: {
-        rolesCreated: createdRoles.length,
-        defaultAdmin: {
-          id: defaultAdmin._id,
-          name: defaultAdmin.name,
-          phone: defaultAdmin.phone,
-          email: defaultAdmin.email,
-          role: defaultAdmin.role.name,
-          roleLevel: defaultAdmin.role.level
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('[B2B] Init error:', error);
-    return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการเริ่มต้นระบบ' },
-      { status: 500 }
-    );
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -105,19 +13,82 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      message: 'สถานะระบบ',
+      message: 'B2B Admin API initialized successfully',
       data: {
         isInitialized: adminCount > 0,
         adminCount,
         roleCount,
-        systemStatus: adminCount > 0 ? 'ready' : 'needs_init'
+        systemStatus: adminCount > 0 ? 'ready' : 'needs_init',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
+      }
+    });
+  } catch (error) {
+    console.error('[B2B] Init API error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB();
+    
+    // สร้าง role พื้นฐาน
+    const defaultRoles = [
+      { name: 'admin', description: 'ผู้ดูแลระบบ', level: 1 },
+      { name: 'manager', description: 'ผู้จัดการ', level: 2 },
+      { name: 'staff', description: 'พนักงาน', level: 3 }
+    ];
+
+    for (const roleData of defaultRoles) {
+      const existingRole = await Role.findOne({ name: roleData.name });
+      if (!existingRole) {
+        const role = new Role(roleData);
+        await role.save();
+        console.log(`[B2B] Created role: ${roleData.name}`);
+      }
+    }
+
+    // สร้าง admin เริ่มต้น (ถ้ายังไม่มี)
+    const adminCount = await Admin.countDocuments();
+    if (adminCount === 0) {
+      const adminRole = await Role.findOne({ name: 'admin' });
+      if (adminRole) {
+        const defaultAdmin = new Admin({
+          name: 'System Administrator',
+          phone: '0999999999',
+          email: 'admin@winrichdynamic.com',
+          company: 'WinRich Dynamic',
+          role: adminRole._id,
+          isActive: true
+        });
+        await defaultAdmin.save();
+        console.log('[B2B] Created default admin account');
+      }
+    }
+
+    // ตรวจสอบสถานะระบบใหม่
+    const newAdminCount = await Admin.countDocuments();
+    const newRoleCount = await Role.countDocuments();
+    
+    return NextResponse.json({
+      success: true,
+      message: 'ระบบได้ถูกเริ่มต้นเรียบร้อยแล้ว',
+      data: {
+        isInitialized: newAdminCount > 0,
+        adminCount: newAdminCount,
+        roleCount: newRoleCount,
+        systemStatus: 'ready'
       }
     });
 
   } catch (error) {
-    console.error('[B2B] Status check error:', error);
+    console.error('[B2B] System initialization error:', error);
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการตรวจสอบสถานะระบบ' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการเริ่มต้นระบบ' },
       { status: 500 }
     );
   }

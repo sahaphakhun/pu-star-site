@@ -2,15 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ 
-      success: true, 
-      message: 'ออกจากระบบเรียบร้อยแล้ว' 
+    // สร้าง response สำหรับ logout
+    const response = NextResponse.json({
+      success: true,
+      message: 'ออกจากระบบสำเร็จ'
     });
 
-    // ลบ cookie
-    response.cookies.delete('b2b_token');
+    // ลบ cookie token
+    response.cookies.set('b2b_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0, // หมดอายุทันที
+      path: '/'
+    });
 
+    console.log('[B2B] User logged out successfully');
+    
     return response;
+
   } catch (error) {
     console.error('[B2B] Logout error:', error);
     return NextResponse.json(

@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requestOTP } from '@/utils/deesmsx';
+import { sendOTP } from '@/utils/deesmsx';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/utils/phoneUtils';
-import connectDB from '@/lib/mongodb';
-import Admin from '@/models/Admin';
 
-// Global OTP cache (ใน production ควรใช้ Redis)
+// Global OTP cache สำหรับการสมัครสมาชิก
 declare global {
-  var otpCache: Map<string, {
+  var registerOtpCache: Map<string, {
     otp: string;
     expiresAt: number;
     attempts: number;
     token: string;
     ref: string;
+    userData: {
+      name: string;
+      phone: string;
+      email: string;
+      company: string;
+      role: string;
+    };
   }> | undefined;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
     const body = await request.json();
-    const { phone } = body;
+    const { name, phone, email, company, role } = body;
 
-    if (!phone) {
+    if (!name || !phone || !email) {
       return NextResponse.json(
-        { success: false, error: 'กรุณาระบุเบอร์โทรศัพท์' },
+        { success: false, error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       );
     }
@@ -46,54 +50,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ตรวจสอบว่าเบอร์โทรศัพท์มีในระบบหรือไม่
-    const admin = await Admin.findOne({ phone: formattedPhone });
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, error: 'ไม่พบผู้ใช้ในระบบ กรุณาสมัครสมาชิกก่อน' },
-        { status: 404 }
-      );
-    }
-
-    // ตรวจสอบว่า admin ยังใช้งานได้หรือไม่
-    if (!admin.isActive) {
-      return NextResponse.json(
-        { success: false, error: 'บัญชีนี้ถูกระงับการใช้งาน' },
-        { status: 403 }
-      );
-    }
-
-    // ลบ OTP เก่าหากมี
-    if (global.otpCache) {
-      global.otpCache.delete(formattedPhone);
-    }
-
     // ส่งคำขอ OTP ผ่าน DeeSMSx
     try {
-      const result = await requestOTP(formattedPhone);
+      const result = await sendOTP(formattedPhone);
       
-      // เก็บ OTP ใน cache พร้อมข้อมูลที่จำเป็น
-      if (!global.otpCache) {
-        global.otpCache = new Map();
+      // เก็บ OTP ใน cache พร้อมข้อมูลผู้ใช้
+      if (!global.registerOtpCache) {
+        global.registerOtpCache = new Map();
       }
       
-      global.otpCache.set(formattedPhone, {
+      global.registerOtpCache.set(formattedPhone, {
         otp: result.result.ref, // ใช้ ref เป็น OTP
         expiresAt: Date.now() + (5 * 60 * 1000), // หมดอายุใน 5 นาที
         attempts: 0,
         token: result.result.token,
-        ref: result.result.ref
+        ref: result.result.ref,
+        userData: {
+          name: name.trim(),
+          phone: formattedPhone,
+          email: email.trim().toLowerCase(),
+          company: company?.trim() || '',
+          role: role || 'admin'
+        }
       });
 
-      console.log(`[B2B] Login OTP sent to ${formattedPhone} for admin: ${admin.name}`);
+      console.log(`[B2B] Registration OTP sent to ${formattedPhone}: ${result.result.ref}`);
       
       return NextResponse.json({
         success: true,
         message: 'ส่ง OTP เรียบร้อยแล้ว',
         data: {
           phone: formattedPhone,
-          expiresIn: '5 นาที',
-          adminName: admin.name
+          expiresIn: '5 นาที'
         }
       });
 
@@ -106,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('[B2B] Send OTP error:', error);
+    console.error('[B2B] Send registration OTP error:', error);
     return NextResponse.json(
       { success: false, error: 'เกิดข้อผิดพลาดในการส่ง OTP' },
       { status: 500 }

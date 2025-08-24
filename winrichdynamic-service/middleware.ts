@@ -4,8 +4,8 @@ import * as jose from 'jose';
 export async function middleware(request: NextRequest) {
   const { pathname } = new URL(request.url);
   
-  // ตรวจสอบเฉพาะ adminb2b routes
-  if (!pathname.startsWith('/adminb2b')) {
+  // ตรวจสอบเฉพาะ adminb2b routes และ API routes
+  if (!pathname.startsWith('/adminb2b') && !pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 
@@ -14,8 +14,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // อนุญาต API init โดยไม่ต้องตรวจสอบ token
-  if (pathname.startsWith('/api/adminb2b/init')) {
+  // อนุญาต API init และ validate-token โดยไม่ต้องตรวจสอบ token
+  if (pathname.startsWith('/api/adminb2b/init') || pathname.startsWith('/api/adminb2b/validate-token')) {
+    return NextResponse.next();
+  }
+
+  // อนุญาต API auth routes โดยไม่ต้องตรวจสอบ token
+  if (pathname.startsWith('/api/auth/')) {
     return NextResponse.next();
   }
 
@@ -44,12 +49,44 @@ export async function middleware(request: NextRequest) {
 
   try {
     const encoder = new TextEncoder();
-    await jose.jwtVerify(token, encoder.encode(secret));
+    const { payload } = await jose.jwtVerify(token, encoder.encode(secret));
+    
+    // ตรวจสอบว่า token หมดอายุหรือไม่
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < currentTime) {
+      console.log('[B2B] Token expired in middleware');
+      
+      // ถ้าเป็น API call ให้ส่ง 401
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Token expired' }, { status: 401 });
+      }
+      // ถ้าเป็น page ให้ redirect ไปหน้า login
+      const url = new URL('/adminb2b/login', request.url);
+      return NextResponse.redirect(url);
+    }
+
+    // ตรวจสอบว่า token มีข้อมูลที่จำเป็นหรือไม่
+    if (!payload.adminId || !payload.phone || !payload.role) {
+      console.log('[B2B] Invalid token payload in middleware');
+      
+      // ถ้าเป็น API call ให้ส่ง 401
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
+      // ถ้าเป็น page ให้ redirect ไปหน้า login
+      const url = new URL('/adminb2b/login', request.url);
+      return NextResponse.redirect(url);
+    }
+
+    console.log(`[B2B] Middleware: Token validated for admin: ${payload.adminId}`);
     return NextResponse.next();
-  } catch {
+    
+  } catch (error) {
+    console.error('[B2B] Middleware JWT verification failed:', error);
+    
     // ถ้าเป็น API call ให้ส่ง 401
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
     // ถ้าเป็น page ให้ redirect ไปหน้า login
     const url = new URL('/adminb2b/login', request.url);

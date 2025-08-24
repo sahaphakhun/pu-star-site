@@ -106,8 +106,16 @@ export async function POST(request: NextRequest) {
     const admin = await Admin.findOne({ phone: formattedPhone }).populate('role', 'name level');
     if (!admin) {
       return NextResponse.json(
-        { success: false, error: 'ไม่พบผู้ใช้ในระบบ' },
+        { success: false, error: 'ไม่พบผู้ใช้ในระบบ กรุณาสมัครสมาชิกก่อน' },
         { status: 404 }
+      );
+    }
+
+    // ตรวจสอบว่า admin ยังใช้งานได้หรือไม่
+    if (!admin.isActive) {
+      return NextResponse.json(
+        { success: false, error: 'บัญชีนี้ถูกระงับการใช้งาน' },
+        { status: 403 }
       );
     }
 
@@ -146,7 +154,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`[B2B] Admin logged in: ${admin.name} (${formattedPhone})`);
 
-    return NextResponse.json({
+    // สร้าง response พร้อม cookie
+    const response = NextResponse.json({
       success: true,
       message: 'เข้าสู่ระบบสำเร็จ',
       data: {
@@ -162,6 +171,17 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // ตั้งค่า cookie สำหรับ token
+    response.cookies.set('b2b_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60, // 24 ชั่วโมง
+      path: '/'
+    });
+
+    return response;
 
   } catch (error) {
     console.error('[B2B] Verify OTP error:', error);
