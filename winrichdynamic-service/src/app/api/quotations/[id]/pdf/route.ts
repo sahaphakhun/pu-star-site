@@ -28,7 +28,7 @@ export async function GET(
     const pdfBuffer = await generatePDFFromHTML(html);
     
     // ส่งกลับเป็น PDF
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="ใบเสนอราคา_${(quotation as any).quotationNumber || 'unknown'}.pdf"`
