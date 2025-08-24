@@ -27,11 +27,16 @@ export async function GET(
     // สร้าง PDF ด้วย Puppeteer
     const pdfBuffer = await generatePDFFromHTML(html);
     
+    // เตรียมชื่อไฟล์และทำให้ปลอดภัยสำหรับ HTTP headers
+    const fileName = `ใบเสนอราคา_${(quotation as any).quotationNumber || 'unknown'}.pdf`;
+    const asciiFileName = `quotation_${(quotation as any).quotationNumber || 'unknown'}.pdf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
     // ส่งกลับเป็น PDF
     return new NextResponse(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="ใบเสนอราคา_${(quotation as any).quotationNumber || 'unknown'}.pdf"`
+        'Content-Disposition': `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodedFileName}`
       }
     });
     
