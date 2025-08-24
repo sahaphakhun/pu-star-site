@@ -105,59 +105,90 @@ export async function requestOTP(
   lang: 'th' | 'en' = 'th',
   isShowRef: '0' | '1' = '1'
 ) {
-  try {
-    console.log(`[B2B][DeeSMSx] กำลังขอ OTP ไปที่: ${to}, sender: ${sender}, lang: ${lang}, isShowRef: ${isShowRef}`);
-    
-    // เตรียมข้อมูลสำหรับส่ง
-    const formattedPhoneNumber = formatPhoneNumber(to);
-    console.log(`[B2B][DeeSMSx] เบอร์โทรศัพท์หลังจากแปลง: ${formattedPhoneNumber}`);
-    
-    const data = {
-      secretKey: deeSMSxConfig.secretKey,
-      apiKey: deeSMSxConfig.apiKey,
-      to: formattedPhoneNumber,
-      sender,
-      lang,
-      isShowRef
-    };
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= deeSMSxConfig.maxRetries; attempt++) {
+    try {
+      console.log(`[B2B][DeeSMSx] กำลังขอ OTP ไปที่: ${to}, sender: ${sender}, lang: ${lang}, isShowRef: ${isShowRef} (attempt ${attempt}/${deeSMSxConfig.maxRetries})`);
+      
+      // เตรียมข้อมูลสำหรับส่ง
+      const formattedPhoneNumber = formatPhoneNumber(to);
+      console.log(`[B2B][DeeSMSx] เบอร์โทรศัพท์หลังจากแปลง: ${formattedPhoneNumber}`);
+      
+      const data = {
+        secretKey: deeSMSxConfig.secretKey,
+        apiKey: deeSMSxConfig.apiKey,
+        to: formattedPhoneNumber,
+        sender,
+        lang,
+        isShowRef
+      };
 
-    console.log('[B2B][DeeSMSx] ข้อมูลที่ส่งไป:', JSON.stringify(data, null, 2));
+      console.log('[B2B][DeeSMSx] ข้อมูลที่ส่งไป:', JSON.stringify(data, null, 2));
 
-    // ส่งคำขอไปยัง API
-    const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.requestOtp}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+      // สร้าง AbortController สำหรับ timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), deeSMSxConfig.timeout);
 
-    // ตรวจสอบสถานะการตอบกลับ
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[B2B][DeeSMSx] HTTP error: ${response.status}, ${errorText}`);
-      throw new Error(`HTTP error: ${response.status}, ${errorText}`);
+      try {
+        // ส่งคำขอไปยัง API
+        const response = await fetch(`${deeSMSxConfig.baseUrl}${deeSMSxConfig.paths.requestOtp}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // ตรวจสอบสถานะการตอบกลับ
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[B2B][DeeSMSx] HTTP error: ${response.status}, ${errorText}`);
+          throw new Error(`HTTP error: ${response.status}, ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('[B2B][DeeSMSx] ผลลัพธ์:', result);
+
+        // DeeSMSx บาง endpoint ส่ง field เป็น error, บาง endpoint ใช้ code
+        const errorCode = result.error !== undefined ? result.error : result.code;
+        if (String(errorCode) !== '0') {
+          console.error(`[B2B][DeeSMSx] API error: ${errorCode}, ${result.msg}`);
+          throw new Error(`DeeSMSx API Error: ${result.msg}`);
+        }
+
+        return result;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`[B2B][DeeSMSx] Error requesting OTP (attempt ${attempt}/${deeSMSxConfig.maxRetries}):`, lastError);
+      
+      if (error instanceof Error) {
+        console.error('[B2B][DeeSMSx] Error message:', error.message);
+        console.error('[B2B][DeeSMSx] Error stack:', error.stack);
+      }
+      
+      // ถ้าเป็น attempt สุดท้ายแล้ว ให้ throw error
+      if (attempt === deeSMSxConfig.maxRetries) {
+        break;
+      }
+      
+      // รอก่อนที่จะลองใหม่
+      console.log(`[B2B][DeeSMSx] Retrying in ${deeSMSxConfig.retryDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, deeSMSxConfig.retryDelay));
     }
-
-    const result = await response.json();
-    console.log('[B2B][DeeSMSx] ผลลัพธ์:', result);
-
-    // DeeSMSx บาง endpoint ส่ง field เป็น error, บาง endpoint ใช้ code
-    const errorCode = result.error !== undefined ? result.error : result.code;
-    if (String(errorCode) !== '0') {
-      console.error(`[B2B][DeeSMSx] API error: ${errorCode}, ${result.msg}`);
-      throw new Error(`DeeSMSx API Error: ${result.msg}`);
-    }
-
-    return result;
-  } catch (error) {
-    console.error('[B2B][DeeSMSx] Error requesting OTP:', error);
-    if (error instanceof Error) {
-      console.error('[B2B][DeeSMSx] Error message:', error.message);
-      console.error('[B2B][DeeSMSx] Error stack:', error.stack);
-    }
-    throw error;
   }
+  
+  // ถ้าทำทุก attempt แล้วยังไม่สำเร็จ
+  console.error(`[B2B][DeeSMSx] All ${deeSMSxConfig.maxRetries} attempts failed`);
+  throw lastError || new Error('Failed to request OTP after all retries');
 }
 
 /**

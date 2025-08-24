@@ -4,20 +4,20 @@
 
 export const deeSMSxConfig = {
   // API Configuration
-  baseUrl: process.env.DEESMSX_BASE_URL || 'https://api.deesmsx.com',
+  baseUrl: process.env.DEESMSX_BASE_URL || 'https://apicall.deesmsx.com',
   
   // API Keys
-  apiKey: process.env.DEESMSX_API_KEY || '',
-  secretKey: process.env.DEESMSX_SECRET_KEY || '',
+  apiKey: process.env.DEESMSX_API_KEY || '092cdf3c-25a2c466-040abba8-5ff5cb9a',
+  secretKey: process.env.DEESMSX_SECRET_KEY || '87fb840d-1dfdd8fe-77402037-e52a9135',
   
   // Sender Configuration
   sender: process.env.DEESMSX_SENDER_NAME || 'deeSMS.OTP',
   
   // API Endpoints
   paths: {
-    sms: '/api/sms',
-    requestOtp: '/api/otp/request',
-    verifyOtp: '/api/otp/verify'
+    sms: '/v1/SMSWebService',
+    requestOtp: '/v1/otp/request',
+    verifyOtp: '/v1/otp/verify'
   },
   
   // Default Settings
