@@ -3,15 +3,37 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IProduct extends Document {
   name: string;
   description: string;
-  price: number;
-  cost: number;
-  sku: string;
+  price?: number; // Optional when using units
+  shippingFee?: number; // Optional when using units
+  units?: Array<{
+    label: string;
+    price: number;
+    shippingFee?: number;
+  }>;
   category: string;
-  stock: number;
-  unit: string;
-  status: 'active' | 'inactive';
-  images: string[];
-  specifications: Record<string, string>;
+  imageUrl: string;
+  isAvailable: boolean;
+  options?: Array<{
+    name: string;
+    values: Array<{
+      label: string;
+      imageUrl?: string;
+      isAvailable?: boolean;
+    }>;
+  }>;
+  skuConfig?: {
+    prefix: string;
+    separator: string;
+    autoGenerate: boolean;
+    customSku?: string;
+  };
+  skuVariants?: Array<{
+    key: string;
+    unitLabel?: string;
+    options: Record<string, string>;
+    sku: string;
+    isActive: boolean;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,96 +46,159 @@ const ProductSchema: Schema = new Schema({
   },
   description: {
     type: String,
-    required: false,
-    trim: true,
-    default: ''
+    required: true,
+    trim: true
   },
   price: {
     type: Number,
-    required: true,
-    min: 0,
-    default: 0
+    required: false,
+    min: 0
   },
-  cost: {
+  shippingFee: {
     type: Number,
     required: false,
-    min: 0,
-    default: 0
+    min: 0
   },
-  sku: {
+  units: [{
+    label: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    shippingFee: {
+      type: Number,
+      required: false,
+      min: 0
+    }
+  }],
+  category: {
+    type: String,
+    required: true,
+    trim: true,
+    default: 'ทั่วไป'
+  },
+  imageUrl: {
     type: String,
     required: true,
     trim: true
   },
-  category: {
-    type: String,
-    required: false,
-    trim: true,
-    default: ''
+  isAvailable: {
+    type: Boolean,
+    default: true
   },
-  stock: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  unit: {
-    type: String,
-    required: false,
-    trim: true,
-    default: 'ชิ้น'
-  },
-  status: {
-    type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
-  },
-  images: [{
-    type: String,
-    required: false
+  options: [{
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    values: [{
+      label: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      imageUrl: {
+        type: String,
+        required: false,
+        trim: true
+      },
+      isAvailable: {
+        type: Boolean,
+        default: true
+      }
+    }]
   }],
-  specifications: {
-    type: Map,
-    of: String,
-    default: {}
-  }
+  skuConfig: {
+    prefix: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    separator: {
+      type: String,
+      required: false,
+      trim: true,
+      default: '-'
+    },
+    autoGenerate: {
+      type: Boolean,
+      required: false,
+      default: true
+    },
+    customSku: {
+      type: String,
+      required: false,
+      trim: true
+    }
+  },
+  skuVariants: [{
+    key: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    unitLabel: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    options: {
+      type: Map,
+      of: String,
+      default: {}
+    },
+    sku: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }]
 }, {
   timestamps: true
 });
 
 // Indexes
 ProductSchema.index({ name: 1 });
-ProductSchema.index({ sku: 1 }, { unique: true });
 ProductSchema.index({ category: 1 });
-ProductSchema.index({ status: 1 });
-ProductSchema.index({ price: 1 });
-ProductSchema.index({ stock: 1 });
+ProductSchema.index({ isAvailable: 1 });
+ProductSchema.index({ 'skuVariants.sku': 1 });
 
 // Text search index
 ProductSchema.index({
   name: 'text',
-  description: 'text',
-  sku: 'text'
+  description: 'text'
 });
 
-// Virtual for profit margin
-ProductSchema.virtual('profitMargin').get(function(this: any) {
-  if (this.cost > 0) {
-    return ((this.price - this.cost) / this.cost * 100).toFixed(2);
+// Virtual for display price
+ProductSchema.virtual('displayPrice').get(function(this: any) {
+  if (this.price !== undefined) {
+    return this.price;
+  }
+  if (this.units && this.units.length > 0) {
+    return this.units[0].price;
   }
   return 0;
 });
 
-// Virtual for profit
-ProductSchema.virtual('profit').get(function(this: any) {
-  return this.price - this.cost;
-});
-
-// Virtual for stock status
-ProductSchema.virtual('stockStatus').get(function(this: any) {
-  if (this.stock === 0) return 'out_of_stock';
-  if (this.stock < 10) return 'low_stock';
-  return 'in_stock';
+// Virtual for display shipping fee
+ProductSchema.virtual('displayShippingFee').get(function(this: any) {
+  if (this.shippingFee !== undefined) {
+    return this.shippingFee;
+  }
+  if (this.units && this.units.length > 0) {
+    return this.units[0].shippingFee || 0;
+  }
+  return 0;
 });
 
 // Ensure virtual fields are serialized

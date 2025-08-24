@@ -48,17 +48,20 @@ export async function generatePDFFromHTML(
   html: string, 
   options: PDFOptions = {}
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu'
-    ]
-  });
-  
+  let browser;
   try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ]
+    });
+    
     const page = await browser.newPage();
     
     // ตั้งค่า viewport
@@ -67,15 +70,25 @@ export async function generatePDFFromHTML(
       height: 1600 
     });
     
-    // ตั้งค่า content
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0' 
-    });
+    // ตั้งค่า content พร้อม error handling
+    try {
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000
+      });
+    } catch (error) {
+      console.error('Error setting page content:', error);
+      // ลองใช้วิธีอื่น
+      await page.setContent(html, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000
+      });
+    }
     
     // รอให้ font โหลดเสร็จ
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // สร้าง PDF
+    // สร้าง PDF พร้อม error handling
     const pdfBuffer = await page.pdf({
       format: options.format || 'A4',
       printBackground: options.printBackground !== false,
@@ -85,12 +98,22 @@ export async function generatePDFFromHTML(
         bottom: options.margin?.bottom || '20mm',
         left: options.margin?.left || '20mm'
       },
-      landscape: options.landscape || false
+      landscape: options.landscape || false,
+      timeout: 30000
     });
     
     return Buffer.from(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw new Error(`Failed to generate PDF: ${error.message}`);
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
+    }
   }
 }
 
