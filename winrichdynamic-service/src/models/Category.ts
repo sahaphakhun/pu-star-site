@@ -25,10 +25,11 @@ const CategorySchema: Schema = new Schema({
   },
   slug: {
     type: String,
-    required: true,
+    required: false, // เปลี่ยนเป็น false เพื่อให้ pre-save middleware ทำงานได้
     trim: true,
     lowercase: true,
-    unique: true
+    unique: true,
+    sparse: true // เพิ่ม sparse index เพื่อให้ unique ทำงานกับ null values
   },
   isActive: {
     type: Boolean,
@@ -41,41 +42,70 @@ const CategorySchema: Schema = new Schema({
 // Indexes
 CategorySchema.index({ name: 1 });
 CategorySchema.index({ isActive: 1 });
+CategorySchema.index({ slug: 1 }, { sparse: true }); // เพิ่ม sparse index สำหรับ slug
 
-// Pre-save middleware to generate slug
+// Pre-save middleware to generate slug - ปรับปรุงให้ทำงานเสมอ
 CategorySchema.pre('save', function(next) {
-  // สร้าง slug เสมอเมื่อสร้างใหม่ หรือเมื่อ name ถูกแก้ไข
-  if (this.isNew || this.isModified('name')) {
-    const name = this.get('name') as string;
-    if (name) {
-      this.slug = name
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '') // ลบอักขระพิเศษ
-        .replace(/\s+/g, '-') // เปลี่ยนช่องว่างเป็น -
-        .replace(/-+/g, '-') // ลบ - ที่ซ้ำกัน
-        .trim(); // ลบช่องว่างที่หัวและท้าย
+  try {
+    // สร้าง slug เสมอเมื่อสร้างใหม่ หรือเมื่อ name ถูกแก้ไข
+    if (this.isNew || this.isModified('name')) {
+      const name = this.get('name') as string;
+      if (name && name.trim()) {
+        let slug = name
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '') // ลบอักขระพิเศษ
+          .replace(/\s+/g, '-') // เปลี่ยนช่องว่างเป็น -
+          .replace(/-+/g, '-') // ลบ - ที่ซ้ำกัน
+          .trim(); // ลบช่องว่างที่หัวและท้าย
+        
+        // ตรวจสอบว่า slug ไม่ว่าง
+        if (slug) {
+          this.slug = slug;
+        } else {
+          // ถ้า slug ว่าง ให้ใช้ชื่อภาษาอังกฤษ
+          this.slug = `category-${Date.now()}`;
+        }
+      }
     }
+    
+    // ตรวจสอบว่า slug มีค่าหรือไม่ ถ้าไม่มีให้สร้างค่าเริ่มต้น
+    if (!this.slug || this.slug.trim() === '') {
+      this.slug = `category-${Date.now()}`;
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[B2B] Error in slug generation:', error);
+    // สร้าง slug เริ่มต้นถ้าเกิดข้อผิดพลาด
+    this.slug = `category-${Date.now()}`;
+    next();
   }
-  next();
 });
 
 // Pre-save middleware to handle duplicate slug
 CategorySchema.pre('save', async function(next) {
-  if (this.isModified('slug')) {
-    const slug = this.get('slug') as string;
-    if (slug) {
-      const existingCategory = await mongoose.model('Category').findOne({ 
-        slug: slug, 
-        _id: { $ne: this._id } 
-      });
-      
-      if (existingCategory) {
-        // เพิ่ม timestamp เพื่อให้ slug ไม่ซ้ำ
-        this.slug = `${slug}-${Date.now()}`;
+  try {
+    if (this.isModified('slug') && this.slug) {
+      const slug = this.get('slug') as string;
+      if (slug) {
+        const existingCategory = await mongoose.model('Category').findOne({ 
+          slug: slug, 
+          _id: { $ne: this._id } 
+        });
+        
+        if (existingCategory) {
+          // เพิ่ม timestamp เพื่อให้ slug ไม่ซ้ำ
+          this.slug = `${slug}-${Date.now()}`;
+        }
       }
     }
+    next();
+  } catch (error) {
+    console.error('[B2B] Error in duplicate slug handling:', error);
+    // สร้าง slug ใหม่ถ้าเกิดข้อผิดพลาด
+    this.slug = `category-${Date.now()}`;
+    next();
   }
-  next();
 });
 
 // Virtual for product count (จะต้อง populate เอง)

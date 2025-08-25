@@ -59,16 +59,36 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // สร้าง slug จากชื่อหมวดหมู่
+    let slug = name
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // ลบอักขระพิเศษ
+      .replace(/\s+/g, '-') // เปลี่ยนช่องว่างเป็น -
+      .replace(/-+/g, '-') // ลบ - ที่ซ้ำกัน
+      .trim(); // ลบช่องว่างที่หัวและท้าย
+    
+    // ตรวจสอบว่า slug ไม่ว่าง
+    if (!slug) {
+      slug = `category-${Date.now()}`;
+    }
+    
+    // ตรวจสอบว่า slug ซ้ำหรือไม่
+    const existingSlug = await Category.findOne({ slug });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now()}`;
+    }
+    
     // สร้างหมวดหมู่ใหม่
     const category = new Category({
       name: name.trim(),
       description: description?.trim() || '',
+      slug: slug,
       isActive: true
     });
     
     await category.save();
     
-    console.log(`[B2B] Category created: ${category.name} (ID: ${category._id})`);
+    console.log(`[B2B] Category created: ${category.name} (ID: ${category._id}, Slug: ${category.slug})`);
     
     return NextResponse.json({
       success: true,
