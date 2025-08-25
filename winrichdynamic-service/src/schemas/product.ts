@@ -41,6 +41,7 @@ const skuConfigSchema = z.object({
 export const productSchema = z.object({
   name: z.string().min(1, 'ชื่อสินค้าไม่สามารถว่างได้'),
   description: z.string().min(1, 'รายละเอียดสินค้าไม่สามารถว่างได้'),
+  sku: z.string().min(1, 'SKU ไม่สามารถว่างได้').optional(), // เพิ่ม field sku เป็น optional
   price: z.number().min(0, 'ราคาต้องไม่ต่ำกว่า 0').optional(),
   shippingFee: z.number().min(0, 'ค่าส่งต้องไม่ต่ำกว่า 0').optional(),
   units: z.array(unitSchema).optional(),

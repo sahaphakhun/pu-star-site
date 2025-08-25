@@ -25,6 +25,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Basic Info States
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [sku, setSku] = useState(initialData?.sku || ''); // เพิ่ม state สำหรับ sku
   const [price, setPrice] = useState(initialData?.price?.toString() || '');
   const [rootShippingFee, setRootShippingFee] = useState(initialData?.shippingFee?.toString() || '');
   const [category, setCategory] = useState(initialData?.category || '');
@@ -58,6 +59,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     if (initialData) {
       setName(initialData.name || '');
       setDescription(initialData.description || '');
+      setSku(initialData.sku || ''); // เพิ่มการตั้งค่า sku
       setPrice(initialData.price?.toString() || '');
       setRootShippingFee(initialData.shippingFee?.toString() || '');
       setCategory(initialData.category || '');
@@ -100,6 +102,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const productData: CreateProduct = {
       name: name.trim(),
       description: description.trim(),
+      sku: sku.trim() || undefined, // เพิ่ม field sku
       imageUrl: imageUrl.trim(),
       category: category.trim(),
       isAvailable,
@@ -254,6 +257,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 placeholder="เช่น เสื้อยืดลายแมว"
               required
             />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">SKU (รหัสสินค้า)</label>
+            <input
+              type="text"
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="เช่น PRD-001 หรือปล่อยว่างเพื่อ auto-generate"
+            />
+            <p className="text-xs text-gray-500 mt-1">ปล่อยว่างเพื่อให้ระบบสร้าง SKU อัตโนมัติ</p>
           </div>
           
           <div>
