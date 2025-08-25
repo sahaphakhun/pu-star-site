@@ -27,7 +27,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [description, setDescription] = useState(initialData?.description || '');
   const [price, setPrice] = useState(initialData?.price?.toString() || '');
   const [rootShippingFee, setRootShippingFee] = useState(initialData?.shippingFee?.toString() || '');
-  const [category, setCategory] = useState(initialData?.category || 'ทั่วไป');
+  const [category, setCategory] = useState(initialData?.category || '');
   const [isAvailable, setIsAvailable] = useState(initialData?.isAvailable !== false);
   const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -60,7 +60,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setDescription(initialData.description || '');
       setPrice(initialData.price?.toString() || '');
       setRootShippingFee(initialData.shippingFee?.toString() || '');
-      setCategory(initialData.category || 'ทั่วไป');
+      setCategory(initialData.category || '');
       setIsAvailable(initialData.isAvailable !== false);
       setImageUrl(initialData.imageUrl || '');
       setUnits((initialData.units || []).map(u => ({
@@ -268,8 +268,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
+                <option value="">เลือกหมวดหมู่</option>
                 {categories.map((cat) => (
-                  <option key={cat._id} value={cat.name}>
+                  <option key={cat._id} value={cat._id}>
                     {cat.name}
                 </option>
               ))}

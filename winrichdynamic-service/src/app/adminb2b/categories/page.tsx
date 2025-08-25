@@ -17,7 +17,7 @@ export default function AdminB2BCategoriesPage() {
     try {
       const res = await fetch('/api/categories');
       const data = await res.json();
-      // แก้ไขการจัดการ response ให้สอดคล้องกับ backend
+      // แก้ไขการจัดการ response ให้รองรับ format ใหม่
       if (data.success && Array.isArray(data.data)) {
         setCategories(data.data);
       } else if (Array.isArray(data)) {

@@ -8,16 +8,28 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
     
+    // ตรวจสอบ Authorization header (ถ้ามี)
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid authorization header' },
+        { status: 401 }
+      );
+    }
+    
     const categories = await Category.find({ isActive: true })
       .sort({ name: 1 });
     
-    // ส่ง response ที่สอดคล้องกับ frontend
-    return NextResponse.json(categories);
+    // ส่ง response ที่สอดคล้องกับ frontend ที่ต้องการ success และ data
+    return NextResponse.json({
+      success: true,
+      data: categories
+    });
     
   } catch (error) {
     console.error('[B2B] Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่' },
       { status: 500 }
     );
   }
@@ -38,6 +50,7 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json(
         { 
+          success: false,
           error: 'ข้อมูลไม่ถูกต้อง',
           details: errorMessages 
         },
@@ -54,7 +67,7 @@ export async function POST(request: NextRequest) {
     
     if (existingCategory) {
       return NextResponse.json(
-        { error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว' },
+        { success: false, error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว' },
         { status: 400 }
       );
     }
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest) {
     // Handle specific MongoDB errors
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว' },
+        { success: false, error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว' },
         { status: 400 }
       );
     }
@@ -111,6 +124,7 @@ export async function POST(request: NextRequest) {
       const validationErrors = Object.keys(error.errors).map((key: string) => error.errors[key].message);
       return NextResponse.json(
         { 
+          success: false,
           error: 'ข้อมูลไม่ถูกต้อง',
           details: validationErrors 
         },
@@ -119,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการสร้างหมวดหมู่' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการสร้างหมวดหมู่' },
       { status: 500 }
     );
   }
