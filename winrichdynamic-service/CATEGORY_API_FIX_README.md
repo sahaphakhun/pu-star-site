@@ -5,6 +5,7 @@
 - ไม่สามารถสร้างหมวดหมู่ใหม่ได้
 - TypeScript compilation error ใน Next.js App Router
 - ZodError type compatibility issues
+- **Category validation failed: slug: Path `slug` is required**
 
 ## 🔧 การแก้ไขที่ทำ
 
@@ -28,6 +29,8 @@
 - ปรับปรุง slug generation
 - เพิ่มการจัดการ duplicate slug
 - เพิ่ม error messages ที่ชัดเจน
+- **แก้ไข slug validation**: สร้าง slug เสมอเมื่อสร้างใหม่
+- **แก้ไข duplicate index warning**: ลบ duplicate slug index
 
 ### 4. สร้าง API Endpoint สำหรับ CRUD
 **ไฟล์:** `src/app/api/categories/[id]/route.ts`
@@ -66,6 +69,11 @@
 - Next.js App Router compatibility
 - Async params handling
 - ZodError compatibility
+
+### Slug Generation
+- สร้าง slug อัตโนมัติจากชื่อหมวดหมู่
+- จัดการ duplicate slug ด้วย timestamp
+- ทำงานทั้งการสร้างใหม่และการแก้ไข
 
 ## 🚀 การใช้งาน
 
@@ -149,6 +157,7 @@ npx tsc --noEmit
 4. **Slug Generation**: จะสร้าง slug อัตโนมัติจากชื่อหมวดหมู่
 5. **TypeScript**: ใช้ Next.js App Router patterns ที่ถูกต้อง
 6. **ZodError**: ใช้ `format()` method สำหรับ error handling
+7. **Slug Validation**: slug จะถูกสร้างเสมอเมื่อสร้างหมวดหมู่ใหม่
 
 ## 🔄 การ Deploy
 
@@ -164,6 +173,7 @@ npx tsc --noEmit
 - `Cannot find module 'next/server'`
 - `Object.values` compatibility issues
 - `Property 'errors' does not exist on type 'ZodError'`
+- `Category validation failed: slug: Path 'slug' is required`
 
 ### การแก้ไข:
 1. เปลี่ยน params type เป็น `Promise<{ id: string }>`
@@ -171,6 +181,8 @@ npx tsc --noEmit
 3. อัปเดต tsconfig.json เพิ่ม lib versions
 4. สร้างไฟล์ next-env.d.ts
 5. ใช้ `validationResult.error.format()` แทน `validationResult.error.errors`
+6. แก้ไข slug generation ให้ทำงานเสมอเมื่อสร้างใหม่
+7. ลบ duplicate slug index
 
 ## 📞 การติดต่อ
 
@@ -181,3 +193,4 @@ npx tsc --noEmit
 4. Network connectivity
 5. TypeScript compilation errors
 6. ZodError handling
+7. Slug validation errors

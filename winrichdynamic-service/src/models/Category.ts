@@ -40,12 +40,12 @@ const CategorySchema: Schema = new Schema({
 
 // Indexes
 CategorySchema.index({ name: 1 });
-CategorySchema.index({ slug: 1 }, { unique: true });
 CategorySchema.index({ isActive: 1 });
 
 // Pre-save middleware to generate slug
 CategorySchema.pre('save', function(next) {
-  if (this.isModified('name')) {
+  // สร้าง slug เสมอเมื่อสร้างใหม่ หรือเมื่อ name ถูกแก้ไข
+  if (this.isNew || this.isModified('name')) {
     const name = this.get('name') as string;
     if (name) {
       this.slug = name
