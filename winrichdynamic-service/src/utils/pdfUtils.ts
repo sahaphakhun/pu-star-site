@@ -291,8 +291,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     .totals{
       width:340px; border:1px solid var(--border); border-radius:4px; padding:10px 12px; background:#fff;
     }
-    .trow{ display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); font-size:12px; }
-    .trow:first-child{ border-top:none; }
+    .trow{ display:flex; justify-content:space-between; padding:6px 0; font-size:12px; }
     .grand{ margin-top:6px; padding-top:8px; border-top:2px solid var(--brand); font-weight:700; color:var(--brand); font-size:12px; }
 
     /* Terms + Bank */
@@ -386,7 +385,6 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="summary">
       <div class="totals">
         <div class="trow"><span>ราคารวม</span><span>${formatCurrency(sanitizedQuotation.subtotal)}</span></div>
-        <div class="trow"><span>ส่วนลดรวม</span><span>${formatCurrency(sanitizedQuotation.totalDiscount)}</span></div>
         <div class="trow"><span>ราคาหลังหักส่วนลด</span><span>${formatCurrency(sanitizedQuotation.totalAmount)}</span></div>
         <div class="trow"><span>ภาษีมูลค่าเพิ่ม (${sanitizedQuotation.vatRate}%)</span><span>${formatCurrency(sanitizedQuotation.vatAmount)}</span></div>
         <div class="trow grand"><span>ราคารวมทั้งสิ้น</span><span>${formatCurrency(sanitizedQuotation.grandTotal)}</span></div>
