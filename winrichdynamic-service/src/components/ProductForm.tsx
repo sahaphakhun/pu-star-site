@@ -98,24 +98,37 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
     // Build product data
     const productData: CreateProduct = {
-      name,
-      description,
-      imageUrl,
-      category,
+      name: name.trim(),
+      description: description.trim(),
+      imageUrl: imageUrl.trim(),
+      category: category.trim(),
       isAvailable,
     };
 
     if (price.trim() !== '') {
-      productData.price = parseFloat(price);
+      const priceValue = parseFloat(price);
+      if (isNaN(priceValue) || priceValue < 0) {
+        toast.error('ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0');
+        return;
+      }
+      productData.price = priceValue;
     }
 
     if (rootShippingFee.trim() !== '') {
-      productData.shippingFee = parseFloat(rootShippingFee);
+      const shippingFeeValue = parseFloat(rootShippingFee);
+      if (isNaN(shippingFeeValue) || shippingFeeValue < 0) {
+        toast.error('ค่าส่งต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0');
+        return;
+      }
+      productData.shippingFee = shippingFeeValue;
     }
 
     if (units.length > 0) {
       productData.units = units.map((u) => {
-        const unit: any = { label: u.label, price: parseFloat(u.price) };
+        const unit: any = { 
+          label: u.label.trim(), 
+          price: parseFloat(u.price) 
+        };
         if (u.shippingFee.trim() !== '') {
           unit.shippingFee = parseFloat(u.shippingFee);
         }
@@ -153,7 +166,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           toast.error('กรุณาระบุตัวอักษรนำหน้า SKU');
           return;
         }
-        } else {
+      } else {
         if (!skuConfig.customSku?.trim()) {
           toast.error('กรุณาระบุ SKU เอง');
           return;
@@ -170,6 +183,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
     // Debug: Log the product data being submitted
     console.log('[B2B] ProductForm - Submitting product data:', productData);
+
+    // Final validation - ensure required fields are present
+    if (!productData.name || !productData.description || !productData.imageUrl || !productData.category) {
+      toast.error('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+      return;
+    }
 
     onSubmit(productData);
   };

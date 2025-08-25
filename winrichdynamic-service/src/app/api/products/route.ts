@@ -149,8 +149,26 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[B2B] Error creating product:', error);
+    
+    // Handle specific MongoDB errors
+    if (error instanceof Error) {
+      if (error.message.includes('validation failed')) {
+        return NextResponse.json(
+          { success: false, error: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่กรอก' },
+          { status: 400 }
+        );
+      }
+      
+      if (error.message.includes('duplicate key')) {
+        return NextResponse.json(
+          { success: false, error: 'สินค้าชื่อนี้มีอยู่ในระบบแล้ว' },
+          { status: 400 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการสร้างสินค้า กรุณาลองใหม่อีกครั้ง' },
       { status: 500 }
     );
   }
