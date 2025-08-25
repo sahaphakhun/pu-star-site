@@ -216,11 +216,11 @@ export function generateQuotationHTML(quotation: QuotationData): string {
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>ใบเสนอราคา ${sanitizedQuotation.quotationNumber}</title>
+    <title>ใบเสนอราคา ${sanitizedQuotation.quotationNumber}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>
+    <style>
     :root{
       --brand:#0A3D91; --ink:#0F172A; --muted:#475569; --border:#E2E8F0; --panel:#F8FAFC;
     }
@@ -308,12 +308,12 @@ export function generateQuotationHTML(quotation: QuotationData): string {
 
     /* Footer */
     .footer{ margin-top:14px; text-align:center; color:var(--muted); font-size:11px; border-top:1px solid var(--border); padding-top:8px; }
-  </style>
+    </style>
 </head>
 <body>
   <div class="wrap">
     <!-- Header -->
-    <div class="header">
+        <div class="header">
       <div class="id-block">
         <img class="logo" alt="Logo"
              src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTIiIGZpbGw9IiMwQTNEOTEiLz48cGF0aCBkPSJNNjAgMzRhMjYgMjYgMCAxIDEgMCA1MiAyNiAyNiAwIDAgMSAwLTUyIiBmaWxsPSIjZmZmIi8+PC9zdmc+" />
@@ -330,31 +330,31 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="row"><div class="label">วันที่ออก</div><div class="value">${formatDate(sanitizedQuotation.createdAt)}</div></div>
         <div class="row"><div class="label">วันหมดอายุ</div><div class="value">${formatDate(sanitizedQuotation.validUntil)}</div></div>
       </div>
-    </div>
+        </div>
 
     <!-- Parties -->
     <div class="grid-2">
       <div class="panel">
         <h3>ผู้เสนอราคา (Seller)</h3>
-        <p><strong>บริษัท วินริช ไดนามิก จำกัด</strong></p>
+                <p><strong>บริษัท วินริช ไดนามิก จำกัด</strong></p>
         <p>ที่อยู่ตามด้านบน</p>
-      </div>
+            </div>
       <div class="panel">
         <h3>ผู้รับใบเสนอราคา (Customer)</h3>
-        <p><strong>${sanitizedQuotation.customerName}</strong></p>
-        ${sanitizedQuotation.customerTaxId ? `<p>เลขประจำตัวผู้เสียภาษี: ${sanitizedQuotation.customerTaxId}</p>` : ''}
-        ${sanitizedQuotation.customerAddress ? `<p>ที่อยู่: ${sanitizedQuotation.customerAddress}</p>` : ''}
-        ${sanitizedQuotation.customerPhone ? `<p>โทร: ${sanitizedQuotation.customerPhone}</p>` : ''}
-      </div>
-    </div>
+                <p><strong>${sanitizedQuotation.customerName}</strong></p>
+                ${sanitizedQuotation.customerTaxId ? `<p>เลขประจำตัวผู้เสียภาษี: ${sanitizedQuotation.customerTaxId}</p>` : ''}
+                ${sanitizedQuotation.customerAddress ? `<p>ที่อยู่: ${sanitizedQuotation.customerAddress}</p>` : ''}
+                ${sanitizedQuotation.customerPhone ? `<p>โทร: ${sanitizedQuotation.customerPhone}</p>` : ''}
+            </div>
+        </div>
 
     <!-- Subject -->
-    <div class="subject">${sanitizedQuotation.subject}</div>
+        <div class="subject">${sanitizedQuotation.subject}</div>
 
     <!-- Items -->
-    <table>
-      <thead>
-        <tr>
+        <table>
+            <thead>
+                <tr>
           <th style="width:34px">#</th>
           <th>รายละเอียดรายการ</th>
           <th style="width:80px">จำนวน</th>
@@ -362,9 +362,9 @@ export function generateQuotationHTML(quotation: QuotationData): string {
           <th style="width:110px">ราคาต่อหน่วย</th>
           <th style="width:70px">ส่วนลด</th>
           <th style="width:120px">ราคารวม</th>
-        </tr>
-      </thead>
-      <tbody>
+                </tr>
+            </thead>
+            <tbody>
         ${sanitizedQuotation.items.map((item: any, index: number) => `
           <tr>
             <td class="no">${index + 1}</td>
@@ -377,30 +377,30 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             <td class="price">${formatCurrency(item.unitPrice)}</td>
             <td class="disc">${item.discount > 0 ? item.discount + '%' : '0%'}</td>
             <td class="lineTotal">${formatCurrency(item.totalPrice)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
 
     <!-- Totals -->
-    <div class="summary">
+        <div class="summary">
       <div class="totals">
         <div class="trow"><span>ราคารวม</span><span>${formatCurrency(sanitizedQuotation.subtotal)}</span></div>
         <div class="trow"><span>ส่วนลดรวม</span><span>${formatCurrency(sanitizedQuotation.totalDiscount)}</span></div>
         <div class="trow"><span>ราคาหลังหักส่วนลด</span><span>${formatCurrency(sanitizedQuotation.totalAmount)}</span></div>
         <div class="trow"><span>ภาษีมูลค่าเพิ่ม (${sanitizedQuotation.vatRate}%)</span><span>${formatCurrency(sanitizedQuotation.vatAmount)}</span></div>
         <div class="trow grand"><span>ราคารวมทั้งสิ้น</span><span>${formatCurrency(sanitizedQuotation.grandTotal)}</span></div>
-      </div>
-    </div>
+            </div>
+        </div>
 
     <!-- Terms + Bank -->
     <div class="flex" style="margin-top:10px;">
       <div class="panel" style="flex:1;">
         <h3>เงื่อนไขและการส่งมอบ</h3>
-        <p>${sanitizedQuotation.paymentTerms}</p>
+                <p>${sanitizedQuotation.paymentTerms}</p>
         ${sanitizedQuotation.deliveryTerms ? `<p>${sanitizedQuotation.deliveryTerms}</p>` : ''}
         <p>ราคาไม่รวมโดเมน โฮสติ้ง และค่าบริการบุคคลที่สาม</p>
-      </div>
+            </div>
       <div class="panel" style="flex:1;">
         <h3>ข้อมูลบัญชีสำหรับชำระเงิน</h3>
         <table class="bank" style="width:100%; border-collapse:collapse;">
@@ -421,8 +421,8 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
+                </div>
+        </div>
 
     <!-- Signatures -->
     <div class="sign">
@@ -430,19 +430,19 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="line"></div>
         <div class="name">ลายเซ็นผู้รับใบเสนอราคา / วันที่</div>
         <div class="cap">(Customer Signature / Date)</div>
-      </div>
+            </div>
       <div class="sig">
         <div class="line"></div>
         <div class="name">ลายเซ็นผู้มีอำนาจ / วันที่</div>
         <div class="cap">(Authorized Signature / Date)</div>
-      </div>
-    </div>
+            </div>
+        </div>
 
     <!-- Footer -->
-    <div class="footer">
+        <div class="footer">
       ใบเสนอราคานี้มีผลถึง ${formatDate(sanitizedQuotation.validUntil)} · WinRich Dynamic Service
     </div>
-  </div>
+    </div>
 </body>
 </html>
   `;
