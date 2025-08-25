@@ -39,6 +39,7 @@ export interface QuotationData {
   grandTotal: number;
   notes?: string;
   createdAt: Date;
+  logoUrl?: string; // Added for Cloudinary logo
 }
 
 
@@ -211,6 +212,9 @@ export function generateQuotationHTML(quotation: QuotationData): string {
       }).format(amount);
     };
 
+    // ดึงโลโก้จาก Cloudinary (จะต้องส่งมาจาก API)
+    const logoUrl = quotation.logoUrl || '';
+
   return `
 <!DOCTYPE html>
 <html lang="th">
@@ -314,8 +318,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     <!-- Header -->
         <div class="header">
       <div class="id-block">
-        <img class="logo" alt="Logo"
-             src="/winrich-logo.png" />
+        ${logoUrl ? `<img class="logo" alt="Logo" src="${logoUrl}" />` : ''}
         <div class="company">
           <div class="company-name">บริษัท วินริช ไดนามิก จำกัด</div>
           <p>123 ถนนสุขุมวิท แขวงคลองเตย เขตวัฒนา กรุงเทพฯ 10110</p>
@@ -440,7 +443,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     <!-- Footer -->
         <div class="footer">
       ใบเสนอราคานี้มีผลถึง ${formatDate(sanitizedQuotation.validUntil)} · WinRich Dynamic Service
-        </div>
+    </div>
     </div>
 </body>
 </html>
