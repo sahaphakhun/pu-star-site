@@ -440,7 +440,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     <!-- Footer -->
         <div class="footer">
       ใบเสนอราคานี้มีผลถึง ${formatDate(sanitizedQuotation.validUntil)} · WinRich Dynamic Service
-    </div>
+        </div>
     </div>
 </body>
 </html>

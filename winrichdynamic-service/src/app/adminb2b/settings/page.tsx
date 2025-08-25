@@ -1,101 +1,120 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { useTokenManager } from '@/utils/tokenManager';
 
-interface AdminInfo {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  company: string;
-  role: string;
-  roleLevel: number;
-  lastLoginAt: string;
-  createdAt: string;
+interface Settings {
+  logoUrl?: string;
+  companyName?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  taxId?: string;
+  bankInfo?: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    branch: string;
+  };
 }
 
 export default function SettingsPage() {
-  const { getValidToken, logout, isAuthenticated, loading: authLoading } = useTokenManager();
-  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
+  const [settings, setSettings] = useState<Settings>({});
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   useEffect(() => {
-    // ตรวจสอบ authentication เมื่อโหลดหน้า
-    if (!authLoading && !isAuthenticated) {
-      logout();
-      return;
-    }
-    
-    if (isAuthenticated) {
-      loadAdminInfo();
-    }
-  }, [isAuthenticated, authLoading, logout]);
+    fetchSettings();
+  }, []);
 
-  const loadAdminInfo = async () => {
+  const fetchSettings = async () => {
     try {
-      const token = await getValidToken();
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch('/api/adminb2b/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch('/api/settings/logo');
+      const data = await response.json();
       
-      if (response.status === 401) {
-        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
-        logout();
-        return;
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setAdminInfo(result.data);
-      } else {
-        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้');
+      if (data.success) {
+        setSettings(prev => ({
+          ...prev,
+          logoUrl: data.logoUrl
+        }));
       }
     } catch (error) {
-      console.error('Error loading admin info:', error);
-      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้');
+      console.error('Error fetching settings:', error);
+      toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลการตั้งค่า');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    if (confirm('คุณแน่ใจหรือไม่ที่จะออกจากระบบ?')) {
-      await logout();
-      toast.success('ออกจากระบบเรียบร้อยแล้ว');
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // ตรวจสอบประเภทไฟล์
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('ชนิดไฟล์ไม่รองรับ (รองรับ: PNG, JPEG, JPG, WebP, SVG)');
+      return;
     }
+
+    // ตรวจสอบขนาดไฟล์ (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('ไฟล์ใหญ่เกินไป (สูงสุด 5MB)');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // สร้าง preview
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
   };
 
-  // แสดง loading ถ้ายังไม่เสร็จการตรวจสอบ authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">กำลังตรวจสอบการเข้าสู่ระบบ...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleUploadLogo = async () => {
+    if (!selectedFile) {
+      toast.error('กรุณาเลือกไฟล์');
+      return;
+    }
 
-  // แสดงหน้า login ถ้าไม่ได้ authentication
-  if (!isAuthenticated) {
-    return null; // useTokenManager จะจัดการ redirect ไปหน้า login
-  }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch('/api/settings/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSettings(prev => ({
+          ...prev,
+          logoUrl: data.logoUrl
+        }));
+        toast.success('อัพโหลดโลโก้สำเร็จ');
+        setSelectedFile(null);
+        setPreviewUrl('');
+      } else {
+        toast.error(data.error || 'เกิดข้อผิดพลาดในการอัพโหลด');
+      }
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('เกิดข้อผิดพลาดในการอัพโหลดโลโก้');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -103,118 +122,231 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">การตั้งค่า</h1>
-            <p className="text-gray-600 mt-2">จัดการข้อมูลส่วนตัวและการตั้งค่าระบบ</p>
-          </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-lg p-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">ตั้งค่าบริษัท</h1>
 
-          {/* Profile Information */}
+          {/* Logo Upload Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">ข้อมูลส่วนตัว</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุล</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.name || 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">เบอร์โทรศัพท์</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.phone || 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.email || 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">บริษัท</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.company || 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">บทบาท</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.role || 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ระดับสิทธิ์</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  ระดับ {adminInfo?.roleLevel || 'ไม่ระบุ'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Account Information */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">ข้อมูลบัญชี</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">วันที่เข้าสู่ระบบล่าสุด</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.lastLoginAt ? new Date(adminInfo.lastLoginAt).toLocaleString('th-TH') : 'ไม่ระบุ'}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">วันที่สร้างบัญชี</label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                  {adminInfo?.createdAt ? new Date(adminInfo.createdAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* System Information */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">ข้อมูลระบบ</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="text-blue-800 font-medium">เวอร์ชันระบบ</div>
-                <div className="text-2xl font-bold text-blue-900">1.0.0</div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <div className="text-green-800 font-medium">สถานะระบบ</div>
-                <div className="text-2xl font-bold text-green-900">พร้อมใช้งาน</div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <div className="text-purple-800 font-medium">โหมด</div>
-                <div className="text-2xl font-bold text-purple-900">
-                  {process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
-            >
-              ออกจากระบบ
-            </button>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">โลโก้บริษัท</h2>
             
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Current Logo */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-700 mb-3">โลโก้ปัจจุบัน</h3>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex items-center justify-center">
+                  {settings.logoUrl ? (
+                    <img
+                      src={settings.logoUrl}
+                      alt="Company Logo"
+                      className="max-w-full max-h-32 object-contain"
+                    />
+                  ) : (
+                    <div className="text-gray-500 text-center">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <p className="mt-2">ไม่มีโลโก้</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload New Logo */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-700 mb-3">อัพโหลดโลโก้ใหม่</h3>
+                
+                {/* File Input */}
+                <div className="mb-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </div>
+
+                {/* Preview */}
+                {previewUrl && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">ตัวอย่าง:</h4>
+                    <div className="border border-gray-300 rounded-lg p-4 flex items-center justify-center">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="max-w-full max-h-24 object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <button
+                  onClick={handleUploadLogo}
+                  disabled={!selectedFile || uploading}
+                  className={`w-full px-4 py-2 rounded-lg font-medium ${
+                    !selectedFile || uploading
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {uploading ? 'กำลังอัพโหลด...' : 'อัพโหลดโลโก้'}
+                </button>
+
+                {/* Instructions */}
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>• รองรับไฟล์: PNG, JPEG, JPG, WebP, SVG</p>
+                  <p>• ขนาดไฟล์สูงสุด: 5MB</p>
+                  <p>• แนะนำขนาด: 300x300 pixels</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Company Information Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">ข้อมูลบริษัท</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ชื่อบริษัท
+                </label>
+                <input
+                  type="text"
+                  value={settings.companyName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ชื่อบริษัท"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เลขประจำตัวผู้เสียภาษี
+                </label>
+                <input
+                  type="text"
+                  value={settings.taxId || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="เลขประจำตัวผู้เสียภาษี"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ที่อยู่
+                </label>
+                <textarea
+                  value={settings.companyAddress || ''}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ที่อยู่บริษัท"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เบอร์โทรศัพท์
+                </label>
+                <input
+                  type="text"
+                  value={settings.companyPhone || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="เบอร์โทรศัพท์"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  อีเมล
+                </label>
+                <input
+                  type="email"
+                  value={settings.companyEmail || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="อีเมล"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เว็บไซต์
+                </label>
+                <input
+                  type="url"
+                  value={settings.companyWebsite || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="เว็บไซต์"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bank Information Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">ข้อมูลบัญชีธนาคาร</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ธนาคาร
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankInfo?.bankName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ชื่อธนาคาร"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ชื่อบัญชี
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankInfo?.accountName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ชื่อบัญชี"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เลขที่บัญชี
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankInfo?.accountNumber || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="เลขที่บัญชี"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  สาขา
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankInfo?.branch || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="สาขา"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
             <button
-              onClick={() => window.location.href = '/adminb2b'}
-              className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
             >
-              กลับไปหน้าแรก
+              บันทึกการตั้งค่า
             </button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
