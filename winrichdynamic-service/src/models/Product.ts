@@ -54,8 +54,7 @@ const ProductSchema: Schema = new Schema({
     type: String,
     required: true,
     unique: true, // เพิ่ม unique constraint
-    trim: true,
-    index: true
+    trim: true
   },
   price: {
     type: Number,
@@ -179,7 +178,6 @@ const ProductSchema: Schema = new Schema({
 ProductSchema.index({ name: 1 });
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ isAvailable: 1 });
-ProductSchema.index({ sku: 1 }, { unique: true }); // เพิ่ม unique index สำหรับ sku หลัก
 ProductSchema.index({ 'skuVariants.sku': 1 }); // index สำหรับ sku variants
 
 // Text search index
