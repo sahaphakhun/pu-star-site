@@ -7,7 +7,10 @@ import { verifyToken } from '@/lib/auth';
 // GET /api/products - ดึงรายการสินค้า
 export async function GET(request: NextRequest) {
   try {
+    console.log('[B2B] GET /api/products - Starting to fetch products');
+    
     await connectDB();
+    console.log('[B2B] Database connected successfully');
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -16,6 +19,8 @@ export async function GET(request: NextRequest) {
     const isAvailable = searchParams.get('isAvailable');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
+
+    console.log('[B2B] Query parameters:', { search, category, isAvailable, page, limit });
 
     // Validate query parameters
     const queryValidation = productSearchSchema.safeParse({
@@ -27,6 +32,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!queryValidation.success) {
+      console.log('[B2B] Query validation failed:', queryValidation.error.issues);
       return NextResponse.json(
         { success: false, error: 'Invalid query parameters' },
         { status: 400 }
@@ -52,8 +58,12 @@ export async function GET(request: NextRequest) {
       filter.isAvailable = isAvailable;
     }
 
+    console.log('[B2B] MongoDB filter:', JSON.stringify(filter, null, 2));
+
     // Calculate pagination
     const skip = (page - 1) * limit;
+
+    console.log('[B2B] Executing MongoDB query...');
 
     // Execute query
     const [products, total] = await Promise.all([
@@ -64,6 +74,11 @@ export async function GET(request: NextRequest) {
         .lean(),
       Product.countDocuments(filter)
     ]);
+
+    console.log('[B2B] MongoDB query completed');
+    console.log('[B2B] Products found:', products.length);
+    console.log('[B2B] Total products:', total);
+    console.log('[B2B] Sample product:', products[0]);
 
     return NextResponse.json({
       success: true,
@@ -77,7 +92,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('[B2B] Error fetching products:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

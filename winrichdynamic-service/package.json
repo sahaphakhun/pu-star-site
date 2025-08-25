@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate:fix-sku": "node src/scripts/fix-product-sku.js",
-    "migrate": "npm run migrate:fix-sku"
+    "migrate": "npm run migrate:fix-sku",
+    "debug:products": "node src/scripts/debug-products.js"
   },
   "keywords": [
     "billing",
