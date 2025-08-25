@@ -7,7 +7,7 @@ const { MongoClient } = require('mongodb');
 
 // Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/winrichdynamic';
-const DB_NAME = process.env.B2B_DB_NAME || 'winrichdynamic';
+const DB_NAME = process.env.DB_NAME || 'winrichdynamic';
 
 async function fixProductSku() {
   const client = new MongoClient(MONGODB_URI);

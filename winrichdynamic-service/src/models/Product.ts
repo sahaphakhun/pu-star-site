@@ -190,23 +190,32 @@ ProductSchema.index({
 
 // Pre-save middleware สำหรับ auto-generate SKU
 ProductSchema.pre('save', async function(next) {
-  // ถ้าไม่มี SKU และไม่ได้กำหนด custom SKU ให้ auto-generate
-  if (!this.sku && this.skuConfig?.autoGenerate) {
+  // ถ้าไม่มี SKU ให้ auto-generate
+  if (!this.sku) {
     try {
-      // สร้าง SKU จาก prefix + timestamp + random string
-      const timestamp = Date.now().toString(36);
-      const randomStr = Math.random().toString(36).substring(2, 8);
-      const prefix = this.skuConfig.prefix || 'PRD';
-      const separator = this.skuConfig.separator || '-';
+      // ตรวจสอบ skuConfig และ autoGenerate
+      const skuConfig = this.skuConfig as any;
+      const shouldAutoGenerate = skuConfig?.autoGenerate !== false; // default เป็น true
       
-      this.sku = `${prefix}${separator}${timestamp}${separator}${randomStr}`.toUpperCase();
-      
-      // ตรวจสอบว่า SKU ไม่ซ้ำ
-      const existingProduct = await mongoose.model('Product').findOne({ sku: this.sku });
-      if (existingProduct) {
-        // ถ้าซ้ำให้เพิ่ม random string อีก
-        const extraRandom = Math.random().toString(36).substring(2, 6);
-        this.sku = `${this.sku}${separator}${extraRandom}`.toUpperCase();
+      if (shouldAutoGenerate) {
+        // สร้าง SKU จาก prefix + timestamp + random string
+        const timestamp = Date.now().toString(36);
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const prefix = skuConfig?.prefix || 'PRD';
+        const separator = skuConfig?.separator || '-';
+        
+        this.sku = `${prefix}${separator}${timestamp}${separator}${randomStr}`.toUpperCase();
+        
+        // ตรวจสอบว่า SKU ไม่ซ้ำ
+        const existingProduct = await mongoose.model('Product').findOne({ sku: this.sku });
+        if (existingProduct) {
+          // ถ้าซ้ำให้เพิ่ม random string อีก
+          const extraRandom = Math.random().toString(36).substring(2, 6);
+          this.sku = `${this.sku}${separator}${extraRandom}`.toUpperCase();
+        }
+      } else {
+        // ถ้าไม่ auto-generate แต่ไม่มี SKU ให้สร้าง fallback
+        this.sku = `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
       }
     } catch (error) {
       console.error('Error generating SKU:', error);
