@@ -14,21 +14,27 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
-    const category = searchParams.get('category') || '';
-    const isAvailable = searchParams.get('isAvailable');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const rawSearch = searchParams.get('search') || '';
+    const rawCategory = searchParams.get('category') || '';
+    const rawIsAvailable = searchParams.get('isAvailable');
+    const rawPage = parseInt(searchParams.get('page') || '1');
+    const rawLimit = parseInt(searchParams.get('limit') || '20');
 
-    console.log('[B2B] Query parameters:', { search, category, isAvailable, page, limit });
+    console.log('[B2B] Query parameters:', {
+      search: rawSearch,
+      category: rawCategory,
+      isAvailable: rawIsAvailable,
+      page: rawPage,
+      limit: rawLimit
+    });
 
     // Validate query parameters
     const queryValidation = productSearchSchema.safeParse({
-      search,
-      category: category || undefined,
-      isAvailable: isAvailable ? isAvailable === 'true' : undefined,
-      page,
-      limit
+      search: rawSearch,
+      category: rawCategory || undefined,
+      isAvailable: rawIsAvailable ? rawIsAvailable === 'true' : undefined,
+      page: rawPage,
+      limit: rawLimit
     });
 
     if (!queryValidation.success) {
@@ -39,9 +45,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { search, category, isAvailable, page, limit } = queryValidation.data;
+
     // Build filter
     const filter: any = {};
-    
+
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -54,7 +62,7 @@ export async function GET(request: NextRequest) {
       filter.category = category;
     }
 
-    if (isAvailable !== undefined) {
+    if (typeof isAvailable === 'boolean') {
       filter.isAvailable = isAvailable;
     }
 
