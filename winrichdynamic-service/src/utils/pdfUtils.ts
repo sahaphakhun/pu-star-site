@@ -291,9 +291,9 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     .totals{
       width:340px; border:1px solid var(--border); border-radius:4px; padding:10px 12px; background:#fff;
     }
-    .trow{ display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); }
+    .trow{ display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); font-size:12px; }
     .trow:first-child{ border-top:none; }
-    .grand{ margin-top:6px; padding-top:8px; border-top:2px solid var(--brand); font-weight:700; color:var(--brand); }
+    .grand{ margin-top:6px; padding-top:8px; border-top:2px solid var(--brand); font-weight:700; color:var(--brand); font-size:12px; }
 
     /* Terms + Bank */
     .flex{ display:flex; gap:12px; align-items:flex-start; }
