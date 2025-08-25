@@ -88,9 +88,14 @@ export async function GET(request: NextRequest) {
 // POST /api/products - สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
   try {
+    console.log('[B2B] POST /api/products - Starting product creation');
+    
     // Verify authentication
     const auth = verifyToken(request);
+    console.log('[B2B] Auth result:', auth);
+    
     if (!auth.valid) {
+      console.log('[B2B] Authentication failed:', auth.error);
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -100,10 +105,12 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
+    console.log('[B2B] Request body:', body);
 
     // Validate request body
     const validation = createProductSchema.safeParse(body);
     if (!validation.success) {
+      console.log('[B2B] Validation failed:', validation.error.issues);
       return NextResponse.json(
         { 
           success: false, 
@@ -115,10 +122,12 @@ export async function POST(request: NextRequest) {
     }
 
     const productData = validation.data;
+    console.log('[B2B] Validated product data:', productData);
 
     // Check if product with same name already exists
     const existingProduct = await Product.findOne({ name: productData.name });
     if (existingProduct) {
+      console.log('[B2B] Product with same name exists:', existingProduct.name);
       return NextResponse.json(
         { success: false, error: 'สินค้าชื่อนี้มีอยู่แล้ว' },
         { status: 400 }
@@ -127,7 +136,10 @@ export async function POST(request: NextRequest) {
 
     // Create new product
     const product = new Product(productData);
+    console.log('[B2B] Product model instance created:', product);
+    
     await product.save();
+    console.log('[B2B] Product saved successfully with ID:', product._id);
 
     return NextResponse.json({
       success: true,
@@ -136,7 +148,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Error creating product:', error);
+    console.error('[B2B] Error creating product:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

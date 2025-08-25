@@ -45,8 +45,10 @@ const ProductsPage: React.FC = () => {
 
   const loadProducts = async () => {
     try {
+      console.log('[B2B] Loading products...');
       const token = await getValidToken();
       if (!token) {
+        console.log('[B2B] No valid token found');
         return;
       }
 
@@ -56,6 +58,8 @@ const ProductsPage: React.FC = () => {
         }
       });
       
+      console.log('[B2B] Products API response status:', response.status);
+      
       if (response.status === 401) {
         toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
         logout();
@@ -63,14 +67,17 @@ const ProductsPage: React.FC = () => {
       }
       
       const result = await response.json();
+      console.log('[B2B] Products API response:', result);
       
       if (result.success) {
+        console.log('[B2B] Products loaded successfully, count:', result.data?.length || 0);
         setProducts(result.data || []);
       } else {
+        console.log('[B2B] Failed to load products:', result.error);
         toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า');
       }
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('[B2B] Error loading products:', error);
       toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า');
     } finally {
       setLoadingProducts(false);
@@ -107,6 +114,7 @@ const ProductsPage: React.FC = () => {
   const handleCreateProduct = async (productData: CreateProduct) => {
     setFormLoading(true);
     try {
+      console.log('[B2B] Creating product with data:', productData);
       const token = await getValidToken();
       
       if (!token) {
@@ -124,6 +132,8 @@ const ProductsPage: React.FC = () => {
         body: JSON.stringify(productData)
       });
       
+      console.log('[B2B] Create product response status:', response.status);
+      
       if (response.status === 401) {
         toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
         logout();
@@ -131,16 +141,19 @@ const ProductsPage: React.FC = () => {
       }
       
       const result = await response.json();
+      console.log('[B2B] Create product response:', result);
       
       if (result.success) {
+        console.log('[B2B] Product created successfully');
         toast.success('สร้างสินค้าเรียบร้อยแล้ว');
         setShowCreateForm(false);
-        loadProducts();
+        await loadProducts();
       } else {
+        console.log('[B2B] Failed to create product:', result.error);
         toast.error(result.error || 'เกิดข้อผิดพลาดในการสร้างสินค้า');
       }
     } catch (error) {
-      console.error('Error creating product:', error);
+      console.error('[B2B] Error creating product:', error);
       toast.error('เกิดข้อผิดพลาดในการสร้างสินค้า');
     } finally {
       setFormLoading(false);

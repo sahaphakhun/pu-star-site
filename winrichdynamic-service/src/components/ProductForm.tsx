@@ -168,6 +168,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
       };
     }
 
+    // Debug: Log the product data being submitted
+    console.log('[B2B] ProductForm - Submitting product data:', productData);
+
     onSubmit(productData);
   };
 
