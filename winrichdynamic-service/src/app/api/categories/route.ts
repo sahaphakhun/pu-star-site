@@ -35,12 +35,14 @@ export async function POST(request: NextRequest) {
     // Validate input data
     const validationResult = createCategorySchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(err => err.message);
+      const errors = validationResult.error.format();
+      const errorMessages = Object.values(errors).map((err: any) => err?._errors?.[0] || 'ข้อมูลไม่ถูกต้อง').filter(Boolean);
+      
       return NextResponse.json(
         { 
           success: false, 
           error: 'ข้อมูลไม่ถูกต้อง',
-          details: errors 
+          details: errorMessages 
         },
         { status: 400 }
       );
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      const validationErrors = Object.keys(error.errors).map((key: string) => error.errors[key].message);
       return NextResponse.json(
         { 
           success: false, 

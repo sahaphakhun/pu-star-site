@@ -49,12 +49,14 @@ export async function PUT(
     // Validate input data
     const validationResult = updateCategorySchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((err: any) => err.message);
+      const errors = validationResult.error.format();
+      const errorMessages = Object.values(errors).map((err: any) => err?._errors?.[0] || 'ข้อมูลไม่ถูกต้อง').filter(Boolean);
+      
       return NextResponse.json(
         { 
           success: false, 
           error: 'ข้อมูลไม่ถูกต้อง',
-          details: errors 
+          details: errorMessages 
         },
         { status: 400 }
       );

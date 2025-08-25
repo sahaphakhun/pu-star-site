@@ -3,6 +3,8 @@
 ## 🐛 ปัญหาที่พบ
 - POST https://www.b2b.winrichdynamic.com/api/categories 500 (Internal Server Error)
 - ไม่สามารถสร้างหมวดหมู่ใหม่ได้
+- TypeScript compilation error ใน Next.js App Router
+- ZodError type compatibility issues
 
 ## 🔧 การแก้ไขที่ทำ
 
@@ -18,6 +20,7 @@
 - ปรับปรุง error handling
 - เพิ่มการจัดการ MongoDB errors เฉพาะ
 - เพิ่ม logging ที่ดีขึ้น
+- **แก้ไข ZodError**: ใช้ `format()` method แทน `errors` property
 
 ### 3. ปรับปรุงโมเดล Category
 **ไฟล์:** `src/models/Category.ts`
@@ -31,6 +34,14 @@
 - GET: ดึงข้อมูลหมวดหมู่เฉพาะ
 - PUT: อัปเดตหมวดหมู่
 - DELETE: ลบหมวดหมู่ (soft delete)
+- **แก้ไข TypeScript error**: ใช้ `Promise<{ id: string }>` สำหรับ params
+- **แก้ไข ZodError**: ใช้ `format()` method สำหรับ error handling
+
+### 5. แก้ไข TypeScript Configuration
+**ไฟล์:** `tsconfig.json`
+- เพิ่ม lib versions ที่จำเป็น (es2017, es2018, es2019, es2020)
+- ปรับ target เป็น ES2020
+- เพิ่มไฟล์ `next-env.d.ts` สำหรับ Next.js types
 
 ## 📋 Features ที่เพิ่ม
 
@@ -49,6 +60,12 @@
 - Input sanitization
 - SQL injection prevention
 - XSS protection
+
+### TypeScript Support
+- Proper type definitions
+- Next.js App Router compatibility
+- Async params handling
+- ZodError compatibility
 
 ## 🚀 การใช้งาน
 
@@ -103,6 +120,15 @@ GET /api/ping
 GET /api/categories
 ```
 
+### 4. ตรวจสอบ TypeScript Compilation
+```bash
+# ตรวจสอบ build
+npm run build
+
+# ตรวจสอบ types
+npx tsc --noEmit
+```
+
 ## 📝 Logs ที่ควรเห็น
 
 ### เมื่อสร้างหมวดหมู่สำเร็จ
@@ -121,6 +147,8 @@ GET /api/categories
 2. **Schema Validation**: ข้อมูลจะถูก validate ก่อนบันทึก
 3. **Soft Delete**: การลบจะตั้งค่า isActive เป็น false แทนการลบจริง
 4. **Slug Generation**: จะสร้าง slug อัตโนมัติจากชื่อหมวดหมู่
+5. **TypeScript**: ใช้ Next.js App Router patterns ที่ถูกต้อง
+6. **ZodError**: ใช้ `format()` method สำหรับ error handling
 
 ## 🔄 การ Deploy
 
@@ -129,6 +157,21 @@ GET /api/categories
 3. ตรวจสอบ logs ใน Railway dashboard
 4. ทดสอบ API endpoints
 
+## 🐛 การแก้ไข TypeScript Errors
+
+### ปัญหาที่พบ:
+- `Type "{ params: { id: string; }; }" is not a valid type for the function's second argument`
+- `Cannot find module 'next/server'`
+- `Object.values` compatibility issues
+- `Property 'errors' does not exist on type 'ZodError'`
+
+### การแก้ไข:
+1. เปลี่ยน params type เป็น `Promise<{ id: string }>`
+2. ใช้ `await params` เพื่อดึงค่า
+3. อัปเดต tsconfig.json เพิ่ม lib versions
+4. สร้างไฟล์ next-env.d.ts
+5. ใช้ `validationResult.error.format()` แทน `validationResult.error.errors`
+
 ## 📞 การติดต่อ
 
 หากยังมีปัญหาอยู่ กรุณาตรวจสอบ:
@@ -136,3 +179,5 @@ GET /api/categories
 2. MongoDB connection
 3. Environment variables
 4. Network connectivity
+5. TypeScript compilation errors
+6. ZodError handling
