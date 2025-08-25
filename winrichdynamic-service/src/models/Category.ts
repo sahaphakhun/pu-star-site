@@ -12,20 +12,23 @@ export interface ICategory extends Document {
 const CategorySchema: Schema = new Schema({
   name: {
     type: String,
-    required: true,
-    trim: true
+    required: [true, 'กรุณาระบุชื่อหมวดหมู่'],
+    trim: true,
+    maxlength: [100, 'ชื่อหมวดหมู่ต้องไม่เกิน 100 ตัวอักษร']
   },
   description: {
     type: String,
     required: false,
     trim: true,
-    default: ''
+    default: '',
+    maxlength: [500, 'คำอธิบายต้องไม่เกิน 500 ตัวอักษร']
   },
   slug: {
     type: String,
     required: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    unique: true
   },
   isActive: {
     type: Boolean,
@@ -44,12 +47,33 @@ CategorySchema.index({ isActive: 1 });
 CategorySchema.pre('save', function(next) {
   if (this.isModified('name')) {
     const name = this.get('name') as string;
-    this.slug = name
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '') // ลบอักขระพิเศษ
-      .replace(/\s+/g, '-') // เปลี่ยนช่องว่างเป็น -
-      .replace(/-+/g, '-') // ลบ - ที่ซ้ำกัน
-      .trim(); // ลบช่องว่างที่หัวและท้าย
+    if (name) {
+      this.slug = name
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '') // ลบอักขระพิเศษ
+        .replace(/\s+/g, '-') // เปลี่ยนช่องว่างเป็น -
+        .replace(/-+/g, '-') // ลบ - ที่ซ้ำกัน
+        .trim(); // ลบช่องว่างที่หัวและท้าย
+    }
+  }
+  next();
+});
+
+// Pre-save middleware to handle duplicate slug
+CategorySchema.pre('save', async function(next) {
+  if (this.isModified('slug')) {
+    const slug = this.get('slug') as string;
+    if (slug) {
+      const existingCategory = await mongoose.model('Category').findOne({ 
+        slug: slug, 
+        _id: { $ne: this._id } 
+      });
+      
+      if (existingCategory) {
+        // เพิ่ม timestamp เพื่อให้ slug ไม่ซ้ำ
+        this.slug = `${slug}-${Date.now()}`;
+      }
+    }
   }
   next();
 });
