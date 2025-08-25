@@ -6,12 +6,13 @@ import { updateCategorySchema } from '@/schemas/category';
 // GET /api/categories/[id] - ดึงข้อมูลหมวดหมู่เฉพาะ
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const category = await Category.findById(params.id);
+    const { id } = await params;
+    const category = await Category.findById(id);
     
     if (!category) {
       return NextResponse.json(
@@ -37,17 +38,18 @@ export async function GET(
 // PUT /api/categories/[id] - อัปเดตหมวดหมู่
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
+    const { id } = await params;
     const body = await request.json();
     
     // Validate input data
     const validationResult = updateCategorySchema.safeParse(body);
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(err => err.message);
+      const errors = validationResult.error.errors.map((err: any) => err.message);
       return NextResponse.json(
         { 
           success: false, 
@@ -61,7 +63,7 @@ export async function PUT(
     const { name, description, isActive } = validationResult.data;
     
     // ตรวจสอบว่าหมวดหมู่มีอยู่หรือไม่
-    const existingCategory = await Category.findById(params.id);
+    const existingCategory = await Category.findById(id);
     if (!existingCategory) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบหมวดหมู่นี้' },
@@ -73,7 +75,7 @@ export async function PUT(
     if (name && name !== existingCategory.name) {
       const duplicateCategory = await Category.findOne({ 
         name: { $regex: new RegExp(`^${name}$`, 'i') },
-        _id: { $ne: params.id }
+        _id: { $ne: id }
       });
       
       if (duplicateCategory) {
@@ -91,7 +93,7 @@ export async function PUT(
     if (isActive !== undefined) updateData.isActive = isActive;
     
     const updatedCategory = await Category.findByIdAndUpdate(
-      params.id,
+      id,
       updateData,
       { new: true, runValidators: true }
     );
@@ -116,7 +118,7 @@ export async function PUT(
     }
     
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      const validationErrors = Object.keys(error.errors).map((key: string) => error.errors[key].message);
       return NextResponse.json(
         { 
           success: false, 
@@ -137,13 +139,15 @@ export async function PUT(
 // DELETE /api/categories/[id] - ลบหมวดหมู่ (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
+    const { id } = await params;
+    
     // ตรวจสอบว่าหมวดหมู่มีอยู่หรือไม่
-    const existingCategory = await Category.findById(params.id);
+    const existingCategory = await Category.findById(id);
     if (!existingCategory) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบหมวดหมู่นี้' },
@@ -153,7 +157,7 @@ export async function DELETE(
     
     // Soft delete โดยการตั้งค่า isActive เป็น false
     const deletedCategory = await Category.findByIdAndUpdate(
-      params.id,
+      id,
       { isActive: false },
       { new: true }
     );
