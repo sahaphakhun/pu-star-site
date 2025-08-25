@@ -39,10 +39,10 @@ const CategorySchema: Schema = new Schema({
   timestamps: true
 });
 
-// Indexes
+// Indexes - ลบ duplicate index
 CategorySchema.index({ name: 1 });
 CategorySchema.index({ isActive: 1 });
-CategorySchema.index({ slug: 1 }, { sparse: true }); // เพิ่ม sparse index สำหรับ slug
+// ไม่ต้องเพิ่ม index สำหรับ slug เพราะ unique: true จะสร้าง index ให้อัตโนมัติ
 
 // Pre-save middleware to generate slug - ปรับปรุงให้ทำงานเสมอ
 CategorySchema.pre('save', function(next) {
@@ -69,7 +69,8 @@ CategorySchema.pre('save', function(next) {
     }
     
     // ตรวจสอบว่า slug มีค่าหรือไม่ ถ้าไม่มีให้สร้างค่าเริ่มต้น
-    if (!this.slug || this.slug.trim() === '') {
+    const currentSlug = this.get('slug') as string;
+    if (!currentSlug || currentSlug.trim() === '') {
       this.slug = `category-${Date.now()}`;
     }
     
