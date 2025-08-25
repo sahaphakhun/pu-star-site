@@ -154,7 +154,7 @@ export async function generatePDFFromHTML(
     });
     
     // รอให้ font โหลดเสร็จ
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // สร้าง PDF
     const pdfBuffer = await page.pdf({
@@ -228,7 +228,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         }
         
         body {
-            font-family: 'Sarabun', 'Tahoma', sans-serif;
+            font-family: 'Sarabun', 'Noto Sans Thai', 'Tahoma', 'Arial', sans-serif;
             font-size: 14px;
             line-height: 1.6;
             color: #2d3748;
