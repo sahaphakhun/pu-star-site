@@ -36,7 +36,7 @@ const AdminSidebar: React.FC = () => {
   useEffect(() => {
     setSiteInfo({ 
       siteName: 'WinRich B2B Admin', 
-      logoUrl: '/logo.jpg' 
+      logoUrl: '/winrich-logo.png' 
     });
   }, []);
 

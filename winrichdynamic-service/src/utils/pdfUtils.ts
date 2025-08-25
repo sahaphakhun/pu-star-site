@@ -222,7 +222,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
     :root{
-      --brand:#0A3D91; --ink:#0F172A; --muted:#475569; --border:#E2E8F0; --panel:#F8FAFC;
+      --brand:#1779c4; --ink:#0F172A; --muted:#475569; --border:#E2E8F0; --panel:#F8FAFC;
     }
     *{ box-sizing:border-box; }
     html,body{ margin:0; padding:0; }
@@ -315,7 +315,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="header">
       <div class="id-block">
         <img class="logo" alt="Logo"
-             src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTIiIGZpbGw9IiMwQTNEOTEiLz48cGF0aCBkPSJNNjAgMzRhMjYgMjYgMCAxIDEgMCA1MiAyNiAyNiAwIDAgMSAwLTUyIiBmaWxsPSIjZmZmIi8+PC9zdmc+" />
+             src="/winrich-logo.png" />
         <div class="company">
           <div class="company-name">บริษัท วินริช ไดนามิก จำกัด</div>
           <p>123 ถนนสุขุมวิท แขวงคลองเตย เขตวัฒนา กรุงเทพฯ 10110</p>
@@ -385,6 +385,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
         <div class="summary">
       <div class="totals">
         <div class="trow"><span>ราคารวม</span><span>${formatCurrency(sanitizedQuotation.subtotal)}</span></div>
+        <div class="trow"><span>ส่วนลดรวม</span><span>${formatCurrency(sanitizedQuotation.totalDiscount)}</span></div>
         <div class="trow"><span>ราคาหลังหักส่วนลด</span><span>${formatCurrency(sanitizedQuotation.totalAmount)}</span></div>
         <div class="trow"><span>ภาษีมูลค่าเพิ่ม (${sanitizedQuotation.vatRate}%)</span><span>${formatCurrency(sanitizedQuotation.vatAmount)}</span></div>
         <div class="trow grand"><span>ราคารวมทั้งสิ้น</span><span>${formatCurrency(sanitizedQuotation.grandTotal)}</span></div>
