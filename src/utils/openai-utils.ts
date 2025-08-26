@@ -356,7 +356,7 @@ async function callOpenAI(
     throw new Error('OPENAI_API_KEY not set');
   }
   const url = 'https://api.openai.com/v1/chat/completions';
-  const body = JSON.stringify({ model, temperature: 0.3, store: true, messages });
+  const body = JSON.stringify({ model, store: true, messages });
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` } as any;
   const response = await fetch(url, { method: 'POST', headers, body });
   if (!response.ok) {

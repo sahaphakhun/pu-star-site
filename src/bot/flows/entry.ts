@@ -6,7 +6,7 @@ import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
 import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
-import { sendTextMessage, hasCutOrImageCommands } from '@/utils/messenger-utils';
+import { sendTextMessage, hasCutOrImageCommands, sendFilteredMessage } from '@/utils/messenger-utils';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -58,7 +58,7 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload === 'GET_STARTED') {
       // เปิดโหมด AI ให้ผู้ใช้ใหม่โดยอัตโนมัติ
       await enableAIForUser(psid);
-      return callSendAPI(psid, {
+      return sendFilteredMessage(psid, {
         text: 'สวัสดีค่ะ ยินดีให้บริการค่ะ กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ'
       });
     }
@@ -71,7 +71,7 @@ export async function handleEvent(event: MessagingEvent) {
     if (payload === 'GET_STARTED') {
       // เปิดโหมด AI ให้ผู้ใช้ใหม่โดยอัตโนมัติ
       await enableAIForUser(psid);
-      return callSendAPI(psid, {
+      return sendFilteredMessage(psid, {
         text: 'สวัสดีค่ะ ยินดีให้บริการค่ะ กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ'
       });
     }
@@ -101,7 +101,7 @@ export async function handleEvent(event: MessagingEvent) {
         await sendTypingOn(psid);
         // เปิดโหมด AI ใหม่
         await enableAIForUser(psid);
-        return callSendAPI(psid, { text: 'รีเซ็ตข้อมูลแล้วค่ะ ยินดีให้บริการค่ะ' });
+        return sendFilteredMessage(psid, { text: 'รีเซ็ตข้อมูลแล้วค่ะ ยินดีให้บริการค่ะ' });
       }
 
       if (question.includes('/ปิดเอไอ')) {
@@ -112,16 +112,16 @@ export async function handleEvent(event: MessagingEvent) {
             await connectDB();
             await MessengerUser.updateMany({}, { aiEnabled: false, updatedAt: new Date() });
             console.log('[Admin] ปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้ว');
-            await callSendAPI(psid, { text: 'ปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้วค่ะ' });
+            await sendFilteredMessage(psid, { text: 'ปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้วค่ะ' });
           } catch (error) {
             console.error('[Admin] Error ปิดโหมด AI สำหรับผู้ใช้ทั้งหมด:', error);
-            await callSendAPI(psid, { text: 'เกิดข้อผิดพลาดในการปิดโหมด AI สำหรับผู้ใช้ทั้งหมดค่ะ' });
+            await sendFilteredMessage(psid, { text: 'เกิดข้อผิดพลาดในการปิดโหมด AI สำหรับผู้ใช้ทั้งหมดค่ะ' });
           }
           return;
         } else {
           // ผู้ใช้ทั่วไป - ปิด AI สำหรับตัวเอง
           await disableAIForUser(psid);
-          return callSendAPI(psid, { text: 'ปิดโหมด AI แล้วค่ะ' });
+          return sendFilteredMessage(psid, { text: 'ปิดโหมด AI แล้วค่ะ' });
         }
       }
 
@@ -133,16 +133,16 @@ export async function handleEvent(event: MessagingEvent) {
             await connectDB();
             await MessengerUser.updateMany({}, { aiEnabled: true, updatedAt: new Date() });
             console.log('[Admin] เปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้ว');
-            await callSendAPI(psid, { text: 'เปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้วค่ะ' });
+            await sendFilteredMessage(psid, { text: 'เปิดโหมด AI สำหรับผู้ใช้ทั้งหมดแล้วค่ะ' });
           } catch (error) {
             console.error('[Admin] Error เปิดโหมด AI สำหรับผู้ใช้ทั้งหมด:', error);
-            await callSendAPI(psid, { text: 'เกิดข้อผิดพลาดในการเปิดโหมด AI สำหรับผู้ใช้ทั้งหมดค่ะ' });
+            await sendFilteredMessage(psid, { text: 'เกิดข้อผิดพลาดในการเปิดโหมด AI สำหรับผู้ใช้ทั้งหมดค่ะ' });
           }
           return;
         } else {
           // ผู้ใช้ทั่วไป - เปิด AI สำหรับตัวเอง
           await enableAIForUser(psid);
-          return callSendAPI(psid, { text: 'เปิดโหมด AI แล้วค่ะ ยินดีให้บริการค่ะ' });
+          return sendFilteredMessage(psid, { text: 'เปิดโหมด AI แล้วค่ะ ยินดีให้บริการค่ะ' });
         }
       }
 
@@ -165,17 +165,17 @@ export async function handleEvent(event: MessagingEvent) {
               `/ปิดเอไอ - ปิด AI สำหรับผู้ใช้ทั้งหมด\n` +
               `/สถานะเอไอ - ดูสถานะปัจจุบัน`;
             
-            await callSendAPI(psid, { text: statusMessage });
+            await sendFilteredMessage(psid, { text: statusMessage });
           } catch (error) {
             console.error('[Admin] Error ดูสถานะ AI:', error);
-            await callSendAPI(psid, { text: 'เกิดข้อผิดพลาดในการดูสถานะ AI ค่ะ' });
+            await sendFilteredMessage(psid, { text: 'เกิดข้อผิดพลาดในการดูสถานะ AI ค่ะ' });
           }
           return;
         } else {
           // ผู้ใช้ทั่วไป - ดูสถานะ AI ของตัวเอง
           const aiEnabled = await isAIEnabled(psid);
           const statusText = aiEnabled ? '✅ AI เปิดอยู่ค่ะ' : '❌ AI ปิดอยู่ค่ะ';
-          return callSendAPI(psid, { text: statusText });
+          return sendFilteredMessage(psid, { text: statusText });
         }
       }
 
@@ -204,14 +204,14 @@ export async function handleEvent(event: MessagingEvent) {
           if (hasCutOrImageCommands(answer)) {
           await sendTextMessage(psid, answer);
         } else {
-          await callSendAPI(psid, { text: answer });
+          await sendFilteredMessage(psid, { text: answer });
         }
         
         return;
       } catch (error) {
         console.error(`[AI Debug] Error processing AI response:`, error);
         // ถ้า AI มีปัญหา ให้ส่งข้อความข้อผิดพลาด
-        await callSendAPI(psid, {
+        await sendFilteredMessage(psid, {
           text: 'ขออภัยค่ะ ระบบมีปัญหาเล็กน้อย กรุณาลองใหม่อีกครั้งค่ะ'
         });
         return;
@@ -248,13 +248,13 @@ export async function handleEvent(event: MessagingEvent) {
         if (hasCutOrImageCommands(answer)) {
           await sendTextMessage(psid, answer);
         } else {
-          await callSendAPI(psid, { text: answer });
+          await sendFilteredMessage(psid, { text: answer });
         }
         
       return;
       } catch (error) {
         console.error(`[AI Debug] Error processing image:`, error);
-        await callSendAPI(psid, {
+        await sendFilteredMessage(psid, {
           text: 'ขออภัยค่ะ ไม่สามารถประมวลผลรูปภาพได้ในขณะนี้ กรุณาลองใหม่อีกครั้งค่ะ'
         });
     return;

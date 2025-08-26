@@ -131,7 +131,11 @@ export async function sendTextMessageWithCutAndImages(
 async function sendSimpleTextMessage(recipientId: string, text: string): Promise<void> {
   console.log(`[DEBUG] Sending text message to ${recipientId}: "${text.substring(0, 100)}..."`);
   
-  const message: FBMessagePayload = { text };
+  // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
+  const filteredText = filterThaiReplyContent(text, false);
+  console.log(`[DEBUG] Filtered text: "${filteredText.substring(0, 100)}..."`);
+  
+  const message: FBMessagePayload = { text: filteredText };
   
   try {
     await callSendAPI(recipientId, message);
@@ -365,17 +369,22 @@ export async function sendSmartMessage(
   } else {
     // ข้อความธรรมดา
     console.log("[DEBUG] Using simple text message");
+    
+    // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
+    const filteredResponse = filterThaiReplyContent(response, false);
+    console.log("[DEBUG] sendSmartMessage => filtered response:", filteredResponse);
+    
     if (includeMenu) {
       // ส่งข้อความพร้อมเมนู
       return callSendAPI(recipientId, {
-        text: response,
+        text: filteredResponse,
         quick_replies: [
           { content_type: 'text', title: 'เมนูหลัก', payload: 'SHOW_MENU' },
           { content_type: 'text', title: 'ดูสินค้า', payload: 'SHOW_PRODUCTS' },
         ],
       });
     } else {
-      return sendSimpleTextMessage(recipientId, response);
+      return sendSimpleTextMessage(recipientId, filteredResponse);
     }
   }
 }
@@ -464,4 +473,20 @@ export async function sendTextMessage(
   }
 
   console.log(`[DEBUG] Completed sending all ${segments.length} segments`);
+}
+
+/**
+ * ฟังก์ชัน wrapper สำหรับ callSendAPI ที่มีการกรองข้อความ THAI_REPLY อัตโนมัติ
+ */
+export async function sendFilteredMessage(recipientId: string, message: FBMessagePayload): Promise<void> {
+  // ถ้าเป็นข้อความธรรมดา ให้กรองก่อน
+  if (message.text) {
+    const filteredText = filterThaiReplyContent(message.text, false);
+    const filteredMessage = { ...message, text: filteredText };
+    console.log("[DEBUG] sendFilteredMessage => filtered text:", filteredText.substring(0, 100) + "...");
+    return callSendAPI(recipientId, filteredMessage);
+  }
+  
+  // ถ้าไม่ใช่ข้อความธรรมดา (เช่น attachment) ให้ส่งตามปกติ
+  return callSendAPI(recipientId, message);
 }
