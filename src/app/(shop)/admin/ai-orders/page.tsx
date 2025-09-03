@@ -85,6 +85,8 @@ export default function AIOrdersPage() {
     
     fetchAIOrders();
     fetchOrders();
+  }, [authLoading, isLoggedIn, user]);
+
   // Filter orders based on status
   useEffect(() => {
     if (statusFilter === 'all') {
