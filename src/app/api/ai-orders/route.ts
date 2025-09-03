@@ -16,11 +16,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Helper function to convert address object to string
+    const formatAddress = (addressData: any): string | null => {
+      if (!addressData) return null;
+      if (typeof addressData === 'string') return addressData;
+      if (typeof addressData === 'object') {
+        const { line1, district, province, postcode } = addressData;
+        const parts = [line1, district, province, postcode].filter(part => part && part !== 'null');
+        return parts.length > 0 ? parts.join(', ') : null;
+      }
+      return null;
+    };
+    
+    // Helper function to ensure valid quantity
+    const validateQuantity = (qty: any): number => {
+      const parsedQty = parseInt(qty) || 0;
+      return parsedQty < 1 ? 1 : parsedQty; // Default to 1 if invalid
+    };
+
     // สร้าง AIOrder ใหม่
     const aiOrder = new AIOrder({
       psid: body.psid,
       order_status: body.order_status || 'draft',
-      items: body.items || [],
+      items: (body.items || []).map((item: any) => ({
+        ...item,
+        qty: validateQuantity(item.qty)
+      })),
       pricing: body.pricing || {
         currency: 'THB',
         subtotal: 0,
@@ -28,7 +49,11 @@ export async function POST(request: NextRequest) {
         shipping_fee: 0,
         total: 0
       },
-      customer: body.customer || {
+      customer: body.customer ? {
+        name: body.customer.name || null,
+        phone: body.customer.phone || null,
+        address: formatAddress(body.customer.address)
+      } : {
         name: null,
         phone: null,
         address: null

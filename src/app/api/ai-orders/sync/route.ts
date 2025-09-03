@@ -46,6 +46,37 @@ export async function POST(request: NextRequest) {
             if (orderData && orderData.items && orderData.items.length > 0) {
               total++;
               
+              // Helper function to convert address object to string
+              const formatAddress = (addressData: any): string | null => {
+                if (!addressData) return null;
+                if (typeof addressData === 'string') return addressData;
+                if (typeof addressData === 'object') {
+                  const { line1, district, province, postcode } = addressData;
+                  const parts = [line1, district, province, postcode].filter(part => part && part !== 'null');
+                  return parts.length > 0 ? parts.join(', ') : null;
+                }
+                return null;
+              };
+              
+              // Helper function to ensure valid quantity
+              const validateQuantity = (qty: any): number => {
+                const parsedQty = parseInt(qty) || 0;
+                return parsedQty < 1 ? 1 : parsedQty; // Default to 1 if invalid
+              };
+              
+              // Transform and validate the order data
+              const transformedOrderData = {
+                ...orderData,
+                items: orderData.items.map((item: any) => ({
+                  ...item,
+                  qty: validateQuantity(item.qty)
+                })),
+                customer: {
+                  ...orderData.customer,
+                  address: formatAddress(orderData.customer?.address)
+                }
+              };
+              
               // ตรวจสอบว่ามี AIOrder นี้อยู่แล้วหรือไม่
               const existingOrder = await AIOrder.findOne({
                 psid: user.psid,
@@ -56,21 +87,21 @@ export async function POST(request: NextRequest) {
                 // สร้าง AIOrder ใหม่
                 const aiOrder = new AIOrder({
                   psid: user.psid,
-                  order_status: orderData.order_status || 'draft',
-                  items: orderData.items || [],
-                  pricing: orderData.pricing || {
+                  order_status: transformedOrderData.order_status || 'draft',
+                  items: transformedOrderData.items || [],
+                  pricing: transformedOrderData.pricing || {
                     currency: 'THB',
                     subtotal: 0,
                     discount: 0,
                     shipping_fee: 0,
                     total: 0
                   },
-                  customer: orderData.customer || {
+                  customer: transformedOrderData.customer || {
                     name: null,
                     phone: null,
                     address: null
                   },
-                  errorMessages: orderData.errors || [],
+                  errorMessages: transformedOrderData.errors || [],
                   aiResponse: msg.content,
                   userMessage: msg.content.substring(0, 200) // เก็บส่วนแรกของข้อความ
                 });
@@ -81,11 +112,11 @@ export async function POST(request: NextRequest) {
               } else {
                 // อัปเดต AIOrder ที่มีอยู่
                 existingOrder.aiResponse = msg.content;
-                existingOrder.order_status = orderData.order_status || existingOrder.order_status;
-                existingOrder.items = orderData.items || existingOrder.items;
-                existingOrder.pricing = orderData.pricing || existingOrder.pricing;
-                existingOrder.customer = orderData.customer || existingOrder.customer;
-                existingOrder.errorMessages = orderData.errors || existingOrder.errorMessages;
+                existingOrder.order_status = transformedOrderData.order_status || existingOrder.order_status;
+                existingOrder.items = transformedOrderData.items || existingOrder.items;
+                existingOrder.pricing = transformedOrderData.pricing || existingOrder.pricing;
+                existingOrder.customer = transformedOrderData.customer || existingOrder.customer;
+                existingOrder.errorMessages = transformedOrderData.errors || existingOrder.errorMessages;
                 
                 await existingOrder.save();
                 updatedOrders++;

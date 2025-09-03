@@ -753,10 +753,31 @@ export async function saveAIOrder(
   try {
     await connectDB();
     
+    // Helper function to convert address object to string
+    const formatAddress = (addressData: any): string | null => {
+      if (!addressData) return null;
+      if (typeof addressData === 'string') return addressData;
+      if (typeof addressData === 'object') {
+        const { line1, district, province, postcode } = addressData;
+        const parts = [line1, district, province, postcode].filter(part => part && part !== 'null');
+        return parts.length > 0 ? parts.join(', ') : null;
+      }
+      return null;
+    };
+    
+    // Helper function to ensure valid quantity
+    const validateQuantity = (qty: any): number => {
+      const parsedQty = parseInt(qty) || 0;
+      return parsedQty < 1 ? 1 : parsedQty; // Default to 1 if invalid
+    };
+    
     const aiOrder = new AIOrder({
       psid,
       order_status: orderData.order_status || 'draft',
-      items: orderData.items || [],
+      items: (orderData.items || []).map((item: any) => ({
+        ...item,
+        qty: validateQuantity(item.qty)
+      })),
       pricing: orderData.pricing || {
         currency: 'THB',
         subtotal: 0,
@@ -764,7 +785,11 @@ export async function saveAIOrder(
         shipping_fee: 0,
         total: 0
       },
-      customer: orderData.customer || {
+      customer: orderData.customer ? {
+        name: orderData.customer.name || null,
+        phone: orderData.customer.phone || null,
+        address: formatAddress(orderData.customer.address)
+      } : {
         name: null,
         phone: null,
         address: null
