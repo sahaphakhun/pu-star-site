@@ -65,8 +65,16 @@ export default function AIOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [mapping, setMapping] = useState<{ [key: string]: string }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
-  // New state for product mapping
-  const [productMapping, setProductMapping] = useState<{ [key: string]: { [itemIndex: number]: string } }>({});
+  // New state for product mapping with unit selection and quantity
+  const [productMapping, setProductMapping] = useState<{ 
+    [key: string]: { 
+      [itemIndex: number]: {
+        productId: string;
+        unitIndex?: number; // Index of selected unit from product.units array
+        quantity: number; // Override quantity
+      }
+    } 
+  }>({});
   const [products, setProducts] = useState<any[]>([]);
   const [convertingToOrder, setConvertingToOrder] = useState<{ [key: string]: boolean }>({});
   const [syncing, setSyncing] = useState(false);
@@ -136,22 +144,85 @@ export default function AIOrdersPage() {
 
   // Product mapping functions
   const handleProductMapping = (aiOrderId: string, itemIndex: number, productId: string) => {
+    if (!productId) {
+      // Clear mapping if no product selected
+      setProductMapping(prev => {
+        const updated = { ...prev };
+        if (updated[aiOrderId]) {
+          delete updated[aiOrderId][itemIndex];
+          if (Object.keys(updated[aiOrderId]).length === 0) {
+            delete updated[aiOrderId];
+          }
+        }
+        return updated;
+      });
+      return;
+    }
+
+    const aiOrder = aiOrders.find(order => order._id === aiOrderId);
+    const originalQuantity = aiOrder?.items[itemIndex]?.qty || 1;
+
     setProductMapping(prev => ({
       ...prev,
       [aiOrderId]: {
         ...prev[aiOrderId],
-        [itemIndex]: productId
+        [itemIndex]: {
+          productId,
+          unitIndex: 0, // Default to first unit (base price)
+          quantity: originalQuantity // Use original quantity from AI order
+        }
       }
     }));
+  };
+
+  const handleUnitSelection = (aiOrderId: string, itemIndex: number, unitIndex: number) => {
+    setProductMapping(prev => {
+      if (!prev[aiOrderId]?.[itemIndex]) return prev;
+      return {
+        ...prev,
+        [aiOrderId]: {
+          ...prev[aiOrderId],
+          [itemIndex]: {
+            ...prev[aiOrderId][itemIndex],
+            unitIndex
+          }
+        }
+      };
+    });
+  };
+
+  const handleQuantityChange = (aiOrderId: string, itemIndex: number, quantity: number) => {
+    if (quantity < 1) return; // Minimum quantity is 1
+    
+    setProductMapping(prev => {
+      if (!prev[aiOrderId]?.[itemIndex]) return prev;
+      return {
+        ...prev,
+        [aiOrderId]: {
+          ...prev[aiOrderId],
+          [itemIndex]: {
+            ...prev[aiOrderId][itemIndex],
+            quantity
+          }
+        }
+      };
+    });
   };
 
   const getProductById = (productId: string) => {
     return products.find(p => p._id === productId);
   };
 
+  const getSelectedUnit = (product: any, unitIndex: number) => {
+    if (!product.units || product.units.length === 0) {
+      return { label: 'ราคาเดี่ยว', price: product.price || 0, multiplier: 1 };
+    }
+    return product.units[unitIndex] || product.units[0];
+  };
+
   const isAllItemsMapped = (aiOrder: any) => {
     const mappedItems = productMapping[aiOrder._id] || {};
-    return aiOrder.items.every((item: any, index: number) => mappedItems[index]);
+    return aiOrder.items.every((item: any, index: number) => mappedItems[index]?.productId);
   };
 
   const calculateOrderTotal = (aiOrder: any) => {
@@ -159,11 +230,14 @@ export default function AIOrdersPage() {
     let subtotal = 0;
     
     aiOrder.items.forEach((item: any, index: number) => {
-      const productId = mappedItems[index];
-      if (productId) {
-        const product = getProductById(productId);
+      const mapping = mappedItems[index];
+      if (mapping) {
+        const product = getProductById(mapping.productId);
         if (product) {
-          subtotal += (product.price || 0) * item.qty;
+          const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
+          const unitPrice = selectedUnit.price;
+          const quantity = mapping.quantity || item.qty;
+          subtotal += unitPrice * quantity;
         }
       }
     });
@@ -191,15 +265,25 @@ export default function AIOrdersPage() {
     try {
       const mappedItems = productMapping[aiOrder._id] || {};
       const orderItems = aiOrder.items.map((item: any, index: number) => {
-        const productId = mappedItems[index];
-        const product = getProductById(productId);
+        const mapping = mappedItems[index];
+        const product = getProductById(mapping.productId);
+        const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
+        
         return {
-          productId,
+          productId: mapping.productId,
           name: product?.name || item.name,
-          price: product?.price || 0,
-          quantity: item.qty,
+          price: selectedUnit.price,
+          quantity: mapping.quantity,
+          unit: selectedUnit.label,
+          multiplier: selectedUnit.multiplier || 1,
           variant: item.variant,
-          note: item.note
+          note: item.note,
+          originalAIItem: {
+            name: item.name,
+            qty: item.qty,
+            variant: item.variant,
+            note: item.note
+          }
         };
       });
 
@@ -589,8 +673,9 @@ export default function AIOrdersPage() {
               <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
               <div className="space-y-3">
                 {aiOrder.items.map((item, index) => {
-                  const mappedProductId = productMapping[aiOrder._id]?.[index];
-                  const mappedProduct = mappedProductId ? getProductById(mappedProductId) : null;
+                  const mapping = productMapping[aiOrder._id]?.[index];
+                  const mappedProduct = mapping ? getProductById(mapping.productId) : null;
+                  const selectedUnit = mappedProduct ? getSelectedUnit(mappedProduct, mapping.unitIndex || 0) : null;
                   
                   return (
                     <div key={index} className="p-4 border border-gray-200 rounded-lg">
@@ -598,7 +683,7 @@ export default function AIOrdersPage() {
                         <div className="flex-1">
                           <div className="font-medium text-lg">{item.name}</div>
                           <div className="text-sm text-gray-600 mt-1">
-                            จำนวน: <span className="font-medium">{item.qty}</span>
+                            จำนวนเดิม: <span className="font-medium">{item.qty}</span>
                             {item.variant.color && ` | สี: ${item.variant.color}`}
                             {item.variant.size && ` | ขนาด: ${item.variant.size}`}
                             {item.note && ` | หมายเหตุ: ${item.note}`}
@@ -616,7 +701,7 @@ export default function AIOrdersPage() {
                               {mappedProduct.name}
                             </div>
                             <div className="text-sm font-medium text-green-800">
-                              {mappedProduct.price?.toLocaleString()} บาท
+                              {selectedUnit.label}: {selectedUnit.price?.toLocaleString()} บาท
                             </div>
                           </div>
                         ) : (
@@ -634,7 +719,7 @@ export default function AIOrdersPage() {
                           เลือกสินค้าที่ตรงกัน:
                         </label>
                         <select
-                          value={mappedProductId || ''}
+                          value={mapping?.productId || ''}
                           onChange={(e) => handleProductMapping(aiOrder._id, index, e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
@@ -653,11 +738,73 @@ export default function AIOrdersPage() {
                         </select>
                       </div>
                       
-                      {/* Show calculated line total if mapped */}
+                      {/* Unit selection - only show if product is selected and has units */}
+                      {mappedProduct && mappedProduct.units && mappedProduct.units.length > 0 && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            เลือกหน่วยสินค้า:
+                          </label>
+                          <select
+                            value={mapping.unitIndex || 0}
+                            onChange={(e) => handleUnitSelection(aiOrder._id, index, parseInt(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {mappedProduct.units.map((unit: any, unitIndex: number) => (
+                              <option key={unitIndex} value={unitIndex}>
+                                {unit.label} - {unit.price.toLocaleString()} บาท
+                                {unit.multiplier && unit.multiplier !== 1 && ` (x${unit.multiplier})`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      
+                      {/* Quantity adjustment - only show if product is selected */}
                       {mappedProduct && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ปรับจำนวน:
+                          </label>
+                          <div className="flex items-center space-x-3">
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(aiOrder._id, index, (mapping.quantity || 1) - 1)}
+                              disabled={mapping.quantity <= 1}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={mapping.quantity || 1}
+                              onChange={(e) => handleQuantityChange(aiOrder._id, index, parseInt(e.target.value) || 1)}
+                              className="w-20 px-3 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(aiOrder._id, index, (mapping.quantity || 1) + 1)}
+                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                            >
+                              +
+                            </button>
+                            <span className="text-sm text-gray-600">
+                              (เดิม: {item.qty})
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Show calculated line total if mapped */}
+                      {mappedProduct && selectedUnit && (
                         <div className="mt-3 p-2 bg-blue-50 rounded">
                           <div className="text-sm text-blue-800">
-                            📊 ยอดรวมรายการนี้: <span className="font-medium">{(mappedProduct.price * item.qty).toLocaleString()} บาท</span>
+                            📊 ยอดรวมรายการนี้: <span className="font-medium">{(selectedUnit.price * (mapping.quantity || 1)).toLocaleString()} บาท</span>
+                            {mapping.quantity !== item.qty && (
+                              <span className="ml-2 text-orange-600">
+                                (ปรับจาก {item.qty})
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -671,7 +818,7 @@ export default function AIOrdersPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-gray-900">
-                      สถานะการแมพ: {aiOrder.items.filter((_, index) => productMapping[aiOrder._id]?.[index]).length}/{aiOrder.items.length} รายการ
+                      สถานะการแมพ: {aiOrder.items.filter((_, index) => productMapping[aiOrder._id]?.[index]?.productId).length}/{aiOrder.items.length} รายการ
                     </div>
                     {isAllItemsMapped(aiOrder) && (
                       <div className="text-sm text-green-600 font-medium mt-1">
@@ -719,7 +866,23 @@ export default function AIOrdersPage() {
                           </div>
                         </div>
                       );
-                    })()}
+                    })()} 
+                    
+                    {/* Show detailed item breakdown */}
+                    <div className="mt-3 pt-2 border-t border-green-200">
+                      <div className="text-xs text-green-700 font-medium mb-1">รายละเอียดสินค้า:</div>
+                      {aiOrder.items.map((item: any, index: number) => {
+                        const mapping = productMapping[aiOrder._id]?.[index];
+                        if (!mapping) return null;
+                        const product = getProductById(mapping.productId);
+                        const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
+                        return (
+                          <div key={index} className="text-xs text-green-600 mb-1">
+                            {product?.name} ({selectedUnit.label}) x {mapping.quantity} = {(selectedUnit.price * mapping.quantity).toLocaleString()} บาท
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
