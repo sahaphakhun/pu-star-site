@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 interface AIOrderItem {
   sku: string | null;
   name: string;
@@ -36,7 +39,7 @@ interface AIOrder {
   items: AIOrderItem[];
   pricing: AIOrderPricing;
   customer: AIOrderCustomer;
-  errors: string[];
+  errorMessages: string[];
   aiResponse: string;
   userMessage: string;
   mappedOrderId?: string;

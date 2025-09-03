@@ -769,7 +769,7 @@ export async function saveAIOrder(
         phone: null,
         address: null
       },
-      errors: orderData.errors || [],
+      errorMessages: orderData.errors || [],
       aiResponse,
       userMessage
     });

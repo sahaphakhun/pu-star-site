@@ -31,7 +31,7 @@ export interface IAIOrder extends Document {
   items: IAIOrderItem[];
   pricing: IAIOrderPricing;
   customer: IAIOrderCustomer;
-  errors: string[];
+  errorMessages: string[];
   aiResponse: string; // ข้อความตอบกลับจาก AI
   userMessage: string; // ข้อความที่ผู้ใช้ส่งมา
   mappedOrderId?: Schema.Types.ObjectId; // ID ของ Order ที่แมพแล้ว (ถ้ามี)
@@ -128,7 +128,7 @@ const aiOrderSchema = new Schema<IAIOrder>(
     items: [aiOrderItemSchema],
     pricing: aiOrderPricingSchema,
     customer: aiOrderCustomerSchema,
-    errors: [{
+    errorMessages: [{
       type: String
     }],
     aiResponse: {

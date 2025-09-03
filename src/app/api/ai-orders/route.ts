@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         phone: null,
         address: null
       },
-      errors: body.errors || [],
+      errorMessages: body.errorMessages || [],
       aiResponse: body.aiResponse,
       userMessage: body.userMessage
     });

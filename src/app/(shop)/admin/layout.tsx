@@ -2,6 +2,9 @@ import React, { ReactNode } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import { Toaster } from 'react-hot-toast';
 
+// Force dynamic rendering for admin pages
+export const dynamic = 'force-dynamic';
+
 interface Props {
   children: ReactNode;
 }
