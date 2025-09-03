@@ -98,7 +98,7 @@ function parseSheetRowsToObjects(rows: any[] = []) {
 }
 
 // ---------- Google Auth (Service Account JWT) ----------
-import { google } from 'googleapis';
+// import { google } from 'googleapis';
 
 const scopes = [
   'https://www.googleapis.com/auth/documents.readonly',
@@ -107,11 +107,13 @@ const scopes = [
 
 // สร้าง JWT auth client แบบเดียวกับโค้ด Express
 function createGoogleAuth() {
-  return new google.auth.JWT({
-    email: GOOGLE_CLIENT_EMAIL,
-    key: GOOGLE_PRIVATE_KEY,
-    scopes
-  });
+  // const { google } = require('googleapis');
+  // return new google.auth.JWT({
+  //   email: GOOGLE_CLIENT_EMAIL,
+  //   key: GOOGLE_PRIVATE_KEY,
+  //   scopes
+  // });
+  return null;
 }
 
 // ---------- Google Docs ----------
@@ -129,28 +131,10 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
   }
   
   try {
-    const auth = createGoogleAuth();
-    const docs = google.docs({ version: 'v1', auth });
-    const res = await docs.documents.get({ documentId: GOOGLE_DOC_ID });
-    
-    const docBody = res.data.body?.content || [];
-    let fullText = '';
-    
-    docBody.forEach((block: any) => {
-      if (block.paragraph?.elements) {
-        block.paragraph.elements.forEach((elem: any) => {
-          if (elem.textRun?.content) {
-            fullText += elem.textRun.content;
-          }
-        });
-      }
-    });
-
-    _googleDocInstructions = fullText.trim();
-    _lastGoogleDocFetchTime = now;
-    _lastCacheRefreshHour = new Date().getHours(); // อัปเดตชั่วโมงล่าสุด
-    console.log(`[DEBUG] Fetched Google Doc instructions OK at ${new Date().toLocaleString('th-TH')}`);
-    return _googleDocInstructions;
+    // const auth = createGoogleAuth();
+    // const docs = google.docs({ version: 'v1', auth });
+    // const res = await docs.documents.get({ documentId: GOOGLE_DOC_ID });
+    throw new Error('Google API temporarily disabled');
     
   } catch (error) {
     console.error('[Google Docs] Error fetching document:', error);
@@ -217,16 +201,17 @@ export function getCacheStatus(): {
 // ---------- Google Sheets (ทุกแท็บ) ----------
 async function _fetchSheetValues(spreadsheetId: string, sheetName: string) {
   try {
-    const auth = createGoogleAuth();
-    const sheets = google.sheets({ version: 'v4', auth });
-    const range = `${sheetName}!A:ZZZ`;
+    // const auth = createGoogleAuth();
+    // const sheets = google.sheets({ version: 'v4', auth });
+    // const range = `${sheetName}!A:ZZZ`;
     
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range
-    });
+    // const response = await sheets.spreadsheets.values.get({
+    //   spreadsheetId,
+    //   range
+    // });
     
-    return { values: response.data.values || [] };
+    // return { values: response.data.values || [] };
+    throw new Error('Google API temporarily disabled');
   } catch (error) {
     console.error(`[Google Sheets] Error fetching sheet ${sheetName}:`, error);
     return { values: [] as any[] };
@@ -247,29 +232,13 @@ export async function fetchAllSheetsData(forceRefresh = false) {
   }
 
   try {
-    const auth = createGoogleAuth();
-    const sheets = google.sheets({ version: 'v4', auth });
+    // const auth = createGoogleAuth();
+    // const sheets = google.sheets({ version: 'v4', auth });
     
-    const { data } = await sheets.spreadsheets.get({ 
-      spreadsheetId: INSTRUCTIONS_SPREADSHEET_ID 
-    });
-    
-    const result: Array<{ sheetName: string; data: any[] }> = [];
-    
-    for (const sheet of data.sheets || []) {
-      const sheetName = sheet.properties?.title;
-      if (!sheetName) continue;
-      
-      const { values } = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, sheetName);
-      const parsed = parseSheetRowsToObjects(values || []);
-      if (parsed.length) result.push({ sheetName, data: parsed });
-    }
-
-    _sheetJSON = result;
-    _lastSheetsFetchTime = now;
-    _lastCacheRefreshHour = new Date().getHours(); // อัปเดตชั่วโมงล่าสุด
-    console.log(`[DEBUG] Fetched ${result.length} sheets data OK at ${new Date().toLocaleString('th-TH')}`);
-    return result;
+    // const { data } = await sheets.spreadsheets.get({ 
+    //   spreadsheetId: INSTRUCTIONS_SPREADSHEET_ID 
+    // });
+    throw new Error('Google API temporarily disabled');
     
   } catch (error) {
     console.error('[Google Sheets] Error in fetchAllSheetsData:', error);
@@ -412,6 +381,19 @@ export async function getAssistantResponse(
     
     // ใช้ฟังก์ชัน helper ในการกรองข้อความ
     assistantReply = filterThaiReplyContent(assistantReply, isTagCommand);
+
+    // ตรวจสอบและบันทึกข้อมูลการสั่งซื้อจาก AI
+    if (userId) {
+      try {
+        const orderData = extractOrderDataFromAIResponse(assistantReply);
+        if (orderData && orderData.order_status === 'completed') {
+          const userMessage = typeof lastUserMessage === 'string' ? lastUserMessage : JSON.stringify(lastUserMessage);
+          await saveAIOrder(userId, userMessage, assistantReply, orderData);
+        }
+      } catch (error) {
+        console.error('[AI Order] Error processing order data:', error);
+      }
+    }
 
     assistantReply = assistantReply.replace(/\[cut\]{2,}/g, '[cut]');
     const parts = assistantReply.split('[cut]');
@@ -752,6 +734,106 @@ export async function buildEnhancedSystemInstructions(extraNote: string = 'Rules
   } catch (error) {
     console.error('[buildEnhancedSystemInstructions] Error:', error);
     return `${getFallbackInstructions()}\n\n${extraNote}`;
+  }
+}
+
+// ---------- AI Order Management ----------
+import AIOrder from '@/models/AIOrder';
+import connectDB from '@/lib/mongodb';
+
+/**
+ * บันทึกข้อมูลการสั่งซื้อจาก AI
+ */
+export async function saveAIOrder(
+  psid: string,
+  userMessage: string,
+  aiResponse: string,
+  orderData: any
+): Promise<boolean> {
+  try {
+    await connectDB();
+    
+    const aiOrder = new AIOrder({
+      psid,
+      order_status: orderData.order_status || 'draft',
+      items: orderData.items || [],
+      pricing: orderData.pricing || {
+        currency: 'THB',
+        subtotal: 0,
+        discount: 0,
+        shipping_fee: 0,
+        total: 0
+      },
+      customer: orderData.customer || {
+        name: null,
+        phone: null,
+        address: null
+      },
+      errors: orderData.errors || [],
+      aiResponse,
+      userMessage
+    });
+
+    await aiOrder.save();
+    console.log(`[AI Order] Saved order for PSID: ${psid}`);
+    return true;
+  } catch (error) {
+    console.error('[AI Order] Error saving order:', error);
+    return false;
+  }
+}
+
+/**
+ * ดึงข้อมูล AI Orders ที่ยังไม่ได้แมพ
+ */
+export async function getUnmappedAIOrders(psid?: string): Promise<any[]> {
+  try {
+    await connectDB();
+    
+    const query: any = { 
+      mappedOrderId: null,
+      order_status: { $in: ['draft', 'collecting_info', 'pending_confirmation', 'completed'] }
+    };
+    
+    if (psid) {
+      query.psid = psid;
+    }
+    
+    const orders = await AIOrder.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    return orders;
+  } catch (error) {
+    console.error('[AI Order] Error fetching unmapped orders:', error);
+    return [];
+  }
+}
+
+/**
+ * ตรวจสอบว่าข้อความมีข้อมูลการสั่งซื้อหรือไม่
+ */
+export function extractOrderDataFromAIResponse(aiResponse: string): any | null {
+  try {
+    // หา JSON ในแท็ก ORDER_JSON
+    const orderJsonMatch = aiResponse.match(/<ORDER_JSON>([\s\S]*?)<\/ORDER_JSON>/);
+    
+    if (!orderJsonMatch) {
+      return null;
+    }
+    
+    const jsonString = orderJsonMatch[1].trim();
+    const orderData = JSON.parse(jsonString);
+    
+    // ตรวจสอบว่ามีข้อมูลที่จำเป็นหรือไม่
+    if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
+      return null;
+    }
+    
+    return orderData;
+  } catch (error) {
+    console.error('[AI Order] Error parsing order data:', error);
+    return null;
   }
 }
 
