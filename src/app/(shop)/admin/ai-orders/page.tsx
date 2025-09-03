@@ -305,13 +305,20 @@ export default function AIOrdersPage() {
 
   const fetchProducts = async () => {
     try {
+      console.log('Fetching products...');
       const response = await fetch('/api/products');
       const data = await response.json();
-      if (data.success) {
-        setProducts(data.data.products || data.data || []);
+      console.log('Products API response:', data);
+      if (response.ok && Array.isArray(data)) {
+        console.log('Products loaded successfully:', data.length, 'products');
+        setProducts(data);
+      } else {
+        console.error('Invalid products data:', data);
+        setProducts([]);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
+      setProducts([]);
     }
   };
 
@@ -529,6 +536,9 @@ export default function AIOrdersPage() {
             <div className="text-sm text-gray-600">
               ทั้งหมด: {aiOrders.length} รายการ
             </div>
+            <div className="text-sm text-blue-600">
+              📦 สินค้าในระบบ: {products.length} รายการ
+            </div>
           </div>
           <div className="text-sm text-gray-500">
             📊 แสดงราคาจากข้อความ AI และข้อมูลที่บันทึกไว้
@@ -629,11 +639,17 @@ export default function AIOrdersPage() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">เลือกสินค้า...</option>
-                          {products.map((product) => (
-                            <option key={product._id} value={product._id}>
-                              {product.name} - {product.price?.toLocaleString()} บาท ({product.sku || 'No SKU'})
+                          {products && products.length > 0 ? (
+                            products.map((product) => (
+                              <option key={product._id} value={product._id}>
+                                {product.name} - {product.price?.toLocaleString() || '0'} บาท ({product.sku || 'No SKU'})
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" disabled>
+                              {products.length === 0 ? 'ไม่มีสินค้าในระบบ' : 'กำลังโหลดสินค้า...'}
                             </option>
-                          ))}
+                          )}
                         </select>
                       </div>
                       
