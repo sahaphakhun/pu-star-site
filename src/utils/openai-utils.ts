@@ -386,7 +386,7 @@ export async function getAssistantResponse(
     if (userId) {
       try {
         const orderData = extractOrderDataFromAIResponse(assistantReply);
-        if (orderData && orderData.order_status === 'completed') {
+        if (orderData) {
           const userMessage = typeof lastUserMessage === 'string' ? lastUserMessage : JSON.stringify(lastUserMessage);
           await saveAIOrder(userId, userMessage, assistantReply, orderData);
         }

@@ -65,6 +65,16 @@ export default function AIOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [mapping, setMapping] = useState<{ [key: string]: string }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
+  const [syncing, setSyncing] = useState(false);
+  const [syncDateRange, setSyncDateRange] = useState('7'); // 7, 30, 90 days
+  const [syncResults, setSyncResults] = useState<{
+    total: number;
+    new: number;
+    updated: number;
+    errors: number;
+  } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [filteredOrders, setFilteredOrders] = useState<AIOrder[]>([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -75,7 +85,14 @@ export default function AIOrdersPage() {
     
     fetchAIOrders();
     fetchOrders();
-  }, [isLoggedIn, user, authLoading]);
+  // Filter orders based on status
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredOrders(aiOrders);
+    } else {
+      setFilteredOrders(aiOrders.filter(order => order.order_status === statusFilter));
+    }
+  }, [aiOrders, statusFilter]);
 
   const fetchAIOrders = async () => {
     try {
@@ -83,6 +100,7 @@ export default function AIOrdersPage() {
       const data = await response.json();
       if (data.success) {
         setAiOrders(data.data.orders);
+        setFilteredOrders(data.data.orders);
       }
     } catch (error) {
       console.error('Error fetching AI orders:', error);
@@ -166,6 +184,39 @@ export default function AIOrdersPage() {
     }
   };
 
+  const handleSyncConversations = async () => {
+    setSyncing(true);
+    setSyncResults(null);
+    
+    try {
+      const response = await fetch('/api/ai-orders/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRange: parseInt(syncDateRange),
+          adminName: user?.name || 'Admin'
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSyncResults(data.data);
+        // รีเฟรชรายการ AI Orders
+        await fetchAIOrders();
+        alert(`ซิงค์สำเร็จ!\n\nรวม: ${data.data.total} รายการ\nใหม่: ${data.data.new} รายการ\nอัปเดต: ${data.data.updated} รายการ\nข้อผิดพลาด: ${data.data.errors} รายการ`);
+      } else {
+        alert('เกิดข้อผิดพลาดในการซิงค์: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error syncing conversations:', error);
+      alert('เกิดข้อผิดพลาดในการซิงค์');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('th-TH', {
       timeZone: 'Asia/Bangkok',
@@ -213,8 +264,94 @@ export default function AIOrdersPage() {
         <p className="text-gray-600">จัดการการแมพสินค้าจาก AI Orders กับ Orders จริง</p>
       </div>
 
+      {/* Sync Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 border mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">🔄 ซิงค์ข้อมูลจากประวัติการสนทนา</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ระยะเวลาที่ต้องการซิงค์
+            </label>
+            <select
+              value={syncDateRange}
+              onChange={(e) => setSyncDateRange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="7">7 วันล่าสุด</option>
+              <option value="30">30 วันล่าสุด</option>
+              <option value="90">90 วันล่าสุด</option>
+            </select>
+          </div>
+          <button
+            onClick={handleSyncConversations}
+            disabled={syncing}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {syncing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                กำลังซิงค์...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                ซิงค์ข้อมูล
+              </>
+            )}
+          </button>
+        </div>
+        
+        {syncResults && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+            <h3 className="font-medium text-green-800 mb-2">ผลการซิงค์:</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-green-700">รวม:</span> {syncResults.total} รายการ
+              </div>
+              <div>
+                <span className="font-medium text-green-700">ใหม่:</span> {syncResults.new} รายการ
+              </div>
+              <div>
+                <span className="font-medium text-green-700">อัปเดต:</span> {syncResults.updated} รายการ
+              </div>
+              <div>
+                <span className="font-medium text-red-700">ข้อผิดพลาด:</span> {syncResults.errors} รายการ
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Filter Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 border mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">🔍 กรองข้อมูล</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              สถานะออเดอร์
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">ทั้งหมด ({aiOrders.length})</option>
+              <option value="draft">ร่าง ({aiOrders.filter(o => o.order_status === 'draft').length})</option>
+              <option value="collecting_info">รวบรวมข้อมูล ({aiOrders.filter(o => o.order_status === 'collecting_info').length})</option>
+              <option value="pending_confirmation">รอยืนยัน ({aiOrders.filter(o => o.order_status === 'pending_confirmation').length})</option>
+              <option value="completed">เสร็จสิ้น ({aiOrders.filter(o => o.order_status === 'completed').length})</option>
+              <option value="canceled">ยกเลิก ({aiOrders.filter(o => o.order_status === 'canceled').length})</option>
+            </select>
+          </div>
+          <div className="text-sm text-gray-600">
+            แสดง {filteredOrders.length} รายการจากทั้งหมด {aiOrders.length} รายการ
+          </div>
+        </div>
+      </div>
       <div className="grid gap-6">
-        {aiOrders.map((aiOrder) => (
+        {filteredOrders.map((aiOrder) => (
           <div key={aiOrder._id} className="bg-white rounded-lg shadow-md p-6 border">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -356,9 +493,11 @@ export default function AIOrdersPage() {
         ))}
       </div>
 
-      {aiOrders.length === 0 && (
+      {filteredOrders.length === 0 && (
         <div className="text-center py-12">
-          <div className="text-gray-500 text-lg">ไม่มี AI Orders</div>
+          <div className="text-gray-500 text-lg">
+            {aiOrders.length === 0 ? 'ไม่มี AI Orders' : 'ไม่มี AI Orders ที่ตรงกับเงื่อนไขที่เลือก'}
+          </div>
         </div>
       )}
     </div>
