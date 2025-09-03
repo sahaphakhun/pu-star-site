@@ -65,13 +65,14 @@ export default function AIOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [mapping, setMapping] = useState<{ [key: string]: string }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
-  // New state for product mapping with unit selection and quantity
+  // New state for product mapping with unit selection, quantity, and options
   const [productMapping, setProductMapping] = useState<{ 
     [key: string]: { 
       [itemIndex: number]: {
         productId: string;
         unitIndex?: number; // Index of selected unit from product.units array
         quantity: number; // Override quantity
+        selectedOptions?: { [optionName: string]: string }; // Selected option values
       }
     } 
   }>({});
@@ -209,8 +210,35 @@ export default function AIOrdersPage() {
     });
   };
 
+  const handleOptionSelection = (aiOrderId: string, itemIndex: number, optionName: string, optionValue: string) => {
+    setProductMapping(prev => {
+      if (!prev[aiOrderId]?.[itemIndex]) return prev;
+      return {
+        ...prev,
+        [aiOrderId]: {
+          ...prev[aiOrderId],
+          [itemIndex]: {
+            ...prev[aiOrderId][itemIndex],
+            selectedOptions: {
+              ...prev[aiOrderId][itemIndex].selectedOptions,
+              [optionName]: optionValue
+            }
+          }
+        }
+      };
+    });
+  };
+
   const getProductById = (productId: string) => {
-    return products.find(p => p._id === productId);
+    if (!productId || !products || products.length === 0) {
+      console.warn('getProductById: Invalid productId or empty products array', { productId, productsLength: products?.length });
+      return null;
+    }
+    const product = products.find(p => p._id === productId);
+    if (!product) {
+      console.warn('getProductById: Product not found', { productId, availableIds: products.map(p => p._id) });
+    }
+    return product;
   };
 
   const getSelectedUnit = (product: any, unitIndex: number) => {
@@ -260,6 +288,21 @@ export default function AIOrdersPage() {
       return;
     }
 
+    // Validate all required data
+    const mappedItems = productMapping[aiOrder._id] || {};
+    for (let i = 0; i < aiOrder.items.length; i++) {
+      const mapping = mappedItems[i];
+      if (!mapping?.productId) {
+        alert(`รายการที่ ${i + 1} ยังไม่ได้แมพสินค้า`);
+        return;
+      }
+      const product = getProductById(mapping.productId);
+      if (!product) {
+        alert(`ไม่พบสินค้าสำหรับรายการที่ ${i + 1}: ${mapping.productId}`);
+        return;
+      }
+    }
+
     setConvertingToOrder(prev => ({ ...prev, [aiOrder._id]: true }));
 
     try {
@@ -267,16 +310,22 @@ export default function AIOrdersPage() {
       const orderItems = aiOrder.items.map((item: any, index: number) => {
         const mapping = mappedItems[index];
         const product = getProductById(mapping.productId);
+        if (!product) {
+          throw new Error(`Product not found for mapping: ${mapping.productId}`);
+        }
         const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
         
         return {
           productId: mapping.productId,
-          name: product?.name || item.name,
+          name: product.name || item.name,
           price: selectedUnit.price,
           quantity: mapping.quantity,
           unit: selectedUnit.label,
           multiplier: selectedUnit.multiplier || 1,
-          variant: item.variant,
+          variant: {
+            ...item.variant,
+            selectedOptions: mapping.selectedOptions || {}
+          },
           note: item.note,
           originalAIItem: {
             name: item.name,
@@ -759,6 +808,37 @@ export default function AIOrdersPage() {
                         </div>
                       )}
                       
+                      {/* Product options selection - only show if product is selected and has options */}
+                      {mappedProduct && mappedProduct.options && mappedProduct.options.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            ตัวเลือกสินค้า:
+                          </div>
+                          {mappedProduct.options.map((option: any, optionIndex: number) => (
+                            <div key={optionIndex} className="">
+                              <label className="block text-sm font-medium text-gray-600 mb-1">
+                                {option.name}:
+                              </label>
+                              <select
+                                value={mapping.selectedOptions?.[option.name] || ''}
+                                onChange={(e) => handleOptionSelection(aiOrder._id, index, option.name, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">เลือก{option.name}...</option>
+                                {option.values
+                                  .filter((value: any) => value.isAvailable !== false)
+                                  .map((value: any, valueIndex: number) => (
+                                    <option key={valueIndex} value={value.label}>
+                                      {value.label}
+                                    </option>
+                                  ))
+                                }
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
                       {/* Quantity adjustment - only show if product is selected */}
                       {mappedProduct && (
                         <div className="mt-3">
@@ -804,6 +884,11 @@ export default function AIOrdersPage() {
                               <span className="ml-2 text-orange-600">
                                 (ปรับจาก {item.qty})
                               </span>
+                            )}
+                            {mapping.selectedOptions && Object.keys(mapping.selectedOptions).length > 0 && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                ตัวเลือก: {Object.entries(mapping.selectedOptions).map(([name, value]) => `${name}: ${value}`).join(', ')}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -875,10 +960,16 @@ export default function AIOrdersPage() {
                         const mapping = productMapping[aiOrder._id]?.[index];
                         if (!mapping) return null;
                         const product = getProductById(mapping.productId);
+                        if (!product) return null;
                         const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
+                        const optionsText = mapping.selectedOptions 
+                          ? Object.entries(mapping.selectedOptions)
+                              .map(([name, value]) => `${name}: ${value}`)
+                              .join(', ')
+                          : '';
                         return (
                           <div key={index} className="text-xs text-green-600 mb-1">
-                            {product?.name} ({selectedUnit.label}) x {mapping.quantity} = {(selectedUnit.price * mapping.quantity).toLocaleString()} บาท
+                            {product.name} ({selectedUnit.label}){optionsText && ` - ${optionsText}`} x {mapping.quantity} = {(selectedUnit.price * mapping.quantity).toLocaleString()} บาท
                           </div>
                         );
                       })}
