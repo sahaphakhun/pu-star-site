@@ -79,6 +79,48 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    await connectDB();
+    
+    const { searchParams } = request.nextUrl;
+    const aiOrderId = searchParams.get('id');
+    const body = await request.json();
+    
+    if (!aiOrderId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing aiOrderId parameter' },
+        { status: 400 }
+      );
+    }
+
+    const updatedAIOrder = await AIOrder.findByIdAndUpdate(
+      aiOrderId,
+      body,
+      { new: true }
+    );
+
+    if (!updatedAIOrder) {
+      return NextResponse.json(
+        { success: false, error: 'AI Order not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: updatedAIOrder
+    });
+
+  } catch (error) {
+    console.error('[AI Orders PATCH API] Error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();

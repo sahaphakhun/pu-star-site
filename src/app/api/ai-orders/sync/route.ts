@@ -17,11 +17,48 @@ export async function POST(request: NextRequest) {
     
     console.log(`[AI Orders Sync] Starting sync for ${dateRange} days from ${startDate.toISOString()}`);
     
+    // First, let's check how many MessengerUsers exist in total
+    const totalMessengerUsers = await MessengerUser.countDocuments();
+    console.log(`[AI Orders Sync] Total MessengerUsers in database: ${totalMessengerUsers}`);
+    
+    // Check how many have conversation history
+    const usersWithHistory = await MessengerUser.countDocuments({
+      'conversationHistory.0': { $exists: true }
+    });
+    console.log(`[AI Orders Sync] MessengerUsers with conversation history: ${usersWithHistory}`);
+    
+    // Check how many have recent updates
+    const recentUsers = await MessengerUser.countDocuments({
+      updatedAt: { $gte: startDate }
+    });
+    console.log(`[AI Orders Sync] MessengerUsers updated since ${startDate.toISOString()}: ${recentUsers}`);
+
     // ดึงข้อมูล MessengerUser ทั้งหมดที่มีประวัติการสนทนา
     const messengerUsers = await MessengerUser.find({
       'conversationHistory.0': { $exists: true },
       updatedAt: { $gte: startDate }
     }).lean();
+    
+    console.log(`[AI Orders Sync] Found ${messengerUsers.length} MessengerUsers matching criteria`);
+    
+    // If no users found with date filter, try without date filter for debugging
+    if (messengerUsers.length === 0) {
+      console.log(`[AI Orders Sync] No users found with date filter, trying without date filter...`);
+      const allUsersWithHistory = await MessengerUser.find({
+        'conversationHistory.0': { $exists: true }
+      }).limit(10).lean(); // Limit to first 10 for debugging
+      
+      console.log(`[AI Orders Sync] Found ${allUsersWithHistory.length} users with conversation history (ignoring date)`);
+      
+      if (allUsersWithHistory.length > 0) {
+        console.log(`[AI Orders Sync] Sample user conversation history:`, {
+          psid: allUsersWithHistory[0].psid,
+          historyLength: allUsersWithHistory[0].conversationHistory?.length || 0,
+          updatedAt: allUsersWithHistory[0].updatedAt,
+          sampleMessage: allUsersWithHistory[0].conversationHistory?.[0]
+        });
+      }
+    }
     
     let total = 0;
     let newOrders = 0;

@@ -65,6 +65,10 @@ export default function AIOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [mapping, setMapping] = useState<{ [key: string]: string }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
+  // New state for product mapping
+  const [productMapping, setProductMapping] = useState<{ [key: string]: { [itemIndex: number]: string } }>({});
+  const [products, setProducts] = useState<any[]>([]);
+  const [convertingToOrder, setConvertingToOrder] = useState<{ [key: string]: boolean }>({});
   const [syncing, setSyncing] = useState(false);
   const [syncDateRange, setSyncDateRange] = useState('7'); // 7, 30, 90 days
   const [syncResults, setSyncResults] = useState<{
@@ -73,8 +77,193 @@ export default function AIOrdersPage() {
     updated: number;
     errors: number;
   } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [filteredOrders, setFilteredOrders] = useState<AIOrder[]>([]);
+  const [expandedMessages, setExpandedMessages] = useState<{ [key: string]: boolean }>({});
+
+  // Helper function to extract pricing from AI response
+  const extractPricingFromResponse = (aiResponse: string) => {
+    try {
+      // Try to find pricing in ORDER_JSON format first
+      const orderJsonMatch = aiResponse.match(/<ORDER_JSON>([\s\S]*?)<\/ORDER_JSON>/);
+      if (orderJsonMatch) {
+        const jsonData = JSON.parse(orderJsonMatch[1]);
+        if (jsonData.pricing) {
+          return jsonData.pricing;
+        }
+      }
+      
+      // Fallback: try to find pricing object directly in the text
+      const pricingMatch = aiResponse.match(/"pricing"\s*:\s*\{[^}]*"total"\s*:\s*\d+[^}]*\}/g);
+      if (pricingMatch) {
+        const pricingStr = pricingMatch[0].replace(/"pricing"\s*:\s*/, '');
+        return JSON.parse(pricingStr);
+      }
+      
+      // Another fallback: find individual pricing values
+      const subtotalMatch = aiResponse.match(/"subtotal"\s*:\s*(\d+)/);
+      const shippingMatch = aiResponse.match(/"shipping_fee"\s*:\s*(\d+)/);
+      const totalMatch = aiResponse.match(/"total"\s*:\s*(\d+)/);
+      const discountMatch = aiResponse.match(/"discount"\s*:\s*(\d+)/);
+      
+      if (subtotalMatch || totalMatch) {
+        return {
+          currency: 'THB',
+          subtotal: subtotalMatch ? parseInt(subtotalMatch[1]) : 0,
+          discount: discountMatch ? parseInt(discountMatch[1]) : 0,
+          shipping_fee: shippingMatch ? parseInt(shippingMatch[1]) : 0,
+          total: totalMatch ? parseInt(totalMatch[1]) : 0
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing pricing:', error);
+    }
+    return null;
+  };
+
+  // Helper function to truncate text
+  const truncateText = (text: string, maxLength: number = 150) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  // Toggle message expansion
+  const toggleMessageExpansion = (orderId: string, messageType: 'user' | 'ai') => {
+    const key = `${orderId}-${messageType}`;
+    setExpandedMessages(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  // Product mapping functions
+  const handleProductMapping = (aiOrderId: string, itemIndex: number, productId: string) => {
+    setProductMapping(prev => ({
+      ...prev,
+      [aiOrderId]: {
+        ...prev[aiOrderId],
+        [itemIndex]: productId
+      }
+    }));
+  };
+
+  const getProductById = (productId: string) => {
+    return products.find(p => p._id === productId);
+  };
+
+  const isAllItemsMapped = (aiOrder: any) => {
+    const mappedItems = productMapping[aiOrder._id] || {};
+    return aiOrder.items.every((item: any, index: number) => mappedItems[index]);
+  };
+
+  const calculateOrderTotal = (aiOrder: any) => {
+    const mappedItems = productMapping[aiOrder._id] || {};
+    let subtotal = 0;
+    
+    aiOrder.items.forEach((item: any, index: number) => {
+      const productId = mappedItems[index];
+      if (productId) {
+        const product = getProductById(productId);
+        if (product) {
+          subtotal += (product.price || 0) * item.qty;
+        }
+      }
+    });
+    
+    const extractedPricing = extractPricingFromResponse(aiOrder.aiResponse);
+    const shippingFee = extractedPricing?.shipping_fee || aiOrder.pricing.shipping_fee || 0;
+    const discount = extractedPricing?.discount || aiOrder.pricing.discount || 0;
+    
+    return {
+      subtotal,
+      discount,
+      shipping_fee: shippingFee,
+      total: subtotal + shippingFee - discount
+    };
+  };
+
+  const convertToRegularOrder = async (aiOrder: any) => {
+    if (!isAllItemsMapped(aiOrder)) {
+      alert('กรุณาแมพสินค้าให้ครบทุกรายการก่อน');
+      return;
+    }
+
+    setConvertingToOrder(prev => ({ ...prev, [aiOrder._id]: true }));
+
+    try {
+      const mappedItems = productMapping[aiOrder._id] || {};
+      const orderItems = aiOrder.items.map((item: any, index: number) => {
+        const productId = mappedItems[index];
+        const product = getProductById(productId);
+        return {
+          productId,
+          name: product?.name || item.name,
+          price: product?.price || 0,
+          quantity: item.qty,
+          variant: item.variant,
+          note: item.note
+        };
+      });
+
+      const pricing = calculateOrderTotal(aiOrder);
+      
+      const orderData = {
+        customerName: aiOrder.customer.name || 'ไม่ระบุ',
+        customerPhone: aiOrder.customer.phone || '',
+        customerAddress: aiOrder.customer.address || '',
+        items: orderItems,
+        subtotal: pricing.subtotal,
+        discount: pricing.discount,
+        shippingFee: pricing.shipping_fee,
+        totalAmount: pricing.total,
+        status: 'pending',
+        source: 'ai_order',
+        originalAIOrderId: aiOrder._id,
+        notes: `แปลงจาก AI Order ${aiOrder._id.slice(-8).toUpperCase()}`
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the AI Order to mark it as converted
+        await fetch(`/api/ai-orders/${aiOrder._id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            convertedToOrderId: data.data._id,
+            convertedAt: new Date().toISOString(),
+            convertedBy: user?.name || 'Admin'
+          }),
+        });
+
+        alert(`✅ แปลงเป็น Order สำเร็จ!\nOrder ID: ${data.data._id.slice(-8).toUpperCase()}`);
+        
+        // Refresh the AI orders list
+        await fetchAIOrders();
+        
+        // Clear the product mapping for this order
+        setProductMapping(prev => {
+          const updated = { ...prev };
+          delete updated[aiOrder._id];
+          return updated;
+        });
+      } else {
+        alert('เกิดข้อผิดพลาดในการสร้าง Order: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error converting to order:', error);
+      alert('เกิดข้อผิดพลาดในการแปลงเป็น Order');
+    } finally {
+      setConvertingToOrder(prev => ({ ...prev, [aiOrder._id]: false }));
+    }
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -85,24 +274,15 @@ export default function AIOrdersPage() {
     
     fetchAIOrders();
     fetchOrders();
+    fetchProducts();
   }, [authLoading, isLoggedIn, user]);
-
-  // Filter orders based on status
-  useEffect(() => {
-    if (statusFilter === 'all') {
-      setFilteredOrders(aiOrders);
-    } else {
-      setFilteredOrders(aiOrders.filter(order => order.order_status === statusFilter));
-    }
-  }, [aiOrders, statusFilter]);
 
   const fetchAIOrders = async () => {
     try {
-      const response = await fetch('/api/ai-orders');
+      const response = await fetch('/api/ai-orders?status=completed'); // Only fetch completed orders
       const data = await response.json();
       if (data.success) {
         setAiOrders(data.data.orders);
-        setFilteredOrders(data.data.orders);
       }
     } catch (error) {
       console.error('Error fetching AI orders:', error);
@@ -120,6 +300,18 @@ export default function AIOrdersPage() {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      if (data.success) {
+        setProducts(data.data.products || data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
     }
   };
 
@@ -328,32 +520,23 @@ export default function AIOrdersPage() {
 
       {/* Filter Section */}
       <div className="bg-white rounded-lg shadow-md p-6 border mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">🔍 กรองข้อมูล</h2>
-        <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              สถานะออเดอร์
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">ทั้งหมด ({aiOrders.length})</option>
-              <option value="draft">ร่าง ({aiOrders.filter(o => o.order_status === 'draft').length})</option>
-              <option value="collecting_info">รวบรวมข้อมูล ({aiOrders.filter(o => o.order_status === 'collecting_info').length})</option>
-              <option value="pending_confirmation">รอยืนยัน ({aiOrders.filter(o => o.order_status === 'pending_confirmation').length})</option>
-              <option value="completed">เสร็จสิ้น ({aiOrders.filter(o => o.order_status === 'completed').length})</option>
-              <option value="canceled">ยกเลิก ({aiOrders.filter(o => o.order_status === 'canceled').length})</option>
-            </select>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">📈 ข้อมูล AI Orders (เสร็จสิ้น)</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
+              ✓ แสดงเฉพาะ AI Orders ที่เสร็จสิ้นแล้ว
+            </div>
+            <div className="text-sm text-gray-600">
+              ทั้งหมด: {aiOrders.length} รายการ
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
-            แสดง {filteredOrders.length} รายการจากทั้งหมด {aiOrders.length} รายการ
+          <div className="text-sm text-gray-500">
+            📊 แสดงราคาจากข้อความ AI และข้อมูลที่บันทึกไว้
           </div>
         </div>
       </div>
       <div className="grid gap-6">
-        {filteredOrders.map((aiOrder) => (
+        {aiOrders.map((aiOrder) => (
           <div key={aiOrder._id} className="bg-white rounded-lg shadow-md p-6 border">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -393,112 +576,244 @@ export default function AIOrdersPage() {
 
             {/* รายการสินค้า */}
             <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า</h4>
-              <div className="space-y-2">
-                {aiOrder.items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <div>
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-gray-600">
-                        จำนวน: {item.qty}
-                        {item.variant.color && ` | สี: ${item.variant.color}`}
-                        {item.variant.size && ` | ขนาด: ${item.variant.size}`}
-                        {item.note && ` | หมายเหตุ: ${item.note}`}
+              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
+              <div className="space-y-3">
+                {aiOrder.items.map((item, index) => {
+                  const mappedProductId = productMapping[aiOrder._id]?.[index];
+                  const mappedProduct = mappedProductId ? getProductById(mappedProductId) : null;
+                  
+                  return (
+                    <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="font-medium text-lg">{item.name}</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            จำนวน: <span className="font-medium">{item.qty}</span>
+                            {item.variant.color && ` | สี: ${item.variant.color}`}
+                            {item.variant.size && ` | ขนาด: ${item.variant.size}`}
+                            {item.note && ` | หมายเหตุ: ${item.note}`}
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            SKU: {item.sku || 'ไม่มี SKU'}
+                          </div>
+                        </div>
+                        {mappedProduct ? (
+                          <div className="ml-4 text-right">
+                            <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-2">
+                              ✓ แมพแล้ว
+                            </div>
+                            <div className="text-sm text-green-700">
+                              {mappedProduct.name}
+                            </div>
+                            <div className="text-sm font-medium text-green-800">
+                              {mappedProduct.price?.toLocaleString()} บาท
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="ml-4 text-right">
+                            <div className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium mb-2">
+                              ยังไม่ได้แมพ
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Product mapping dropdown */}
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          เลือกสินค้าที่ตรงกัน:
+                        </label>
+                        <select
+                          value={mappedProductId || ''}
+                          onChange={(e) => handleProductMapping(aiOrder._id, index, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">เลือกสินค้า...</option>
+                          {products.map((product) => (
+                            <option key={product._id} value={product._id}>
+                              {product.name} - {product.price?.toLocaleString()} บาท ({product.sku || 'No SKU'})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Show calculated line total if mapped */}
+                      {mappedProduct && (
+                        <div className="mt-3 p-2 bg-blue-50 rounded">
+                          <div className="text-sm text-blue-800">
+                            📊 ยอดรวมรายการนี้: <span className="font-medium">{(mappedProduct.price * item.qty).toLocaleString()} บาท</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">{item.sku || 'ไม่มี SKU'}</div>
+                  );
+                })}
+              </div>
+              
+              {/* Order conversion button */}
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      สถานะการแมพ: {aiOrder.items.filter((_, index) => productMapping[aiOrder._id]?.[index]).length}/{aiOrder.items.length} รายการ
                     </div>
+                    {isAllItemsMapped(aiOrder) && (
+                      <div className="text-sm text-green-600 font-medium mt-1">
+                        ✓ พร้อมแปลงเป็น Order ปกติ!
+                      </div>
+                    )}
                   </div>
-                ))}
+                  <button
+                    onClick={() => convertToRegularOrder(aiOrder)}
+                    disabled={!isAllItemsMapped(aiOrder) || convertingToOrder[aiOrder._id]}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+                  >
+                    {convertingToOrder[aiOrder._id] ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        กำลังแปลง...
+                      </>
+                    ) : (
+                      <>
+                        🔄 แปลงเป็น Order ปกติ
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {/* Show calculated totals if all items are mapped */}
+                {isAllItemsMapped(aiOrder) && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                    <h5 className="font-medium text-green-900 mb-2">📈 ยอดรวม Order ใหม่:</h5>
+                    {(() => {
+                      const newPricing = calculateOrderTotal(aiOrder);
+                      return (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <span className="font-medium text-green-700">ยอดสินค้า:</span> {newPricing.subtotal.toLocaleString()} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-green-700">ส่วนลด:</span> {newPricing.discount.toLocaleString()} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-green-700">ค่าจัดส่ง:</span> {newPricing.shipping_fee.toLocaleString()} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-green-700">รวมทั้งหมด:</span> <span className="font-bold">{newPricing.total.toLocaleString()} บาท</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* ราคา */}
             <div className="mb-4">
               <h4 className="font-medium text-gray-900 mb-2">ราคา</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">ยอดสินค้า:</span> {aiOrder.pricing.subtotal.toLocaleString()} บาท
-                </div>
-                <div>
-                  <span className="font-medium">ส่วนลด:</span> {aiOrder.pricing.discount.toLocaleString()} บาท
-                </div>
-                <div>
-                  <span className="font-medium">ค่าจัดส่ง:</span> {aiOrder.pricing.shipping_fee.toLocaleString()} บาท
-                </div>
-                <div>
-                  <span className="font-medium">รวมทั้งหมด:</span> {aiOrder.pricing.total.toLocaleString()} บาท
-                </div>
-              </div>
+              {(() => {
+                const extractedPricing = extractPricingFromResponse(aiOrder.aiResponse);
+                const pricing = extractedPricing || aiOrder.pricing;
+                return (
+                  <div className="space-y-3">
+                    {extractedPricing && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="text-sm font-medium text-blue-900 mb-2">📊 ราคาจากข้อความ AI:</div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-blue-700">ยอดสินค้า:</span> {extractedPricing.subtotal?.toLocaleString() || 0} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">ส่วนลด:</span> {extractedPricing.discount?.toLocaleString() || 0} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">ค่าจัดส่ง:</span> {extractedPricing.shipping_fee?.toLocaleString() || 0} บาท
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">รวมทั้งหมด:</span> {extractedPricing.total?.toLocaleString() || 0} บาท
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">ยอดสินค้า:</span> {aiOrder.pricing.subtotal.toLocaleString()} บาท
+                      </div>
+                      <div>
+                        <span className="font-medium">ส่วนลด:</span> {aiOrder.pricing.discount.toLocaleString()} บาท
+                      </div>
+                      <div>
+                        <span className="font-medium">ค่าจัดส่ง:</span> {aiOrder.pricing.shipping_fee.toLocaleString()} บาท
+                      </div>
+                      <div>
+                        <span className="font-medium">รวมทั้งหมด:</span> {aiOrder.pricing.total.toLocaleString()} บาท
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* ข้อความจากผู้ใช้และ AI */}
             <div className="mb-4">
               <h4 className="font-medium text-gray-900 mb-2">ข้อความ</h4>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="p-3 bg-blue-50 rounded">
-                  <div className="font-medium text-blue-900">ผู้ใช้:</div>
-                  <div className="text-sm text-blue-800">{aiOrder.userMessage}</div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="font-medium text-blue-900">ผู้ใช้:</div>
+                    {aiOrder.userMessage.length > 150 && (
+                      <button
+                        onClick={() => toggleMessageExpansion(aiOrder._id, 'user')}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        {expandedMessages[`${aiOrder._id}-user`] ? 'ย่อ' : 'ดูทั้งหมด'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-sm text-blue-800">
+                    {expandedMessages[`${aiOrder._id}-user`] || aiOrder.userMessage.length <= 150
+                      ? aiOrder.userMessage
+                      : truncateText(aiOrder.userMessage, 150)
+                    }
+                  </div>
                 </div>
                 <div className="p-3 bg-green-50 rounded">
-                  <div className="font-medium text-green-900">AI:</div>
-                  <div className="text-sm text-green-800 whitespace-pre-wrap">{aiOrder.aiResponse}</div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="font-medium text-green-900">AI:</div>
+                    {aiOrder.aiResponse.length > 150 && (
+                      <button
+                        onClick={() => toggleMessageExpansion(aiOrder._id, 'ai')}
+                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                      >
+                        {expandedMessages[`${aiOrder._id}-ai`] ? 'ย่อ' : 'ดูทั้งหมด'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-sm text-green-800 whitespace-pre-wrap">
+                    {expandedMessages[`${aiOrder._id}-ai`] || aiOrder.aiResponse.length <= 150
+                      ? aiOrder.aiResponse
+                      : truncateText(aiOrder.aiResponse, 150)
+                    }
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* การแมพ */}
+            {/* สถานะการแปลง */}
             <div className="border-t pt-4">
-              {aiOrder.mappedOrderId ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-green-600">แมพกับ Order:</span>
-                    <span className="ml-2 font-mono">#{aiOrder.mappedOrderId.slice(-8).toUpperCase()}</span>
-                    <span className="ml-2 text-sm text-gray-500">
-                      โดย {aiOrder.mappedBy} เมื่อ {formatDate(aiOrder.mappedAt!)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleUnmapOrder(aiOrder._id)}
-                    disabled={saving[aiOrder._id]}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {saving[aiOrder._id] ? 'กำลังยกเลิก...' : 'ยกเลิกแมพ'}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <select
-                    value={mapping[aiOrder._id] || ''}
-                    onChange={(e) => setMapping(prev => ({ ...prev, [aiOrder._id]: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">เลือก Order ที่จะแมพ</option>
-                    {orders.map((order) => (
-                      <option key={order._id} value={order._id}>
-                        #{order._id.slice(-8).toUpperCase()} - {order.customerName} - {order.totalAmount.toLocaleString()} บาท
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => handleMapOrder(aiOrder._id, mapping[aiOrder._id])}
-                    disabled={!mapping[aiOrder._id] || saving[aiOrder._id]}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {saving[aiOrder._id] ? 'กำลังแมพ...' : 'แมพ Order'}
-                  </button>
-                </div>
-              )}
+              <div className="text-center text-gray-500 text-sm">
+                🔄 ใช้ระบบแมพสินค้าข้างบนเพื่อแปลงเป็น Order ปกติ
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {filteredOrders.length === 0 && (
+      {aiOrders.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-500 text-lg">
-            {aiOrders.length === 0 ? 'ไม่มี AI Orders' : 'ไม่มี AI Orders ที่ตรงกับเงื่อนไขที่เลือก'}
+            ไม่มี AI Orders ที่เสร็จสิ้นแล้ว
           </div>
         </div>
       )}
