@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/contexts/AuthContext';
 import { redirect } from 'next/navigation';
 
 // Force dynamic rendering
@@ -59,7 +59,7 @@ interface Order {
 }
 
 export default function AIOrdersPage() {
-  const { data: session, status } = useSession();
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const [aiOrders, setAiOrders] = useState<AIOrder[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,15 +67,15 @@ export default function AIOrdersPage() {
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    if (status === 'loading') return;
-    if (!session) {
+    if (authLoading) return;
+    if (!isLoggedIn || !user) {
       redirect('/login');
       return;
     }
     
     fetchAIOrders();
     fetchOrders();
-  }, [session, status]);
+  }, [isLoggedIn, user, authLoading]);
 
   const fetchAIOrders = async () => {
     try {
@@ -115,7 +115,7 @@ export default function AIOrdersPage() {
         body: JSON.stringify({
           aiOrderId,
           orderId,
-          mappedBy: session?.user?.name || 'Admin'
+          mappedBy: user?.name || 'Admin'
         }),
       });
 
@@ -124,7 +124,7 @@ export default function AIOrdersPage() {
         // อัปเดตสถานะใน UI
         setAiOrders(prev => prev.map(order => 
           order._id === aiOrderId 
-            ? { ...order, mappedOrderId: orderId, mappedAt: new Date().toISOString(), mappedBy: session?.user?.name || 'Admin' }
+            ? { ...order, mappedOrderId: orderId, mappedAt: new Date().toISOString(), mappedBy: user?.name || 'Admin' }
             : order
         ));
         setMapping(prev => ({ ...prev, [aiOrderId]: '' }));
@@ -188,7 +188,17 @@ export default function AIOrdersPage() {
     }
   };
 
-  if (loading) {
+  // Show loading while auth is loading or data is loading
+  if (authLoading || loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Show loading if not logged in (will redirect)
+  if (!isLoggedIn || !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
