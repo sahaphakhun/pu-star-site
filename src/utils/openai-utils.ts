@@ -417,13 +417,33 @@ export async function getAssistantResponse(
     // ตรวจสอบและบันทึกข้อมูลการสั่งซื้อจาก AI
     if (userId) {
       try {
+        console.log('[AI Order Real-time] Checking AI response for order data:', {
+          userId,
+          responseLength: assistantReply.length,
+          hasOrderJsonTag: assistantReply.includes('<ORDER_JSON>')
+        });
+        
         const orderData = extractOrderDataFromAIResponse(assistantReply);
         if (orderData) {
           const userMessage = typeof lastUserMessage === 'string' ? lastUserMessage : JSON.stringify(lastUserMessage);
-          await saveAIOrder(userId, userMessage, assistantReply, orderData);
+          console.log('[AI Order Real-time] ✅ Order data found, attempting to save:', {
+            userId,
+            itemCount: orderData.items?.length || 0,
+            orderStatus: orderData.order_status,
+            userMessagePreview: userMessage.substring(0, 100)
+          });
+          
+          const saveResult = await saveAIOrder(userId, userMessage, assistantReply, orderData);
+          console.log('[AI Order Real-time] Save result:', { userId, success: saveResult });
+        } else {
+          console.log('[AI Order Real-time] No valid order data found in AI response');
         }
       } catch (error) {
-        console.error('[AI Order] Error processing order data:', error);
+        console.error('[AI Order Real-time] ❌ Error processing order data:', {
+          userId,
+          error: error.message,
+          responsePreview: assistantReply.substring(0, 200)
+        });
       }
     }
 
@@ -783,7 +803,20 @@ export async function saveAIOrder(
   orderData: any
 ): Promise<boolean> {
   try {
+    console.log('[AI Order Save] Starting save process:', {
+      psid,
+      userMessageLength: userMessage.length,
+      aiResponseLength: aiResponse.length,
+      orderData: {
+        itemCount: orderData.items?.length || 0,
+        hasCustomer: !!orderData.customer,
+        hasPricing: !!orderData.pricing,
+        orderStatus: orderData.order_status
+      }
+    });
+    
     await connectDB();
+    console.log('[AI Order Save] Database connected successfully');
     
     // Helper function to convert address object to string
     const formatAddress = (addressData: any): string | null => {
@@ -802,6 +835,23 @@ export async function saveAIOrder(
       const parsedQty = parseInt(qty) || 0;
       return parsedQty < 1 ? 1 : parsedQty; // Default to 1 if invalid
     };
+    
+    // ตรวจสอบการทำซ้ำก่อนบันทึก
+    const existingOrder = await AIOrder.findOne({
+      psid,
+      aiResponse: { $regex: aiResponse.substring(0, 50).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+    });
+    
+    if (existingOrder) {
+      console.log('[AI Order Save] ⚠️ Duplicate order found, skipping save:', {
+        psid,
+        existingOrderId: existingOrder._id,
+        existingCreatedAt: existingOrder.createdAt
+      });
+      return false;
+    }
+    
+    console.log('[AI Order Save] No duplicate found, proceeding with save');
     
     const aiOrder = new AIOrder({
       psid,
@@ -831,11 +881,24 @@ export async function saveAIOrder(
       userMessage
     });
 
-    await aiOrder.save();
-    console.log(`[AI Order] Saved order for PSID: ${psid}`);
+    const savedOrder = await aiOrder.save();
+    console.log('[AI Order Save] ✅ AI Order saved successfully:', {
+      psid,
+      orderId: savedOrder._id,
+      itemCount: savedOrder.items.length,
+      status: savedOrder.order_status,
+      totalAmount: savedOrder.pricing.total,
+      createdAt: savedOrder.createdAt
+    });
+    
     return true;
   } catch (error) {
-    console.error('[AI Order] Error saving order:', error);
+    console.error('[AI Order Save] ❌ Error saving order:', {
+      psid,
+      error: error.message,
+      stack: error.stack,
+      orderDataPreview: JSON.stringify(orderData, null, 2).substring(0, 500)
+    });
     return false;
   }
 }
@@ -872,24 +935,56 @@ export async function getUnmappedAIOrders(psid?: string): Promise<any[]> {
  */
 export function extractOrderDataFromAIResponse(aiResponse: string): any | null {
   try {
+    // Debug log เพื่อตรวจสอบการมีอยู่ของ ORDER_JSON tags
+    const hasOrderJsonStart = aiResponse.includes('<ORDER_JSON>');
+    const hasOrderJsonEnd = aiResponse.includes('</ORDER_JSON>');
+    
+    console.log('[AI Order Extract] Checking response:', {
+      responseLength: aiResponse.length,
+      hasOrderJsonStart,
+      hasOrderJsonEnd,
+      preview: aiResponse.substring(0, 200) + '...'
+    });
+    
     // หา JSON ในแท็ก ORDER_JSON
     const orderJsonMatch = aiResponse.match(/<ORDER_JSON>([\s\S]*?)<\/ORDER_JSON>/);
     
     if (!orderJsonMatch) {
+      console.log('[AI Order Extract] ❌ No ORDER_JSON tags found');
       return null;
     }
     
     const jsonString = orderJsonMatch[1].trim();
+    console.log('[AI Order Extract] Found ORDER_JSON content:', {
+      jsonLength: jsonString.length,
+      jsonPreview: jsonString.substring(0, 100) + '...'
+    });
+    
     const orderData = JSON.parse(jsonString);
     
     // ตรวจสอบว่ามีข้อมูลที่จำเป็นหรือไม่
     if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
+      console.log('[AI Order Extract] ❌ Invalid items data:', {
+        hasItems: !!orderData.items,
+        isArray: Array.isArray(orderData.items),
+        itemCount: orderData.items ? orderData.items.length : 0
+      });
       return null;
     }
     
+    console.log('[AI Order Extract] ✅ Valid order data extracted:', {
+      itemCount: orderData.items.length,
+      hasCustomer: !!orderData.customer,
+      hasPricing: !!orderData.pricing,
+      orderStatus: orderData.order_status
+    });
+    
     return orderData;
   } catch (error) {
-    console.error('[AI Order] Error parsing order data:', error);
+    console.error('[AI Order Extract] ❌ Error parsing order data:', {
+      error: error.message,
+      responsePreview: aiResponse.substring(0, 200)
+    });
     return null;
   }
 }
