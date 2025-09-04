@@ -98,7 +98,7 @@ function parseSheetRowsToObjects(rows: any[] = []) {
 }
 
 // ---------- Google Auth (Service Account JWT) ----------
-// import { google } from 'googleapis';
+import { google } from 'googleapis';
 
 const scopes = [
   'https://www.googleapis.com/auth/documents.readonly',
@@ -107,13 +107,11 @@ const scopes = [
 
 // สร้าง JWT auth client แบบเดียวกับโค้ด Express
 function createGoogleAuth() {
-  // const { google } = require('googleapis');
-  // return new google.auth.JWT({
-  //   email: GOOGLE_CLIENT_EMAIL,
-  //   key: GOOGLE_PRIVATE_KEY,
-  //   scopes
-  // });
-  return null;
+  return new google.auth.JWT({
+    email: GOOGLE_CLIENT_EMAIL,
+    key: GOOGLE_PRIVATE_KEY,
+    scopes
+  });
 }
 
 // ---------- Google Docs ----------
@@ -131,10 +129,30 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
   }
   
   try {
-    // const auth = createGoogleAuth();
-    // const docs = google.docs({ version: 'v1', auth });
-    // const res = await docs.documents.get({ documentId: GOOGLE_DOC_ID });
-    throw new Error('Google API temporarily disabled');
+    const auth = createGoogleAuth();
+    const docs = google.docs({ version: 'v1', auth });
+    const res = await docs.documents.get({ documentId: GOOGLE_DOC_ID });
+    
+    // Extract text from document
+    let docText = '';
+    if (res.data.body && res.data.body.content) {
+      for (const element of res.data.body.content) {
+        if (element.paragraph) {
+          for (const textElement of element.paragraph.elements || []) {
+            if (textElement.textRun) {
+              docText += textElement.textRun.content || '';
+            }
+          }
+        }
+      }
+    }
+    
+    _googleDocInstructions = docText.trim();
+    _lastGoogleDocFetchTime = now;
+    _lastCacheRefreshHour = new Date().getHours();
+    
+    console.log(`[DEBUG] Google Docs fetched successfully: ${_googleDocInstructions.length} characters`);
+    return _googleDocInstructions;
     
   } catch (error) {
     console.error('[Google Docs] Error fetching document:', error);
@@ -201,17 +219,16 @@ export function getCacheStatus(): {
 // ---------- Google Sheets (ทุกแท็บ) ----------
 async function _fetchSheetValues(spreadsheetId: string, sheetName: string) {
   try {
-    // const auth = createGoogleAuth();
-    // const sheets = google.sheets({ version: 'v4', auth });
-    // const range = `${sheetName}!A:ZZZ`;
+    const auth = createGoogleAuth();
+    const sheets = google.sheets({ version: 'v4', auth });
+    const range = `${sheetName}!A:ZZZ`;
     
-    // const response = await sheets.spreadsheets.values.get({
-    //   spreadsheetId,
-    //   range
-    // });
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range
+    });
     
-    // return { values: response.data.values || [] };
-    throw new Error('Google API temporarily disabled');
+    return { values: response.data.values || [] };
   } catch (error) {
     console.error(`[Google Sheets] Error fetching sheet ${sheetName}:`, error);
     return { values: [] as any[] };
@@ -232,13 +249,28 @@ export async function fetchAllSheetsData(forceRefresh = false) {
   }
 
   try {
-    // const auth = createGoogleAuth();
-    // const sheets = google.sheets({ version: 'v4', auth });
+    const auth = createGoogleAuth();
+    const sheets = google.sheets({ version: 'v4', auth });
     
-    // const { data } = await sheets.spreadsheets.get({ 
-    //   spreadsheetId: INSTRUCTIONS_SPREADSHEET_ID 
-    // });
-    throw new Error('Google API temporarily disabled');
+    const { data } = await sheets.spreadsheets.get({ 
+      spreadsheetId: INSTRUCTIONS_SPREADSHEET_ID 
+    });
+    
+    const sheetNames = data.sheets?.map(s => s.properties?.title).filter(Boolean) || [];
+    const allSheetsData = [];
+    
+    for (const sheetName of sheetNames) {
+      const sheetData = await _fetchSheetValues(INSTRUCTIONS_SPREADSHEET_ID, sheetName as string);
+      const parsedData = parseSheetRowsToObjects(sheetData.values);
+      allSheetsData.push({ sheetName, data: parsedData });
+    }
+    
+    _sheetJSON = allSheetsData;
+    _lastSheetsFetchTime = now;
+    _lastCacheRefreshHour = new Date().getHours();
+    
+    console.log(`[DEBUG] Google Sheets fetched successfully: ${_sheetJSON.length} sheets`);
+    return _sheetJSON;
     
   } catch (error) {
     console.error('[Google Sheets] Error in fetchAllSheetsData:', error);
