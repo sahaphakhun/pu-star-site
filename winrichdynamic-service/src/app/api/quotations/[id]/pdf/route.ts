@@ -27,14 +27,15 @@ export async function GET(
     // ดึง Settings (โลโก้ + ข้อมูลบริษัท/บัญชีธนาคาร)
     const settings = await Settings.findOne();
     // ดึง SKU ของสินค้าแต่ละตัวจาก Product ตาม productId
-    const productIds = (quotation.items || []).map((it: any) => it.productId).filter(Boolean);
+    const q: any = quotation as any;
+    const productIds = (q.items || []).map((it: any) => it.productId).filter(Boolean);
     const products = productIds.length ? await Product.find({ _id: { $in: productIds } }).lean() : [];
     const idToSku: Record<string, string> = {};
     for (const p of products as any[]) {
       idToSku[String(p._id)] = p.sku;
     }
 
-    const enrichedItems = (quotation.items || []).map((it: any) => ({
+    const enrichedItems = (q.items || []).map((it: any) => ({
       ...it,
       sku: idToSku[it.productId] || undefined,
     }));
@@ -79,4 +80,3 @@ export async function GET(
     );
   }
 }
-
