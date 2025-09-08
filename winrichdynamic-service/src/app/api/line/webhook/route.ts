@@ -176,7 +176,9 @@ export async function POST(request: NextRequest) {
             } as any);
 
             // สร้างลิงก์ดาวน์โหลด PDF และส่งกลับ
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+            const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+            const origin = new URL(request.url).origin;
+            const baseUrl = configuredBase || origin;
             const downloadUrl = `${baseUrl}/api/quotations/${quotation._id}/pdf`;
             await client.replyMessage(event.replyToken, { type: 'text', text: `ดาวน์โหลดใบเสนอราคา: ${downloadUrl}` });
             return;
