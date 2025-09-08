@@ -140,7 +140,6 @@ customerSchema.index({ name: 'text', taxId: 'text' }); // ลบ phoneNumber อ
 customerSchema.index({ phoneNumber: 1 }); // เพิ่ม index แยกสำหรับ phoneNumber
 customerSchema.index({ email: 1 }, { unique: true, sparse: true });
 customerSchema.index({ taxId: 1 }, { unique: true, sparse: true });
-customerSchema.index({ customerCode: 1 }, { unique: true, sparse: true });
 customerSchema.index({ customerType: 1 });
 customerSchema.index({ assignedTo: 1 });
 customerSchema.index({ isActive: 1 });
