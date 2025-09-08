@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ICustomer extends Document {
   name: string;
@@ -18,6 +18,10 @@ export interface ICustomer extends Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ICustomerModel extends Model<ICustomer> {
+  generateUniqueCustomerCode(): Promise<string>;
 }
 
 const customerSchema = new Schema<ICustomer>(
@@ -203,5 +207,9 @@ customerSchema.pre('save', async function(next) {
   }
 });
 
-// ต้องประกาศ model หลังจากกำหนด hooks ทั้งหมด
-export default mongoose.models.Customer || mongoose.model<ICustomer>('Customer', customerSchema);
+// ผูก static method เข้ากับโมเดล
+(customerSchema.statics as any).generateUniqueCustomerCode = generateUniqueCustomerCode;
+
+// ต้องประกาศ model หลังจากกำหนด hooks และ statics ทั้งหมด
+const CustomerModel = (mongoose.models.Customer as ICustomerModel) || mongoose.model<ICustomer, ICustomerModel>('Customer', customerSchema);
+export default CustomerModel;
