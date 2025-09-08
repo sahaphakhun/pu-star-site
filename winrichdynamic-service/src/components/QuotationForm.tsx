@@ -92,7 +92,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const res = await fetch('/api/products?isAvailable=true&limit=500', { credentials: 'include' });
+        const res = await fetch('/api/products?isAvailable=true&limit=100&page=1', { credentials: 'include' });
         const data = await res.json();
         if (data?.success) {
           setProducts(Array.isArray(data.data) ? data.data : []);
