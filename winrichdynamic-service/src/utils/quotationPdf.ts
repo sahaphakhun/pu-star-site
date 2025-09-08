@@ -127,7 +127,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    :root{ --primary:#0F4D8B; --primaryMid:#4574A2; --primaryLight:#B0C6D7; --text:#111; --muted:#A3A4A4; --bg:#FCFCFC; --border:#E5E7EB; --ribbon:9mm; --gutter:5mm; }
+    :root{ --primary:#0F4D8B; --primaryMid:#4574A2; --primaryLight:#B0C6D7; --text:#111; --muted:#A3A4A4; --bg:#FCFCFC; --border:#E5E7EB; --gutter:5mm; }
     *{ box-sizing:border-box; }
     html,body{ margin:0; padding:0; }
     body{ font-family:'Noto Sans Thai','Tahoma','DejaVu Sans',sans-serif; font-size:11pt; color:var(--text); -webkit-print-color-adjust:exact; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
@@ -135,8 +135,6 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     .doc{ display:block; }
     .page{ position:relative; page-break-after:always; }
     .page:last-child{ page-break-after:auto; }
-    .ribbon{ position:absolute; top:10mm; bottom:10mm; right:-2mm; width:var(--ribbon); background:var(--primary); display:flex; align-items:center; justify-content:center; }
-    .ribbon span{ writing-mode:vertical-rl; transform:rotate(180deg); color:#fff; font-weight:600; letter-spacing:1px; }
     .content{ position:relative; z-index:1; }
     .topbar{ display:grid; grid-template-columns:7fr 5fr; gap: var(--gutter); }
     .companyBlock{ display:flex; gap:10px; align-items:flex-start; }
@@ -153,7 +151,8 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     table{ width:100%; border-collapse:collapse; margin-top:6mm; }
     thead{ display:table-header-group; }
     th,td{ border:1px solid var(--primaryLight); padding:6px; font-size:10.5pt; }
-    thead th{ background:var(--primary); color:#fff; height:30px; }
+    /* Reduce header row height while keeping font-size */
+    thead th{ background:var(--primary); color:#fff; height:24px; padding-top:4px; padding-bottom:4px; }
     td.no{ width:7%; text-align:center; }
     td.desc{ width:45%; }
     td.sku{ width:13%; text-align:center; color:#333; }
@@ -187,7 +186,6 @@ export function generateQuotationHTML(quotation: QuotationData): string {
       const beforeCount = pi > 0 ? pages.slice(0, pi).reduce((s,a)=>s+a.length,0) : 0;
       return `
       <section class="page">
-        <div class="ribbon"><span>QUOTATION</span></div>
         <div class="content">
           <div class="topbar">
             <div class="companyBlock">
@@ -239,7 +237,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
                     <div>${item.productName || '-'}</div>
                     ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}
                   </td>
-                  <td class=\"sku\">${sanitizeString(item.productId) || '-'}</td>
+                  <td class=\"sku\">${sanitizeString((item as any).sku) || sanitizeString(item.productId) || '-'}</td>
                   <td class=\"qty\">${Number(item.quantity||0).toLocaleString()}</td>
                   <td class=\"unit\">${sanitizeString(item.unit)||'-'}</td>
                   <td class=\"price\">${fmt(item.unitPrice||0)}</td>
@@ -294,4 +292,3 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     return `<!DOCTYPE html><html><body><p>PDF Error</p></body></html>`;
   }
 }
-
