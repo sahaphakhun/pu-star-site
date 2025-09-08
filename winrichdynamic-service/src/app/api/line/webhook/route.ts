@@ -6,6 +6,7 @@ import LineGroupLink from '@/models/LineGroupLink';
 import Quotation from '@/models/Quotation';
 import { generatePDFFromHTML, generateQuotationHTML } from '@/utils/pdfUtils';
 import Product from '@/models/Product';
+function escapeRegex(str: string) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 import { round2, computeVatIncluded, computeLineTotal } from '@/utils/number';
 
 export const dynamic = 'force-dynamic';
@@ -109,11 +110,13 @@ export async function POST(request: NextRequest) {
             // หา product จาก sku ตรงๆ (อิงจาก Product.sku)
             const items: any[] = [];
             for (const il of itemLines) {
-              const m = il.match(/^#([A-Za-z0-9_-]+)\s+(\d+(?:\.\d+)?)$/);
+              // รองรับทั้งมี/ไม่มีเครื่องหมาย # นำหน้า SKU
+              const m = il.match(/^#?([A-Za-z0-9_-]+)\s+(\d+(?:\.\d+)?)$/);
               if (!m) continue;
-              const sku = m[1].toUpperCase();
+              const sku = m[1];
               const qty = Number(m[2]);
-              const product = await Product.findOne({ sku });
+              // หา SKU แบบไม่สนตัวพิมพ์เล็ก/ใหญ่
+              const product = await Product.findOne({ sku: { $regex: new RegExp(`^${escapeRegex(sku)}$`, 'i') } });
               if (!product) continue;
               const p: any = product;
               const unitLabel = p.units?.[0]?.label || '';
