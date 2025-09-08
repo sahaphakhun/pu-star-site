@@ -8,9 +8,9 @@ export const quotationItemSchema = z.object({
   // ชื่อสินค้าไม่บังคับ (จะถูกดึงจากฐานข้อมูลสินค้าเมื่อเลือก productId)
   productName: z.string()
     .max(200, 'ชื่อสินค้าต้องมีความยาวไม่เกิน 200 ตัวอักษร')
+    .trim()
     .optional()
-    .or(z.literal(''))
-    .trim(),
+    .or(z.literal('')),
   description: z.string()
     .max(500, 'รายละเอียดสินค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร')
     .optional()
@@ -20,9 +20,9 @@ export const quotationItemSchema = z.object({
   // หน่วยจะมาจากสินค้า หากไม่มี ให้เว้นว่างได้
   unit: z.string()
     .max(20, 'หน่วยต้องมีความยาวไม่เกิน 20 ตัวอักษร')
+    .trim()
     .optional()
-    .or(z.literal(''))
-    .trim(),
+    .or(z.literal('')),
   // ราคาต่อหน่วย (ราคารวมภาษี) จะมาจากสินค้า
   unitPrice: z.number()
     .min(0, 'ราคาต่อหน่วยต้องไม่ต่ำกว่า 0')
@@ -65,9 +65,9 @@ export const createQuotationSchema = z.object({
   // หัวข้อไม่บังคับ
   subject: z.string()
     .max(200, 'หัวข้อใบเสนอราคาต้องมีความยาวไม่เกิน 200 ตัวอักษร')
+    .trim()
     .optional()
-    .or(z.literal(''))
-    .trim(),
+    .or(z.literal('')),
   // วันหมดอายุไม่บังคับ หากไม่ส่งมา จะตั้งเป็น 7 วันโดยค่าเริ่มต้นที่ API
   validUntil: z.string()
     .optional()

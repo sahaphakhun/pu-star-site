@@ -1,12 +1,5 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error('[B2B] MONGODB_URI is not defined');
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
-}
-
 /**
  * Global is used here to maintain a cached connection across hot reloads
  * in development. This prevents connections growing exponentially
@@ -22,6 +15,12 @@ declare global {
 global.mongoose = global.mongoose || { conn: null, promise: null };
 
 async function connectDB() {
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    // อย่า throw ตอน build/import ให้ throw ตอนเรียกใช้งานจริงเท่านั้น
+    console.error('[B2B] MONGODB_URI is not defined');
+    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  }
   if (global.mongoose.conn) {
     console.log('[B2B] Using existing MongoDB connection');
     return global.mongoose.conn;
