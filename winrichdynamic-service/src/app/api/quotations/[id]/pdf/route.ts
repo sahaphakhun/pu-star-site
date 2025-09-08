@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { Settings } from '@/models/Settings';
-import { generatePDFFromHTML, generateQuotationHTML } from '@/utils/pdfUtils';
+import { generatePDFFromHTML } from '@/utils/pdfUtils';
+import { generateQuotationHTML } from '@/utils/quotationPdf';
 
 // GET: สร้าง PDF ใบเสนอราคา
 export async function GET(
@@ -22,18 +23,22 @@ export async function GET(
       );
     }
 
-    // ดึงโลโก้จาก Cloudinary
+    // ดึง Settings (โลโก้ + ข้อมูลบริษัท/บัญชีธนาคาร)
     const settings = await Settings.findOne();
-    const logoUrl = settings?.logoUrl || '';
-
-    // เพิ่มโลโก้เข้าไปในข้อมูล quotation
-    const quotationWithLogo = {
+    const quotationWithSettings = {
       ...quotation,
-      logoUrl: logoUrl
+      logoUrl: settings?.logoUrl || '',
+      companyName: settings?.companyName || undefined,
+      companyAddress: settings?.companyAddress || undefined,
+      companyPhone: settings?.companyPhone || undefined,
+      companyEmail: settings?.companyEmail || undefined,
+      companyWebsite: settings?.companyWebsite || undefined,
+      taxId: settings?.taxId || undefined,
+      bankInfo: settings?.bankInfo || undefined,
     };
 
     // สร้าง HTML สำหรับ PDF
-    const html = generateQuotationHTML(quotationWithLogo as any);
+    const html = generateQuotationHTML(quotationWithSettings as any);
     
     // สร้าง PDF ด้วย Puppeteer
     const pdfBuffer = await generatePDFFromHTML(html);
@@ -59,5 +64,4 @@ export async function GET(
     );
   }
 }
-
 

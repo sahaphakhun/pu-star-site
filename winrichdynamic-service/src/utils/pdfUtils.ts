@@ -19,7 +19,7 @@ export interface QuotationData {
   customerAddress?: string;
   customerPhone?: string;
   subject: string;
-  validUntil: Date;
+  validUntil: Date | string;
   paymentTerms: string;
   deliveryTerms?: string;
   items: Array<{
@@ -28,18 +28,33 @@ export interface QuotationData {
     quantity: number;
     unit: string;
     unitPrice: number;
-    discount: number;
+    discount: number; // percent
     totalPrice: number;
+    notes?: string[];
+    productId?: string; // for SKU column
   }>;
   subtotal: number;
   totalDiscount: number;
   totalAmount: number;
-  vatRate: number;
+  vatRate: number; // percent
   vatAmount: number;
   grandTotal: number;
   notes?: string;
-  createdAt: Date;
-  logoUrl?: string; // Added for Cloudinary logo
+  createdAt: Date | string;
+  logoUrl?: string; // Cloudinary logo
+  // Optional company/settings info
+  companyName?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  taxId?: string;
+  bankInfo?: {
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    branch?: string;
+  };
 }
 
 
@@ -79,6 +94,44 @@ function sanitizeString(str: any): string {
 }
 
 /**
+ * แปลงจำนวนเงินเป็นข้อความภาษาไทย (บาท/สตางค์)
+ * หมายเหตุ: สำหรับงานเอกสาร (ไม่ครอบคลุมกรณีทุกรูปแบบ 100%)
+ */
+function bahtText(amount: number): string {
+  const thNum = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+  const thUnit = ['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  const toText = (n: number): string => {
+    if (n === 0) return '';
+    let s = '';
+    let i = 0;
+    while (n > 0) {
+      const d = n % 10;
+      if (d !== 0) {
+        let w = thNum[d];
+        if (i === 0 && d === 1 && s !== '') w = 'เอ็ด';
+        if (i === 1 && d === 1) w = '';
+        if (i === 1 && d === 2) w = 'ยี่';
+        s = `${w}${thUnit[i]}${s}`;
+      }
+      i++; n = Math.floor(n / 10);
+    }
+    return s;
+  };
+  const splitMillion = (n: number): number[] => {
+    const parts: number[] = [];
+    while (n > 0) { parts.unshift(n % 1000000); n = Math.floor(n / 1000000); }
+    return parts.length ? parts : [0];
+  };
+
+  const amt = Math.round((amount || 0) * 100) / 100;
+  const baht = Math.floor(amt);
+  const satang = Math.round((amt - baht) * 100);
+  const bahtStr = baht === 0 ? thNum[0] : splitMillion(baht).map(toText).join('ล้าน');
+  const satangStr = satang === 0 ? 'ถ้วน' : splitMillion(satang).map(toText).join('ล้าน') + 'สตางค์';
+  return `${bahtStr}บาท${satangStr}`;
+}
+
+/**
  * ทำความสะอาดข้อมูล quotation
  */
 function sanitizeQuotationData(quotation: any): any {
@@ -104,7 +157,19 @@ function sanitizeQuotationData(quotation: any): any {
       paymentTerms: sanitizeString(quotation.paymentTerms),
       deliveryTerms: sanitizeString(quotation.deliveryTerms),
       notes: sanitizeString(quotation.notes),
-      items: sanitizeArray(quotation.items || [])
+      items: sanitizeArray(quotation.items || []),
+      companyName: sanitizeString(quotation.companyName),
+      companyAddress: sanitizeString(quotation.companyAddress),
+      companyPhone: sanitizeString(quotation.companyPhone),
+      companyEmail: sanitizeString(quotation.companyEmail),
+      companyWebsite: sanitizeString(quotation.companyWebsite),
+      taxId: sanitizeString(quotation.taxId),
+      bankInfo: quotation.bankInfo ? {
+        bankName: sanitizeString(quotation.bankInfo.bankName),
+        accountName: sanitizeString(quotation.bankInfo.accountName),
+        accountNumber: sanitizeString(quotation.bankInfo.accountNumber),
+        branch: sanitizeString(quotation.bankInfo.branch),
+      } : undefined
     };
 
     // ตรวจสอบว่าข้อมูลที่ sanitize แล้วไม่เป็น empty
@@ -162,10 +227,10 @@ export async function generatePDFFromHTML(
       format: options.format || 'A4',
       printBackground: options.printBackground !== false,
       margin: {
-        top: options.margin?.top || '20mm',
-        right: options.margin?.right || '20mm',
-        bottom: options.margin?.bottom || '20mm',
-        left: options.margin?.left || '20mm'
+        top: options.margin?.top || '15mm',
+        right: options.margin?.right || '16mm',
+        bottom: options.margin?.bottom || '16mm',
+        left: options.margin?.left || '16mm'
       },
       landscape: options.landscape || false
     });
