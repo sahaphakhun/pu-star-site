@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -33,14 +34,11 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/settings/logo');
+      const response = await fetch('/api/adminb2b/settings');
       const data = await response.json();
-      
       if (data.success) {
-        setSettings(prev => ({
-          ...prev,
-          logoUrl: data.logoUrl
-        }));
+        const s = data.data as Settings;
+        setSettings(s || {});
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -108,6 +106,46 @@ export default function SettingsPage() {
       toast.error('เกิดข้อผิดพลาดในการอัพโหลดโลโก้');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const updateField = (key: keyof Settings, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateBankField = (key: keyof NonNullable<Settings['bankInfo']>, value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      bankInfo: {
+        bankName: prev.bankInfo?.bankName || '',
+        accountName: prev.bankInfo?.accountName || '',
+        accountNumber: prev.bankInfo?.accountNumber || '',
+        branch: prev.bankInfo?.branch || '',
+        [key]: value,
+      } as any,
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch('/api/adminb2b/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+        setSettings(data.data as Settings);
+      } else {
+        toast.error(data.error || 'บันทึกไม่สำเร็จ');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -217,6 +255,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.companyName || ''}
+                  onChange={e => updateField('companyName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ชื่อบริษัท"
                 />
@@ -229,6 +268,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.taxId || ''}
+                  onChange={e => updateField('taxId', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="เลขประจำตัวผู้เสียภาษี"
                 />
@@ -240,6 +280,7 @@ export default function SettingsPage() {
                 </label>
                 <textarea
                   value={settings.companyAddress || ''}
+                  onChange={e => updateField('companyAddress', e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ที่อยู่บริษัท"
@@ -253,6 +294,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.companyPhone || ''}
+                  onChange={e => updateField('companyPhone', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="เบอร์โทรศัพท์"
                 />
@@ -265,6 +307,7 @@ export default function SettingsPage() {
                 <input
                   type="email"
                   value={settings.companyEmail || ''}
+                  onChange={e => updateField('companyEmail', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="อีเมล"
                 />
@@ -277,6 +320,7 @@ export default function SettingsPage() {
                 <input
                   type="url"
                   value={settings.companyWebsite || ''}
+                  onChange={e => updateField('companyWebsite', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="เว็บไซต์"
                 />
@@ -295,6 +339,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.bankInfo?.bankName || ''}
+                  onChange={e => updateBankField('bankName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ชื่อธนาคาร"
                 />
@@ -307,6 +352,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.bankInfo?.accountName || ''}
+                  onChange={e => updateBankField('accountName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ชื่อบัญชี"
                 />
@@ -319,6 +365,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.bankInfo?.accountNumber || ''}
+                  onChange={e => updateBankField('accountNumber', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="เลขที่บัญชี"
                 />
@@ -331,6 +378,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={settings.bankInfo?.branch || ''}
+                  onChange={e => updateBankField('branch', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="สาขา"
                 />
@@ -341,9 +389,11 @@ export default function SettingsPage() {
           {/* Save Button */}
           <div className="flex justify-end">
             <button
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+              onClick={handleSave}
+              disabled={saving}
+              className={`px-6 py-2 rounded-lg font-medium ${saving ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
             >
-              บันทึกการตั้งค่า
+              {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
             </button>
           </div>
         </motion.div>
