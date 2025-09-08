@@ -56,6 +56,14 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   isEditing = false,
   loading = false,
 }) => {
+  const getDefaultValidUntil = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
   const [products, setProducts] = useState<Array<{ _id: string; name: string; price?: number; units?: Array<{ label: string; price: number }>; isAvailable: boolean }>>([]);
   const [formData, setFormData] = useState<QuotationFormData>({
     customerId: '',
@@ -64,7 +72,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     customerAddress: '',
     customerPhone: '',
     subject: '',
-    validUntil: '',
+    validUntil: getDefaultValidUntil(),
     paymentTerms: 'ชำระเงินทันที',
     deliveryTerms: '',
     items: [
@@ -493,7 +501,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              หัวข้อใบเสนอราคา *
+              หัวข้อใบเสนอราคา
             </label>
             <input
               type="text"
@@ -511,7 +519,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              วันหมดอายุ *
+              วันหมดอายุ (ค่าเริ่มต้น +7 วัน)
             </label>
             <input
               type="date"

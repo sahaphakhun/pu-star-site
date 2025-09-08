@@ -11,8 +11,8 @@ export async function sendDualNotification(phoneNumber: string, message: string)
     // ส่ง SMS
     const smsResult = await sendSMS(phoneNumber, message);
     
-    // TODO: เพิ่มการส่ง Messenger เมื่อมีการเชื่อมต่อ LINE Bot
-    const messengerResult = 'not_implemented';
+    // ไม่ส่งเข้า LINE group โดยอัตโนมัติ เพื่อให้ใช้งานได้ทุกกลุ่มผ่าน webhook เท่านั้น
+    const messengerResult: any = 'skipped';
     
     console.log(`[DualNotification] ผลลัพธ์ - SMS: ${smsResult}, Messenger: ${messengerResult}`);
     
@@ -46,8 +46,7 @@ export async function sendDualOrderConfirmation(
     // ส่ง SMS
     const smsResult = await sendSMSOrderConfirmation(phoneNumber, orderNumber, totalAmount);
     
-    // TODO: เพิ่มการส่ง Messenger เมื่อมีการเชื่อมต่อ LINE Bot
-    const messengerResult = 'not_implemented';
+    const messengerResult: any = 'skipped';
     
     console.log(`[DualNotification] ผลลัพธ์การยืนยันออเดอร์ - SMS: ${smsResult}, Messenger: ${messengerResult}`);
     
@@ -83,8 +82,7 @@ export async function sendDualShippingNotification(
     // ส่ง SMS
     const smsResult = await sendSMSShippingNotification(phoneNumber, orderNumber, trackingNumber, courier);
     
-    // TODO: เพิ่มการส่ง Messenger เมื่อมีการเชื่อมต่อ LINE Bot
-    const messengerResult = 'not_implemented';
+    const messengerResult: any = 'skipped';
     
     console.log(`[DualNotification] ผลลัพธ์การแจ้งเตือนการจัดส่ง - SMS: ${smsResult}, Messenger: ${messengerResult}`);
     
