@@ -279,7 +279,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
           ` : ''}
           <div class=\"footer\">
             <div>สร้างโดยระบบ · ${companyWebsite}</div>
-            <div>Page ${pi+1}/${totalPages}</div>
+            <div>หน้า ${pi+1}/${totalPages}</div>
           </div>
         </div>
       </section>`
