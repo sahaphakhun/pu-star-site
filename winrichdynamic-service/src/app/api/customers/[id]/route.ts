@@ -25,7 +25,7 @@ export async function GET(
     try {
       const authHeader = (request.headers as any).get?.('authorization') as string | null;
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-      const cookieToken = cookies().get('b2b_token')?.value;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
@@ -118,7 +118,7 @@ export async function PUT(
     try {
       const authHeader = (request.headers as any).get?.('authorization') as string | null;
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-      const cookieToken = cookies().get('b2b_token')?.value;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
@@ -179,7 +179,7 @@ export async function DELETE(
     try {
       const authHeader = (request.headers as any).get?.('authorization') as string | null;
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-      const cookieToken = cookies().get('b2b_token')?.value;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);

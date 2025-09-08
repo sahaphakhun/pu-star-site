@@ -5,16 +5,17 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
 interface Admin {
-  id: string;
+  _id: string;
   name: string;
-  email: string;
-  role: string;
+  phone: string;
+  email?: string;
+  role: any; // populated object or role id string
   isActive: boolean;
   createdAt: string;
 }
 
 interface Role {
-  id: string;
+  id: string; // normalized from _id
   name: string;
   description: string;
   level: number;
@@ -30,10 +31,11 @@ const AdminsPage: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
+    phone: '',
     email: '',
-    role: '',
-    password: ''
+    role: ''
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -46,7 +48,8 @@ const AdminsPage: React.FC = () => {
       const rolesResult = await rolesResponse.json();
       
       if (rolesResult.success) {
-        setRoles(rolesResult.data.roles);
+        const rs = (rolesResult.data.roles || []).map((r: any) => ({ id: r._id, name: r.name, description: r.description, level: r.level }));
+        setRoles(rs);
       } else {
         toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลบทบาท');
       }
@@ -56,7 +59,7 @@ const AdminsPage: React.FC = () => {
       const adminsResult = await adminsResponse.json();
       
       if (adminsResult.success) {
-        setAdmins(adminsResult.data);
+        setAdmins(adminsResult.data as Admin[]);
       } else {
         toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
       }
@@ -68,137 +71,118 @@ const AdminsPage: React.FC = () => {
     }
   };
 
-  const handleCreateAdmin = (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.email || !formData.role || !formData.password) {
-      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+    if (!formData.name || !formData.phone || !formData.role) {
+      toast.error('กรุณากรอกชื่อ เบอร์โทร และบทบาท');
       return;
     }
-
-    // ตรวจสอบว่าอีเมลซ้ำหรือไม่
-    const existingAdmin = admins.find(admin => admin.email === formData.email);
-    if (existingAdmin) {
-      toast.error('อีเมลนี้มีแอดมินใช้งานอยู่แล้ว');
-      return;
-    }
-
-    const newAdmin: Admin = {
-      id: `admin_${Date.now()}`,
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      isActive: true,
-      createdAt: new Date().toISOString()
-    };
-
-    setAdmins(prev => {
-      const updated = [...prev, newAdmin];
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-
-    // Reset form
-    setFormData({ name: '', email: '', role: '', password: '' });
-    setShowCreateForm(false);
-    toast.success('สร้างแอดมินใหม่เรียบร้อยแล้ว');
+    try {
+      setSaving(true);
+      const res = await fetch('/api/adminb2b/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (!data?.success) throw new Error(data?.error || 'สร้างผู้ใช้ไม่สำเร็จ');
+      toast.success('สร้างผู้ใช้เรียบร้อยแล้ว');
+      setFormData({ name: '', phone: '', email: '', role: '' });
+      setShowCreateForm(false);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'เกิดข้อผิดพลาด');
+    } finally { setSaving(false); }
   };
 
-  const handleUpdateAdmin = (e: React.FormEvent) => {
+  const handleUpdateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!editingAdmin) return;
-    
-    if (!formData.name || !formData.email || !formData.role) {
-      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+    if (!formData.name || !formData.role) {
+      toast.error('กรุณากรอกชื่อและบทบาท');
       return;
     }
-
-    // ตรวจสอบว่าอีเมลซ้ำหรือไม่ (ยกเว้นแอดมินที่กำลังแก้ไข)
-    const existingAdmin = admins.find(admin => 
-      admin.email === formData.email && admin.id !== editingAdmin.id
-    );
-    if (existingAdmin) {
-      toast.error('อีเมลนี้มีแอดมินใช้งานอยู่แล้ว');
-      return;
-    }
-
-    setAdmins(prev => {
-      const updated = prev.map(admin => 
-        admin.id === editingAdmin.id 
-          ? { 
-              ...admin, 
-              name: formData.name, 
-              email: formData.email, 
-              role: formData.role 
-            }
-          : admin
-      );
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-
-    // Reset form
-    setFormData({ name: '', email: '', role: '', password: '' });
-    setEditingAdmin(null);
-    toast.success('อัพเดทข้อมูลแอดมินเรียบร้อยแล้ว');
+    try {
+      setSaving(true);
+      const res = await fetch(`/api/adminb2b/admins/${editingAdmin._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (!data?.success) throw new Error(data?.error || 'อัพเดทไม่สำเร็จ');
+      toast.success('อัพเดทข้อมูลเรียบร้อยแล้ว');
+      setEditingAdmin(null);
+      setFormData({ name: '', phone: '', email: '', role: '' });
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'เกิดข้อผิดพลาด');
+    } finally { setSaving(false); }
   };
 
   const handleEditAdmin = (admin: Admin) => {
     setEditingAdmin(admin);
     setFormData({
       name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      password: ''
+      phone: admin.phone || '',
+      email: admin.email || '',
+      role: typeof admin.role === 'object' ? (admin.role?._id || '') : (admin.role || '')
     });
   };
 
   const handleCancelEdit = () => {
     setEditingAdmin(null);
-    setFormData({ name: '', email: '', role: '', password: '' });
+    setFormData({ name: '', phone: '', email: '', role: '' });
   };
 
-  const handleToggleAdminStatus = (adminId: string) => {
-    setAdmins(prev => {
-      const updated = prev.map(admin => 
-        admin.id === adminId ? { ...admin, isActive: !admin.isActive } : admin
-      );
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('อัพเดทสถานะแอดมินเรียบร้อยแล้ว');
+  const handleToggleAdminStatus = async (adminId: string) => {
+    try {
+      const admin = admins.find(a => a._id === adminId);
+      if (!admin) return;
+      const res = await fetch(`/api/adminb2b/admins/${adminId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !admin.isActive })
+      });
+      const data = await res.json();
+      if (!data?.success) throw new Error(data?.error || 'อัพเดทไม่สำเร็จ');
+      toast.success('อัพเดทสถานะแอดมินเรียบร้อยแล้ว');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'เกิดข้อผิดพลาด');
+    }
   };
 
-  const handleDeleteAdmin = (adminId: string) => {
-    const admin = admins.find(a => a.id === adminId);
-    if (admin?.role === 'super_admin') {
+  const handleDeleteAdmin = async (adminId: string) => {
+    const admin = admins.find(a => a._id === adminId);
+    if (typeof admin?.role === 'object' && admin?.role?.name === 'Super Admin') {
       toast.error('ไม่สามารถลบ Super Admin ได้');
       return;
     }
 
     if (!confirm('คุณแน่ใจหรือไม่ที่จะลบแอดมินนี้?')) return;
-    
-    setAdmins(prev => {
-      const updated = prev.filter(admin => admin.id !== adminId);
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('ลบแอดมินเรียบร้อยแล้ว');
+    try {
+      const res = await fetch(`/api/adminb2b/admins/${adminId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data?.success) throw new Error(data?.error || 'ลบไม่สำเร็จ');
+      toast.success('ลบผู้ใช้เรียบร้อยแล้ว');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'เกิดข้อผิดพลาด');
+    }
   };
 
-  const getRoleName = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId);
+  const getRoleName = (roleVal: any) => {
+    if (roleVal && typeof roleVal === 'object' && roleVal.name) return roleVal.name;
+    const role = roles.find(r => r.id === roleVal);
     return role?.name || 'ไม่ระบุ';
   };
 
-  const getRoleColor = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId);
+  const getRoleColor = (roleVal: any) => {
+    const role = (roleVal && typeof roleVal === 'object') ? { level: roleVal.level } : roles.find(r => r.id === roleVal);
     if (!role) return 'bg-gray-100 text-gray-800';
     
-    switch (role.level) {
+    switch ((role as any).level) {
       case 1: return 'bg-red-100 text-red-800';
       case 2: return 'bg-blue-100 text-blue-800';
       case 3: return 'bg-green-100 text-green-800';
@@ -238,7 +222,7 @@ const AdminsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อแอดมิน <span className="text-red-500">*</span>
+                  ชื่อผู้ใช้/เซลล์ <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -252,14 +236,14 @@ const AdminsPage: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  อีเมล <span className="text-red-500">*</span>
+                  เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="email@example.com"
+                  placeholder="0812345678 หรือ +66812345678"
                   required
                 />
               </div>
@@ -283,21 +267,18 @@ const AdminsPage: React.FC = () => {
                 </select>
               </div>
               
-              {!editingAdmin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    รหัสผ่าน <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="รหัสผ่าน"
-                    required
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  อีเมล (ถ้ามี)
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="email@example.com"
+                />
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3 pt-4">
@@ -310,9 +291,10 @@ const AdminsPage: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                disabled={saving}
+                className={`px-4 py-2 rounded-md text-white ${saving ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
               >
-                {editingAdmin ? 'อัพเดท' : 'สร้าง'}
+                {saving ? 'กำลังบันทึก...' : editingAdmin ? 'อัพเดท' : 'สร้าง'}
               </button>
             </div>
           </form>
@@ -329,7 +311,7 @@ const AdminsPage: React.FC = () => {
                 onClick={() => setShowCreateForm(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                เพิ่มแอดมินใหม่
+                เพิ่มผู้ใช้ใหม่
               </button>
             )}
           </div>
@@ -339,9 +321,7 @@ const AdminsPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  แอดมิน
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ผู้ใช้</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   บทบาท
                 </th>
@@ -358,11 +338,12 @@ const AdminsPage: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {admins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
+                <tr key={admin._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{admin.name}</div>
-                      <div className="text-sm text-gray-500">{admin.email}</div>
+                      <div className="text-sm text-gray-500">{admin.phone}</div>
+                      <div className="text-sm text-gray-500">{admin.email || '-'}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -397,16 +378,16 @@ const AdminsPage: React.FC = () => {
                         แก้ไข
                       </button>
                       <button
-                        onClick={() => handleToggleAdminStatus(admin.id)}
+                        onClick={() => handleToggleAdminStatus(admin._id)}
                         className={`${
                           admin.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
                         }`}
                       >
                         {admin.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                       </button>
-                      {admin.role !== 'super_admin' && (
+                      {(!admin.role || (typeof admin.role === 'object' ? admin.role.name !== 'Super Admin' : true)) && (
                         <button
-                          onClick={() => handleDeleteAdmin(admin.id)}
+                          onClick={() => handleDeleteAdmin(admin._id)}
                           className="text-red-600 hover:text-red-900"
                         >
                           ลบ

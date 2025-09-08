@@ -31,7 +31,7 @@ export async function GET(
     try {
       const authHeader = request.headers.get('authorization');
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-      const cookieToken = cookies().get('b2b_token')?.value;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
@@ -63,7 +63,7 @@ export async function GET(
     try {
       const ownerId = (quotation as any).assignedTo;
       if (ownerId) {
-        const admin = await Admin.findById(ownerId).lean();
+        const admin: any = await Admin.findById(ownerId).lean();
         if (admin) {
           salesInfo = {
             salesName: admin.name || undefined,
