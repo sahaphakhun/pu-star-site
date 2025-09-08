@@ -5,9 +5,11 @@ export const quotationItemSchema = z.object({
   productId: z.string()
     .min(1, 'กรุณาระบุรหัสสินค้า')
     .trim(),
+  // ชื่อสินค้าไม่บังคับ (จะถูกดึงจากฐานข้อมูลสินค้าเมื่อเลือก productId)
   productName: z.string()
-    .min(1, 'กรุณาระบุชื่อสินค้า')
     .max(200, 'ชื่อสินค้าต้องมีความยาวไม่เกิน 200 ตัวอักษร')
+    .optional()
+    .or(z.literal(''))
     .trim(),
   description: z.string()
     .max(500, 'รายละเอียดสินค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร')
@@ -15,18 +17,23 @@ export const quotationItemSchema = z.object({
     .or(z.literal('')),
   quantity: z.number()
     .min(0.01, 'จำนวนต้องมากกว่า 0'),
+  // หน่วยจะมาจากสินค้า หากไม่มี ให้เว้นว่างได้
   unit: z.string()
-    .min(1, 'กรุณาระบุหน่วย')
     .max(20, 'หน่วยต้องมีความยาวไม่เกิน 20 ตัวอักษร')
+    .optional()
+    .or(z.literal(''))
     .trim(),
+  // ราคาต่อหน่วย (ราคารวมภาษี) จะมาจากสินค้า
   unitPrice: z.number()
-    .min(0, 'ราคาต่อหน่วยต้องไม่ต่ำกว่า 0'),
+    .min(0, 'ราคาต่อหน่วยต้องไม่ต่ำกว่า 0')
+    .optional(),
   discount: z.number()
     .min(0, 'ส่วนลดต้องไม่ต่ำกว่า 0')
     .max(100, 'ส่วนลดต้องไม่เกิน 100%')
     .default(0),
   totalPrice: z.number()
-    .min(0, 'ราคารวมต้องไม่ต่ำกว่า 0'),
+    .min(0, 'ราคารวมต้องไม่ต่ำกว่า 0')
+    .optional(),
 });
 
 // Schema สำหรับการสร้างใบเสนอราคาใหม่
@@ -42,7 +49,7 @@ export const createQuotationSchema = z.object({
     .regex(/^\d{13}$/, 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก')
     .optional()
     .or(z.literal(''))
-    .refine((val) => !val || /^\d{13}$/.test(val), {
+    .refine((val: string | undefined) => !val || /^\d{13}$/.test(val), {
       message: 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก'
     }),
   customerAddress: z.string()
@@ -52,19 +59,19 @@ export const createQuotationSchema = z.object({
   customerPhone: z.string()
     .optional()
     .or(z.literal(''))
-    .refine((val) => !val || /^(\+?66|0)\d{9}$/.test(val), {
+    .refine((val: string | undefined) => !val || /^(\+?66|0)\d{9}$/.test(val), {
       message: 'รูปแบบเบอร์โทรศัพท์ลูกค้าไม่ถูกต้อง (ตัวอย่าง: 0812345678, +66812345678)'
     }),
+  // หัวข้อไม่บังคับ
   subject: z.string()
-    .min(1, 'กรุณาระบุหัวข้อใบเสนอราคา')
     .max(200, 'หัวข้อใบเสนอราคาต้องมีความยาวไม่เกิน 200 ตัวอักษร')
+    .optional()
+    .or(z.literal(''))
     .trim(),
+  // วันหมดอายุไม่บังคับ หากไม่ส่งมา จะตั้งเป็น 7 วันโดยค่าเริ่มต้นที่ API
   validUntil: z.string()
-    .min(1, 'กรุณาระบุวันหมดอายุ')
-    .refine((str) => {
-      const date = new Date(str);
-      return !isNaN(date.getTime()) && date > new Date();
-    }, 'วันหมดอายุต้องเป็นวันที่ในอนาคต'),
+    .optional()
+    .or(z.literal('')),
   paymentTerms: z.string()
     .min(1, 'กรุณาระบุเงื่อนไขการชำระเงิน')
     .max(200, 'เงื่อนไขการชำระเงินต้องมีความยาวไม่เกิน 200 ตัวอักษร')
@@ -100,10 +107,10 @@ export const createQuotationSchema = z.object({
 // Schema สำหรับการอัพเดทใบเสนอราคา
 export const updateQuotationSchema = createQuotationSchema.partial().extend({
   status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']).optional(),
-  sentAt: z.string().optional().transform((str) => str ? new Date(str) : undefined),
+  sentAt: z.string().optional().transform((str: string | undefined) => str ? new Date(str) : undefined),
   sentBy: z.string().max(100, 'ชื่อผู้ส่งต้องมีความยาวไม่เกิน 100 ตัวอักษร').optional().or(z.literal('')),
   sentMethod: z.enum(['email', 'line', 'manual']).optional(),
-  respondedAt: z.string().optional().transform((str) => str ? new Date(str) : undefined),
+  respondedAt: z.string().optional().transform((str: string | undefined) => str ? new Date(str) : undefined),
   responseNotes: z.string().max(1000, 'หมายเหตุการตอบกลับต้องมีความยาวไม่เกิน 1000 ตัวอักษร').optional().or(z.literal('')),
   convertedToOrder: z.string().optional().or(z.literal('')),
 });

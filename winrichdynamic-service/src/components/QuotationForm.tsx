@@ -56,6 +56,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   isEditing = false,
   loading = false,
 }) => {
+  const [products, setProducts] = useState<Array<{ _id: string; name: string; price?: number; units?: Array<{ label: string; price: number }>; isAvailable: boolean }>>([]);
   const [formData, setFormData] = useState<QuotationFormData>({
     customerId: '',
     customerName: '',
@@ -86,6 +87,22 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   type QuotationFormErrors = Partial<Record<keyof QuotationFormData, string>>;
   const [errors, setErrors] = useState<QuotationFormErrors>({});
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // โหลดรายการสินค้า
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const res = await fetch('/api/products?isAvailable=true&limit=500', { credentials: 'include' });
+        const data = await res.json();
+        if (data?.success) {
+          setProducts(Array.isArray(data.data) ? data.data : []);
+        }
+      } catch (e) {
+        // เงียบไว้ ไม่ต้องบล็อคการกรอกฟอร์ม
+      }
+    };
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -124,8 +141,11 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }, 0);
     
     const totalAmount = subtotal - totalDiscount;
-    const vatAmount = totalAmount * (parseFloat(formData.vatRate) / 100);
-    const grandTotal = totalAmount + vatAmount;
+    // VAT รวมภาษี: แยก VAT ออกจากราคารวม
+    const vatRate = parseFloat(formData.vatRate) || 7;
+    const vatFraction = vatRate / 100;
+    const vatAmount = totalAmount * (vatFraction / (1 + vatFraction));
+    const grandTotal = totalAmount; // ไม่บวก VAT เพิ่ม เพราะรวมอยู่แล้ว
     
     return { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal };
   };
@@ -137,13 +157,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       newErrors.customerId = 'กรุณาเลือกลูกค้า';
     }
 
-    if (!formData.subject.trim()) {
-      newErrors.subject = 'กรุณาระบุหัวข้อใบเสนอราคา';
-    }
+    // subject ไม่บังคับ
 
-    if (!formData.validUntil) {
-      newErrors.validUntil = 'กรุณาระบุวันหมดอายุ';
-    }
+    // validUntil ไม่บังคับ (ถ้าไม่ระบุ จะ default +7 วัน ที่ฝั่งเซิร์ฟเวอร์)
 
     if (!formData.paymentTerms.trim()) {
       newErrors.paymentTerms = 'กรุณาระบุเงื่อนไขการชำระเงิน';
@@ -193,9 +209,11 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
       // Validate date
       const validUntilDate = new Date(formData.validUntil);
-      if (isNaN(validUntilDate.getTime()) || validUntilDate <= new Date()) {
-        toast.error('วันหมดอายุต้องเป็นวันที่ในอนาคต');
-        return;
+      if (formData.validUntil) {
+        if (isNaN(validUntilDate.getTime()) || validUntilDate <= new Date()) {
+          toast.error('วันหมดอายุต้องเป็นวันที่ในอนาคต');
+          return;
+        }
       }
 
       // Validate items
@@ -203,8 +221,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         !item.productName.trim() || 
         !item.quantity || 
         parseFloat(item.quantity) <= 0 ||
-        !item.unit.trim() ||
-        !item.unitPrice ||
+        // unit และ unitPrice ไม่บังคับในฟอร์ม (จะดึงจากสินค้า)
+        // !item.unit.trim() ||
+        // !item.unitPrice ||
         parseFloat(item.unitPrice) < 0
       );
 
@@ -217,7 +236,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         ...formData,
         items: formData.items.map(item => ({
           ...item,
-          productId: item.productId || `PROD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate temporary ID if empty
+          productId: item.productId,
           quantity: parseFloat(item.quantity) || 0,
           unitPrice: parseFloat(item.unitPrice) || 0,
           discount: parseFloat(item.discount) || 0,
@@ -301,6 +320,39 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }
     
     setFormData(prev => ({ ...prev, items: newItems }));
+  };
+
+  const handleProductSelect = (index: number, productId: string) => {
+    const product = products.find(p => p._id === productId);
+    const newItems = [...formData.items];
+    if (product) {
+      // ใช้หน่วยแรกถ้ามี ไม่งั้นปล่อยว่าง
+      const unitLabel = product.units && product.units.length > 0 ? product.units[0].label : '';
+      const unitPrice = product.units && product.units.length > 0
+        ? String(product.units[0].price)
+        : String(product.price || 0);
+      newItems[index] = {
+        ...newItems[index],
+        productId: product._id,
+        productName: product.name,
+        unit: unitLabel,
+        unitPrice,
+      } as any;
+      // อัปเดตราคารวมของรายการนี้หลังเลือกสินค้า
+      const total = calculateItemTotal(newItems[index]);
+      newItems[index].totalPrice = total.toFixed(2);
+      setFormData(prev => ({ ...prev, items: newItems }));
+    } else {
+      newItems[index] = {
+        ...newItems[index],
+        productId: '',
+        productName: '',
+        unit: '',
+        unitPrice: '',
+        totalPrice: '',
+      } as any;
+      setFormData(prev => ({ ...prev, items: newItems }));
+    }
   };
 
   const addItem = () => {
@@ -529,15 +581,20 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ชื่อสินค้า *
+                      เลือกสินค้า *
                     </label>
-                    <input
-                      type="text"
-                      value={item.productName}
-                      onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
+                    <select
+                      value={item.productId || ''}
+                      onChange={(e) => handleProductSelect(index, e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="ชื่อสินค้า"
-                    />
+                    >
+                      <option value="">เลือกสินค้า</option>
+                      {products.map(p => (
+                        <option key={p._id} value={p._id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -569,28 +626,28 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      หน่วย *
+                      หน่วย
                     </label>
                     <input
                       type="text"
                       value={item.unit}
-                      onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="ชิ้น, กล่อง"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
+                      placeholder="หน่วยจากสินค้า"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ราคาต่อหน่วย *
+                      ราคาต่อหน่วย (รวม VAT)
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       value={item.unitPrice}
-                      onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
+                      placeholder="ราคาอัตโนมัติจากสินค้า"
                     />
                   </div>
 

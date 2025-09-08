@@ -133,7 +133,10 @@ export async function POST(request: Request) {
     const modelData = {
       ...quotationData,
       quotationNumber,
-      validUntil: new Date(quotationData.validUntil),
+      // หากไม่ได้ส่งวันหมดอายุมา ให้ตั้งค่า +7 วันจากวันนี้
+      validUntil: quotationData.validUntil && quotationData.validUntil !== ''
+        ? new Date(quotationData.validUntil)
+        : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
       // แปลงข้อมูลตัวเลขให้เป็น number
       items: quotationData.items.map(item => ({
         ...item,
@@ -146,8 +149,10 @@ export async function POST(request: Request) {
       subtotal: Number(quotationData.subtotal || 0),
       totalDiscount: Number(quotationData.totalDiscount || 0),
       totalAmount: Number(quotationData.totalAmount || 0),
-      vatAmount: Number(quotationData.vatAmount || 0),
-      grandTotal: Number(quotationData.grandTotal || 0),
+      // คำนวณ VAT แบบรวมภาษีและ grandTotal ที่ server เพื่อความถูกต้อง
+      // หมายเหตุ: model pre-save จะคำนวณให้อีกครั้ง แต่เราตั้งค่าเริ่มต้นไว้เผื่อการแสดงผลฝั่ง client
+      vatAmount: Number(quotationData.totalAmount || 0) * ((Number(quotationData.vatRate || 7) / 100) / (1 + (Number(quotationData.vatRate || 7) / 100))),
+      grandTotal: Number(quotationData.totalAmount || 0),
     };
     
     // สร้างใบเสนอราคาใหม่

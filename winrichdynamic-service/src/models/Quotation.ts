@@ -287,7 +287,7 @@ quotationSchema.virtual('isExpired').get(function() {
   return new Date() > new Date(this.validUntil);
 });
 
-// Pre-save middleware สำหรับการคำนวณราคา
+// Pre-save middleware สำหรับการคำนวณราคา (VAT รวมอยู่ในราคาแล้ว)
 quotationSchema.pre('save', function(next) {
   // คำนวณ subtotal
   this.subtotal = this.items.reduce((sum, item) => {
@@ -302,14 +302,17 @@ quotationSchema.pre('save', function(next) {
   // คำนวณ totalAmount
   this.totalAmount = this.subtotal - this.totalDiscount;
   
-  // คำนวณ vatAmount
-  this.vatAmount = this.totalAmount * (this.vatRate / 100);
+  // VAT แบบรวมภาษี: ภาษี = ส่วนที่แยกออกจากราคาที่รวมภาษีแล้ว
+  // ตัวอย่าง: ราคารวมภาษี 107 บาท ที่ 7% => ภาษี = 7, ฐานภาษี = 100
+  const vatRateFraction = (this.vatRate || 7) / 100;
+  this.vatAmount = this.totalAmount * (vatRateFraction / (1 + vatRateFraction));
   
-  // คำนวณ grandTotal
-  this.grandTotal = this.totalAmount + this.vatAmount;
+  // ราคารวมทั้งสิ้นเท่ากับ totalAmount (ไม่บวก VAT เพิ่ม เพราะรวมแล้ว)
+  this.grandTotal = this.totalAmount;
   
   // อัพเดท totalPrice ของแต่ละ item
   this.items.forEach(item => {
+    // totalPrice ของรายการเป็นราคาที่รวมภาษีแล้วและหลังหักส่วนลด
     item.totalPrice = (item.quantity * item.unitPrice) * (1 - item.discount / 100);
   });
   
