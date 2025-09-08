@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Client, validateSignature } from '@line/bot-sdk';
+import connectDB from '@/lib/mongodb';
+import Customer from '@/models/Customer';
+import LineGroupLink from '@/models/LineGroupLink';
+import Quotation from '@/models/Quotation';
+import { generatePDFFromHTML, generateQuotationHTML } from '@/utils/pdfUtils';
+import Product from '@/models/Product';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,15 +44,138 @@ export async function POST(request: NextRequest) {
           if (event.type !== 'message') return;
           if (!event.message || event.message.type !== 'text') return;
 
-          // ตอบในกลุ่มเท่านั้นตามที่ร้องขอ
+          // เฉพาะในกลุ่มเท่านั้น
           if (event.source?.type !== 'group') return;
 
+          const groupId: string = event.source.groupId;
           const text: string = (event.message.text || '').trim();
-          if (text === 'สวัสดี') {
-            await client.replyMessage(event.replyToken, {
-              type: 'text',
-              text: 'สวัสดี'
-            });
+
+          // เคสง่าย: "สวัสดี"
+          if (text === 'สวัสดี' || text === 'สวัสดีครับ' || text === 'สวัสดีค่ะ') {
+            await client.replyMessage(event.replyToken, { type: 'text', text: 'สวัสดี' });
+            return;
+          }
+
+          await connectDB();
+
+          // คำสั่งผูกกลุ่มกับลูกค้า: ลูกค้า#AAAA
+          if (/^ลูกค้า#([A-Z]\d[A-Z]\d)$/i.test(text)) {
+            const code = text.split('#')[1].toUpperCase();
+            const customer = await Customer.findOne({ customerCode: code });
+            if (!customer) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: `ไม่พบลูกค้ารหัส ${code}` });
+              return;
+            }
+            await LineGroupLink.findOneAndUpdate(
+              { groupId },
+              { groupId, customerId: String((customer as any)._id) },
+              { upsert: true }
+            );
+            await client.replyMessage(event.replyToken, { type: 'text', text: `ผูกกลุ่มกับลูกค้า ${customer.name} (${code}) แล้ว` });
+            return;
+          }
+
+          // คำสั่งออกใบเสนอราคา: บรรทัดแรกขึ้นต้น QT/qt/Qt ตามด้วยชื่อหัวข้อ
+          // ตัวอย่าง:
+          // QT NAME\n#AAAA 10\n#BBBB 20
+          if (/^(QT|qt|Qt)\s+/.test(text)) {
+            const lines = text.split(/\r?\n/);
+            const first = lines[0];
+            const subject = first.replace(/^(QT|qt|Qt)\s+/, '').trim();
+
+            // ตรวจสอบการผูกลูกค้า
+            const link = await LineGroupLink.findOne({ groupId });
+            if (!link) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'ยังไม่ผูกกลุ่มกับลูกค้า ใช้คำสั่ง: ลูกค้า#A1B2' });
+              return;
+            }
+
+            // แปลงรายการสินค้า
+            const itemLines = lines.slice(1).map(l => l.trim()).filter(Boolean);
+            if (itemLines.length === 0) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'กรุณาระบุรายการสินค้าเช่น\n#AAAA 10' });
+              return;
+            }
+
+            // ดึง customer
+            const customerDoc = await Customer.findById((link as any).customerId);
+            const customer: any = customerDoc as any;
+            if (!customerDoc) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'ไม่พบบัญชึกลูกค้าที่ผูกไว้' });
+              return;
+            }
+
+            // หา product จาก sku ตรงๆ (อิงจาก Product.sku)
+            const items: any[] = [];
+            for (const il of itemLines) {
+              const m = il.match(/^#([A-Za-z0-9_-]+)\s+(\d+(?:\.\d+)?)$/);
+              if (!m) continue;
+              const sku = m[1].toUpperCase();
+              const qty = Number(m[2]);
+              const product = await Product.findOne({ sku });
+              if (!product) continue;
+              const p: any = product;
+              const unitLabel = p.units?.[0]?.label || '';
+              const unitPrice = (p.units?.[0]?.price ?? p.price ?? 0) as number;
+              items.push({
+                productId: String(p._id),
+                productName: p.name,
+                description: '',
+                quantity: qty,
+                unit: unitLabel,
+                unitPrice,
+                discount: 0,
+                totalPrice: qty * unitPrice,
+              });
+            }
+
+            if (items.length === 0) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'ไม่พบสินค้าที่ตรงกับรายการที่ส่งมา' });
+              return;
+            }
+
+            // คำนวณยอดรวมตามตรรกะ VAT รวมภาษี
+            const subtotal = items.reduce((s, it) => s + (it.quantity * it.unitPrice), 0);
+            const totalDiscount = 0;
+            const totalAmount = subtotal - totalDiscount;
+            const vatRate = 7;
+            const vatAmount = totalAmount * ((vatRate / 100) / (1 + (vatRate / 100)));
+            const grandTotal = totalAmount;
+
+            // สร้างใบเสนอราคาในฐานข้อมูล
+            const now = new Date();
+            const validUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const startOfMonth = new Date(year, today.getMonth(), 1);
+            const endOfMonth = new Date(year, today.getMonth() + 1, 0);
+            const count = await Quotation.countDocuments({ createdAt: { $gte: startOfMonth, $lte: endOfMonth } });
+            const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
+
+            const quotation = await Quotation.create({
+              quotationNumber,
+              customerId: String(link.customerId),
+              customerName: customer.name,
+              subject,
+              validUntil,
+              paymentTerms: 'ชำระเงินทันที',
+              deliveryTerms: '',
+              items,
+              subtotal,
+              totalDiscount,
+              totalAmount,
+              vatRate,
+              vatAmount,
+              grandTotal,
+              status: 'draft',
+            } as any);
+
+            // สร้างลิงก์ดาวน์โหลด PDF และส่งกลับ
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+            const downloadUrl = `${baseUrl}/api/quotations/${quotation._id}/pdf`;
+            await client.replyMessage(event.replyToken, { type: 'text', text: `ดาวน์โหลดใบเสนอราคา: ${downloadUrl}` });
+            return;
           }
         } catch (err) {
           console.error('[LINE Webhook] Error handling event:', err);

@@ -13,6 +13,7 @@ interface CustomerFormData {
   companyAddress: string;
   companyPhone: string;
   companyEmail: string;
+  customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo: string;
   creditLimit?: string;
@@ -45,6 +46,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
+    customerCode: '',
     customerType: 'new',
     assignedTo: '',
     creditLimit: '',
@@ -151,6 +153,20 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* รหัสลูกค้า (อ่านอย่างเดียว) */}
+        {isEditing && initialData?.customerCode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              รหัสลูกค้า
+            </label>
+            <input
+              type="text"
+              value={initialData.customerCode}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+            />
+          </div>
+        )}
         {/* ข้อมูลพื้นฐาน */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

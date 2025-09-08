@@ -16,6 +16,7 @@ interface Customer {
   companyAddress?: string
   companyPhone?: string
   companyEmail?: string
+  customerCode?: string
   customerType: 'new' | 'regular' | 'target' | 'inactive'
   assignedTo?: string
   creditLimit?: number
@@ -195,6 +196,7 @@ export default function AdminB2BCustomers() {
               companyAddress: editingCustomer.companyAddress || '',
               companyPhone: editingCustomer.companyPhone || '',
               companyEmail: editingCustomer.companyEmail || '',
+              customerCode: editingCustomer.customerCode || '',
               customerType: editingCustomer.customerType,
               assignedTo: editingCustomer.assignedTo || '',
               creditLimit: editingCustomer.creditLimit !== undefined ? String(editingCustomer.creditLimit) : '',

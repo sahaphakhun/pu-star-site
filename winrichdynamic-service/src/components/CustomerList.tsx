@@ -14,6 +14,7 @@ export interface Customer {
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
+  customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string;
   creditLimit?: number;
@@ -53,7 +54,8 @@ const CustomerList: React.FC<CustomerListProps> = ({
         customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phoneNumber.includes(searchTerm) ||
         (customer.taxId && customer.taxId.includes(searchTerm)) ||
-        (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()));
+        (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (customer.customerCode && customer.customerCode.toLowerCase() === searchTerm.toLowerCase());
       
       const matchesType = filterType === 'all' || customer.customerType === filterType;
       const matchesStatus = filterStatus === 'all' || 
@@ -210,6 +212,9 @@ const CustomerList: React.FC<CustomerListProps> = ({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                รหัส
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ลูกค้า
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -242,6 +247,9 @@ const CustomerList: React.FC<CustomerListProps> = ({
                   exit={{ opacity: 0, y: -20 }}
                   className="hover:bg-gray-50"
                 >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                    {customer.customerCode || '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
