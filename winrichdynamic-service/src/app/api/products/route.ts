@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { sku: { $regex: search, $options: 'i' } },
         { 'skuConfig.prefix': { $regex: search, $options: 'i' } }
       ];
     }

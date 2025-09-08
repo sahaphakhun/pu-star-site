@@ -26,6 +26,7 @@ export async function GET(request: Request) {
         { phoneNumber: { $regex: q, $options: 'i' } },
         { taxId: { $regex: q, $options: 'i' } },
         { companyName: { $regex: q, $options: 'i' } },
+        { customerCode: { $regex: `^${q}$`, $options: 'i' } },
       ];
     }
     

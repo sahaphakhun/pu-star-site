@@ -9,6 +9,7 @@ export interface ICustomer extends Document {
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
+  customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string;
   creditLimit?: number;
@@ -83,6 +84,14 @@ const customerSchema = new Schema<ICustomer>(
         'รูปแบบอีเมลบริษัทไม่ถูกต้อง',
       ],
     },
+    customerCode: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: [/^[A-Z]\d[A-Z]\d$/, 'รหัสลูกค้าต้องอยู่ในรูปแบบ A1B2'],
+    },
     customerType: {
       type: String,
       enum: ['new', 'regular', 'target', 'inactive'],
@@ -127,6 +136,7 @@ customerSchema.index({ name: 'text', taxId: 'text' }); // ลบ phoneNumber อ
 customerSchema.index({ phoneNumber: 1 }); // เพิ่ม index แยกสำหรับ phoneNumber
 customerSchema.index({ email: 1 }, { unique: true, sparse: true });
 customerSchema.index({ taxId: 1 }, { unique: true, sparse: true });
+customerSchema.index({ customerCode: 1 }, { unique: true, sparse: true });
 customerSchema.index({ customerType: 1 });
 customerSchema.index({ assignedTo: 1 });
 customerSchema.index({ isActive: 1 });
@@ -146,3 +156,51 @@ customerSchema.virtual('hasCompanyInfo').get(function() {
 });
 
 export default mongoose.models.Customer || mongoose.model<ICustomer>('Customer', customerSchema);
+
+// สร้างรหัสลูกค้าแบบสลับอักษร-ตัวเลข 4 ตัว และตรวจสอบไม่ซ้ำ
+async function generateUniqueCustomerCode(): Promise<string> {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const digits = '0123456789';
+
+  function createCode(): string {
+    const l1 = letters[Math.floor(Math.random() * letters.length)];
+    const d1 = digits[Math.floor(Math.random() * digits.length)];
+    const l2 = letters[Math.floor(Math.random() * letters.length)];
+    const d2 = digits[Math.floor(Math.random() * digits.length)];
+    return `${l1}${d1}${l2}${d2}`;
+  }
+
+  // พยายามสุ่มสูงสุด 20 ครั้งเพื่อหลีกเลี่ยงการชนกัน
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const code = createCode();
+    // ตรวจสอบซ้ำในฐานข้อมูล
+    const exists = await (mongoose.models.Customer as any).exists({ customerCode: code });
+    if (!exists) {
+      return code;
+    }
+  }
+
+  // หากยังชน ให้เพิ่มกลยุทธ์ fallback เล็กน้อย โดยวนเปลี่ยนตัวท้าย
+  for (let i = 0; i < 100; i++) {
+    const base = createCode().slice(0, 3);
+    const code = `${base}${(i % 10).toString()}`;
+    const exists = await (mongoose.models.Customer as any).exists({ customerCode: code });
+    if (!exists) return code;
+  }
+
+  throw new Error('ไม่สามารถสร้างรหัสลูกค้าที่ไม่ซ้ำได้');
+}
+
+// สร้างรหัสลูกค้าอัตโนมัติเฉพาะเมื่อเอกสารยังไม่มีค่าเท่านั้น
+customerSchema.pre('save', async function(next) {
+  try {
+    if (!this.isNew) return next();
+    const doc: any = this;
+    if (!doc.customerCode) {
+      doc.customerCode = await generateUniqueCustomerCode();
+    }
+    next();
+  } catch (err) {
+    next(err as any);
+  }
+});

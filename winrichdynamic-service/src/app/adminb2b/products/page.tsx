@@ -268,8 +268,10 @@ const ProductsPage: React.FC = () => {
   }
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.skuConfig?.prefix && product.skuConfig.prefix.toLowerCase().includes(searchTerm.toLowerCase()));
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = product.name.toLowerCase().includes(term) ||
+                         (product as any).sku?.toLowerCase().includes(term || '') ||
+                         (product.skuConfig?.prefix && product.skuConfig.prefix.toLowerCase().includes(term));
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
     const matchesStatus = selectedStatus === 'all' || 
                          (selectedStatus === 'available' && product.isAvailable) ||
@@ -417,7 +419,7 @@ const ProductsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.skuConfig?.prefix || 'ไม่มี SKU'}
+                      {product.sku || 'ไม่มี SKU'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.category}
@@ -466,6 +468,7 @@ const ProductsPage: React.FC = () => {
           initialData={editingProduct ? {
             name: editingProduct.name,
             description: editingProduct.description,
+            sku: (editingProduct as any).sku,
             price: editingProduct.price,
             shippingFee: editingProduct.shippingFee,
             category: editingProduct.category,
