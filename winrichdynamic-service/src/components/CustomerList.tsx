@@ -31,6 +31,7 @@ interface CustomerListProps {
   onDelete: (customerId: string) => Promise<void>;
   onRefresh: () => void;
   loading?: boolean;
+  adminMap?: Record<string, string>;
 }
 
 const CustomerList: React.FC<CustomerListProps> = ({
@@ -39,6 +40,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
   onDelete,
   onRefresh,
   loading = false,
+  adminMap = {},
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -286,7 +288,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {customer.assignedTo || '-'}
+                    {adminMap[customer.assignedTo || ''] || customer.assignedTo || '-'}
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">

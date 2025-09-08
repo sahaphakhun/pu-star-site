@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Customer from '@/models/Customer';
 import { updateCustomerSchema } from '@/schemas/customer';
@@ -19,6 +21,20 @@ export async function GET(
         { status: 404 }
       );
     }
+    // RBAC: ถ้าเป็น Seller ต้องเป็นเจ้าของเท่านั้น
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller' && String(customer.assignedTo) !== String(payload.adminId)) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    } catch {}
     
     return NextResponse.json(customer);
     
@@ -98,6 +114,21 @@ export async function PUT(
       }
     }
     
+    // RBAC: ถ้าเป็น Seller ต้องเป็นเจ้าของเท่านั้น
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller' && String(existingCustomer.assignedTo) !== String(payload.adminId)) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    } catch {}
+
     // อัพเดทข้อมูลลูกค้า
     const updatedCustomer = await Customer.findByIdAndUpdate(
       resolvedParams.id,
@@ -144,6 +175,20 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    // RBAC: ถ้าเป็น Seller ต้องเป็นเจ้าของเท่านั้น
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller' && String(existingCustomer.assignedTo) !== String(payload.adminId)) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    } catch {}
     
     // Soft Delete โดยเปลี่ยนสถานะ isActive เป็น false
     const deletedCustomer = await Customer.findByIdAndUpdate(

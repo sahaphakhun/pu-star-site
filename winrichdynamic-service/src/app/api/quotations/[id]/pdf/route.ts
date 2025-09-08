@@ -5,6 +5,9 @@ import { Settings } from '@/models/Settings';
 import { generatePDFFromHTML } from '@/utils/pdfUtils';
 import { generateQuotationHTML } from '@/utils/quotationPdf';
 import Product from '@/models/Product';
+import Admin from '@/models/Admin';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
 
 // GET: สร้าง PDF ใบเสนอราคา
 export async function GET(
@@ -24,6 +27,21 @@ export async function GET(
       );
     }
 
+    // RBAC: ถ้าเป็น Seller ต้องเป็นเจ้าของเท่านั้น
+    try {
+      const authHeader = request.headers.get('authorization');
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller' && String((quotation as any).assignedTo) !== String(payload.adminId)) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    } catch {}
+
     // ดึง Settings (โลโก้ + ข้อมูลบริษัท/บัญชีธนาคาร)
     const settings = await Settings.findOne();
     // ดึง SKU ของสินค้าแต่ละตัวจาก Product ตาม productId
@@ -40,9 +58,26 @@ export async function GET(
       sku: idToSku[it.productId] || undefined,
     }));
 
+    // แนบข้อมูลฝ่ายขายจาก assignedTo (ถ้ามี)
+    let salesInfo: any = {};
+    try {
+      const ownerId = (quotation as any).assignedTo;
+      if (ownerId) {
+        const admin = await Admin.findById(ownerId).lean();
+        if (admin) {
+          salesInfo = {
+            salesName: admin.name || undefined,
+            salesPhone: admin.phone || undefined,
+            salesEmail: admin.email || undefined,
+          };
+        }
+      }
+    } catch {}
+
     const quotationWithSettings = {
       ...quotation,
       items: enrichedItems,
+      ...salesInfo,
       logoUrl: settings?.logoUrl || '',
       companyName: settings?.companyName || undefined,
       companyAddress: settings?.companyAddress || undefined,

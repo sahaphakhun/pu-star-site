@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { createQuotationSchema, searchQuotationSchema } from '@/schemas/quotation';
@@ -52,6 +54,21 @@ export async function GET(request: Request) {
         filter.createdAt.$lte = new Date(dateTo);
       }
     }
+
+    // RBAC: จำกัดข้อมูลสำหรับ Seller
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller') {
+          filter.assignedTo = payload.adminId;
+        }
+      }
+    } catch {}
 
     // นับจำนวนทั้งหมด
     const total = await Quotation.countDocuments(filter);
@@ -131,7 +148,7 @@ export async function POST(request: Request) {
     const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
     
     // แปลงข้อมูลให้ตรงกับ Model
-    const modelData = {
+    const modelData: any = {
       ...quotationData,
       quotationNumber,
       // หากไม่ได้ส่งวันหมดอายุมา ให้ตั้งค่า +7 วันจากวันนี้
@@ -157,7 +174,21 @@ export async function POST(request: Request) {
         const { vatAmount } = computeVatIncluded(total, rate);
         return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
       })(),
-    };
+    } as any;
+    
+    // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        if (payload?.adminId) {
+          modelData.assignedTo = payload.adminId; // เก็บ owner เป็น adminId
+        }
+      }
+    } catch {}
     
     // สร้างใบเสนอราคาใหม่
     const quotation = await Quotation.create(modelData);

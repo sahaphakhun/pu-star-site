@@ -32,6 +32,7 @@ export default function AdminB2BQuotations() {
   const [showForm, setShowForm] = useState(false)
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [adminMap, setAdminMap] = useState<Record<string, string>>({})
 
   // ดึงข้อมูลลูกค้าทั้งหมด
   const fetchCustomers = async () => {
@@ -64,6 +65,21 @@ export default function AdminB2BQuotations() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // ดึงรายชื่อผู้ใช้ (สำหรับแปลง assignedTo id -> name)
+  const fetchAdmins = async () => {
+    try {
+      const res = await fetch('/api/adminb2b/admins')
+      const data = await res.json()
+      const map: Record<string, string> = {}
+      if (data?.success && Array.isArray(data.data)) {
+        for (const a of data.data) {
+          if (a?._id && a?.name) map[a._id] = a.name
+        }
+      }
+      setAdminMap(map)
+    } catch {}
   }
 
   // สร้างใบเสนอราคาใหม่
@@ -201,6 +217,7 @@ export default function AdminB2BQuotations() {
   useEffect(() => {
     fetchCustomers()
     fetchQuotations()
+    fetchAdmins()
   }, [])
 
   const getStatusColor = (status: string) => {
@@ -370,7 +387,7 @@ export default function AdminB2BQuotations() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {quotation.assignedTo || '-'}
+                          {adminMap[quotation.assignedTo || ''] || quotation.assignedTo || '-'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -420,5 +437,4 @@ export default function AdminB2BQuotations() {
     </div>
   )
 }
-
 

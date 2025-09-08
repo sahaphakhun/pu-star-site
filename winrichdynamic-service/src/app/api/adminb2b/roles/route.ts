@@ -75,6 +75,17 @@ const baseRoles = [
     ],
     isSystem: true
   }
+  ,
+  {
+    name: 'Seller',
+    description: 'พนักงานขาย เห็นเฉพาะลูกค้าและใบเสนอราคาของตนเอง',
+    level: 5,
+    permissions: [
+      'customers.view', 'customers.create', 'customers.edit',
+      'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send'
+    ],
+    isSystem: true
+  }
 ];
 
 export async function GET() {

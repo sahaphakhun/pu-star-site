@@ -96,6 +96,9 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     const companyWebsite = q.companyWebsite || 'winrichdynamic.com';
     const companyTaxId = q.taxId || '0105563000000';
     const bank = q.bankInfo || { bankName: 'กสิกรไทย', accountName: companyName, accountNumber: '123-4-56789-0', branch: 'อโศก' };
+    const salesName = (quotation as any).salesName || '';
+    const salesPhone = (quotation as any).salesPhone || '';
+    const salesEmail = (quotation as any).salesEmail || '';
 
     const showUnitDiscount = Array.isArray(q.items) && q.items.some((it: any) => Number(it.discount) > 0);
 
@@ -213,6 +216,9 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               <div class="row"><div class="k">วันที่</div><div class="v">${thDate(q.createdAt)}</div></div>
               <div class="row"><div class="k">วันยืนราคา</div><div class="v">${thDate(q.validUntil)}</div></div>
               <div class="row"><div class="k">เครดิต</div><div class="v">${q.paymentTerms || '-'}</div></div>
+              ${salesName ? `<div class="row"><div class="k">ฝ่ายขาย</div><div class="v">${salesName}</div></div>` : ''}
+              ${salesPhone ? `<div class="row"><div class="k">เบอร์</div><div class="v">${salesPhone}</div></div>` : ''}
+              ${salesEmail ? `<div class="row"><div class="k">อีเมล</div><div class="v">${salesEmail}</div></div>` : ''}
             </div>
           </div>
           ${pi === 0 ? `<div class=\"ibox\" style=\"margin-top:4mm;\"><div class=\"row\"><div class=\"k\">โครงการ</div><div class=\"v\">${q.subject || '-'}</div></div></div>` : ''}

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Customer from '@/models/Customer';
 import { createCustomerSchema, searchCustomerSchema } from '@/schemas/customer';
@@ -41,6 +43,22 @@ export async function GET(request: Request) {
     if (isActive !== null && isActive !== undefined) {
       filter.isActive = isActive === 'true';
     }
+
+    // RBAC: จำกัดข้อมูลสำหรับ Seller
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
+        if (roleName === 'seller') {
+          // จำกัดเฉพาะของตนเอง ด้วยการใช้ adminId จาก token
+          filter.assignedTo = payload.adminId;
+        }
+      }
+    } catch {}
 
     // นับจำนวนทั้งหมด
     const total = await Customer.countDocuments(filter);
@@ -123,6 +141,20 @@ export async function POST(request: Request) {
 
     await connectDB();
     
+    // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = cookies().get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        if (payload?.adminId) {
+          (customerData as any).assignedTo = payload.adminId; // เก็บ owner เป็น adminId
+        }
+      }
+    } catch {}
+
     // สร้างลูกค้าใหม่
     const customer = await Customer.create(customerData);
     

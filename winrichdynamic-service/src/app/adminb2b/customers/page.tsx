@@ -33,6 +33,7 @@ export default function AdminB2BCustomers() {
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<ListCustomer | null>(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [adminMap, setAdminMap] = useState<Record<string, string>>({})
 
   // ดึงข้อมูลลูกค้าทั้งหมด
   const fetchCustomers = async () => {
@@ -133,6 +134,21 @@ export default function AdminB2BCustomers() {
     }
   }
 
+  // ดึงรายชื่อผู้ใช้ (สำหรับแปลง assignedTo id -> name)
+  const fetchAdmins = async () => {
+    try {
+      const res = await fetch('/api/adminb2b/admins')
+      const data = await res.json()
+      const map: Record<string, string> = {}
+      if (data?.success && Array.isArray(data.data)) {
+        for (const a of data.data) {
+          if (a?._id && a?.name) map[a._id] = a.name
+        }
+      }
+      setAdminMap(map)
+    } catch {}
+  }
+
   // แก้ไขลูกค้า
   const handleEditCustomer = (customer: ListCustomer) => {
     setEditingCustomer(customer)
@@ -153,6 +169,7 @@ export default function AdminB2BCustomers() {
   // ดึงข้อมูลเมื่อโหลดหน้า
   useEffect(() => {
     fetchCustomers()
+    fetchAdmins()
   }, [])
 
   return (
@@ -218,10 +235,9 @@ export default function AdminB2BCustomers() {
           onDelete={handleDeleteCustomer}
           onRefresh={fetchCustomers}
           loading={loading}
+          adminMap={adminMap as any}
         />
       </div>
     </div>
   )
 }
-
-
