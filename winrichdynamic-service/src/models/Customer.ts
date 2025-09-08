@@ -155,8 +155,6 @@ customerSchema.virtual('hasCompanyInfo').get(function() {
   return !!(this.companyName || this.companyAddress || this.companyPhone || this.companyEmail);
 });
 
-export default mongoose.models.Customer || mongoose.model<ICustomer>('Customer', customerSchema);
-
 // สร้างรหัสลูกค้าแบบสลับอักษร-ตัวเลข 4 ตัว และตรวจสอบไม่ซ้ำ
 async function generateUniqueCustomerCode(): Promise<string> {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -204,3 +202,6 @@ customerSchema.pre('save', async function(next) {
     next(err as any);
   }
 });
+
+// ต้องประกาศ model หลังจากกำหนด hooks ทั้งหมด
+export default mongoose.models.Customer || mongoose.model<ICustomer>('Customer', customerSchema);

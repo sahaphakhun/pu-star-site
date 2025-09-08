@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { round2, computeVatIncluded, computeLineTotal } from '@/utils/number';
 
 export interface IQuotationItem {
   productId: string;
@@ -289,31 +290,32 @@ quotationSchema.virtual('isExpired').get(function() {
 
 // Pre-save middleware สำหรับการคำนวณราคา (VAT รวมอยู่ในราคาแล้ว)
 quotationSchema.pre('save', function(next) {
-  // คำนวณ subtotal
-  this.subtotal = this.items.reduce((sum, item) => {
+  // คำนวณ subtotal แบบเสถียร
+  const subtotalRaw = this.items.reduce((sum: number, item: any) => {
     return sum + (item.quantity * item.unitPrice);
   }, 0);
+  this.subtotal = round2(subtotalRaw);
   
-  // คำนวณ totalDiscount
-  this.totalDiscount = this.items.reduce((sum, item) => {
-    return sum + (item.quantity * item.unitPrice * (item.discount / 100));
+  // คำนวณ totalDiscount แบบเสถียร
+  const totalDiscountRaw = this.items.reduce((sum: number, item: any) => {
+    const itemGross = (item.quantity * item.unitPrice);
+    return sum + (itemGross * (item.discount / 100));
   }, 0);
+  this.totalDiscount = round2(totalDiscountRaw);
   
   // คำนวณ totalAmount
-  this.totalAmount = this.subtotal - this.totalDiscount;
+  this.totalAmount = round2(this.subtotal - this.totalDiscount);
   
-  // VAT แบบรวมภาษี: ภาษี = ส่วนที่แยกออกจากราคาที่รวมภาษีแล้ว
-  // ตัวอย่าง: ราคารวมภาษี 107 บาท ที่ 7% => ภาษี = 7, ฐานภาษี = 100
-  const vatRateFraction = (this.vatRate || 7) / 100;
-  this.vatAmount = this.totalAmount * (vatRateFraction / (1 + vatRateFraction));
+  // VAT รวมภาษี: แยกภาษีออกจาก totalAmount
+  const { vatAmount } = computeVatIncluded(this.totalAmount, this.vatRate || 7);
+  this.vatAmount = round2(vatAmount);
   
-  // ราคารวมทั้งสิ้นเท่ากับ totalAmount (ไม่บวก VAT เพิ่ม เพราะรวมแล้ว)
+  // ราคารวมทั้งสิ้นเท่ากับ totalAmount (รวม VAT แล้ว)
   this.grandTotal = this.totalAmount;
   
-  // อัพเดท totalPrice ของแต่ละ item
-  this.items.forEach(item => {
-    // totalPrice ของรายการเป็นราคาที่รวมภาษีแล้วและหลังหักส่วนลด
-    item.totalPrice = (item.quantity * item.unitPrice) * (1 - item.discount / 100);
+  // อัพเดท totalPrice ของแต่ละ item ให้เสถียร
+  this.items.forEach((item: any) => {
+    item.totalPrice = round2(computeLineTotal(item.quantity, item.unitPrice, item.discount));
   });
   
   next();

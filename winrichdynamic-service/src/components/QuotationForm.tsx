@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { computeLineTotal, round2, computeVatIncluded } from '@/utils/number';
 
 interface QuotationItem {
   productId: string;
@@ -134,26 +135,31 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     const quantity = parseFloat(item.quantity) || 0;
     const unitPrice = parseFloat(item.unitPrice) || 0;
     const discount = parseFloat(item.discount) || 0;
-    return quantity * unitPrice * (1 - discount / 100);
+    return round2(computeLineTotal(quantity, unitPrice, discount));
   };
 
   // คำนวณราคารวมทั้งหมด
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => {
-      return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
+    const subtotalRaw = formData.items.reduce((sum, item) => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unitPrice) || 0;
+      return sum + (qty * price);
     }, 0);
+    const subtotal = round2(subtotalRaw);
     
-    const totalDiscount = formData.items.reduce((sum, item) => {
-      const itemTotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
-      return sum + (itemTotal * (parseFloat(item.discount) || 0) / 100);
+    const totalDiscountRaw = formData.items.reduce((sum, item) => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unitPrice) || 0;
+      const disc = parseFloat(item.discount) || 0;
+      const itemGross = qty * price;
+      return sum + (itemGross * (disc / 100));
     }, 0);
+    const totalDiscount = round2(totalDiscountRaw);
     
-    const totalAmount = subtotal - totalDiscount;
-    // VAT รวมภาษี: แยก VAT ออกจากราคารวม
+    const totalAmount = round2(subtotal - totalDiscount);
     const vatRate = parseFloat(formData.vatRate) || 7;
-    const vatFraction = vatRate / 100;
-    const vatAmount = totalAmount * (vatFraction / (1 + vatFraction));
-    const grandTotal = totalAmount; // ไม่บวก VAT เพิ่ม เพราะรวมอยู่แล้ว
+    const { vatAmount } = computeVatIncluded(totalAmount, vatRate);
+    const grandTotal = totalAmount; // รวมภาษีอยู่แล้ว
     
     return { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal };
   };
@@ -324,7 +330,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     if (field === 'quantity' || field === 'unitPrice' || field === 'discount') {
       const item = newItems[index];
       const total = calculateItemTotal(item);
-      newItems[index].totalPrice = total.toFixed(2);
+      newItems[index].totalPrice = String(round2(total));
     }
     
     setFormData(prev => ({ ...prev, items: newItems }));
@@ -348,7 +354,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       } as any;
       // อัปเดตราคารวมของรายการนี้หลังเลือกสินค้า
       const total = calculateItemTotal(newItems[index]);
-      newItems[index].totalPrice = total.toFixed(2);
+      newItems[index].totalPrice = String(round2(total));
       setFormData(prev => ({ ...prev, items: newItems }));
     } else {
       newItems[index] = {

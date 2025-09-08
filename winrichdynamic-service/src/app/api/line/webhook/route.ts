@@ -6,6 +6,7 @@ import LineGroupLink from '@/models/LineGroupLink';
 import Quotation from '@/models/Quotation';
 import { generatePDFFromHTML, generateQuotationHTML } from '@/utils/pdfUtils';
 import Product from '@/models/Product';
+import { round2, computeVatIncluded, computeLineTotal } from '@/utils/number';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
                 unit: unitLabel,
                 unitPrice,
                 discount: 0,
-                totalPrice: qty * unitPrice,
+                totalPrice: round2(computeLineTotal(qty, unitPrice, 0)),
               });
             }
 
@@ -135,11 +136,11 @@ export async function POST(request: NextRequest) {
             }
 
             // คำนวณยอดรวมตามตรรกะ VAT รวมภาษี
-            const subtotal = items.reduce((s, it) => s + (it.quantity * it.unitPrice), 0);
+            const subtotal = round2(items.reduce((s, it) => s + (it.quantity * it.unitPrice), 0));
             const totalDiscount = 0;
-            const totalAmount = subtotal - totalDiscount;
+            const totalAmount = round2(subtotal - totalDiscount);
             const vatRate = 7;
-            const vatAmount = totalAmount * ((vatRate / 100) / (1 + (vatRate / 100)));
+            const { vatAmount } = computeVatIncluded(totalAmount, vatRate);
             const grandTotal = totalAmount;
 
             // สร้างใบเสนอราคาในฐานข้อมูล

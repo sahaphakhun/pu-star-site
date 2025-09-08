@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { createQuotationSchema, searchQuotationSchema } from '@/schemas/quotation';
+import { round2, computeVatIncluded } from '@/utils/number';
 
 // GET: ดึงใบเสนอราคาทั้งหมด (พร้อมการค้นหาและ pagination)
 export async function GET(request: Request) {
@@ -146,13 +147,16 @@ export async function POST(request: Request) {
         totalPrice: Number(item.totalPrice),
       })),
       vatRate: Number(quotationData.vatRate),
-      subtotal: Number(quotationData.subtotal || 0),
-      totalDiscount: Number(quotationData.totalDiscount || 0),
-      totalAmount: Number(quotationData.totalAmount || 0),
-      // คำนวณ VAT แบบรวมภาษีและ grandTotal ที่ server เพื่อความถูกต้อง
-      // หมายเหตุ: model pre-save จะคำนวณให้อีกครั้ง แต่เราตั้งค่าเริ่มต้นไว้เผื่อการแสดงผลฝั่ง client
-      vatAmount: Number(quotationData.totalAmount || 0) * ((Number(quotationData.vatRate || 7) / 100) / (1 + (Number(quotationData.vatRate || 7) / 100))),
-      grandTotal: Number(quotationData.totalAmount || 0),
+      subtotal: round2(Number(quotationData.subtotal || 0)),
+      totalDiscount: round2(Number(quotationData.totalDiscount || 0)),
+      totalAmount: round2(Number(quotationData.totalAmount || 0)),
+      // คำนวณ VAT แบบรวมภาษีแบบเสถียร
+      ...(() => {
+        const total = Number(quotationData.totalAmount || 0);
+        const rate = Number(quotationData.vatRate || 7);
+        const { vatAmount } = computeVatIncluded(total, rate);
+        return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
+      })(),
     };
     
     // สร้างใบเสนอราคาใหม่
