@@ -7,11 +7,13 @@ import { sendSMS } from '@/app/notification';
 import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 import { sendTextMessage, hasCutOrImageCommands, sendFilteredMessage } from '@/utils/messenger-utils';
+import { enqueueAIMessage } from '@/utils/ai-batcher';
 
 interface MessagingEvent {
   sender: { id: string };
   message?: {
     text?: string;
+    mid?: string;
     quick_reply?: { payload: string };
     attachments?: { type: string; payload: any }[];
   };
@@ -188,34 +190,10 @@ export async function handleEvent(event: MessagingEvent) {
       await enableAIForUser(psid);
     }
       
-      try {
-        // เพิ่มข้อความผู้ใช้ลงในประวัติ
-        await addToConversationHistory(psid, 'user', question);
-        
-        // เรียก AI ตอบคำถาม
-          const conversationHistory = await getConversationHistory(psid);
-          const systemInstructions = await buildSystemInstructions();
-          const answer = await getAssistantResponse(systemInstructions, conversationHistory, question, psid);
-          
-          // เพิ่มข้อความ AI ลงในประวัติ
-          await addToConversationHistory(psid, 'assistant', answer);
-          
-          // ใช้ระบบ [cut] และ [SEND_IMAGE:...] ถ้าจำเป็น
-          if (hasCutOrImageCommands(answer)) {
-          await sendTextMessage(psid, answer);
-        } else {
-          await sendFilteredMessage(psid, { text: answer });
-        }
-        
-        return;
-      } catch (error) {
-        console.error(`[AI Debug] Error processing AI response:`, error);
-        // ถ้า AI มีปัญหา ให้ส่งข้อความข้อผิดพลาด
-        await sendFilteredMessage(psid, {
-          text: 'ขออภัยค่ะ ระบบมีปัญหาเล็กน้อย กรุณาลองใหม่อีกครั้งค่ะ'
-        });
-        return;
-      }
+      // ส่งเข้าตัวรวมข้อความเพื่อรอ 15 วินาที แล้วตอบครั้งเดียว
+      const mid = (event as any)?.message?.mid as string | undefined;
+      enqueueAIMessage(psid, mid, question);
+      return;
     }
   }
 
