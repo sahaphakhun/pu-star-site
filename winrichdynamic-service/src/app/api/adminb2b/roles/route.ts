@@ -81,7 +81,18 @@ export async function GET() {
     await connectDB();
     
     // ดึงบทบาททั้งหมด
-    const roles = await Role.find().sort({ level: 1, name: 1 });
+    let roles = await Role.find().sort({ level: 1, name: 1 });
+    
+    // ถ้าไม่มีบทบาทในฐานข้อมูล ให้สร้างบทบาทพื้นฐาน
+    if (roles.length === 0) {
+      console.log('No roles found, creating base roles...');
+      
+      // สร้างบทบาทพื้นฐาน
+      const createdRoles = await Role.insertMany(baseRoles);
+      roles = createdRoles;
+      
+      console.log('Base roles created:', createdRoles.length);
+    }
     
     return NextResponse.json({
       success: true,

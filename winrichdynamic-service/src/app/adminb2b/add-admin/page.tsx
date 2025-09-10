@@ -31,40 +31,43 @@ export default function AddAdminPage() {
   }, []);
 
   const loadRoles = async () => {
+    // ใช้บทบาทพื้นฐานเสมอ เพื่อให้แน่ใจว่ามีตัวเลือกครบถ้วน
+    const defaultRoles = [
+      { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
+      { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
+      { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
+    ];
+    
     try {
       const res = await fetch('/api/adminb2b/roles');
       if (res.ok) {
         const data = await res.json();
         const apiRoles = data.data?.roles || [];
         
-        // ถ้าไม่มีบทบาทในฐานข้อมูล ให้ใช้บทบาทพื้นฐาน
-        if (apiRoles.length === 0) {
-          const defaultRoles = [
-            { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
-            { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
-            { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
-          ];
-          setRoles(defaultRoles);
+        // ถ้ามีบทบาทในฐานข้อมูล ให้รวมกับบทบาทพื้นฐาน
+        if (apiRoles.length > 0) {
+          // รวมบทบาทจากฐานข้อมูลกับบทบาทพื้นฐาน
+          const combinedRoles = [...defaultRoles];
+          
+          // เพิ่มบทบาทจากฐานข้อมูลที่ยังไม่มี
+          apiRoles.forEach((apiRole: any) => {
+            const exists = defaultRoles.some(defaultRole => 
+              defaultRole.name.toLowerCase() === apiRole.name.toLowerCase()
+            );
+            if (!exists) {
+              combinedRoles.push(apiRole);
+            }
+          });
+          
+          setRoles(combinedRoles);
         } else {
-          setRoles(apiRoles);
+          setRoles(defaultRoles);
         }
       } else {
-        // ถ้า API ไม่ทำงาน ให้ใช้บทบาทพื้นฐาน
-        const defaultRoles = [
-          { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
-          { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
-          { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
-        ];
         setRoles(defaultRoles);
       }
     } catch (error) {
       console.error('Error loading roles:', error);
-      // ถ้าเกิด error ให้ใช้บทบาทพื้นฐาน
-      const defaultRoles = [
-        { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
-        { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
-        { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
-      ];
       setRoles(defaultRoles);
     }
   };
