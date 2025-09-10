@@ -5,7 +5,8 @@ import connectDB from '@/lib/mongodb';
 import Approval from '@/models/Approval';
 import { updateApprovalSchema } from '@/schemas/approval';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
     const body = await request.json();
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (!canApprove) return NextResponse.json({ error: 'ไม่มีสิทธิ์อนุมัติ' }, { status: 403 });
 
     const updated = await Approval.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: { status: parsed.data.status, decisionReason: parsed.data.decisionReason, approverId } },
       { new: true }
     );

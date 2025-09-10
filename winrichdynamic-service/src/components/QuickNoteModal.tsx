@@ -82,7 +82,7 @@ export default function QuickNoteModal({
           <div className="flex justify-end space-x-2 mt-6">
             <Button
               onClick={onClose}
-              variant="outline"
+              variant="secondary"
               disabled={loading}
             >
               ยกเลิก

@@ -6,10 +6,11 @@ import Lead from '@/models/Lead';
 import Customer from '@/models/Customer';
 import Deal from '@/models/Deal';
 
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const lead = await Lead.findById(params.id);
+    const lead = await Lead.findById(id);
     if (!lead) return NextResponse.json({ error: 'ไม่พบ lead' }, { status: 404 });
 
     // สร้างลูกค้า (ถ้ายังไม่มีจาก email/phone ซ้ำ)

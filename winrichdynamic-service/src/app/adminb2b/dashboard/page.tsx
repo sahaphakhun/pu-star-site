@@ -301,10 +301,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </div>
-    {/* Reports Section */}
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+      
+      {/* Reports Section */}
+      <div className="mt-8">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">รายงานและแดชบอร์ด</h2>
           <div className="flex flex-wrap items-center gap-2 mb-4">

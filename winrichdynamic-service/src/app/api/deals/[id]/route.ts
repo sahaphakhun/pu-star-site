@@ -7,10 +7,11 @@ import Approval from '@/models/Approval';
 import { Settings } from '@/models/Settings';
 
 // GET: รายละเอียดดีล
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const deal = await Deal.findById(params.id).lean();
+    const deal = await Deal.findById(id).lean();
     if (!deal) return NextResponse.json({ error: 'ไม่พบดีล' }, { status: 404 });
     return NextResponse.json(deal);
   } catch (error) {
@@ -20,7 +21,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 // PATCH: อัปเดตดีลทั่วไป หรือย้ายสเตจ
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
     const body = await request.json();
@@ -39,13 +41,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
-    const updated = await Deal.findByIdAndUpdate(params.id, update, { new: true });
+    const updated = await Deal.findByIdAndUpdate(id, update, { new: true });
     const settings: any = await Settings.findOne().lean();
     const NEED_APPROVAL_AMOUNT = settings?.salesPolicy?.approvalAmountThreshold ?? 1_000_000;
     if (updated && typeof updated.amount === 'number' && updated.amount >= NEED_APPROVAL_AMOUNT) {
-      const exist = await Approval.findOne({ targetType: 'deal', targetId: params.id, status: 'pending' });
+      const exist = await Approval.findOne({ targetType: 'deal', targetId: id, status: 'pending' });
       if (!exist) {
-        await Approval.create({ targetType: 'deal', targetId: params.id, requestedBy: updated.ownerId, team: updated.team, reason: 'Amount threshold' });
+        await Approval.create({ targetType: 'deal', targetId: id, requestedBy: updated.ownerId, team: updated.team, reason: 'Amount threshold' });
       }
       if (updated.approvalStatus !== 'pending') {
         updated.approvalStatus = 'pending';
@@ -61,10 +63,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE: ลบดิล
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const deleted = await Deal.findByIdAndDelete(params.id);
+    const deleted = await Deal.findByIdAndDelete(id);
     if (!deleted) return NextResponse.json({ error: 'ไม่พบดีล' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -4,7 +4,8 @@ import PipelineStage from '@/models/PipelineStage';
 import { updatePipelineStageSchema } from '@/schemas/pipelineStage';
 
 // PATCH: อัปเดตสเตจตาม id
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
     const body = await request.json();
@@ -12,7 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (!parsed.success) {
       return NextResponse.json({ error: 'ข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
     }
-    const updated = await PipelineStage.findByIdAndUpdate(params.id, parsed.data, { new: true });
+    const updated = await PipelineStage.findByIdAndUpdate(id, parsed.data, { new: true });
     if (!updated) return NextResponse.json({ error: 'ไม่พบสเตจ' }, { status: 404 });
     return NextResponse.json(updated);
   } catch (error) {
@@ -22,10 +23,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE: ลบสเตจตาม id
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const deleted = await PipelineStage.findByIdAndDelete(params.id);
+    const deleted = await PipelineStage.findByIdAndDelete(id);
     if (!deleted) return NextResponse.json({ error: 'ไม่พบสเตจ' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

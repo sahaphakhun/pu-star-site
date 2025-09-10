@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Textarea';
+import Button from '@/components/ui/Button';
+import Textarea from '@/components/ui/Textarea';
 
 export default function NotesPanel({ customerId, dealId, quotationId }: { customerId?: string; dealId?: string; quotationId?: string; }) {
   const [notes, setNotes] = useState<any[]>([]);

@@ -4,8 +4,8 @@ import ActivityTimeline from '@/components/ActivityTimeline';
 import { Card } from '@/components/ui/Card';
 import NotesPanel from '@/components/NotesPanel';
 
-export default function DealDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [deal, setDeal] = useState<any>(null);
 
   useEffect(() => {

@@ -4,10 +4,11 @@ import Activity from '@/models/Activity';
 import { updateActivitySchema } from '@/schemas/activity';
 
 // GET: รายละเอียดกิจกรรม
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const item = await Activity.findById(params.id).lean();
+    const item = await Activity.findById(id).lean();
     if (!item) return NextResponse.json({ error: 'ไม่พบกิจกรรม' }, { status: 404 });
     return NextResponse.json(item);
   } catch (error) {
@@ -17,7 +18,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 // PATCH: อัปเดตกิจกรรม
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
     const body = await request.json();
@@ -25,7 +27,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (!parsed.success) {
       return NextResponse.json({ error: 'ข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
     }
-    const updated = await Activity.findByIdAndUpdate(params.id, parsed.data, { new: true });
+    const updated = await Activity.findByIdAndUpdate(id, parsed.data, { new: true });
     if (!updated) return NextResponse.json({ error: 'ไม่พบกิจกรรม' }, { status: 404 });
     return NextResponse.json(updated);
   } catch (error) {
@@ -35,10 +37,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE: ลบกิจกรรม
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     await connectDB();
-    const deleted = await Activity.findByIdAndDelete(params.id);
+    const deleted = await Activity.findByIdAndDelete(id);
     if (!deleted) return NextResponse.json({ error: 'ไม่พบกิจกรรม' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
