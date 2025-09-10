@@ -16,7 +16,7 @@ interface Role {
   name: string;
   description: string;
   permissions: string[];
-  level: number; // 1: SuperAdmin, 2: SalesAdmin, 3: WarehouseAdmin
+  level: number; // 1: SuperAdmin, 2: SalesAdmin
 }
 
 interface Admin {
@@ -101,18 +101,6 @@ const PermissionsPage: React.FC = () => {
         'orders_view', 'orders_create', 'orders_edit', 'orders_status'
       ],
       level: 2
-    },
-    {
-      id: 'warehouse_admin',
-      name: 'Warehouse Admin',
-      description: 'ผู้ดูแลคลังสินค้า - จัดการสินค้า, หมวดหมู่, สถานะออเดอร์',
-      permissions: [
-        'dashboard_view',
-        'products_view', 'products_create', 'products_edit',
-        'categories_view', 'categories_create', 'categories_edit',
-        'orders_view', 'orders_status'
-      ],
-      level: 3
     }
   ];
 
@@ -222,7 +210,7 @@ const PermissionsPage: React.FC = () => {
     const email = prompt('อีเมล:');
     if (!email) return;
     
-    const roleId = prompt('เลือกบทบาท (super_admin, sales_admin, warehouse_admin):');
+    const roleId = prompt('เลือกบทบาท (super_admin, sales_admin):');
     if (!roleId || !roles.find(r => r.id === roleId)) {
       toast.error('บทบาทไม่ถูกต้อง');
       return;
@@ -350,12 +338,10 @@ const PermissionsPage: React.FC = () => {
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           role.level === 1 ? 'bg-red-100 text-red-800' :
                           role.level === 2 ? 'bg-blue-100 text-blue-800' :
-                          role.level === 3 ? 'bg-green-100 text-green-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {role.level === 1 ? 'Super Admin' :
-                           role.level === 2 ? 'Sales Admin' :
-                           role.level === 3 ? 'Warehouse Admin' : 'Custom'}
+                           role.level === 2 ? 'Sales Admin' : 'Custom'}
                         </span>
                         <span className="text-sm text-gray-500">
                           {role.permissions.length} สิทธิ์
@@ -463,7 +449,6 @@ const PermissionsPage: React.FC = () => {
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           role?.level === 1 ? 'bg-red-100 text-red-800' :
                           role?.level === 2 ? 'bg-blue-100 text-blue-800' :
-                          role?.level === 3 ? 'bg-green-100 text-green-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {role?.name || 'ไม่ระบุ'}

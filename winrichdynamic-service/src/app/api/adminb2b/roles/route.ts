@@ -65,18 +65,6 @@ const baseRoles = [
     isSystem: true
   },
   {
-    name: 'Warehouse Admin',
-    description: 'ผู้ดูแลระบบคลังสินค้า จัดการสินค้าและออเดอร์',
-    level: 3,
-    permissions: [
-      'products.view', 'products.create', 'products.edit',
-      'orders.view', 'orders.edit',
-      'settings.view'
-    ],
-    isSystem: true
-  }
-  ,
-  {
     name: 'Seller',
     description: 'พนักงานขาย เห็นเฉพาะลูกค้าและใบเสนอราคาของตนเอง',
     level: 5,
