@@ -48,7 +48,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
+   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
 
   // Filter และ Sort ลูกค้า
   const filteredCustomers = customers
@@ -141,6 +141,14 @@ const CustomerList: React.FC<CustomerListProps> = ({
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as 'list' | 'cards')}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="list">รายการ</option>
+              <option value="cards">การ์ด</option>
+            </select>
             <button
               onClick={onRefresh}
               disabled={loading}
@@ -210,89 +218,62 @@ const CustomerList: React.FC<CustomerListProps> = ({
       </div>
 
       {/* Customer List */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                รหัส
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ลูกค้า
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ข้อมูลติดต่อ
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ประเภท
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ผู้รับผิดชอบ
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                สถานะ
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                วันที่สร้าง
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                จัดการ
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      {viewMode === 'cards' ? (
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {filteredCustomers.map((customer) => (
-                <motion.tr
+                <motion.div
                   key={customer._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="hover:bg-gray-50"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                    {customer.customerCode || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex justify-between items-start mb-2">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {customer.name}
-                      </div>
+                      <h3 className="font-medium text-gray-900">{customer.name}</h3>
                       {customer.companyName && (
-                        <div className="text-sm text-gray-500">
-                          {customer.companyName}
-                        </div>
+                        <p className="text-sm text-gray-600">{customer.companyName}</p>
                       )}
                     </div>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {customer.phoneNumber}
-                    </div>
-                    {customer.email && (
-                      <div className="text-sm text-gray-500">
-                        {customer.email}
-                      </div>
-                    )}
-                    {customer.taxId && (
-                      <div className="text-sm text-gray-500">
-                        Tax ID: {customer.taxId}
-                      </div>
-                    )}
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
                       {getCustomerTypeLabel(customer.customerType)}
                     </span>
-                  </td>
+                  </div>
                   
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {adminMap[customer.assignedTo || ''] || customer.assignedTo || '-'}
-                  </td>
+                  <div className="space-y-1 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span>📞</span>
+                      <span>{customer.phoneNumber}</span>
+                      <button
+                        onClick={() => window.open(`tel:${customer.phoneNumber}`)}
+                        className="text-blue-600 hover:text-blue-800 text-xs"
+                      >
+                        โทร
+                      </button>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(customer.phoneNumber)}
+                        className="text-green-600 hover:text-green-800 text-xs"
+                      >
+                        คัดลอก
+                      </button>
+                    </div>
+                    {customer.email && (
+                      <div className="flex items-center gap-2">
+                        <span>✉️</span>
+                        <span>{customer.email}</span>
+                      </div>
+                    )}
+                    {customer.taxId && (
+                      <div className="flex items-center gap-2">
+                        <span>🆔</span>
+                        <span>Tax ID: {customer.taxId}</span>
+                      </div>
+                    )}
+                  </div>
                   
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex justify-between items-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       customer.isActive 
                         ? 'bg-green-100 text-green-800' 
@@ -300,49 +281,176 @@ const CustomerList: React.FC<CustomerListProps> = ({
                     }`}>
                       {customer.isActive ? 'ใช้งาน' : 'ไม่ใช้งาน'}
                     </span>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(customer.createdAt)}
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
                         onClick={() => onEdit(customer)}
-                        className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                        className="text-blue-600 hover:text-blue-900 text-xs px-2 py-1 rounded hover:bg-blue-50"
                       >
                         แก้ไข
                       </button>
                       <button
                         onClick={() => handleDelete(customer._id)}
                         disabled={deleteLoading === customer._id}
-                        className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded disabled:opacity-50"
+                        className="text-red-600 hover:text-red-900 text-xs px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50"
                       >
                         {deleteLoading === customer._id ? 'กำลังลบ...' : 'ลบ'}
                       </button>
                     </div>
-                  </td>
-                </motion.tr>
+                  </div>
+                </motion.div>
               ))}
             </AnimatePresence>
-          </tbody>
-        </table>
-        
-        {filteredCustomers.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">
-              {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
-                ? 'ไม่พบลูกค้าที่ตรงกับเงื่อนไขการค้นหา' 
-                : 'ยังไม่มีข้อมูลลูกค้า'
-              }
-            </div>
-            <div className="text-gray-400 text-sm mt-2">
-              ลองเปลี่ยนเงื่อนไขการค้นหาหรือเพิ่มลูกค้าใหม่
-            </div>
           </div>
-        )}
-      </div>
+          
+          {filteredCustomers.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-lg">
+                {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
+                  ? 'ไม่พบลูกค้าที่ตรงกับเงื่อนไขการค้นหา' 
+                  : 'ยังไม่มีข้อมูลลูกค้า'
+                }
+              </div>
+              <div className="text-gray-400 text-sm mt-2">
+                ลองเปลี่ยนเงื่อนไขการค้นหาหรือเพิ่มลูกค้าใหม่
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  รหัส
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ลูกค้า
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ข้อมูลติดต่อ
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ประเภท
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ผู้รับผิดชอบ
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  สถานะ
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  วันที่สร้าง
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  จัดการ
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              <AnimatePresence>
+                {filteredCustomers.map((customer) => (
+                  <motion.tr
+                    key={customer._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      {customer.customerCode || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {customer.name}
+                        </div>
+                        {customer.companyName && (
+                          <div className="text-sm text-gray-500">
+                            {customer.companyName}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {customer.phoneNumber}
+                      </div>
+                      {customer.email && (
+                        <div className="text-sm text-gray-500">
+                          {customer.email}
+                        </div>
+                      )}
+                      {customer.taxId && (
+                        <div className="text-sm text-gray-500">
+                          Tax ID: {customer.taxId}
+                        </div>
+                      )}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCustomerTypeColor(customer.customerType)}`}>
+                        {getCustomerTypeLabel(customer.customerType)}
+                      </span>
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {adminMap[customer.assignedTo || ''] || customer.assignedTo || '-'}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        customer.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {customer.isActive ? 'ใช้งาน' : 'ไม่ใช้งาน'}
+                      </span>
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(customer.createdAt)}
+                    </td>
+                    
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => onEdit(customer)}
+                          className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          onClick={() => handleDelete(customer._id)}
+                          disabled={deleteLoading === customer._id}
+                          className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded disabled:opacity-50"
+                        >
+                          {deleteLoading === customer._id ? 'กำลังลบ...' : 'ลบ'}
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </tbody>
+          </table>
+          
+          {filteredCustomers.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-lg">
+                {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
+                  ? 'ไม่พบลูกค้าที่ตรงกับเงื่อนไขการค้นหา' 
+                  : 'ยังไม่มีข้อมูลลูกค้า'
+                }
+              </div>
+              <div className="text-gray-400 text-sm mt-2">
+                ลองเปลี่ยนเงื่อนไขการค้นหาหรือเพิ่มลูกค้าใหม่
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
