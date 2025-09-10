@@ -67,10 +67,16 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบว่าบทบาทมีอยู่จริงหรือไม่ (รองรับทั้ง ID และ name)
-    let role = await Role.findById(body.role);
+    let role;
     
-    // ถ้าไม่เจอด้วย ID ให้ลองหาโดย name
-    if (!role) {
+    // ตรวจสอบว่าเป็น ObjectId ที่ถูกต้องหรือไม่
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(body.role);
+    
+    if (isValidObjectId) {
+      // ถ้าเป็น ObjectId ที่ถูกต้อง ให้หาจาก ID
+      role = await Role.findById(body.role);
+    } else {
+      // ถ้าไม่ใช่ ObjectId ให้หาจาก name
       const roleName = body.role.toLowerCase();
       if (roleName === 'super_admin') {
         role = await Role.findOne({ name: 'Super Admin' });
