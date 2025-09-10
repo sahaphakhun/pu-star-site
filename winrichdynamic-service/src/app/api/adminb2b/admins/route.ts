@@ -86,57 +86,87 @@ export async function POST(request: NextRequest) {
       const roleName = body.role.toLowerCase();
       let newRole;
       
-      if (roleName === 'super_admin') {
-        newRole = await Role.create({
-          name: 'Super Admin',
-          description: 'ผู้ดูแลระบบสูงสุด มีสิทธิ์ทุกอย่าง',
-          level: 1,
-          permissions: ['customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.delete', 'quotations.send', 'products.view', 'products.create', 'products.edit', 'products.delete', 'orders.view', 'orders.create', 'orders.edit', 'orders.delete', 'settings.view', 'settings.edit', 'admins.view', 'admins.create', 'admins.edit', 'admins.delete', 'roles.view', 'roles.create', 'roles.edit', 'roles.delete']
-        });
-      } else if (roleName === 'sales_admin') {
-        newRole = await Role.create({
-          name: 'Sales Admin',
-          description: 'ผู้ดูแลระบบฝ่ายขาย จัดการลูกค้าและใบเสนอราคา',
-          level: 2,
-          permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send', 'products.view', 'orders.view', 'orders.create', 'orders.edit', 'settings.view']
-        });
-      } else if (roleName === 'seller') {
-        newRole = await Role.create({
-          name: 'Seller',
-          description: 'พนักงานขาย เห็นเฉพาะลูกค้าและใบเสนอราคาของตนเอง',
-          level: 5,
-          permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send']
-        });
-      } else {
+      try {
+        if (roleName === 'super_admin') {
+          newRole = await Role.create({
+            name: 'Super Admin',
+            description: 'ผู้ดูแลระบบสูงสุด มีสิทธิ์ทุกอย่าง',
+            level: 1,
+            permissions: ['customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.delete', 'quotations.send', 'products.view', 'products.create', 'products.edit', 'products.delete', 'orders.view', 'orders.create', 'orders.edit', 'orders.delete', 'settings.view', 'settings.edit', 'admins.view', 'admins.create', 'admins.edit', 'admins.delete', 'roles.view', 'roles.create', 'roles.edit', 'roles.delete']
+          });
+        } else if (roleName === 'sales_admin') {
+          newRole = await Role.create({
+            name: 'Sales Admin',
+            description: 'ผู้ดูแลระบบฝ่ายขาย จัดการลูกค้าและใบเสนอราคา',
+            level: 2,
+            permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send', 'products.view', 'orders.view', 'orders.create', 'orders.edit', 'settings.view']
+          });
+        } else if (roleName === 'seller') {
+          newRole = await Role.create({
+            name: 'Seller',
+            description: 'พนักงานขาย เห็นเฉพาะลูกค้าและใบเสนอราคาของตนเอง',
+            level: 5,
+            permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send']
+          });
+        } else {
+          return NextResponse.json(
+            { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
+            { status: 400 }
+          );
+        }
+        role = newRole;
+        console.log('Created new role:', role.name);
+      } catch (roleError) {
+        console.error('Error creating role:', roleError);
         return NextResponse.json(
-          { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
-          { status: 400 }
+          { success: false, error: 'เกิดข้อผิดพลาดในการสร้างบทบาท' },
+          { status: 500 }
         );
       }
-      role = newRole;
     }
     
     // สร้างผู้ดูแลระบบใหม่ (seller/admin)
-    const admin = await Admin.create({
-      name: body.name,
-      phone: normalized,
-      email: body.email || undefined,
-      company: body.company || undefined,
-      role: role._id,
-      team: body.team || undefined,
-      zone: body.zone || undefined,
-      isActive: body.isActive !== false
-    });
-    
-    // ดึงข้อมูลพร้อมบทบาท
-    const populatedAdmin = await Admin.findById(admin._id)
-      .populate('role', 'name description level');
-    
-    return NextResponse.json({
-      success: true,
-      message: 'สร้างผู้ใช้เรียบร้อยแล้ว',
-      data: populatedAdmin
-    });
+    try {
+      console.log('Creating admin with data:', {
+        name: body.name,
+        phone: normalized,
+        email: body.email,
+        company: body.company,
+        role: role._id,
+        team: body.team,
+        zone: body.zone
+      });
+
+      const admin = await Admin.create({
+        name: body.name,
+        phone: normalized,
+        email: body.email || undefined,
+        company: body.company || undefined,
+        role: role._id,
+        team: body.team || undefined,
+        zone: body.zone || undefined,
+        isActive: body.isActive !== false
+      });
+      
+      console.log('Admin created successfully:', admin._id);
+      
+      // ดึงข้อมูลพร้อมบทบาท
+      const populatedAdmin = await Admin.findById(admin._id)
+        .populate('role', 'name description level');
+      
+      return NextResponse.json({
+        success: true,
+        message: 'สร้างผู้ใช้เรียบร้อยแล้ว',
+        data: populatedAdmin
+      });
+    } catch (adminError) {
+      console.error('Error creating admin:', adminError);
+      const errorMessage = adminError instanceof Error ? adminError.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: 'เกิดข้อผิดพลาดในการสร้างผู้ดูแลระบบ: ' + errorMessage },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error creating admin:', error);
     return NextResponse.json(
