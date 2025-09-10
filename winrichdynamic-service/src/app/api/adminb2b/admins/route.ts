@@ -66,13 +66,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ตรวจสอบว่าบทบาทมีอยู่จริงหรือไม่
-    const role = await Role.findById(body.role);
+    // ตรวจสอบว่าบทบาทมีอยู่จริงหรือไม่ (รองรับทั้ง ID และ name)
+    let role = await Role.findById(body.role);
+    
+    // ถ้าไม่เจอด้วย ID ให้ลองหาโดย name
     if (!role) {
-      return NextResponse.json(
-        { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
-        { status: 400 }
-      );
+      const roleName = body.role.toLowerCase();
+      if (roleName === 'super_admin') {
+        role = await Role.findOne({ name: 'Super Admin' });
+      } else if (roleName === 'sales_admin') {
+        role = await Role.findOne({ name: 'Sales Admin' });
+      } else if (roleName === 'seller') {
+        role = await Role.findOne({ name: 'Seller' });
+      }
+    }
+    
+    // ถ้ายังไม่เจอ ให้สร้างบทบาทพื้นฐาน
+    if (!role) {
+      const roleName = body.role.toLowerCase();
+      let newRole;
+      
+      if (roleName === 'super_admin') {
+        newRole = await Role.create({
+          name: 'Super Admin',
+          description: 'ผู้ดูแลระบบสูงสุด มีสิทธิ์ทุกอย่าง',
+          level: 1,
+          permissions: ['customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.delete', 'quotations.send', 'products.view', 'products.create', 'products.edit', 'products.delete', 'orders.view', 'orders.create', 'orders.edit', 'orders.delete', 'settings.view', 'settings.edit', 'admins.view', 'admins.create', 'admins.edit', 'admins.delete', 'roles.view', 'roles.create', 'roles.edit', 'roles.delete']
+        });
+      } else if (roleName === 'sales_admin') {
+        newRole = await Role.create({
+          name: 'Sales Admin',
+          description: 'ผู้ดูแลระบบฝ่ายขาย จัดการลูกค้าและใบเสนอราคา',
+          level: 2,
+          permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send', 'products.view', 'orders.view', 'orders.create', 'orders.edit', 'settings.view']
+        });
+      } else if (roleName === 'seller') {
+        newRole = await Role.create({
+          name: 'Seller',
+          description: 'พนักงานขาย เห็นเฉพาะลูกค้าและใบเสนอราคาของตนเอง',
+          level: 5,
+          permissions: ['customers.view', 'customers.create', 'customers.edit', 'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.send']
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
+          { status: 400 }
+        );
+      }
+      role = newRole;
     }
     
     // สร้างผู้ดูแลระบบใหม่ (seller/admin)
@@ -82,6 +123,8 @@ export async function POST(request: NextRequest) {
       email: body.email || undefined,
       company: body.company || undefined,
       role: role._id,
+      team: body.team || undefined,
+      zone: body.zone || undefined,
       isActive: body.isActive !== false
     });
     

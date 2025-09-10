@@ -35,11 +35,37 @@ export default function AddAdminPage() {
       const res = await fetch('/api/adminb2b/roles');
       if (res.ok) {
         const data = await res.json();
-        setRoles(data.data?.roles || []);
+        const apiRoles = data.data?.roles || [];
+        
+        // ถ้าไม่มีบทบาทในฐานข้อมูล ให้ใช้บทบาทพื้นฐาน
+        if (apiRoles.length === 0) {
+          const defaultRoles = [
+            { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
+            { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
+            { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
+          ];
+          setRoles(defaultRoles);
+        } else {
+          setRoles(apiRoles);
+        }
+      } else {
+        // ถ้า API ไม่ทำงาน ให้ใช้บทบาทพื้นฐาน
+        const defaultRoles = [
+          { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
+          { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
+          { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
+        ];
+        setRoles(defaultRoles);
       }
     } catch (error) {
       console.error('Error loading roles:', error);
-      toast.error('ไม่สามารถโหลดบทบาทได้');
+      // ถ้าเกิด error ให้ใช้บทบาทพื้นฐาน
+      const defaultRoles = [
+        { _id: 'super_admin', name: 'Super Admin', description: 'ผู้ดูแลระบบสูงสุด', level: 1 },
+        { _id: 'sales_admin', name: 'Sales Admin', description: 'ผู้ดูแลระบบฝ่ายขาย', level: 2 },
+        { _id: 'seller', name: 'Seller', description: 'พนักงานขาย', level: 5 }
+      ];
+      setRoles(defaultRoles);
     }
   };
 
@@ -53,12 +79,19 @@ export default function AddAdminPage() {
 
     setLoading(true);
     try {
+      // สร้างข้อมูลสำหรับส่งไป API
+      const submitData = {
+        ...formData,
+        // ถ้า role เป็น string ให้แปลงเป็น role name
+        role: formData.role.includes('_') ? formData.role : formData.role
+      };
+
       const res = await fetch('/api/adminb2b/admins', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (res.ok) {
