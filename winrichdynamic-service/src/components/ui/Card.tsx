@@ -1,8 +1,10 @@
 import React from 'react'
 import { cn } from './cn'
 
-export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('bg-white border rounded-lg shadow-sm', className)}>{children}</div>
+type DivProps = React.HTMLAttributes<HTMLDivElement>
+
+export function Card({ className, children, ...rest }: { className?: string; children: React.ReactNode } & DivProps) {
+  return <div className={cn('bg-white border rounded-lg shadow-sm', className)} {...rest}>{children}</div>
 }
 
 export function CardHeader({ className, children }: { className?: string; children: React.ReactNode }) {

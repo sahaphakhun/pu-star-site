@@ -17,6 +17,12 @@ export default function DashboardPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
+  const [dealsByStage, setDealsByStage] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
+  const [team, setTeam] = useState('');
+  const [ownerId, setOwnerId] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
 
   useEffect(() => {
     // ตรวจสอบ authentication เมื่อโหลดหน้า
@@ -61,6 +67,30 @@ export default function DashboardPage() {
       toast.error('เกิดข้อผิดพลาดในการตรวจสอบสถานะระบบ');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadReports = async () => {
+    try {
+      const qs: string[] = [];
+      if (team) qs.push(`team=${encodeURIComponent(team)}`);
+      if (ownerId) qs.push(`ownerId=${encodeURIComponent(ownerId)}`);
+      const query = qs.length ? `?${qs.join('&')}` : '';
+      const res1 = await fetch(`/api/reports/deals-by-stage${query}`);
+      const data1 = await res1.json();
+      setDealsByStage(Array.isArray(data1) ? data1 : []);
+
+      const qs2: string[] = [];
+      if (team) qs2.push(`team=${encodeURIComponent(team)}`);
+      if (ownerId) qs2.push(`ownerId=${encodeURIComponent(ownerId)}`);
+      if (start) qs2.push(`start=${encodeURIComponent(start)}`);
+      if (end) qs2.push(`end=${encodeURIComponent(end)}`);
+      const query2 = qs2.length ? `?${qs2.join('&')}` : '';
+      const res2 = await fetch(`/api/reports/performance${query2}`);
+      const data2 = await res2.json();
+      setPerformance(Array.isArray(data2) ? data2 : []);
+    } catch (e) {
+      console.error('Error loading reports', e);
     }
   };
 
@@ -267,6 +297,78 @@ export default function DashboardPage() {
                 <div className="text-blue-600 font-medium">การตั้งค่า</div>
                 <div className="text-sm text-gray-600">ตั้งค่าระบบและบัญชีผู้ใช้</div>
               </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {/* Reports Section */}
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">รายงานและแดชบอร์ด</h2>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <input className="border rounded px-3 py-2" placeholder="ทีม" value={team} onChange={(e) => setTeam(e.target.value)} />
+            <input className="border rounded px-3 py-2" placeholder="เจ้าของ (ownerId)" value={ownerId} onChange={(e) => setOwnerId(e.target.value)} />
+            <input className="border rounded px-3 py-2" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            <input className="border rounded px-3 py-2" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={loadReports}>รีเฟรชรายงาน</button>
+            <a className="ml-auto underline text-blue-700" href="/api/reports/export.csv" target="_blank" rel="noreferrer">Export CSV</a>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="border rounded">
+              <div className="px-4 py-2 border-b font-medium">มูลค่าดีลแยกตามสเตจ</div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100 text-left">
+                      <th className="p-2">สเตจ</th>
+                      <th className="p-2">จำนวนดีล</th>
+                      <th className="p-2">มูลค่ารวม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dealsByStage.map((s: any) => (
+                      <tr key={s._id} className="border-t">
+                        <td className="p-2">{s.stageName || s._id}</td>
+                        <td className="p-2">{s.count}</td>
+                        <td className="p-2">฿{Number(s.totalAmount || 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {dealsByStage.length === 0 && (
+                      <tr><td className="p-4 text-center text-gray-500" colSpan={3}>ไม่มีข้อมูล</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="border rounded">
+              <div className="px-4 py-2 border-b font-medium">ผลงานรายเซลส์</div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100 text-left">
+                      <th className="p-2">Owner</th>
+                      <th className="p-2">ดีลชนะ (จำนวน)</th>
+                      <th className="p-2">ดีลชนะ (มูลค่า)</th>
+                      <th className="p-2">กิจกรรม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {performance.map((r: any) => (
+                      <tr key={r.ownerId} className="border-t">
+                        <td className="p-2">{r.ownerId}</td>
+                        <td className="p-2">{r.wonCount || 0}</td>
+                        <td className="p-2">฿{Number(r.wonAmount || 0).toLocaleString()}</td>
+                        <td className="p-2">{r.activityCount || 0}</td>
+                      </tr>
+                    ))}
+                    {performance.length === 0 && (
+                      <tr><td className="p-4 text-center text-gray-500" colSpan={4}>ไม่มีข้อมูล</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

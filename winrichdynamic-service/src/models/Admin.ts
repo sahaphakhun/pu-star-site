@@ -6,6 +6,8 @@ export interface IAdmin extends Document {
   email?: string;
   company?: string;
   role: mongoose.Types.ObjectId;
+  team?: string;
+  zone?: string;
   isActive: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
@@ -39,6 +41,18 @@ const AdminSchema: Schema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Role',
     required: true
+  },
+  team: {
+    type: String,
+    required: false,
+    trim: true,
+    index: true
+  },
+  zone: {
+    type: String,
+    required: false,
+    trim: true,
+    index: true
   },
   isActive: {
     type: Boolean,

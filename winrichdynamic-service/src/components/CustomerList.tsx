@@ -48,6 +48,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
 
   // Filter และ Sort ลูกค้า
   const filteredCustomers = customers

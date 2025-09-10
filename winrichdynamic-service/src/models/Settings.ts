@@ -14,6 +14,10 @@ export interface ISettings {
     accountNumber: string;
     branch: string;
   };
+  salesPolicy?: {
+    approvalAmountThreshold?: number; // ยอดดีลที่ต้องขออนุมัติ
+    maxDiscountPercentWithoutApproval?: number; // ส่วนลดสูงสุดที่ไม่ต้องอนุมัติ
+  };
   updatedAt: Date;
 }
 
@@ -72,6 +76,19 @@ const settingsSchema = new mongoose.Schema<ISettings>({
       type: String,
       required: false,
       default: 'อโศก'
+    }
+  }
+  ,
+  salesPolicy: {
+    approvalAmountThreshold: {
+      type: Number,
+      required: false,
+      default: 1000000
+    },
+    maxDiscountPercentWithoutApproval: {
+      type: Number,
+      required: false,
+      default: 10
     }
   }
 }, {
