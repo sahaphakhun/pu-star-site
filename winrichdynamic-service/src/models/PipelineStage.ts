@@ -25,7 +25,6 @@ const pipelineStageSchema = new Schema<IPipelineStage>(
       type: Number,
       required: true,
       min: [0, 'ลำดับต้องไม่ต่ำกว่า 0'],
-      index: true,
     },
     color: {
       type: String,
