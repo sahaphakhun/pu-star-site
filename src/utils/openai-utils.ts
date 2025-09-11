@@ -422,13 +422,19 @@ export async function getAssistantResponse(
     // ตรวจสอบและบันทึกข้อมูลการสั่งซื้อจาก AI
     if (userId) {
       try {
+        // ใช้ข้อความดิบ (ก่อนกรอง) ในการตรวจสอบ ORDER_JSON
+        const rawAssistantReply = json?.choices?.[0]?.message?.content ?? '';
+        const rawReplyString = typeof rawAssistantReply !== 'string' ? JSON.stringify(rawAssistantReply) : rawAssistantReply;
+        
         console.log('[AI Order Real-time] Checking AI response for order data:', {
           userId,
-          responseLength: assistantReply.length,
-          hasOrderJsonTag: assistantReply.includes('<ORDER_JSON>')
+          filteredResponseLength: assistantReply.length,
+          rawResponseLength: rawReplyString.length,
+          hasOrderJsonTagInFiltered: assistantReply.includes('<ORDER_JSON>'),
+          hasOrderJsonTagInRaw: rawReplyString.includes('<ORDER_JSON>')
         });
         
-        const orderData = extractOrderDataFromAIResponse(assistantReply);
+        const orderData = extractOrderDataFromAIResponse(rawReplyString);
         if (orderData) {
           const userMessage = typeof lastUserMessage === 'string' ? lastUserMessage : JSON.stringify(lastUserMessage);
           console.log('[AI Order Real-time] ✅ Order data found, attempting to save:', {
@@ -438,7 +444,7 @@ export async function getAssistantResponse(
             userMessagePreview: userMessage.substring(0, 100)
           });
           
-          const saveResult = await saveAIOrder(userId, userMessage, assistantReply, orderData);
+          const saveResult = await saveAIOrder(userId, userMessage, rawReplyString, orderData);
           console.log('[AI Order Real-time] Save result:', { userId, success: saveResult });
         } else {
           console.log('[AI Order Real-time] No valid order data found in AI response');
