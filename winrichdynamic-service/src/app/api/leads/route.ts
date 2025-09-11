@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       try {
         const sellerRole = await Role.findOne({ name: 'Seller', isActive: true }).lean();
         if (sellerRole) {
-          const teamFilter: any = { role: sellerRole._id, isActive: true };
+          const teamFilter: any = { role: (sellerRole as any)._id, isActive: true };
           if (data.team) teamFilter.team = data.team;
           const sellers = await Admin.find(teamFilter).sort({ _id: 1 }).lean();
           if (sellers.length > 0) {

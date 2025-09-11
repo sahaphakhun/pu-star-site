@@ -1,6 +1,6 @@
 import PriceBook, { IPriceBook } from '@/models/PriceBook';
 import DiscountPolicy, { IDiscountPolicy } from '@/models/DiscountPolicy';
-import { Settings } from '@/models/Settings';
+import { Settings, ISettings } from '@/models/Settings';
 
 export interface GuardrailContext {
   role?: string;
@@ -48,7 +48,7 @@ export async function checkDiscountGuardrails(lines: LineInput[], ctx: Guardrail
   const violations: GuardrailResult['violations'] = [];
   let requiresApproval = false;
 
-  const settings = await Settings.findOne({}).lean();
+  const settings = await Settings.findOne({}).lean<ISettings | null>();
   const priceBook = await resolveActivePriceBook(ctx.customerGroup);
   const policy = await resolveActiveDiscountPolicy();
 
