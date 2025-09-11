@@ -37,13 +37,7 @@ export async function POST(
       );
     }
     
-    // ตรวจสอบสถานะใบเสนอราคา
-    if (existingQuotation.status !== 'accepted') {
-      return NextResponse.json(
-        { error: 'สามารถแปลงเป็น Sales Order ได้เฉพาะใบเสนอราคาที่ลูกค้ายอมรับแล้วเท่านั้น' },
-        { status: 400 }
-      );
-    }
+    // อนุญาตให้แปลงเป็น Sales Order ได้ทุกสถานะตามนโยบายใหม่
     
     // ตรวจสอบว่าใบเสนอราคานี้ถูกแปลงเป็น Sales Order แล้วหรือไม่
     if (existingQuotation.convertedToOrder) {
