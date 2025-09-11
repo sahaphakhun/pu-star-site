@@ -248,6 +248,49 @@ export default function AIOrdersPage() {
     return product;
   };
 
+  // ฟังก์ชันอัปเดตสถานะ AI Order
+  const updateAIOrderStatus = async (aiOrderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/ai-orders?id=${aiOrderId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_status: newStatus,
+          updatedAt: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // อัปเดตสถานะใน state
+        setAiOrders((prevOrders: AIOrder[]) => 
+          prevOrders.map((order: AIOrder) => 
+            order._id === aiOrderId 
+              ? { ...order, order_status: newStatus, updatedAt: result.data.updatedAt }
+              : order
+          )
+        );
+        
+        console.log('✅ AI Order status updated successfully:', {
+          aiOrderId,
+          newStatus,
+          updatedAt: result.data.updatedAt
+        });
+      } else {
+        console.error('❌ Failed to update AI Order status:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error updating AI Order status:', error);
+    }
+  };
+
   const getSelectedUnit = (product: any, unitIndex: number) => {
     if (!product.units || product.units.length === 0) {
       return { label: 'ราคาเดี่ยว', price: product.price || 0, multiplier: 1 };
@@ -738,9 +781,22 @@ export default function AIOrdersPage() {
                   </span>
                 )}
               </h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
-                {aiOrder.order_status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
+                  {aiOrder.order_status}
+                </span>
+                <select
+                  value={aiOrder.order_status}
+                  onChange={(e) => updateAIOrderStatus(aiOrder._id, e.target.value)}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="draft">ร่าง</option>
+                  <option value="collecting_info">กำลังรวบรวมข้อมูล</option>
+                  <option value="pending_confirmation">รอยืนยัน</option>
+                  <option value="completed">เสร็จสิ้น</option>
+                  <option value="canceled">ยกเลิก</option>
+                </select>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
@@ -1060,6 +1116,17 @@ export default function AIOrdersPage() {
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
                   {aiOrder.order_status}
                 </span>
+                <select
+                  value={aiOrder.order_status}
+                  onChange={(e) => updateAIOrderStatus(aiOrder._id, e.target.value)}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="draft">ร่าง</option>
+                  <option value="collecting_info">กำลังรวบรวมข้อมูล</option>
+                  <option value="pending_confirmation">รอยืนยัน</option>
+                  <option value="completed">เสร็จสิ้น</option>
+                  <option value="canceled">ยกเลิก</option>
+                </select>
                 {aiOrder.mappedOrderId && (
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     แมพแล้ว

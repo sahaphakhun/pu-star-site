@@ -267,7 +267,7 @@ export async function fetchAllSheetsData(forceRefresh = false) {
       allSheetsData.push({ sheetName, data: parsedData });
     }
     
-    _sheetJSON = allSheetsData;
+    _sheetJSON = allSheetsData.filter(sheet => sheet.sheetName !== null && sheet.sheetName !== undefined) as { sheetName: string; data: any[]; }[];
     _lastSheetsFetchTime = now;
     _lastCacheRefreshHour = new Date().getHours();
     
@@ -446,7 +446,7 @@ export async function getAssistantResponse(
       } catch (error) {
         console.error('[AI Order Real-time] ❌ Error processing order data:', {
           userId,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
           responsePreview: assistantReply.substring(0, 200)
         });
       }
@@ -810,6 +810,194 @@ import AIOrder from '@/models/AIOrder';
 import connectDB from '@/lib/mongodb';
 
 /**
+ * อัปเดตออเดอร์ที่มีอยู่แทนการสร้างใหม่
+ */
+async function updateExistingAIOrder(
+  existingOrder: any,
+  newOrderData: any,
+  userMessage: string,
+  aiResponse: string
+): Promise<boolean> {
+  try {
+    console.log('[AI Order Update] Starting update process:', {
+      existingOrderId: existingOrder._id,
+      existingStatus: existingOrder.order_status,
+      newStatus: newOrderData.order_status,
+      existingItemCount: existingOrder.items.length,
+      newItemCount: newOrderData.items?.length || 0
+    });
+
+    // ตรวจสอบว่าข้อมูลใหม่มีข้อมูลมากกว่าหรือไม่
+    const hasMoreCompleteData = checkDataCompleteness(newOrderData, existingOrder);
+    
+    if (!hasMoreCompleteData) {
+      console.log('[AI Order Update] ⚠️ New data is not more complete, skipping update');
+      return false;
+    }
+
+    // อัปเดตข้อมูลลูกค้า (ใช้ข้อมูลใหม่ถ้ามีข้อมูลมากกว่า)
+    const updatedCustomer = mergeCustomerData(existingOrder.customer, newOrderData.customer);
+    
+    // อัปเดตรายการสินค้า (เพิ่มสินค้าใหม่หรืออัปเดตที่มีอยู่)
+    const updatedItems = mergeItemsData(existingOrder.items, newOrderData.items);
+    
+    // อัปเดตราคา
+    const updatedPricing = mergePricingData(existingOrder.pricing, newOrderData.pricing);
+    
+    // อัปเดตสถานะ (ใช้สถานะใหม่ถ้าสูงกว่า)
+    const updatedStatus = getHigherStatus(existingOrder.order_status, newOrderData.order_status);
+
+    // อัปเดตข้อมูลในฐานข้อมูล
+    const updateData = {
+      order_status: updatedStatus,
+      items: updatedItems,
+      pricing: updatedPricing,
+      customer: updatedCustomer,
+      errorMessages: [...(existingOrder.errorMessages || []), ...(newOrderData.errors || [])],
+      aiResponse: aiResponse,
+      userMessage: userMessage,
+      updatedAt: new Date()
+    };
+
+    const updatedOrder = await AIOrder.findByIdAndUpdate(
+      existingOrder._id,
+      updateData,
+      { new: true }
+    );
+
+    console.log('[AI Order Update] ✅ Order updated successfully:', {
+      orderId: updatedOrder._id,
+      newStatus: updatedOrder.order_status,
+      itemCount: updatedOrder.items.length,
+      totalAmount: updatedOrder.pricing.total,
+      customerName: updatedOrder.customer.name,
+      updatedAt: updatedOrder.updatedAt
+    });
+
+    return true;
+  } catch (error) {
+    console.error('[AI Order Update] ❌ Error updating order:', {
+      existingOrderId: existingOrder._id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return false;
+  }
+}
+
+/**
+ * ตรวจสอบว่าข้อมูลใหม่มีข้อมูลมากกว่าหรือไม่
+ */
+function checkDataCompleteness(newData: any, existingData: any): boolean {
+  // ตรวจสอบข้อมูลลูกค้า
+  const newCustomerComplete = newData.customer && 
+    newData.customer.name && 
+    newData.customer.phone && 
+    newData.customer.address;
+  
+  const existingCustomerComplete = existingData.customer && 
+    existingData.customer.name && 
+    existingData.customer.phone && 
+    existingData.customer.address;
+
+  // ตรวจสอบข้อมูลสินค้า
+  const newItemsComplete = newData.items && newData.items.length > 0;
+  const existingItemsComplete = existingData.items && existingData.items.length > 0;
+
+  // ตรวจสอบสถานะ
+  const statusPriority: { [key: string]: number } = { 'draft': 1, 'collecting_info': 2, 'pending_confirmation': 3, 'completed': 4, 'canceled': 0 };
+  const newStatusPriority = statusPriority[newData.order_status] || 0;
+  const existingStatusPriority = statusPriority[existingData.order_status] || 0;
+
+  // ถ้าข้อมูลลูกค้าใหม่ครบถ้วนกว่า หรือ สถานะใหม่สูงกว่า หรือ มีสินค้าใหม่
+  return newCustomerComplete || 
+         newStatusPriority > existingStatusPriority || 
+         (newItemsComplete && !existingItemsComplete);
+}
+
+/**
+ * รวมข้อมูลลูกค้า (ใช้ข้อมูลใหม่ถ้ามีข้อมูลมากกว่า)
+ */
+function mergeCustomerData(existingCustomer: any, newCustomer: any): any {
+  if (!newCustomer) return existingCustomer;
+  if (!existingCustomer) return newCustomer;
+
+  return {
+    name: newCustomer.name || existingCustomer.name,
+    phone: newCustomer.phone || existingCustomer.phone,
+    address: newCustomer.address || existingCustomer.address
+  };
+}
+
+/**
+ * รวมข้อมูลสินค้า (เพิ่มสินค้าใหม่หรืออัปเดตที่มีอยู่)
+ */
+function mergeItemsData(existingItems: any[], newItems: any[]): any[] {
+  if (!newItems || newItems.length === 0) return existingItems;
+  if (!existingItems || existingItems.length === 0) return newItems;
+
+  const mergedItems = [...existingItems];
+  
+  newItems.forEach(newItem => {
+    // หาสินค้าที่มีชื่อเดียวกัน
+    const existingItemIndex = mergedItems.findIndex(item => 
+      item.name === newItem.name && 
+      item.variant?.color === newItem.variant?.color && 
+      item.variant?.size === newItem.variant?.size
+    );
+
+    if (existingItemIndex >= 0) {
+      // อัปเดตสินค้าที่มีอยู่
+      mergedItems[existingItemIndex] = {
+        ...mergedItems[existingItemIndex],
+        qty: newItem.qty || mergedItems[existingItemIndex].qty,
+        note: newItem.note || mergedItems[existingItemIndex].note,
+        sku: newItem.sku || mergedItems[existingItemIndex].sku
+      };
+    } else {
+      // เพิ่มสินค้าใหม่
+      mergedItems.push(newItem);
+    }
+  });
+
+  return mergedItems;
+}
+
+/**
+ * รวมข้อมูลราคา
+ */
+function mergePricingData(existingPricing: any, newPricing: any): any {
+  if (!newPricing) return existingPricing;
+  if (!existingPricing) return newPricing;
+
+  return {
+    currency: newPricing.currency || existingPricing.currency || 'THB',
+    subtotal: newPricing.subtotal || existingPricing.subtotal || 0,
+    discount: newPricing.discount || existingPricing.discount || 0,
+    shipping_fee: newPricing.shipping_fee || existingPricing.shipping_fee || 0,
+    total: newPricing.total || existingPricing.total || 0
+  };
+}
+
+/**
+ * เปรียบเทียบสถานะและคืนค่าสถานะที่สูงกว่า
+ */
+function getHigherStatus(existingStatus: string, newStatus: string): string {
+  const statusPriority: { [key: string]: number } = { 
+    'draft': 1, 
+    'collecting_info': 2, 
+    'pending_confirmation': 3, 
+    'completed': 4, 
+    'canceled': 0 
+  };
+  
+  const existingPriority = statusPriority[existingStatus] || 0;
+  const newPriority = statusPriority[newStatus] || 0;
+  
+  return newPriority > existingPriority ? newStatus : existingStatus;
+}
+
+/**
  * บันทึกข้อมูลการสั่งซื้อจาก AI
  */
 export async function saveAIOrder(
@@ -852,22 +1040,26 @@ export async function saveAIOrder(
       return parsedQty < 1 ? 1 : parsedQty; // Default to 1 if invalid
     };
     
-    // ตรวจสอบการทำซ้ำก่อนบันทึก
+    // ตรวจสอบออเดอร์ที่มีอยู่สำหรับผู้ใช้คนนี้
     const existingOrder = await AIOrder.findOne({
       psid,
-      aiResponse: { $regex: aiResponse.substring(0, 50).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
-    });
+      order_status: { $in: ['draft', 'collecting_info', 'pending_confirmation'] }
+    }).sort({ updatedAt: -1 });
     
     if (existingOrder) {
-      console.log('[AI Order Save] ⚠️ Duplicate order found, skipping save:', {
+      console.log('[AI Order Save] 🔄 Found existing order, updating instead of creating new:', {
         psid,
         existingOrderId: existingOrder._id,
-        existingCreatedAt: existingOrder.createdAt
+        existingStatus: existingOrder.order_status,
+        existingItemCount: existingOrder.items.length,
+        newItemCount: orderData.items?.length || 0
       });
-      return false;
+      
+      // อัปเดตออเดอร์ที่มีอยู่แทนการสร้างใหม่
+      return await updateExistingAIOrder(existingOrder, orderData, userMessage, aiResponse);
     }
     
-    console.log('[AI Order Save] No duplicate found, proceeding with save');
+    console.log('[AI Order Save] No existing order found, creating new order');
     
     const aiOrder = new AIOrder({
       psid,
@@ -911,8 +1103,8 @@ export async function saveAIOrder(
   } catch (error) {
     console.error('[AI Order Save] ❌ Error saving order:', {
       psid,
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
       orderDataPreview: JSON.stringify(orderData, null, 2).substring(0, 500)
     });
     return false;
@@ -998,7 +1190,7 @@ export function extractOrderDataFromAIResponse(aiResponse: string): any | null {
     return orderData;
   } catch (error) {
     console.error('[AI Order Extract] ❌ Error parsing order data:', {
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       responsePreview: aiResponse.substring(0, 200)
     });
     return null;
