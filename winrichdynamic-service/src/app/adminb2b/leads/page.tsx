@@ -41,10 +41,17 @@ export default function LeadsPage() {
   useEffect(() => { load(); }, [q, status, source]);
 
   async function createLead() {
-    const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, email, company, source: source || 'other' }) });
+    const payload = { name: name.trim(), phone, email, company, source: source || 'other' };
+    const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setName(''); setPhone(''); setEmail(''); setCompany('');
       await load();
+    } else {
+      console.error('Create lead failed', { status: res.status, data });
+      const message = data?.error || 'สร้าง Lead ไม่สำเร็จ';
+      const details = Array.isArray(data?.details) ? '\n- ' + data.details.map((d: any) => d.message || JSON.stringify(d)).join('\n- ') : '';
+      alert(`${message}${details}`);
     }
   }
 

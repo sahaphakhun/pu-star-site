@@ -200,7 +200,7 @@ export default function DealsPage() {
             <option value="kanban">Kanban</option>
             <option value="list">รายการ</option>
           </Select>
-          <Button onClick={() => setShowSaveFilter(true)}>บันทึกมุมมอง</Button>
+          <Button className="w-40" onClick={() => setShowSaveFilter(true)}>บันทึกมุมมอง</Button>
           <Button onClick={loadDeals} disabled={loading}>{loading ? 'กำลังโหลด...' : 'รีเฟรช'}</Button>
         </div>
       </div>
