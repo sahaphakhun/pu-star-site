@@ -20,38 +20,64 @@ type Lead = {
 export default function LeadsPage() {
   const [items, setItems] = useState<Lead[]>([]);
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [source, setSource] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSource, setFilterSource] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
+  const [formSource, setFormSource] = useState<'facebook' | 'line' | 'website' | 'referral' | 'other'>('other');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string>('');
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   async function load() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
-    if (status) params.set('status', status);
-    if (source) params.set('source', source);
+    if (filterStatus) params.set('status', filterStatus);
+    if (filterSource) params.set('source', filterSource);
     const res = await fetch(`/api/leads?${params.toString()}`);
     const data = await res.json();
     setItems(Array.isArray(data) ? data : (data?.data || []));
   }
 
-  useEffect(() => { load(); }, [q, status, source]);
+  useEffect(() => { load(); }, [q, filterStatus, filterSource]);
 
   async function createLead() {
-    const payload = { name: name.trim(), phone, email, company, source: source || 'other' };
-    const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setName(''); setPhone(''); setEmail(''); setCompany('');
-      await load();
-    } else {
-      console.error('Create lead failed', { status: res.status, data });
-      const message = data?.error || 'สร้าง Lead ไม่สำเร็จ';
-      const details = Array.isArray(data?.details) ? '\n- ' + data.details.map((d: any) => d.message || JSON.stringify(d)).join('\n- ') : '';
-      alert(`${message}${details}`);
+    setFormError('');
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim();
+    const trimmedCompany = company.trim();
+    // client-side validation
+    if (!trimmedName) {
+      setFormError('กรุณากรอกชื่อ');
+      return;
+    }
+    if (trimmedEmail && !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setFormError('อีเมลไม่ถูกต้อง');
+      return;
+    }
+    // normalize: ตัดค่าว่างออกไม่ส่งขึ้น API
+    const payload: Record<string, any> = { name: trimmedName, source: formSource };
+    if (trimmedPhone) payload.phone = trimmedPhone;
+    if (trimmedEmail) payload.email = trimmedEmail;
+    if (trimmedCompany) payload.company = trimmedCompany;
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setName(''); setPhone(''); setEmail(''); setCompany(''); setFormSource('other');
+        await load();
+      } else {
+        console.error('Create lead failed', { status: res.status, data });
+        const message = data?.error || 'สร้าง Lead ไม่สำเร็จ';
+        const details = Array.isArray(data?.details) ? '\n- ' + data.details.map((d: any) => d.message || JSON.stringify(d)).join('\n- ') : '';
+        setFormError(`${message}${details}`);
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -74,14 +100,14 @@ export default function LeadsPage() {
       <h1 className="text-xl font-semibold">Leads</h1>
       <div className="flex items-center gap-2">
         <Input placeholder="ค้นหา..." value={q} onChange={(e) => setQ(e.target.value)} />
-        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="">ทุกสถานะ</option>
           <option value="new">ใหม่</option>
           <option value="qualified">Qualified</option>
           <option value="disqualified">Disqualified</option>
           <option value="converted">Converted</option>
         </Select>
-        <Select value={source} onChange={(e) => setSource(e.target.value)}>
+        <Select value={filterSource} onChange={(e) => setFilterSource(e.target.value)}>
           <option value="">ทุกแหล่งที่มา</option>
           <option value="facebook">Facebook</option>
           <option value="line">Line</option>
@@ -93,13 +119,23 @@ export default function LeadsPage() {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-start">
           <Input placeholder="ชื่อ" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="โทร" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input placeholder="อีเมล" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input placeholder="บริษัท" value={company} onChange={(e) => setCompany(e.target.value)} />
-          <Button onClick={createLead} disabled={!name}>เพิ่ม Lead</Button>
+          <Select value={formSource} onChange={(e) => setFormSource(e.target.value as any)}>
+            <option value="other">ที่มา: อื่นๆ</option>
+            <option value="facebook">ที่มา: Facebook</option>
+            <option value="line">ที่มา: Line</option>
+            <option value="website">ที่มา: Website</option>
+            <option value="referral">ที่มา: แนะนำ</option>
+          </Select>
+          <Button onClick={createLead} disabled={submitting || !name.trim()}>{submitting ? 'กำลังเพิ่ม...' : 'เพิ่ม Lead'}</Button>
         </div>
+        {formError ? (
+          <div className="text-red-600 text-sm mt-2 whitespace-pre-line">{formError}</div>
+        ) : null}
       </Card>
 
       <Card className="p-0 overflow-x-auto">
