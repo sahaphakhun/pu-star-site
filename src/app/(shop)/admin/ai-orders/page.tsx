@@ -65,17 +65,6 @@ export default function AIOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [mapping, setMapping] = useState<{ [key: string]: string }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
-  // New state for product mapping with unit selection, quantity, and options
-  const [productMapping, setProductMapping] = useState<{ 
-    [key: string]: { 
-      [itemIndex: number]: {
-        productId: string;
-        unitIndex?: number; // Index of selected unit from product.units array
-        quantity: number; // Override quantity
-        selectedOptions?: { [optionName: string]: string }; // Selected option values
-      }
-    } 
-  }>({});
   const [products, setProducts] = useState<any[]>([]);
   const [convertingToOrder, setConvertingToOrder] = useState<{ [key: string]: boolean }>({});
   const [syncing, setSyncing] = useState(false);
@@ -94,6 +83,12 @@ export default function AIOrdersPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = newest first
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact'); // compact or full view
   const [groupByDate, setGroupByDate] = useState<boolean>(true); // group orders by date
+  
+  // State for mapping AI Orders to real Orders
+  const [mappingMode, setMappingMode] = useState<{ [key: string]: boolean }>({});
+  const [productMapping, setProductMapping] = useState<{ [key: string]: { [key: number]: { productId: string; quantity: number; selectedOptions: any; discount: number; unitIndex?: number; } } }>({});
+  const [mappingLoading, setMappingLoading] = useState<{ [key: string]: boolean }>({});
+  const [createOrderLoading, setCreateOrderLoading] = useState<{ [key: string]: boolean }>({});
 
   // Helper function to extract pricing from AI response
   const extractPricingFromResponse = (aiResponse: string) => {
@@ -236,6 +231,21 @@ export default function AIOrdersPage() {
     });
   };
 
+  const handleDiscountChange = (aiOrderId: string, itemIndex: number, discount: number) => {
+    if (discount < 0) return; // Minimum discount is 0
+    
+    setProductMapping((prev: any) => ({
+      ...prev,
+      [aiOrderId]: {
+        ...prev[aiOrderId],
+        [itemIndex]: {
+          ...prev[aiOrderId][itemIndex],
+          discount
+        }
+      }
+    }));
+  };
+
   const getProductById = (productId: string) => {
     if (!productId || !products || products.length === 0) {
       console.warn('getProductById: Invalid productId or empty products array', { productId, productsLength: products?.length });
@@ -290,6 +300,91 @@ export default function AIOrdersPage() {
       console.error('❌ Error updating AI Order status:', error);
     }
   };
+
+
+  // ฟังก์ชันสร้างออเดอร์จริงจาก AI Order
+  const createRealOrderFromAI = async (aiOrder: AIOrder) => {
+    try {
+      setCreateOrderLoading(prev => ({ ...prev, [aiOrder._id]: true }));
+      
+      const mappedItems = productMapping[aiOrder._id] || {};
+      const orderItems = aiOrder.items.map((item, index) => {
+        const mapping = mappedItems[index];
+        if (!mapping) return null;
+        
+        const product = getProductById(mapping.productId);
+        if (!product) return null;
+        
+        return {
+          productId: mapping.productId,
+          quantity: mapping.quantity,
+          selectedOptions: mapping.selectedOptions,
+          discount: mapping.discount,
+          unitPrice: product.price || 0,
+          totalPrice: (product.price || 0) * mapping.quantity - mapping.discount
+        };
+      }).filter(item => item !== null);
+
+      if (orderItems.length === 0) {
+        alert('กรุณาแมพสินค้าอย่างน้อย 1 รายการ');
+        return;
+      }
+
+      const orderData = {
+        customerName: aiOrder.customer.name || 'ไม่ระบุ',
+        customerPhone: aiOrder.customer.phone || 'ไม่ระบุ',
+        customerAddress: aiOrder.customer.address || 'ไม่ระบุ',
+        items: orderItems,
+        subtotal: orderItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0),
+        shippingFee: aiOrder.pricing.shipping_fee || 0,
+        discount: orderItems.reduce((sum, item) => sum + (item?.discount || 0), 0),
+        totalAmount: orderItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0) + (aiOrder.pricing.shipping_fee || 0),
+        paymentMethod: 'COD',
+        orderStatus: 'pending',
+        source: 'ai-order',
+        aiOrderId: aiOrder._id
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // อัปเดตสถานะ AI Order เป็น completed
+        await updateAIOrderStatus(aiOrder._id, 'completed');
+        
+        // ปิดโหมดแมพ
+        setMappingMode(prev => ({ ...prev, [aiOrder._id]: false }));
+        setProductMapping(prev => ({ ...prev, [aiOrder._id]: {} }));
+        
+        console.log('✅ Real order created successfully:', {
+          aiOrderId: aiOrder._id,
+          realOrderId: result.data._id
+        });
+        
+        alert(`สร้างออเดอร์จริงสำเร็จ! ออเดอร์ #${result.data._id.slice(-8).toUpperCase()}`);
+      } else {
+        console.error('❌ Failed to create real order:', result.error);
+        alert('เกิดข้อผิดพลาดในการสร้างออเดอร์จริง');
+      }
+    } catch (error) {
+      console.error('❌ Error creating real order:', error);
+      alert('เกิดข้อผิดพลาดในการสร้างออเดอร์จริง');
+    } finally {
+      setCreateOrderLoading(prev => ({ ...prev, [aiOrder._id]: false }));
+    }
+  };
+
 
   const getSelectedUnit = (product: any, unitIndex: number) => {
     if (!product.units || product.units.length === 0) {
@@ -838,20 +933,156 @@ export default function AIOrdersPage() {
               {expanded ? 'ย่อ' : 'ดูรายละเอียด'}
             </button>
             
-            {isAllItemsMapped(aiOrder) && (
+            {!mappingMode[aiOrder._id] ? (
               <button
-                onClick={() => convertToRegularOrder(aiOrder)}
-                disabled={convertingToOrder[aiOrder._id]}
-                className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                onClick={() => setMappingMode(prev => ({ ...prev, [aiOrder._id]: !prev[aiOrder._id] }))}
+                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
               >
-                {convertingToOrder[aiOrder._id] ? 'กำลังแปลง...' : 'แปลงเป็น Order'}
+                แมพสินค้า
               </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => createRealOrderFromAI(aiOrder)}
+                  disabled={!isAllItemsMapped(aiOrder) || createOrderLoading[aiOrder._id]}
+                  className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {createOrderLoading[aiOrder._id] ? 'กำลังสร้าง...' : 'สร้างออเดอร์จริง'}
+                </button>
+                <button
+                  onClick={() => setMappingMode(prev => ({ ...prev, [aiOrder._id]: false }))}
+                  className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                >
+                  ยกเลิก
+                </button>
+              </div>
             )}
           </div>
         </div>
         
         {expanded && (
           <div className="mt-4 pt-4 border-t border-gray-200">
+            {/* การแมพสินค้า */}
+            {mappingMode[aiOrder._id] && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-3">แมพสินค้ากับระบบ</h4>
+                <div className="space-y-3">
+                  {aiOrder.items.map((item: any, index: number) => {
+                    const mapping = productMapping[aiOrder._id]?.[index];
+                    const selectedProduct = mapping?.productId ? getProductById(mapping.productId) : null;
+                    
+                    return (
+                      <div key={index} className="p-3 bg-white border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-900">{item.name}</h5>
+                            <p className="text-sm text-gray-600">
+                              จำนวน: {item.qty} | 
+                              สี: {item.variant?.color || 'ไม่ระบุ'} | 
+                              ขนาด: {item.variant?.size || 'ไม่ระบุ'}
+                            </p>
+                            {item.note && (
+                              <p className="text-sm text-gray-500">หมายเหตุ: {item.note}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* เลือกสินค้า */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              เลือกสินค้าจากระบบ
+                            </label>
+                            <select
+                              value={mapping?.productId || ''}
+                              onChange={(e) => handleProductMapping(aiOrder._id, index, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">เลือกสินค้า</option>
+                              {products.map((product: any) => (
+                                <option key={product._id} value={product._id}>
+                                  {product.name} - ฿{product.price}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          {/* จำนวน */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              จำนวน
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={mapping?.quantity || 1}
+                              onChange={(e) => handleQuantityChange(aiOrder._id, index, parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          {/* ส่วนลด */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ส่วนลด (บาท)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={mapping?.discount || 0}
+                              onChange={(e) => handleDiscountChange(aiOrder._id, index, parseFloat(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          {/* ราคารวม */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ราคารวม
+                            </label>
+                            <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
+                              {selectedProduct ? 
+                                `฿${((selectedProduct.price || 0) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
+                                '฿0'
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* ตัวเลือกสินค้า (ถ้ามี) */}
+                        {selectedProduct && selectedProduct.options && selectedProduct.options.length > 0 && (
+                          <div className="mt-3">
+                            <h6 className="text-sm font-medium text-gray-700 mb-2">ตัวเลือกสินค้า</h6>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {selectedProduct.options.map((option: any, optionIndex: number) => (
+                                <div key={optionIndex}>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    {option.name}
+                                  </label>
+                                  <select
+                                    value={mapping?.selectedOptions?.[option.name] || ''}
+                                    onChange={(e) => handleOptionSelection(aiOrder._id, index, option.name, e.target.value)}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  >
+                                    <option value="">เลือก{option.name}</option>
+                                    {option.values.map((value: string, valueIndex: number) => (
+                                      <option key={valueIndex} value={value}>
+                                        {value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             {/* Expanded content - simplified version of full view */}
             <div className="space-y-3">
               <div>
@@ -1151,6 +1382,127 @@ export default function AIOrdersPage() {
               </div>
             </div>
 
+            {/* การแมพสินค้า */}
+            {mappingMode[aiOrder._id] && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-3">แมพสินค้ากับระบบ</h4>
+                <div className="space-y-3">
+                  {aiOrder.items.map((item: any, index: number) => {
+                    const mapping = productMapping[aiOrder._id]?.[index];
+                    const selectedProduct = mapping?.productId ? getProductById(mapping.productId) : null;
+                    
+                    return (
+                      <div key={index} className="p-3 bg-white border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-900">{item.name}</h5>
+                            <p className="text-sm text-gray-600">
+                              จำนวน: {item.qty} | 
+                              สี: {item.variant?.color || 'ไม่ระบุ'} | 
+                              ขนาด: {item.variant?.size || 'ไม่ระบุ'}
+                            </p>
+                            {item.note && (
+                              <p className="text-sm text-gray-500">หมายเหตุ: {item.note}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* เลือกสินค้า */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              เลือกสินค้าจากระบบ
+                            </label>
+                            <select
+                              value={mapping?.productId || ''}
+                              onChange={(e) => handleProductMapping(aiOrder._id, index, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">เลือกสินค้า</option>
+                              {products.map((product: any) => (
+                                <option key={product._id} value={product._id}>
+                                  {product.name} - ฿{product.price}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          {/* จำนวน */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              จำนวน
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={mapping?.quantity || 1}
+                              onChange={(e) => handleQuantityChange(aiOrder._id, index, parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          {/* ส่วนลด */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ส่วนลด (บาท)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={mapping?.discount || 0}
+                              onChange={(e) => handleDiscountChange(aiOrder._id, index, parseFloat(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          {/* ราคารวม */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ราคารวม
+                            </label>
+                            <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
+                              {selectedProduct ? 
+                                `฿${((selectedProduct.price || 0) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
+                                '฿0'
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* ตัวเลือกสินค้า (ถ้ามี) */}
+                        {selectedProduct && selectedProduct.options && selectedProduct.options.length > 0 && (
+                          <div className="mt-3">
+                            <h6 className="text-sm font-medium text-gray-700 mb-2">ตัวเลือกสินค้า</h6>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {selectedProduct.options.map((option: any, optionIndex: number) => (
+                                <div key={optionIndex}>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    {option.name}
+                                  </label>
+                                  <select
+                                    value={mapping?.selectedOptions?.[option.name] || ''}
+                                    onChange={(e) => handleOptionSelection(aiOrder._id, index, option.name, e.target.value)}
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  >
+                                    <option value="">เลือก{option.name}</option>
+                                    {option.values.map((value: string, valueIndex: number) => (
+                                      <option key={valueIndex} value={value}>
+                                        {value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* รายการสินค้า */}
             <div className="mb-4">
               <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
@@ -1345,22 +1697,48 @@ export default function AIOrdersPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => convertToRegularOrder(aiOrder)}
-                    disabled={!isAllItemsMapped(aiOrder) || convertingToOrder[aiOrder._id]}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
-                  >
-                    {convertingToOrder[aiOrder._id] ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        กำลังแปลง...
-                      </>
-                    ) : (
-                      <>
-                        🔄 แปลงเป็น Order ปกติ
-                      </>
-                    )}
-                  </button>
+                  {!mappingMode[aiOrder._id] ? (
+                    <button
+                      onClick={() => setMappingMode(prev => ({ ...prev, [aiOrder._id]: !prev[aiOrder._id] }))}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      แมพสินค้า
+                    </button>
+                  ) : (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => createRealOrderFromAI(aiOrder)}
+                        disabled={!isAllItemsMapped(aiOrder) || createOrderLoading[aiOrder._id]}
+                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+                      >
+                        {createOrderLoading[aiOrder._id] ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            กำลังสร้าง...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            สร้างออเดอร์จริง
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setMappingMode(prev => ({ ...prev, [aiOrder._id]: false }))}
+                        className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium flex items-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        ยกเลิก
+                      </button>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Show calculated totals if all items are mapped */}
