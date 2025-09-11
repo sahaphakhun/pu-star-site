@@ -338,13 +338,14 @@ export default function AIOrdersPage() {
         const product = getProductById(mapping.productId);
         if (!product) return null;
         
+        const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
         return {
           productId: mapping.productId,
           quantity: mapping.quantity,
           selectedOptions: mapping.selectedOptions,
           discount: mapping.discount,
-          unitPrice: product.price || 0,
-          totalPrice: (product.price || 0) * mapping.quantity - mapping.discount
+          unitPrice: selectedUnit.price,
+          totalPrice: selectedUnit.price * mapping.quantity - mapping.discount
         };
       }).filter(item => item !== null);
 
@@ -363,7 +364,7 @@ export default function AIOrdersPage() {
         discount: orderItems.reduce((sum, item) => sum + (item?.discount || 0), 0),
         totalAmount: orderItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0) + (aiOrder.pricing.shipping_fee || 0),
         paymentMethod: 'COD',
-        orderStatus: 'pending',
+        status: 'pending',
         source: 'ai-order',
         aiOrderId: aiOrder._id
       };
@@ -886,6 +887,9 @@ export default function AIOrdersPage() {
     const extractedPricing = extractPricingFromResponse(aiOrder.aiResponse);
     const pricing = extractedPricing || aiOrder.pricing;
     
+    // Keep expanded state when mapping mode is active
+    const shouldStayExpanded = expanded || mappingMode[aiOrder._id];
+    
     return (
       <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
         <div className="flex justify-between items-start mb-3">
@@ -983,7 +987,7 @@ export default function AIOrdersPage() {
           </div>
         </div>
         
-        {expanded && (
+        {shouldStayExpanded && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             {/* การแมพสินค้า */}
             {mappingMode[aiOrder._id] && (
@@ -1030,6 +1034,27 @@ export default function AIOrdersPage() {
                             </select>
                           </div>
                           
+                          {/* เลือกหน่วยสินค้า */}
+                          {selectedProduct && selectedProduct.units && selectedProduct.units.length > 0 && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                เลือกหน่วยสินค้า
+                              </label>
+                              <select
+                                value={mapping?.unitIndex || 0}
+                                onChange={(e) => handleUnitSelection(aiOrder._id, index, parseInt(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                {selectedProduct.units.map((unit: any, unitIndex: number) => (
+                                  <option key={unitIndex} value={unitIndex}>
+                                    {unit.label} - ฿{unit.price.toLocaleString()}
+                                    {unit.multiplier && unit.multiplier !== 1 && ` (x${unit.multiplier})`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          
                           {/* จำนวน */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1065,7 +1090,7 @@ export default function AIOrdersPage() {
                             </label>
                             <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
                               {selectedProduct ? 
-                                `฿${((selectedProduct.price || 0) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
+                                `฿${((getSelectedUnit(selectedProduct, mapping?.unitIndex || 0).price) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
                                 '฿0'
                               }
                             </div>
@@ -1455,6 +1480,27 @@ export default function AIOrdersPage() {
                             </select>
                           </div>
                           
+                          {/* เลือกหน่วยสินค้า */}
+                          {selectedProduct && selectedProduct.units && selectedProduct.units.length > 0 && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                เลือกหน่วยสินค้า
+                              </label>
+                              <select
+                                value={mapping?.unitIndex || 0}
+                                onChange={(e) => handleUnitSelection(aiOrder._id, index, parseInt(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                {selectedProduct.units.map((unit: any, unitIndex: number) => (
+                                  <option key={unitIndex} value={unitIndex}>
+                                    {unit.label} - ฿{unit.price.toLocaleString()}
+                                    {unit.multiplier && unit.multiplier !== 1 && ` (x${unit.multiplier})`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          
                           {/* จำนวน */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1490,7 +1536,7 @@ export default function AIOrdersPage() {
                             </label>
                             <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
                               {selectedProduct ? 
-                                `฿${((selectedProduct.price || 0) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
+                                `฿${((getSelectedUnit(selectedProduct, mapping?.unitIndex || 0).price) * (mapping?.quantity || 1) - (mapping?.discount || 0)).toLocaleString()}` : 
                                 '฿0'
                               }
                             </div>
