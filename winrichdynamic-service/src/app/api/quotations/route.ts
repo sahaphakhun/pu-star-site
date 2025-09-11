@@ -3,7 +3,10 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
+import { Settings } from '@/models/Settings';
+import Approval from '@/models/Approval';
 import { createQuotationSchema, searchQuotationSchema } from '@/schemas/quotation';
+import { checkDiscountGuardrails } from '@/utils/pricing';
 import { round2, computeVatIncluded } from '@/utils/number';
 
 // GET: ดึงใบเสนอราคาทั้งหมด (พร้อมการค้นหาและ pagination)
@@ -128,7 +131,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const quotationData = parsed.data;
+    const quotationData = parsed.data as any;
     
     await connectDB();
     
@@ -147,6 +150,27 @@ export async function POST(request: Request) {
     
     const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
     
+    // ตรวจสอบ guardrails ส่วนลดก่อนสร้าง
+    const guard = await checkDiscountGuardrails(
+      (quotationData.items || []).map((i: any) => ({
+        productId: i.productId,
+        quantity: Number(i.quantity),
+        unitPrice: Number(i.unitPrice),
+        discount: Number(i.discount || 0),
+      })),
+      {
+        role: undefined,
+        customerGroup: undefined,
+      }
+    );
+
+    if (!guard.ok) {
+      return NextResponse.json(
+        { error: 'ส่วนลดบางรายการไม่เป็นไปตามนโยบาย', violations: guard.violations, requiresApproval: guard.requiresApproval },
+        { status: 400 }
+      );
+    }
+
     // แปลงข้อมูลให้ตรงกับ Model
     const modelData: any = {
       ...quotationData,
@@ -156,7 +180,7 @@ export async function POST(request: Request) {
         ? new Date(quotationData.validUntil)
         : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
       // แปลงข้อมูลตัวเลขให้เป็น number
-      items: quotationData.items.map(item => ({
+      items: quotationData.items.map((item: any) => ({
         ...item,
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice),
@@ -176,7 +200,7 @@ export async function POST(request: Request) {
       })(),
     } as any;
     
-    // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership
+    // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership และ context guardrails
     try {
       const authHeader = (request.headers as any).get?.('authorization') as string | null;
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -187,11 +211,38 @@ export async function POST(request: Request) {
         if (payload?.adminId) {
           modelData.assignedTo = payload.adminId; // เก็บ owner เป็น adminId
         }
+        // เติม role สำหรับการตรวจ guardrails รอบหน้า (เช่น update)
+        modelData._creatorRole = payload?.role;
       }
     } catch {}
     
     // สร้างใบเสนอราคาใหม่
+    // Guardrails: ตรวจสอบส่วนลด/threshold จาก Settings
+    let requireApproval = false;
+    try {
+      const settings = (await Settings.findOne({}).lean()) as any;
+      const maxDiscount = settings?.salesPolicy?.maxDiscountPercentWithoutApproval ?? 10;
+      const hasOverDiscount = modelData.items.some((it: any) => Number(it.discount || 0) > maxDiscount);
+      if (hasOverDiscount) requireApproval = true;
+    } catch {}
+
+    if (requireApproval) {
+      modelData.approvalStatus = 'pending';
+      modelData.approvalReason = modelData.approvalReason || 'ส่วนลดเกินนโยบาย';
+    } else {
+      modelData.approvalStatus = modelData.approvalStatus || 'none';
+    }
+
     const quotation = await Quotation.create(modelData);
+
+    // หากต้องขออนุมัติ ให้สร้างเอนทรี Approval ผูกกับ quotation
+    if (requireApproval) {
+      try {
+        await Approval.create({ targetType: 'quotation', targetId: String(quotation._id), requestedBy: modelData.assignedTo || 'system', reason: modelData.approvalReason, team: undefined });
+      } catch (e) {
+        console.error('[Quotation API] Create approval entry failed', e);
+      }
+    }
     
     return NextResponse.json(
       quotation.toObject ? quotation.toObject() : quotation,

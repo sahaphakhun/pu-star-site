@@ -72,6 +72,8 @@ export const createQuotationSchema = z.object({
   validUntil: z.string()
     .optional()
     .or(z.literal('')),
+  // อ้างอิง PriceBook ที่ใช้ (optional)
+  priceBookId: z.string().optional().or(z.literal('')),
   paymentTerms: z.string()
     .min(1, 'กรุณาระบุเงื่อนไขการชำระเงิน')
     .max(200, 'เงื่อนไขการชำระเงินต้องมีความยาวไม่เกิน 200 ตัวอักษร')
@@ -102,6 +104,9 @@ export const createQuotationSchema = z.object({
   vatAmount: z.number().optional(),
   grandTotal: z.number().optional(),
   status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']).optional().default('draft'),
+  // เหตุผล/การตั้งค่าเพื่อทริกเกอร์ขออนุมัติ
+  approvalReason: z.string().max(1000).optional().or(z.literal('')),
+  approvalStatus: z.enum(['none', 'pending', 'approved', 'rejected']).optional().default('none'),
 });
 
 // Schema สำหรับการอัพเดทใบเสนอราคา
@@ -133,6 +138,11 @@ export const searchQuotationSchema = z.object({
 export const updateQuotationStatusSchema = z.object({
   status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']),
   notes: z.string().optional(),
+});
+
+// Schema สำหรับขออนุมัติใบเสนอราคา
+export const requestQuotationApprovalSchema = z.object({
+  reason: z.string().max(1000).optional().or(z.literal('')),
 });
 
 // Schema สำหรับการส่งใบเสนอราคา

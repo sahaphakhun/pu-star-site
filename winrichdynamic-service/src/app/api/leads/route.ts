@@ -4,6 +4,9 @@ import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Lead from '@/models/Lead';
 import { createLeadSchema } from '@/schemas/lead';
+import AssignmentState from '@/models/AssignmentState';
+import Admin from '@/models/Admin';
+import Role from '@/models/Role';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
     const parsed = createLeadSchema.safeParse(raw);
     if (!parsed.success) return NextResponse.json({ error: 'ข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
     const data = parsed.data as any;
+    let tokenPayload: any = undefined;
     try {
       const authHeader = request.headers.get('authorization');
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -69,8 +73,9 @@ export async function POST(request: NextRequest) {
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
-        data.ownerId = payload.adminId;
-        data.team = payload.team;
+        tokenPayload = payload;
+        if (payload.adminId) data.ownerId = payload.adminId;
+        if (payload.team) data.team = payload.team;
       }
     } catch {}
     // dedupe แบบง่ายด้วย email/phone
@@ -82,6 +87,35 @@ export async function POST(request: NextRequest) {
       const dup = await Lead.findOne({ phone: data.phone });
       if (dup) return NextResponse.json({ error: 'มี lead เบอร์นี้แล้ว' }, { status: 409 });
     }
+    // หากไม่ได้ระบุ ownerId ให้ทำ round-robin ตามทีม
+    if (!data.ownerId) {
+      try {
+        const sellerRole = await Role.findOne({ name: 'Seller', isActive: true }).lean();
+        if (sellerRole) {
+          const teamFilter: any = { role: sellerRole._id, isActive: true };
+          if (data.team) teamFilter.team = data.team;
+          const sellers = await Admin.find(teamFilter).sort({ _id: 1 }).lean();
+          if (sellers.length > 0) {
+            const state = await AssignmentState.findOneAndUpdate(
+              { scope: 'lead', team: data.team || undefined, roleName: 'Seller' },
+              {},
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+            let next: any = sellers[0];
+            if (state.lastAssignedAdminId) {
+              const idx = sellers.findIndex((s) => String(s._id) === String(state.lastAssignedAdminId));
+              next = sellers[(idx + 1 + sellers.length) % sellers.length];
+            }
+            data.ownerId = String(next._id);
+            state.lastAssignedAdminId = String(next._id);
+            await state.save();
+          }
+        }
+      } catch (e) {
+        console.warn('[B2B] Lead round-robin skipped:', e);
+      }
+    }
+
     const lead = await Lead.create(data);
     return NextResponse.json(lead, { status: 201 });
   } catch (error) {

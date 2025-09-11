@@ -4,6 +4,9 @@ import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { updateQuotationSchema } from '@/schemas/quotation';
+import Approval from '@/models/Approval';
+import { Settings } from '@/models/Settings';
+import { checkDiscountGuardrails } from '@/utils/pricing';
 
 // GET: ดึงข้อมูลใบเสนอราคาเดียว
 export async function GET(
@@ -107,6 +110,31 @@ export async function PUT(
     // ไม่เก็บ remark ในตัวเอกสารหลัก
     delete (body as any).remark;
 
+    // Guardrails: ตรวจ PriceBook/DiscountPolicy + Global settings
+    let requireApproval = false;
+    try {
+      if (Array.isArray((body as any).items) && (body as any).items.length > 0) {
+        const guard = await checkDiscountGuardrails(
+          (body as any).items.map((i: any) => ({
+            productId: i.productId,
+            quantity: Number(i.quantity),
+            unitPrice: Number(i.unitPrice),
+            discount: Number(i.discount || 0),
+          })),
+          { role: undefined, customerGroup: undefined }
+        );
+        if (!guard.ok) {
+          return NextResponse.json({ error: 'ส่วนลดบางรายการไม่เป็นไปตามนโยบาย', violations: guard.violations, requiresApproval: guard.requiresApproval }, { status: 400 });
+        }
+        if (guard.requiresApproval) requireApproval = true;
+      }
+    } catch {}
+
+    if (requireApproval) {
+      (body as any).approvalStatus = 'pending';
+      (body as any).approvalReason = (body as any).approvalReason || 'ส่วนลดเกินนโยบาย';
+    }
+
     const quotation = await Quotation.findByIdAndUpdate(
       resolvedParams.id,
       { $set: body, $push: { editHistory: editLog } },
@@ -120,6 +148,19 @@ export async function PUT(
       );
     }
     
+    // สร้าง approval entry หากจำเป็น
+    try {
+      if (requireApproval) {
+        await Approval.updateOne(
+          { targetType: 'quotation', targetId: String(resolvedParams.id), status: 'pending' },
+          { $setOnInsert: { targetType: 'quotation', targetId: String(resolvedParams.id), requestedBy: editLog.editedBy || 'system', reason: (body as any).approvalReason } },
+          { upsert: true }
+        );
+      }
+    } catch (e) {
+      console.error('[Quotation API] Update approval entry failed', e);
+    }
+
     return NextResponse.json(quotation);
     
   } catch (error) {

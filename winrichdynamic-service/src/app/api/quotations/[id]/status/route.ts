@@ -3,6 +3,7 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
+import Approval from '@/models/Approval';
 import { updateQuotationStatusSchema } from '@/schemas/quotation';
 
 // PUT: เปลี่ยนสถานะใบเสนอราคา
@@ -69,6 +70,13 @@ export async function PUT(
       { $set: updateData, $push: { editHistory: editLog } },
       { new: true }
     ).lean();
+
+    // ถ้าถูกยอมรับ ให้ปิดคำขออนุมัติที่เกี่ยวข้องกับใบเสนอราคานี้
+    try {
+      if (status === 'accepted') {
+        await Approval.updateMany({ targetType: 'quotation', targetId: resolvedParams.id, status: 'pending' }, { $set: { status: 'approved', decisionReason: 'Auto-approved on acceptance' } });
+      }
+    } catch {}
     
     return NextResponse.json(updatedQuotation);
     

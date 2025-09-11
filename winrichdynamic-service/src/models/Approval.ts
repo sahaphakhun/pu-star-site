@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type ApprovalTarget = 'deal';
+export type ApprovalTarget = 'deal' | 'quotation';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface IApproval extends Document {
@@ -17,7 +17,7 @@ export interface IApproval extends Document {
 }
 
 const approvalSchema = new Schema<IApproval>({
-  targetType: { type: String, enum: ['deal'], required: true, index: true },
+  targetType: { type: String, enum: ['deal', 'quotation'], required: true, index: true },
   targetId: { type: String, required: true, index: true, trim: true },
   requestedBy: { type: String, required: true, index: true, trim: true },
   approverId: { type: String, index: true, trim: true },

@@ -27,6 +27,7 @@ type Deal = {
   status: 'open' | 'won' | 'lost';
   approvalStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   updatedAt: string;
+  lastActivityAt?: string;
 };
 
 export default function DealsPage() {
@@ -41,6 +42,8 @@ export default function DealsPage() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [showSaveFilter, setShowSaveFilter] = useState(false);
   const [filterName, setFilterName] = useState('');
+  const [sortBy, setSortBy] = useState<'last' | 'amount' | 'stage'>('last');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   
   const { savedFilters, saveFilter, deleteFilter, applyFilter } = useSavedFilters('deals');
 
@@ -107,34 +110,57 @@ export default function DealsPage() {
   }, [stages, deals]);
 
   // Memoized deal cards for better performance
-  const DealCard = React.memo(({ deal }: { deal: Deal }) => (
-    <div
-      className="rounded border p-2 bg-gray-50"
-      draggable
-      onDragStart={(e: React.DragEvent) => {
-        e.dataTransfer.setData('text/plain', deal._id);
-      }}
-    >
-      <div className="text-sm font-medium">{deal.title}</div>
-      <div className="text-xs text-gray-600">{deal.customerName || '-'} · ฿{deal.amount.toLocaleString()}</div>
-      {deal.approvalStatus && deal.approvalStatus !== 'none' && (
-        <div className="text-[10px] mt-1">
-          สถานะอนุมัติ: <span className="font-medium">{deal.approvalStatus}</span>
+  const DealCard = React.memo(({ deal }: { deal: Deal }) => {
+    const getLastDate = () => new Date(deal.lastActivityAt || deal.updatedAt);
+    const formatRelative = (d: Date) => {
+      const now = new Date().getTime();
+      const diffMs = now - d.getTime();
+      const minutes = Math.floor(diffMs / 60000);
+      if (minutes < 60) return `${minutes} นาที`; // under 1h
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} ชม.`; // under 1d
+      const days = Math.floor(hours / 24);
+      return `${days} วัน`;
+    };
+    const colorClass = (d: Date) => {
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days > 14) return 'text-red-600';
+      if (days > 7) return 'text-orange-600';
+      return 'text-gray-600';
+    };
+    const last = getLastDate();
+    return (
+      <div
+        className="rounded border p-2 bg-gray-50"
+        draggable
+        onDragStart={(e: React.DragEvent) => {
+          e.dataTransfer.setData('text/plain', deal._id);
+        }}
+      >
+        <div className="text-sm font-medium">{deal.title}</div>
+        <div className="text-xs text-gray-600">{deal.customerName || '-'} · ฿{deal.amount.toLocaleString()}</div>
+        <div className={`text-[10px] mt-1 ${colorClass(last)}`} title={last.toLocaleString()}>
+          ⏱ ล่าสุด {formatRelative(last)}
         </div>
-      )}
-      <div className="mt-2 flex gap-1">
-        <button
-          onClick={() => {
-            setSelectedDeal(deal);
-            setShowQuickNote(true);
-          }}
-          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-        >
-          จดโน้ต
-        </button>
+        {deal.approvalStatus && deal.approvalStatus !== 'none' && (
+          <div className="text-[10px] mt-1">
+            สถานะอนุมัติ: <span className="font-medium">{deal.approvalStatus}</span>
+          </div>
+        )}
+        <div className="mt-2 flex gap-1">
+          <button
+            onClick={() => {
+              setSelectedDeal(deal);
+              setShowQuickNote(true);
+            }}
+            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+          >
+            จดโน้ต
+          </button>
+        </div>
       </div>
-    </div>
-  ));
+    );
+  });
 
   async function moveDeal(dealId: string, toStageId: string) {
     const res = await fetch(`/api/deals/${dealId}`, {
@@ -156,7 +182,7 @@ export default function DealsPage() {
       body: JSON.stringify({
         type,
         subject: `กิจกรรม${type === 'call' ? 'โทร' : type === 'meeting' ? 'นัด' : type === 'email' ? 'อีเมล' : 'งาน'}`,
-        description: note,
+        notes: note,
         customerId: selectedDeal.customerId || '',
         dealId: selectedDeal._id,
         status: 'done',
@@ -200,6 +226,18 @@ export default function DealsPage() {
             <option value="kanban">Kanban</option>
             <option value="list">รายการ</option>
           </Select>
+          {view === 'list' && (
+            <>
+              <Select value={sortBy} onChange={(e: any) => setSortBy(e.target.value)}>
+                <option value="last">กิจกรรมล่าสุด</option>
+                <option value="amount">มูลค่า</option>
+                <option value="stage">สเตจ</option>
+              </Select>
+              <Button onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}>
+                {sortDir === 'desc' ? '↓' : '↑'}
+              </Button>
+            </>
+          )}
           <Button className="w-40" onClick={() => setShowSaveFilter(true)}>บันทึกมุมมอง</Button>
           <Button onClick={loadDeals} disabled={loading}>{loading ? 'กำลังโหลด...' : 'รีเฟรช'}</Button>
         </div>
@@ -240,19 +278,35 @@ export default function DealsPage() {
                 <th className="p-2">ลูกค้า</th>
                 <th className="p-2">มูลค่า</th>
                 <th className="p-2">สเตจ</th>
-                <th className="p-2">อัปเดตล่าสุด</th>
+                <th className="p-2">กิจกรรมล่าสุด</th>
               </tr>
             </thead>
             <tbody>
-              {deals.map((d) => (
-                <tr key={d._id} className="border-t">
-                  <td className="p-2">{d.title}</td>
-                  <td className="p-2">{d.customerName || '-'}</td>
-                  <td className="p-2">฿{d.amount.toLocaleString()}</td>
-                  <td className="p-2">{d.stageName || '-'}</td>
-                  <td className="p-2">{new Date(d.updatedAt).toLocaleString()}</td>
-                </tr>
-              ))}
+              {([...deals]
+                .sort((a, b) => {
+                  const getLast = (x: Deal) => new Date(x.lastActivityAt || x.updatedAt).getTime();
+                  if (sortBy === 'last') {
+                    return sortDir === 'desc' ? getLast(b) - getLast(a) : getLast(a) - getLast(b);
+                  }
+                  if (sortBy === 'amount') {
+                    return sortDir === 'desc' ? b.amount - a.amount : a.amount - b.amount;
+                  }
+                  // stage
+                  const sa = (a.stageName || '').localeCompare(b.stageName || '');
+                  return sortDir === 'desc' ? -sa : sa;
+                }))
+                .map((d) => {
+                  const last = new Date(d.lastActivityAt || d.updatedAt);
+                  return (
+                    <tr key={d._id} className="border-t">
+                      <td className="p-2">{d.title}</td>
+                      <td className="p-2">{d.customerName || '-'}</td>
+                      <td className="p-2">฿{d.amount.toLocaleString()}</td>
+                      <td className="p-2">{d.stageName || '-'}</td>
+                      <td className="p-2" title={last.toLocaleString()}>{last.toLocaleDateString()} {last.toLocaleTimeString()}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </Card>

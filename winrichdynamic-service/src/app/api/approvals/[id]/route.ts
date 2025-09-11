@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Approval from '@/models/Approval';
 import { updateApprovalSchema } from '@/schemas/approval';
+import Quotation from '@/models/Quotation';
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,6 +38,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       { new: true }
     );
     if (!updated) return NextResponse.json({ error: 'ไม่พบคำขออนุมัติ' }, { status: 404 });
+
+    // หาก target เป็นใบเสนอราคา ให้สะท้อนสถานะไปที่เอกสารใบเสนอราคาด้วย
+    try {
+      if (updated.targetType === 'quotation') {
+        await Quotation.updateOne({ _id: updated.targetId }, { $set: { approvalStatus: updated.status } });
+      }
+    } catch {}
     return NextResponse.json(updated);
   } catch (error) {
     console.error('[B2B] PATCH /approvals/:id error', error);

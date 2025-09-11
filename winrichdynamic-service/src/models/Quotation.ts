@@ -28,6 +28,8 @@ export interface IQuotation extends Document {
   
   // รายการสินค้า
   items: IQuotationItem[];
+  // อ้างอิง PriceBook ที่ใช้
+  priceBookId?: string;
   
   // การคำนวณราคา
   subtotal: number; // ราคารวมก่อนหักส่วนลด
@@ -64,6 +66,9 @@ export interface IQuotation extends Document {
     remark: string;
     changedFields?: string[];
   }>;
+  // สถานะการอนุมัติและเหตุผล
+  approvalStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  approvalReason?: string;
   
   createdAt: Date;
   updatedAt: Date;
@@ -184,6 +189,12 @@ const quotationSchema = new Schema<IQuotation>(
         'ต้องมีรายการสินค้าอย่างน้อย 1 รายการ',
       ],
     },
+    priceBookId: {
+      type: String,
+      required: false,
+      index: true,
+      trim: true,
+    },
     subtotal: {
       type: Number,
       required: [true, 'กรุณาระบุราคารวมก่อนหักส่วนลด'],
@@ -281,6 +292,17 @@ const quotationSchema = new Schema<IQuotation>(
         )
       ],
       default: [],
+    },
+    approvalStatus: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected'],
+      default: 'none',
+      index: true,
+    },
+    approvalReason: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'เหตุผลต้องมีความยาวไม่เกิน 1000 ตัวอักษร'],
     },
   },
   {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Activity from '@/models/Activity';
+import Deal from '@/models/Deal';
 import { updateActivitySchema } from '@/schemas/activity';
 
 // GET: รายละเอียดกิจกรรม
@@ -29,6 +30,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
     const updated = await Activity.findByIdAndUpdate(id, parsed.data, { new: true });
     if (!updated) return NextResponse.json({ error: 'ไม่พบกิจกรรม' }, { status: 404 });
+    // ถ้ามีผูกกับดีล และเปลี่ยนสถานะหรือแก้ไข ให้ถือว่าเพิ่งมี activity ล่าสุด
+    if (updated?.dealId) {
+      try {
+        await Deal.updateOne({ _id: updated.dealId }, { $set: { lastActivityAt: new Date() } });
+      } catch {}
+    }
     return NextResponse.json(updated);
   } catch (error) {
     console.error('[B2B] PATCH /activities/:id error', error);

@@ -3,6 +3,7 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Activity from '@/models/Activity';
+import Deal from '@/models/Deal';
 import { createActivitySchema, searchActivitySchema } from '@/schemas/activity';
 
 // GET: list activities with filters
@@ -81,6 +82,12 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     const item = await Activity.create(data);
+    // ถ้ามีผูกกับดีล ให้อัปเดต lastActivityAt ของดีล
+    if (item?.dealId) {
+      try {
+        await Deal.updateOne({ _id: item.dealId }, { $set: { lastActivityAt: new Date() } });
+      } catch {}
+    }
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error('[B2B] POST /activities error', error);

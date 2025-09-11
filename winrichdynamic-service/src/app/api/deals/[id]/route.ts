@@ -39,6 +39,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (typeof update.probability === 'undefined' && typeof (stage as any).probability === 'number') {
         update.probability = (stage as any).probability;
       }
+      // เคลื่อนสเตจถือว่ามี activity ล่าสุด
+      update.lastActivityAt = new Date();
     }
 
     const updated = await Deal.findByIdAndUpdate(id, update, { new: true });

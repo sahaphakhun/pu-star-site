@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Approval from '@/models/Approval';
 import { createApprovalSchema } from '@/schemas/approval';
+import Quotation from '@/models/Quotation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,6 +69,12 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     const item = await Approval.create(data);
+    // ถ้าเป็นคำขอจากใบเสนอราคา ให้ตั้งสถานะใบเสนอราคาเป็น pending ด้วย
+    try {
+      if (data.targetType === 'quotation') {
+        await Quotation.updateOne({ _id: data.targetId }, { $set: { approvalStatus: 'pending', approvalReason: data.reason || '' } });
+      }
+    } catch {}
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error('[B2B] POST /approvals error', error);
