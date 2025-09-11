@@ -26,19 +26,25 @@ const DatabaseStatus: React.FC = () => {
     
     try {
       const response = await fetch('/api/test-db');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setStatus(data.data);
-        toast.success('การเชื่อมต่อฐานข้อมูลสำเร็จ');
+        // ไม่แสดง toast success เพื่อลดการรบกวนผู้ใช้
       } else {
         setError(data.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
-        toast.error(data.error || 'เกิดข้อผิดพลาด');
+        // ไม่แสดง toast error เพื่อลดการรบกวนผู้ใช้
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
       setError(errorMsg);
-      toast.error(errorMsg);
+      // ไม่แสดง toast error เพื่อลดการรบกวนผู้ใช้
+      console.warn('Database connection test failed:', errorMsg);
     } finally {
       setLoading(false);
     }
