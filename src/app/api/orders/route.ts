@@ -117,7 +117,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { customerName, customerPhone, customerAddress, items, totalAmount, shippingFee, discount, paymentMethod, slipUrl, taxInvoice, orderedBy } = body;
+    const { customerName, customerPhone, customerAddress, items, totalAmount, shippingFee, discount, paymentMethod, slipUrl, taxInvoice, orderedBy, source, aiOrderId, notes } = body;
+
+    // Validate required fields
+    if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Missing required fields: customerName, customerPhone, and items are required' 
+      }, { status: 400 });
+    }
+
+    // Validate items structure
+    for (const item of items) {
+      if (!item.productId || !item.name || !item.price || !item.quantity) {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Invalid item structure: productId, name, price, and quantity are required' 
+        }, { status: 400 });
+      }
+    }
 
     await connectDB();
 
@@ -174,6 +192,17 @@ export async function POST(request: NextRequest) {
       status: 'pending'
     });
 
+    // Add additional fields if they exist
+    if (source) {
+      (order as any).source = source;
+    }
+    if (aiOrderId) {
+      (order as any).aiOrderId = aiOrderId;
+    }
+    if (notes) {
+      (order as any).notes = notes;
+    }
+
     await order.save();
 
     return NextResponse.json({ 
@@ -188,7 +217,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Create order error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      body: body
+    });
+    return NextResponse.json({ 
+      success: false,
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 

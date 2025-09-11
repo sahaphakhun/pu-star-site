@@ -367,7 +367,12 @@ export default function AIOrdersPage() {
         paymentMethod: 'COD',
         status: 'pending',
         source: 'ai-order',
-        aiOrderId: aiOrder._id
+        aiOrderId: aiOrder._id,
+        orderedBy: {
+          userId: (user as any)?.id || '000000000000000000000000',
+          name: user?.name || 'Admin',
+          phone: user?.email || 'admin@winrichdynamic.com'
+        }
       };
 
       console.log('Order data being sent:', JSON.stringify(orderData, null, 2));
@@ -512,7 +517,12 @@ export default function AIOrdersPage() {
         status: 'pending',
         source: 'ai_order',
         originalAIOrderId: aiOrder._id,
-        notes: `แปลงจาก AI Order ${aiOrder._id.slice(-8).toUpperCase()}`
+        notes: `แปลงจาก AI Order ${aiOrder._id.slice(-8).toUpperCase()}`,
+        orderedBy: {
+          userId: (user as any)?.id || '000000000000000000000000',
+          name: user?.name || 'Admin',
+          phone: user?.email || 'admin@winrichdynamic.com'
+        }
       };
 
       const response = await fetch('/api/orders', {
