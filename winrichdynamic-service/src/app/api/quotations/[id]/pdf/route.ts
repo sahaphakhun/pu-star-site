@@ -137,10 +137,6 @@ export async function POST(
       return NextResponse.json({ error: 'ไม่พบใบเสนอราคา' }, { status: 404 });
     }
 
-    // อนุญาตเฉพาะใบเสนอราคาที่ accepted หรือ sent/draft ตามนโยบาย (ยึด accepted เพื่อความชัดเจน)
-    if (quotation.status !== 'accepted') {
-      return NextResponse.json({ error: 'สามารถออกใบสั่งขายได้เฉพาะใบเสนอราคาที่ลูกค้ายอมรับแล้ว' }, { status: 400 });
-    }
 
     // อัพเดทสถานะออกใบสั่งขาย
     quotation.salesOrderIssued = true;

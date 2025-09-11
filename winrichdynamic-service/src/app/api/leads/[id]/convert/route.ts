@@ -42,10 +42,20 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     // สร้างดีลเริ่มต้น
     // หา default stage: ตาม team ของ lead ก่อน ถ้าไม่มีใช้ตัวแรกตาม order
     const teamFilter: any = lead.team ? { team: lead.team } : {};
-    let stage = await PipelineStage.findOne({ ...teamFilter, isDefault: true }).sort({ order: 1 }).lean();
+    let stage: any = await PipelineStage.findOne({ ...teamFilter, isDefault: true }).sort({ order: 1 }).lean();
     if (!stage) stage = await PipelineStage.findOne(teamFilter).sort({ order: 1 }).lean();
     if (!stage) stage = await PipelineStage.findOne({}).sort({ order: 1 }).lean();
-    if (!stage) return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า Pipeline Stage เริ่มต้น' }, { status: 400 });
+    if (!stage) {
+      // ถ้าไม่มีสเตจเลย ให้สร้างเริ่มต้นอัตโนมัติ
+      const created = await PipelineStage.create({
+        name: 'เริ่มต้น',
+        order: 0,
+        probability: 0,
+        isDefault: true,
+        team: lead.team,
+      } as any);
+      stage = created.toObject();
+    }
 
     const deal = await Deal.create({
       title: `ดีลจาก Lead: ${lead.name}`,
