@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import { updateQuotationStatusSchema } from '@/schemas/quotation';
@@ -49,9 +51,22 @@ export async function PUT(
       }
     }
     
+    // เก็บประวัติการแก้ไขแบบย่อเมื่อเปลี่ยนสถานะ
+    const editLog: any = { editedAt: new Date(), remark: `เปลี่ยนสถานะเป็น ${status}`, changedFields: ['status'] };
+    try {
+      const authHeader = (request as any).headers?.get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        if (payload?.adminId) editLog.editedBy = String(payload.adminId);
+      }
+    } catch {}
+
     const updatedQuotation = await Quotation.findByIdAndUpdate(
       resolvedParams.id,
-      updateData,
+      { $set: updateData, $push: { editHistory: editLog } },
       { new: true }
     ).lean();
     

@@ -117,12 +117,18 @@ export default function AdminB2BQuotations() {
 
     try {
       setFormLoading(true)
+      // ขอหมายเหตุการแก้ไข
+      const remark = window.prompt('กรุณาระบุหมายเหตุการแก้ไข (บังคับ)') || ''
+      if (!remark.trim()) {
+        toast.error('กรุณาระบุหมายเหตุการแก้ไข')
+        return
+      }
       const response = await fetch(`/api/quotations/${editingQuotation._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(quotationData),
+        body: JSON.stringify({ ...quotationData, remark }),
       })
 
       if (!response.ok) {
@@ -193,6 +199,47 @@ export default function AdminB2BQuotations() {
     } catch (error) {
       console.error('Error downloading PDF:', error)
       toast.error('เกิดข้อผิดพลาดในการดาวน์โหลด PDF')
+    }
+  }
+
+  // ออกใบสั่งขายจากใบเสนอราคา (ดาวน์โหลด PDF และทำเครื่องหมายว่าออกแล้ว)
+  const handleIssueSalesOrder = async (quotation: Quotation) => {
+    try {
+      const salesOrderNumber = window.prompt('กรุณาระบุเลขที่ใบสั่งขาย') || ''
+      if (!salesOrderNumber.trim()) {
+        toast.error('กรุณาระบุเลขที่ใบสั่งขาย')
+        return
+      }
+      const remark = window.prompt('กรุณาระบุหมายเหตุการออกใบสั่งขาย') || ''
+      if (!remark.trim()) {
+        toast.error('กรุณาระบุหมายเหตุการออกใบสั่งขาย')
+        return
+      }
+
+      const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesOrderNumber, remark })
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({} as any))
+        throw new Error(err?.error || 'เกิดข้อผิดพลาดในการออกใบสั่งขาย')
+      }
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ใบสั่งขาย_${salesOrderNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      await fetchQuotations()
+      toast.success('ออกใบสั่งขายและดาวน์โหลด PDF เรียบร้อยแล้ว')
+    } catch (error) {
+      console.error('Error issuing sales order:', error)
+      toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการออกใบสั่งขาย')
     }
   }
 
@@ -414,6 +461,12 @@ export default function AdminB2BQuotations() {
                             className="text-gray-600 hover:text-gray-900 transition-colors"
                           >
                             แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleIssueSalesOrder(quotation)}
+                            className="text-purple-700 hover:text-purple-900 transition-colors"
+                          >
+                            ออกใบสั่งขาย (PDF)
                           </button>
  
                           {quotation.status === 'draft' && (

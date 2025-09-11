@@ -53,6 +53,17 @@ export interface IQuotation extends Document {
   
   // ข้อมูลการแปลงเป็น Sales Order
   convertedToOrder?: string; // ID ของ Sales Order ที่แปลงจากใบเสนอราคานี้
+  // สถานะการออกใบสั่งขาย
+  salesOrderIssued?: boolean;
+  salesOrderNumber?: string;
+  salesOrderIssuedAt?: Date;
+  // ประวัติการแก้ไข
+  editHistory?: Array<{
+    editedAt: Date;
+    editedBy?: string;
+    remark: string;
+    changedFields?: string[];
+  }>;
   
   createdAt: Date;
   updatedAt: Date;
@@ -242,6 +253,34 @@ const quotationSchema = new Schema<IQuotation>(
     convertedToOrder: {
       type: String,
       trim: true,
+    },
+    salesOrderIssued: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    salesOrderNumber: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    salesOrderIssuedAt: {
+      type: Date,
+      index: true,
+    },
+    editHistory: {
+      type: [
+        new Schema(
+          {
+            editedAt: { type: Date, required: true },
+            editedBy: { type: String, trim: true },
+            remark: { type: String, required: true, trim: true, maxlength: 1000 },
+            changedFields: { type: [String], default: [] },
+          },
+          { _id: false }
+        )
+      ],
+      default: [],
     },
   },
   {

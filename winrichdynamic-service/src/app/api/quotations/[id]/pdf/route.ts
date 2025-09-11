@@ -8,6 +8,7 @@ import Product from '@/models/Product';
 import Admin from '@/models/Admin';
 import * as jose from 'jose';
 import { cookies } from 'next/headers';
+import { issueSalesOrderSchema } from '@/schemas/quotation';
 
 // GET: สร้าง PDF ใบเสนอราคา
 export async function GET(
@@ -113,5 +114,61 @@ export async function GET(
       { error: 'เกิดข้อผิดพลาดในการสร้าง PDF' },
       { status: 500 }
     );
+  }
+}
+
+// POST: ออกใบสั่งขาย (PDF) จากใบเสนอราคา พร้อมอัพเดทสถานะว่าออกแล้ว
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const raw = await request.json();
+    const parsed = issueSalesOrderSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
+    }
+    const { salesOrderNumber, remark } = parsed.data;
+
+    const resolvedParams = await params;
+    const quotation = await Quotation.findById(resolvedParams.id);
+    if (!quotation) {
+      return NextResponse.json({ error: 'ไม่พบใบเสนอราคา' }, { status: 404 });
+    }
+
+    // อนุญาตเฉพาะใบเสนอราคาที่ accepted หรือ sent/draft ตามนโยบาย (ยึด accepted เพื่อความชัดเจน)
+    if (quotation.status !== 'accepted') {
+      return NextResponse.json({ error: 'สามารถออกใบสั่งขายได้เฉพาะใบเสนอราคาที่ลูกค้ายอมรับแล้ว' }, { status: 400 });
+    }
+
+    // อัพเดทสถานะออกใบสั่งขาย
+    quotation.salesOrderIssued = true;
+    quotation.salesOrderNumber = salesOrderNumber;
+    quotation.salesOrderIssuedAt = new Date();
+    const editLog: any = {
+      editedAt: new Date(),
+      remark: `ออกใบสั่งขายเลขที่ ${salesOrderNumber}: ${remark}`,
+      changedFields: ['salesOrderIssued', 'salesOrderNumber', 'salesOrderIssuedAt'],
+    };
+    try {
+      const authHeader = request.headers.get('authorization');
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        if (payload?.adminId) editLog.editedBy = String(payload.adminId);
+      }
+    } catch {}
+    quotation.editHistory = [...(quotation.editHistory || []), editLog] as any;
+    await quotation.save();
+
+    // ส่งต่อไปยังการสร้าง PDF ใบเสนอราคาเดิม (reuse) หรือจะมีไฟล์ template ใบสั่งขายแยกในอนาคต
+    const req2 = new NextRequest(request.url, { method: 'GET', headers: request.headers });
+    return await GET(req2, { params });
+  } catch (error) {
+    console.error('[Quotation PDF API] POST (issue SO) Error:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการออกใบสั่งขาย' }, { status: 500 });
   }
 }

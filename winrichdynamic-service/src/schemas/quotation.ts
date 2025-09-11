@@ -113,6 +113,8 @@ export const updateQuotationSchema = createQuotationSchema.partial().extend({
   respondedAt: z.string().optional().transform((str: string | undefined) => str ? new Date(str) : undefined),
   responseNotes: z.string().max(1000, 'หมายเหตุการตอบกลับต้องมีความยาวไม่เกิน 1000 ตัวอักษร').optional().or(z.literal('')),
   convertedToOrder: z.string().optional().or(z.literal('')),
+  // บังคับหมายเหตุเมื่อแก้ไข
+  remark: z.string().min(1, 'กรุณาระบุหมายเหตุการแก้ไข').max(1000, 'หมายเหตุต้องไม่เกิน 1000 ตัวอักษร'),
 });
 
 // Schema สำหรับการค้นหาใบเสนอราคา
@@ -146,6 +148,12 @@ export const convertToOrderSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Schema สำหรับการทำเครื่องหมายออกใบสั่งขายและสร้าง PDF
+export const issueSalesOrderSchema = z.object({
+  salesOrderNumber: z.string().min(1, 'กรุณาระบุเลขที่ใบสั่งขาย'),
+  remark: z.string().min(1, 'กรุณาระบุหมายเหตุ').max(1000, 'หมายเหตุต้องไม่เกิน 1000 ตัวอักษร'),
+});
+
 // Type definitions
 export type CreateQuotationInput = z.infer<typeof createQuotationSchema>;
 export type UpdateQuotationInput = z.infer<typeof updateQuotationSchema>;
@@ -153,4 +161,5 @@ export type SearchQuotationInput = z.infer<typeof searchQuotationSchema>;
 export type UpdateQuotationStatusInput = z.infer<typeof updateQuotationStatusSchema>;
 export type SendQuotationInput = z.infer<typeof sendQuotationSchema>;
 export type ConvertToOrderInput = z.infer<typeof convertToOrderSchema>;
+export type IssueSalesOrderInput = z.infer<typeof issueSalesOrderSchema>;
 export type QuotationItemInput = z.infer<typeof quotationItemSchema>;

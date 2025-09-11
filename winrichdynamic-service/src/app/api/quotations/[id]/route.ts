@@ -3,6 +3,7 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
+import { updateQuotationSchema } from '@/schemas/quotation';
 
 // GET: ดึงข้อมูลใบเสนอราคาเดียว
 export async function GET(
@@ -55,7 +56,13 @@ export async function PUT(
   try {
     await connectDB();
     
-    const body = await request.json();
+    const raw = await request.json();
+    // Validate + บังคับหมายเหตุ
+    const parsed = updateQuotationSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
+    }
+    const body = parsed.data as any;
     
     const resolvedParams = await params;
     // RBAC: ตรวจสิทธิ์เป็นเจ้าของก่อน (เฉพาะ Seller)
@@ -76,9 +83,33 @@ export async function PUT(
       }
     } catch {}
 
+    // เตรียมบันทึกประวัติการแก้ไข
+    const changedFields = Object.keys({ ...body });
+    const editLog = {
+      editedAt: new Date(),
+      editedBy: undefined as string | undefined,
+      remark: String(body.remark),
+      changedFields: changedFields.filter(k => k !== 'remark'),
+    };
+
+    // ดึง token เพื่อเก็บผู้แก้ไข
+    try {
+      const authHeader = request.headers.get('authorization');
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        if (payload?.adminId) editLog.editedBy = String(payload.adminId);
+      }
+    } catch {}
+
+    // ไม่เก็บ remark ในตัวเอกสารหลัก
+    delete (body as any).remark;
+
     const quotation = await Quotation.findByIdAndUpdate(
       resolvedParams.id,
-      body,
+      { $set: body, $push: { editHistory: editLog } },
       { new: true, runValidators: true }
     ).lean();
     
