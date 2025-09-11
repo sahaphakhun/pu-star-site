@@ -874,6 +874,33 @@ async function updateExistingAIOrder(
       updatedAt: updatedOrder.updatedAt
     });
 
+    // ส่ง SMS แจ้งเตือนแอดมินเมื่อ AI Order ถูกอัปเดตเป็นสถานะ completed
+    if (updatedOrder.order_status === 'completed') {
+      try {
+        const { sendSMS } = await import('@/app/notification');
+        const AdminPhone = (await import('@/models/AdminPhone')).default;
+        
+        const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
+        if (adminList && adminList.length > 0) {
+          const customerName = updatedOrder.customer.name || 'ไม่ระบุ';
+          const totalAmount = updatedOrder.pricing.total || 0;
+          const itemCount = updatedOrder.items.length;
+          
+          const smsMsg = `🚨 AI Order Completed!\n\nลูกค้า: ${customerName}\nจำนวนสินค้า: ${itemCount} รายการ\nยอดรวม: ฿${totalAmount.toLocaleString()}\nPSID: ${updatedOrder.psid}\n\nกรุณาตรวจสอบในระบบ AI Orders`;
+          
+          await Promise.allSettled(
+            adminList.map((a: any) => sendSMS(a.phoneNumber, smsMsg))
+          );
+          
+          console.log(`[AI Order SMS] ส่ง SMS แจ้งเตือน AI Order completed ไปยังแอดมิน ${adminList.length} คน`);
+        } else {
+          console.warn('[AI Order SMS] ไม่พบเบอร์โทรแอดมินในระบบ');
+        }
+      } catch (smsError) {
+        console.error('[AI Order SMS] ❌ Error sending SMS notification:', smsError);
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('[AI Order Update] ❌ Error updating order:', {
@@ -1098,6 +1125,33 @@ export async function saveAIOrder(
       totalAmount: savedOrder.pricing.total,
       createdAt: savedOrder.createdAt
     });
+    
+    // ส่ง SMS แจ้งเตือนแอดมินเมื่อ AI Order มีสถานะ completed
+    if (savedOrder.order_status === 'completed') {
+      try {
+        const { sendSMS } = await import('@/app/notification');
+        const AdminPhone = (await import('@/models/AdminPhone')).default;
+        
+        const adminList = await AdminPhone.find({}, 'phoneNumber').lean();
+        if (adminList && adminList.length > 0) {
+          const customerName = savedOrder.customer.name || 'ไม่ระบุ';
+          const totalAmount = savedOrder.pricing.total || 0;
+          const itemCount = savedOrder.items.length;
+          
+          const smsMsg = `🚨 AI Order Completed!\n\nลูกค้า: ${customerName}\nจำนวนสินค้า: ${itemCount} รายการ\nยอดรวม: ฿${totalAmount.toLocaleString()}\nPSID: ${psid}\n\nกรุณาตรวจสอบในระบบ AI Orders`;
+          
+          await Promise.allSettled(
+            adminList.map((a: any) => sendSMS(a.phoneNumber, smsMsg))
+          );
+          
+          console.log(`[AI Order SMS] ส่ง SMS แจ้งเตือน AI Order completed ไปยังแอดมิน ${adminList.length} คน`);
+        } else {
+          console.warn('[AI Order SMS] ไม่พบเบอร์โทรแอดมินในระบบ');
+        }
+      } catch (smsError) {
+        console.error('[AI Order SMS] ❌ Error sending SMS notification:', smsError);
+      }
+    }
     
     return true;
   } catch (error) {

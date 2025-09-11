@@ -293,6 +293,29 @@ export default function AIOrdersPage() {
           newStatus,
           updatedAt: result.data.updatedAt
         });
+
+        // ส่ง SMS แจ้งเตือนแอดมินเมื่อสถานะเปลี่ยนเป็น completed
+        if (newStatus === 'completed') {
+          try {
+            const response = await fetch('/api/notification/sms', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: `🚨 AI Order Completed!\n\nOrder ID: #${aiOrderId.slice(-8).toUpperCase()}\nสถานะ: ${newStatus}\nอัปเดตเมื่อ: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}\n\nกรุณาตรวจสอบในระบบ AI Orders`
+              }),
+            });
+
+            if (response.ok) {
+              console.log('✅ SMS notification sent for completed AI Order');
+            } else {
+              console.warn('⚠️ Failed to send SMS notification');
+            }
+          } catch (smsError) {
+            console.error('❌ Error sending SMS notification:', smsError);
+          }
+        }
       } else {
         console.error('❌ Failed to update AI Order status:', result.error);
       }
@@ -1614,8 +1637,8 @@ export default function AIOrdersPage() {
                                 {option.values
                                   .filter((value: any) => value.isAvailable !== false)
                                   .map((value: any, valueIndex: number) => (
-                                    <option key={valueIndex} value={value.label}>
-                                      {value.label}
+                                    <option key={valueIndex} value={value.label || String(value)}>
+                                      {value.label || String(value)}
                                     </option>
                                   ))
                                 }
