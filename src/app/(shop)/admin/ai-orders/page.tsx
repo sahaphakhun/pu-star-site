@@ -1088,11 +1088,16 @@ export default function AIOrdersPage() {
                                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   >
                                     <option value="">เลือก{option.name}</option>
-                                    {option.values.map((value: string, valueIndex: number) => (
-                                      <option key={valueIndex} value={value}>
-                                        {value}
-                                      </option>
-                                    ))}
+                                    {option.values.map((value: any, valueIndex: number) => {
+                                      // Handle both string values and object values
+                                      const displayValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                      const optionValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                      return (
+                                        <option key={valueIndex} value={optionValue}>
+                                          {displayValue}
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                 </div>
                               ))}
@@ -1508,11 +1513,16 @@ export default function AIOrdersPage() {
                                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   >
                                     <option value="">เลือก{option.name}</option>
-                                    {option.values.map((value: string, valueIndex: number) => (
-                                      <option key={valueIndex} value={value}>
-                                        {value}
-                                      </option>
-                                    ))}
+                                    {option.values.map((value: any, valueIndex: number) => {
+                                      // Handle both string values and object values
+                                      const displayValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                      const optionValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                      return (
+                                        <option key={valueIndex} value={optionValue}>
+                                          {displayValue}
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                 </div>
                               ))}
@@ -1636,11 +1646,16 @@ export default function AIOrdersPage() {
                                 <option value="">เลือก{option.name}...</option>
                                 {option.values
                                   .filter((value: any) => value.isAvailable !== false)
-                                  .map((value: any, valueIndex: number) => (
-                                    <option key={valueIndex} value={value.label || String(value)}>
-                                      {value.label || String(value)}
-                                    </option>
-                                  ))
+                                  .map((value: any, valueIndex: number) => {
+                                    // Handle both string values and object values
+                                    const displayValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                    const optionValue = typeof value === 'string' ? value : (value.label || value.value || String(value));
+                                    return (
+                                      <option key={valueIndex} value={optionValue}>
+                                        {displayValue}
+                                      </option>
+                                    );
+                                  })
                                 }
                               </select>
                             </div>
