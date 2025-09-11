@@ -341,11 +341,12 @@ export default function AIOrdersPage() {
         const selectedUnit = getSelectedUnit(product, mapping.unitIndex || 0);
         return {
           productId: mapping.productId,
+          name: product.name,
+          price: selectedUnit.price,
           quantity: mapping.quantity,
-          selectedOptions: mapping.selectedOptions,
-          discount: mapping.discount,
-          unitPrice: selectedUnit.price,
-          totalPrice: selectedUnit.price * mapping.quantity - mapping.discount
+          selectedOptions: mapping.selectedOptions || {},
+          unitLabel: selectedUnit.label,
+          unitPrice: selectedUnit.price
         };
       }).filter(item => item !== null);
 
@@ -359,15 +360,17 @@ export default function AIOrdersPage() {
         customerPhone: aiOrder.customer.phone || 'ไม่ระบุ',
         customerAddress: aiOrder.customer.address || 'ไม่ระบุ',
         items: orderItems,
-        subtotal: orderItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0),
+        subtotal: orderItems.reduce((sum, item) => sum + ((item?.price || 0) * (item?.quantity || 0)), 0),
         shippingFee: aiOrder.pricing.shipping_fee || 0,
-        discount: orderItems.reduce((sum, item) => sum + (item?.discount || 0), 0),
-        totalAmount: orderItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0) + (aiOrder.pricing.shipping_fee || 0),
+        discount: 0, // ไม่มีส่วนลดในระดับรายการ
+        totalAmount: orderItems.reduce((sum, item) => sum + ((item?.price || 0) * (item?.quantity || 0)), 0) + (aiOrder.pricing.shipping_fee || 0),
         paymentMethod: 'COD',
         status: 'pending',
         source: 'ai-order',
         aiOrderId: aiOrder._id
       };
+
+      console.log('Order data being sent:', JSON.stringify(orderData, null, 2));
 
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -398,8 +401,8 @@ export default function AIOrdersPage() {
         
         alert(`สร้างออเดอร์จริงสำเร็จ! ออเดอร์ #${result.data._id.slice(-8).toUpperCase()}`);
       } else {
-        console.error('❌ Failed to create real order:', result.error);
-        alert('เกิดข้อผิดพลาดในการสร้างออเดอร์จริง');
+        console.error('❌ Failed to create real order:', result);
+        alert(`เกิดข้อผิดพลาดในการสร้างออเดอร์จริง: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Error creating real order:', error);
@@ -489,19 +492,9 @@ export default function AIOrdersPage() {
           name: product.name || item.name,
           price: selectedUnit.price,
           quantity: mapping.quantity,
-          unit: selectedUnit.label,
-          multiplier: selectedUnit.multiplier || 1,
-          variant: {
-            ...item.variant,
-            selectedOptions: mapping.selectedOptions || {}
-          },
-          note: item.note,
-          originalAIItem: {
-            name: item.name,
-            qty: item.qty,
-            variant: item.variant,
-            note: item.note
-          }
+          selectedOptions: mapping.selectedOptions || {},
+          unitLabel: selectedUnit.label,
+          unitPrice: selectedUnit.price
         };
       });
 
