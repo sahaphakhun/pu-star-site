@@ -1,31 +1,3 @@
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import PipelineStage from '@/models/PipelineStage';
-
-const DEFAULT_STAGES = [
-  { name: 'New', order: 0, color: '#111827', probability: 10, isDefault: true },
-  { name: 'Qualified', order: 1, color: '#2563eb', probability: 25, isDefault: true },
-  { name: 'Proposal', order: 2, color: '#7c3aed', probability: 50, isDefault: true },
-  { name: 'Negotiation', order: 3, color: '#d97706', probability: 70, isDefault: true },
-  { name: 'Won', order: 4, color: '#059669', probability: 100, isDefault: true },
-  { name: 'Lost', order: 5, color: '#dc2626', probability: 0, isDefault: true },
-];
-
-export async function GET() {
-  try {
-    await connectDB();
-    let stages = await PipelineStage.find().sort({ order: 1 }).lean();
-    if (!stages.length) {
-      await PipelineStage.insertMany(DEFAULT_STAGES);
-      stages = await PipelineStage.find().sort({ order: 1 }).lean();
-    }
-    return NextResponse.json(stages);
-  } catch (err) {
-    console.error('[PipelineStages] GET error', err);
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import PipelineStage from '@/models/PipelineStage';
