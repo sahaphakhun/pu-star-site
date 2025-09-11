@@ -5,7 +5,7 @@ export type DealApprovalStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
 export interface IDeal extends Document {
   title: string;
-  customerId: string; // อ้างอิง Customer._id
+  customerId?: string; // อ้างอิง Customer._id (optional at creation)
   customerName?: string;
   amount: number; // มูลค่าดีล (รวม VAT หรือไม่ ปล่อยให้ business ตีความ แต่เก็บเป็นตัวเลข)
   currency?: string; // THB เป็นต้น

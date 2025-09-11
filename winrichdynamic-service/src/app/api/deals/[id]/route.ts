@@ -1,3 +1,46 @@
+import { NextResponse } from 'next/server';
+import * as jose from 'jose';
+import { cookies } from 'next/headers';
+import connectDB from '@/lib/mongodb';
+import Deal from '@/models/Deal';
+import { updateDealStageSchema } from '@/schemas/deal';
+
+// PATCH /api/deals/:id  { stageId }
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await connectDB();
+    const { id } = await params;
+    const body = await request.json();
+    const parsed = updateDealStageSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid data', details: parsed.error.issues }, { status: 400 });
+    }
+    // RBAC: if seller, ensure ownership
+    let ownershipFilter: Record<string, any> = { _id: id };
+    try {
+      const authHeader = (request.headers as any).get?.('authorization') as string | null;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+      const cookieToken = (await cookies()).get('b2b_token')?.value;
+      const token = bearer || cookieToken;
+      if (token) {
+        const payload: any = jose.decodeJwt(token);
+        const roleLevel = payload?.roleLevel as number | undefined;
+        const adminId = payload?.adminId as string | undefined;
+        if (roleLevel && roleLevel >= 5 && adminId) {
+          ownershipFilter.ownerId = adminId;
+        }
+      }
+    } catch {}
+
+    const updated = await Deal.findOneAndUpdate(ownershipFilter, { stageId: parsed.data.stageId }, { new: true }).lean();
+    if (!updated) return NextResponse.json({ error: 'ไม่พบดีล' }, { status: 404 });
+    return NextResponse.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('[Deals] PATCH error', err);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Deal from '@/models/Deal';

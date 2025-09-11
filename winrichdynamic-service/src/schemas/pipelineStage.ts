@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 export const createPipelineStageSchema = z.object({
+  name: z.string().min(1),
+  order: z.number().int().nonnegative(),
+  color: z.string().optional(),
+  probability: z.number().int().min(0).max(100).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+import { z } from 'zod';
+
+export const createPipelineStageSchema = z.object({
   name: z.string().min(1).max(100),
   order: z.number().min(0),
   color: z.string().optional(),

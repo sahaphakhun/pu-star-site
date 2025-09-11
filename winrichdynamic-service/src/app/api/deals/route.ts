@@ -1,3 +1,5 @@
+// Removed duplicated legacy block; file below provides the single implementation
+
 import { NextRequest, NextResponse } from 'next/server';
 import * as jose from 'jose';
 import { cookies } from 'next/headers';

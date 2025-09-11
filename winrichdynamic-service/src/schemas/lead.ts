@@ -1,5 +1,32 @@
 import { z } from 'zod';
 
+export const createLeadSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  company: z.string().optional(),
+  source: z.enum(['facebook', 'line', 'website', 'referral', 'other']).default('other'),
+  ownerId: z.string().optional(),
+});
+
+export const searchLeadSchema = z.object({
+  q: z.string().optional(),
+  status: z.enum(['new', 'qualified', 'disqualified', 'converted']).optional(),
+  source: z.enum(['facebook', 'line', 'website', 'referral', 'other']).optional(),
+  ownerId: z.string().optional(),
+  page: z.number().int().positive().default(1),
+  limit: z.number().int().positive().max(100).default(20),
+});
+
+export const convertLeadSchema = z.object({
+  // MVP: อนุญาตว่างเพื่อใช้ค่าจาก Lead โดยตรง
+  title: z.string().min(1).optional(),
+  amount: z.number().nonnegative().default(0),
+  stageId: z.string().optional(),
+});
+
+import { z } from 'zod';
+
 const emptyToUndefined = z
   .string()
   .transform((val) => (val?.trim() === '' ? undefined : val))

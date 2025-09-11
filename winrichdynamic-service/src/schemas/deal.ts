@@ -1,5 +1,30 @@
 import { z } from 'zod';
 
+export const searchDealSchema = z.object({
+  q: z.string().optional(),
+  team: z.string().optional(), // reserved for future
+  ownerId: z.string().optional(),
+  stageId: z.string().optional(),
+  status: z.enum(['open', 'won', 'lost']).optional(),
+  page: z.number().int().positive().default(1),
+  limit: z.number().int().positive().max(100).default(50),
+});
+
+export const updateDealStageSchema = z.object({
+  stageId: z.string().min(1),
+});
+
+export const createDealSchema = z.object({
+  title: z.string().min(1),
+  customerId: z.string().optional(),
+  customerName: z.string().optional(),
+  amount: z.number().nonnegative().default(0),
+  stageId: z.string().min(1),
+  ownerId: z.string().optional(),
+});
+
+import { z } from 'zod';
+
 export const createDealSchema = z.object({
   title: z.string().min(2).max(200),
   customerId: z.string().min(1),
