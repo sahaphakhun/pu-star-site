@@ -87,6 +87,13 @@ export default function AIOrdersPage() {
     errors: number;
   } | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<{ [key: string]: boolean }>({});
+  
+  // New state for filtering and sorting
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // all, draft, completed, etc.
+  const [dateFilter, setDateFilter] = useState<string>('all'); // all, today, yesterday, week
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = newest first
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact'); // compact or detailed view
+  const [groupSimilar, setGroupSimilar] = useState<boolean>(true); // group similar orders
 
   // Helper function to extract pricing from AI response
   const extractPricingFromResponse = (aiResponse: string) => {
@@ -137,7 +144,7 @@ export default function AIOrdersPage() {
   // Toggle message expansion
   const toggleMessageExpansion = (orderId: string, messageType: 'user' | 'ai') => {
     const key = `${orderId}-${messageType}`;
-    setExpandedMessages(prev => ({
+    setExpandedMessages((prev: any) => ({
       ...prev,
       [key]: !prev[key]
     }));
@@ -147,7 +154,7 @@ export default function AIOrdersPage() {
   const handleProductMapping = (aiOrderId: string, itemIndex: number, productId: string) => {
     if (!productId) {
       // Clear mapping if no product selected
-      setProductMapping(prev => {
+      setProductMapping((prev: any) => {
         const updated = { ...prev };
         if (updated[aiOrderId]) {
           delete updated[aiOrderId][itemIndex];
@@ -160,10 +167,10 @@ export default function AIOrdersPage() {
       return;
     }
 
-    const aiOrder = aiOrders.find(order => order._id === aiOrderId);
+    const aiOrder = aiOrders.find((order: any) => order._id === aiOrderId);
     const originalQuantity = aiOrder?.items[itemIndex]?.qty || 1;
 
-    setProductMapping(prev => ({
+    setProductMapping((prev: any) => ({
       ...prev,
       [aiOrderId]: {
         ...prev[aiOrderId],
@@ -177,7 +184,7 @@ export default function AIOrdersPage() {
   };
 
   const handleUnitSelection = (aiOrderId: string, itemIndex: number, unitIndex: number) => {
-    setProductMapping(prev => {
+    setProductMapping((prev: any) => {
       if (!prev[aiOrderId]?.[itemIndex]) return prev;
       return {
         ...prev,
@@ -195,7 +202,7 @@ export default function AIOrdersPage() {
   const handleQuantityChange = (aiOrderId: string, itemIndex: number, quantity: number) => {
     if (quantity < 1) return; // Minimum quantity is 1
     
-    setProductMapping(prev => {
+    setProductMapping((prev: any) => {
       if (!prev[aiOrderId]?.[itemIndex]) return prev;
       return {
         ...prev,
@@ -211,7 +218,7 @@ export default function AIOrdersPage() {
   };
 
   const handleOptionSelection = (aiOrderId: string, itemIndex: number, optionName: string, optionValue: string) => {
-    setProductMapping(prev => {
+    setProductMapping((prev: any) => {
       if (!prev[aiOrderId]?.[itemIndex]) return prev;
       return {
         ...prev,
@@ -234,9 +241,9 @@ export default function AIOrdersPage() {
       console.warn('getProductById: Invalid productId or empty products array', { productId, productsLength: products?.length });
       return null;
     }
-    const product = products.find(p => p._id === productId);
+    const product = products.find((p: any) => p._id === productId);
     if (!product) {
-      console.warn('getProductById: Product not found', { productId, availableIds: products.map(p => p._id) });
+      console.warn('getProductById: Product not found', { productId, availableIds: products.map((p: any) => p._id) });
     }
     return product;
   };
@@ -303,7 +310,7 @@ export default function AIOrdersPage() {
       }
     }
 
-    setConvertingToOrder(prev => ({ ...prev, [aiOrder._id]: true }));
+    setConvertingToOrder((prev: any) => ({ ...prev, [aiOrder._id]: true }));
 
     try {
       const mappedItems = productMapping[aiOrder._id] || {};
@@ -382,7 +389,7 @@ export default function AIOrdersPage() {
         await fetchAIOrders();
         
         // Clear the product mapping for this order
-        setProductMapping(prev => {
+        setProductMapping((prev: any) => {
           const updated = { ...prev };
           delete updated[aiOrder._id];
           return updated;
@@ -394,7 +401,7 @@ export default function AIOrdersPage() {
       console.error('Error converting to order:', error);
       alert('เกิดข้อผิดพลาดในการแปลงเป็น Order');
     } finally {
-      setConvertingToOrder(prev => ({ ...prev, [aiOrder._id]: false }));
+      setConvertingToOrder((prev: any) => ({ ...prev, [aiOrder._id]: false }));
     }
   };
 
@@ -412,7 +419,8 @@ export default function AIOrdersPage() {
 
   const fetchAIOrders = async () => {
     try {
-      const response = await fetch('/api/ai-orders?status=completed'); // Only fetch completed orders
+      // Fetch all AI orders, not just completed ones
+      const response = await fetch('/api/ai-orders');
       const data = await response.json();
       if (data.success) {
         setAiOrders(data.data.orders);
@@ -456,7 +464,7 @@ export default function AIOrdersPage() {
   };
 
   const handleMapOrder = async (aiOrderId: string, orderId: string) => {
-    setSaving(prev => ({ ...prev, [aiOrderId]: true }));
+    setSaving((prev: any) => ({ ...prev, [aiOrderId]: true }));
     
     try {
       const response = await fetch('/api/ai-orders/map', {
@@ -474,12 +482,12 @@ export default function AIOrdersPage() {
       const data = await response.json();
       if (data.success) {
         // อัปเดตสถานะใน UI
-        setAiOrders(prev => prev.map(order => 
+        setAiOrders((prev: any) => prev.map((order: any) => 
           order._id === aiOrderId 
             ? { ...order, mappedOrderId: orderId, mappedAt: new Date().toISOString(), mappedBy: user?.name || 'Admin' }
             : order
         ));
-        setMapping(prev => ({ ...prev, [aiOrderId]: '' }));
+        setMapping((prev: any) => ({ ...prev, [aiOrderId]: '' }));
       } else {
         alert('เกิดข้อผิดพลาดในการแมพ: ' + data.error);
       }
@@ -487,12 +495,12 @@ export default function AIOrdersPage() {
       console.error('Error mapping order:', error);
       alert('เกิดข้อผิดพลาดในการแมพ');
     } finally {
-      setSaving(prev => ({ ...prev, [aiOrderId]: false }));
+      setSaving((prev: any) => ({ ...prev, [aiOrderId]: false }));
     }
   };
 
   const handleUnmapOrder = async (aiOrderId: string) => {
-    setSaving(prev => ({ ...prev, [aiOrderId]: true }));
+    setSaving((prev: any) => ({ ...prev, [aiOrderId]: true }));
     
     try {
       const response = await fetch(`/api/ai-orders/map?aiOrderId=${aiOrderId}`, {
@@ -502,7 +510,7 @@ export default function AIOrdersPage() {
       const data = await response.json();
       if (data.success) {
         // อัปเดตสถานะใน UI
-        setAiOrders(prev => prev.map(order => 
+        setAiOrders((prev: any) => prev.map((order: any) => 
           order._id === aiOrderId 
             ? { ...order, mappedOrderId: undefined, mappedAt: undefined, mappedBy: undefined }
             : order
@@ -514,7 +522,7 @@ export default function AIOrdersPage() {
       console.error('Error unmapping order:', error);
       alert('เกิดข้อผิดพลาดในการยกเลิกแมพ');
     } finally {
-      setSaving(prev => ({ ...prev, [aiOrderId]: false }));
+      setSaving((prev: any) => ({ ...prev, [aiOrderId]: false }));
     }
   };
 
@@ -562,6 +570,123 @@ export default function AIOrdersPage() {
     });
   };
 
+  // Helper function to check if date is today
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  // Helper function to check if date is yesterday
+  const isYesterday = (dateString: string) => {
+    const date = new Date(dateString);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return date.toDateString() === yesterday.toDateString();
+  };
+
+  // Helper function to check if date is within last week
+  const isWithinLastWeek = (dateString: string) => {
+    const date = new Date(dateString);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return date >= weekAgo;
+  };
+
+  // Helper function to check if orders are similar
+  const areOrdersSimilar = (order1: any, order2: any) => {
+    // Check if same PSID
+    if (order1.psid !== order2.psid) return false;
+    
+    // Check if same day
+    const date1 = new Date(order1.createdAt).toDateString();
+    const date2 = new Date(order2.createdAt).toDateString();
+    if (date1 !== date2) return false;
+    
+    // Check if same customer info
+    const customer1 = order1.customer;
+    const customer2 = order2.customer;
+    if (customer1.name !== customer2.name || customer1.phone !== customer2.phone) return false;
+    
+    // Check if same items (same names and quantities)
+    if (order1.items.length !== order2.items.length) return false;
+    
+    const items1 = order1.items.map((item: any) => `${item.name}-${item.qty}`).sort();
+    const items2 = order2.items.map((item: any) => `${item.name}-${item.qty}`).sort();
+    
+    return JSON.stringify(items1) === JSON.stringify(items2);
+  };
+
+  // Group similar orders
+  const groupSimilarOrders = (orders: any[]) => {
+    if (!groupSimilar) return orders;
+    
+    const groups: any[] = [];
+    const processed = new Set<string>();
+    
+    orders.forEach(order => {
+      if (processed.has(order._id)) return;
+      
+      const group = [order];
+      processed.add(order._id);
+      
+      // Find similar orders
+      orders.forEach(otherOrder => {
+        if (processed.has(otherOrder._id)) return;
+        if (areOrdersSimilar(order, otherOrder)) {
+          group.push(otherOrder);
+          processed.add(otherOrder._id);
+        }
+      });
+      
+      groups.push({
+        id: `group-${order._id}`,
+        orders: group,
+        isGroup: group.length > 1,
+        representative: order, // Use first order as representative
+        count: group.length
+      });
+    });
+    
+    return groups;
+  };
+
+  // Filter and sort AI orders
+  const getFilteredAndSortedAIOrders = () => {
+    let filtered = [...aiOrders];
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.order_status === statusFilter);
+    }
+
+    // Filter by date
+    if (dateFilter !== 'all') {
+      filtered = filtered.filter(order => {
+        switch (dateFilter) {
+          case 'today':
+            return isToday(order.createdAt);
+          case 'yesterday':
+            return isYesterday(order.createdAt);
+          case 'week':
+            return isWithinLastWeek(order.createdAt);
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort by creation date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+    // Group similar orders if enabled
+    return groupSimilarOrders(filtered);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -571,6 +696,123 @@ export default function AIOrdersPage() {
       case 'canceled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Compact view component
+  const CompactOrderCard = ({ orderGroup }: { orderGroup: any }) => {
+    const order = orderGroup.representative || orderGroup;
+    const isGroup = orderGroup.isGroup;
+    const count = orderGroup.count || 1;
+    
+    return (
+      <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                AI Order #{order._id.slice(-8).toUpperCase()}
+              </h3>
+              {isGroup && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                  รวม {count} ออเดอร์
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span>PSID: {order.psid}</span>
+              <span>สร้าง: {formatDate(order.createdAt)}</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.order_status)}`}>
+                {order.order_status}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-gray-900">
+              {order.pricing.total.toLocaleString()} บาท
+            </div>
+            <div className="text-sm text-gray-500">
+              {order.items.length} รายการ
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-gray-700">ลูกค้า:</span>
+            <div className="text-gray-600">
+              {order.customer.name || 'ไม่ระบุ'}
+            </div>
+            <div className="text-gray-500">
+              {order.customer.phone || 'ไม่ระบุ'}
+            </div>
+          </div>
+          
+          <div>
+            <span className="font-medium text-gray-700">สินค้า:</span>
+            <div className="text-gray-600">
+              {order.items.slice(0, 2).map((item: any, index: number) => (
+                <div key={index}>
+                  {item.name} x{item.qty}
+                </div>
+              ))}
+              {order.items.length > 2 && (
+                <div className="text-gray-500">
+                  +{order.items.length - 2} รายการอื่น
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => {
+                // Toggle detailed view for this order
+                setExpandedMessages(prev => ({
+                  ...prev,
+                  [order._id]: !prev[order._id]
+                }));
+              }}
+              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+            >
+              {expandedMessages[order._id] ? 'ซ่อน' : 'ดูรายละเอียด'}
+            </button>
+          </div>
+        </div>
+        
+        {/* Expanded details */}
+        {expandedMessages[order._id] && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              <div className="mb-2">
+                <span className="font-medium">ที่อยู่:</span> {order.customer.address || 'ไม่ระบุ'}
+              </div>
+              <div className="mb-2">
+                <span className="font-medium">รายการสินค้าทั้งหมด:</span>
+                <ul className="list-disc list-inside ml-4">
+                  {order.items.map((item: any, index: number) => (
+                    <li key={index}>
+                      {item.name} x{item.qty}
+                      {item.variant.color && ` (สี: ${item.variant.color})`}
+                      {item.variant.size && ` (ขนาด: ${item.variant.size})`}
+                      {item.note && ` (หมายเหตุ: ${item.note})`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mb-2">
+                <span className="font-medium">ราคา:</span>
+                <div className="ml-4">
+                  <div>ยอดสินค้า: {order.pricing.subtotal.toLocaleString()} บาท</div>
+                  <div>ส่วนลด: {order.pricing.discount.toLocaleString()} บาท</div>
+                  <div>ค่าจัดส่ง: {order.pricing.shipping_fee.toLocaleString()} บาท</div>
+                  <div className="font-bold">รวม: {order.pricing.total.toLocaleString()} บาท</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Show loading while auth is loading or data is loading
@@ -660,14 +902,106 @@ export default function AIOrdersPage() {
 
       {/* Filter Section */}
       <div className="bg-white rounded-lg shadow-md p-6 border mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">📈 ข้อมูล AI Orders (เสร็จสิ้น)</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">📈 ข้อมูล AI Orders</h2>
+        
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              สถานะ
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">ทั้งหมด</option>
+              <option value="draft">ร่าง</option>
+              <option value="collecting_info">กำลังรวบรวมข้อมูล</option>
+              <option value="pending_confirmation">รอยืนยัน</option>
+              <option value="completed">เสร็จสิ้น</option>
+              <option value="canceled">ยกเลิก</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              วันที่
+            </label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">ทั้งหมด</option>
+              <option value="today">วันนี้</option>
+              <option value="yesterday">เมื่อวาน</option>
+              <option value="week">7 วันล่าสุด</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              เรียงลำดับ
+            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="desc">ใหม่ล่าสุด</option>
+              <option value="asc">เก่าที่สุด</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              แสดงผล
+            </label>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as 'compact' | 'detailed')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="compact">แบบย่อ</option>
+              <option value="detailed">แบบละเอียด</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              รวมออเดอร์ซ้ำ
+            </label>
+            <select
+              value={groupSimilar ? 'yes' : 'no'}
+              onChange={(e) => setGroupSimilar(e.target.value === 'yes')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="yes">รวม</option>
+              <option value="no">ไม่รวม</option>
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setStatusFilter('all');
+                setDateFilter('all');
+                setSortOrder('desc');
+                setViewMode('compact');
+                setGroupSimilar(true);
+              }}
+              className="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            >
+              รีเซ็ต
+            </button>
+          </div>
+        </div>
+        
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="px-3 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
-              ✓ แสดงเฉพาะ AI Orders ที่เสร็จสิ้นแล้ว
-            </div>
-            <div className="text-sm text-gray-600">
-              ทั้งหมด: {aiOrders.length} รายการ
+            <div className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium">
+              📊 แสดง: {getFilteredAndSortedAIOrders().length} จาก {aiOrders.length} รายการ
             </div>
             <div className="text-sm text-blue-600">
               📦 สินค้าในระบบ: {products.length} รายการ
@@ -678,50 +1012,45 @@ export default function AIOrdersPage() {
           </div>
         </div>
       </div>
-      <div className="grid gap-6">
-        {aiOrders.map((aiOrder) => (
-          <div key={aiOrder._id} className="bg-white rounded-lg shadow-md p-6 border">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  AI Order #{aiOrder._id.slice(-8).toUpperCase()}
-                </h3>
-                <p className="text-sm text-gray-500">PSID: {aiOrder.psid}</p>
-                <p className="text-sm text-gray-500">สร้างเมื่อ: {formatDate(aiOrder.createdAt)}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
-                  {aiOrder.order_status}
-                </span>
-                {aiOrder.mappedOrderId && (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    แมพแล้ว
-                  </span>
-                )}
-              </div>
-            </div>
+      <div className="grid gap-4">
+        {getFilteredAndSortedAIOrders().map((orderGroup) => (
+          viewMode === 'compact' ? (
+            <CompactOrderCard key={orderGroup.id || orderGroup._id} orderGroup={orderGroup} />
+          ) : (
+            <DetailedOrderCard key={orderGroup.id || orderGroup._id} orderGroup={orderGroup} />
+          )
+        ))}
+      </div>
 
-            {/* ข้อมูลลูกค้า */}
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">ข้อมูลลูกค้า</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">ชื่อ:</span> {aiOrder.customer.name || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">โทรศัพท์:</span> {aiOrder.customer.phone || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">ที่อยู่:</span> {aiOrder.customer.address || 'ไม่ระบุ'}
-                </div>
-              </div>
+      {getFilteredAndSortedAIOrders().length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-500 text-lg">
+            {aiOrders.length === 0 
+              ? 'ไม่มี AI Orders ในระบบ' 
+              : 'ไม่พบ AI Orders ที่ตรงกับเงื่อนไขการกรอง'
+            }
+          </div>
+          {aiOrders.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setDateFilter('all');
+                  setSortOrder('desc');
+                  setViewMode('compact');
+                  setGroupSimilar(true);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                รีเซ็ตตัวกรอง
+              </button>
             </div>
-
-            {/* รายการสินค้า */}
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
-              <div className="space-y-3">
-                {aiOrder.items.map((item, index) => {
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
                   const mapping = productMapping[aiOrder._id]?.[index];
                   const mappedProduct = mapping ? getProductById(mapping.productId) : null;
                   const selectedUnit = mappedProduct ? getSelectedUnit(mappedProduct, mapping.unitIndex || 0) : null;
@@ -774,7 +1103,7 @@ export default function AIOrdersPage() {
                         >
                           <option value="">เลือกสินค้า...</option>
                           {products && products.length > 0 ? (
-                            products.map((product) => (
+                            products.map((product: any) => (
                               <option key={product._id} value={product._id}>
                                 {product.name} - {product.price?.toLocaleString() || '0'} บาท ({product.sku || 'No SKU'})
                               </option>
@@ -903,7 +1232,7 @@ export default function AIOrdersPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-gray-900">
-                      สถานะการแมพ: {aiOrder.items.filter((_, index) => productMapping[aiOrder._id]?.[index]?.productId).length}/{aiOrder.items.length} รายการ
+                      สถานะการแมพ: {aiOrder.items.filter((_: any, index: number) => productMapping[aiOrder._id]?.[index]?.productId).length}/{aiOrder.items.length} รายการ
                     </div>
                     {isAllItemsMapped(aiOrder) && (
                       <div className="text-sm text-green-600 font-medium mt-1">
@@ -1080,11 +1409,28 @@ export default function AIOrdersPage() {
         ))}
       </div>
 
-      {aiOrders.length === 0 && (
+      {getFilteredAndSortedAIOrders().length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-500 text-lg">
-            ไม่มี AI Orders ที่เสร็จสิ้นแล้ว
+            {aiOrders.length === 0 
+              ? 'ไม่มี AI Orders ในระบบ' 
+              : 'ไม่พบ AI Orders ที่ตรงกับเงื่อนไขการกรอง'
+            }
           </div>
+          {aiOrders.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setDateFilter('all');
+                  setSortOrder('desc');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                รีเซ็ตตัวกรอง
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

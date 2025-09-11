@@ -59,7 +59,12 @@ const AdminsPage: React.FC = () => {
       const adminsResult = await adminsResponse.json();
       
       if (adminsResult.success) {
-        setAdmins(adminsResult.data as Admin[]);
+        // กรองเฉพาะผู้ใช้ที่มีบทบาท seller, super_admin, sales_admin
+        const filteredAdmins = adminsResult.data.filter((admin: Admin) => {
+          const roleName = admin.role?.name?.toLowerCase() || '';
+          return ['seller', 'super admin', 'sales admin'].includes(roleName);
+        });
+        setAdmins(filteredAdmins);
       } else {
         toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
       }
@@ -155,17 +160,21 @@ const AdminsPage: React.FC = () => {
 
   const handleDeleteAdmin = async (adminId: string) => {
     const admin = admins.find(a => a._id === adminId);
-    if (typeof admin?.role === 'object' && admin?.role?.name === 'Super Admin') {
+    const roleName = admin?.role?.name || '';
+    
+    // ป้องกันการลบ Super Admin
+    if (roleName === 'Super Admin') {
       toast.error('ไม่สามารถลบ Super Admin ได้');
       return;
     }
 
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบแอดมินนี้?')) return;
+    if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบสมาชิก "${admin?.name}" (${roleName})?`)) return;
+    
     try {
       const res = await fetch(`/api/adminb2b/admins/${adminId}`, { method: 'DELETE' });
       const data = await res.json();
       if (!data?.success) throw new Error(data?.error || 'ลบไม่สำเร็จ');
-      toast.success('ลบผู้ใช้เรียบร้อยแล้ว');
+      toast.success('ลบสมาชิกเรียบร้อยแล้ว');
       await loadData();
     } catch (err: any) {
       toast.error(err?.message || 'เกิดข้อผิดพลาด');
@@ -305,13 +314,21 @@ const AdminsPage: React.FC = () => {
       <div className="bg-white rounded-lg border shadow-sm">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">รายการแอดมิน</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">รายการสมาชิกระบบ</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                จัดการผู้ใช้ที่มีบทบาท Seller, Sales Admin, และ Super Admin
+                <span className="ml-2 text-blue-600">
+                  (รวม {admins.length} คน)
+                </span>
+              </p>
+            </div>
             {!showCreateForm && !editingAdmin && (
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                เพิ่มผู้ใช้ใหม่
+                เพิ่มสมาชิกใหม่
               </button>
             )}
           </div>
@@ -385,10 +402,11 @@ const AdminsPage: React.FC = () => {
                       >
                         {admin.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                       </button>
-                      {(!admin.role || (typeof admin.role === 'object' ? admin.role.name !== 'Super Admin' : true)) && (
+                      {admin.role?.name !== 'Super Admin' && (
                         <button
                           onClick={() => handleDeleteAdmin(admin._id)}
                           className="text-red-600 hover:text-red-900"
+                          title="ลบสมาชิก"
                         >
                           ลบ
                         </button>
