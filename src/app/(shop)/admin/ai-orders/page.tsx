@@ -924,7 +924,20 @@ export default function AIOrdersPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">สินค้า:</span> {aiOrder.items.length} รายการ
+              {aiOrder.items.slice(0, 2).map((item: any, index: number) => (
+                <span key={index} className="ml-1">
+                  {item.name} ({item.qty})
+                  {item.variant?.color && <span className="text-xs text-gray-500"> - สี: {item.variant.color}</span>}
+                  {item.variant?.size && <span className="text-xs text-gray-500"> - ขนาด: {item.variant.size}</span>}
+                  {index < Math.min(aiOrder.items.length - 1, 1) && ', '}
+                </span>
+              ))}
+              {aiOrder.items.length > 2 && <span className="text-gray-500"> และอีก {aiOrder.items.length - 2} รายการ</span>}
+            </div>
+            
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-500">
               <div>
                 <span className="font-medium">ลูกค้า:</span> {aiOrder.customer.name || 'ไม่ระบุ'}
               </div>
@@ -934,17 +947,6 @@ export default function AIOrdersPage() {
               <div>
                 <span className="font-medium">เวลา:</span> {formatDate(aiOrder.createdAt)}
               </div>
-            </div>
-            
-            <div className="mt-2 text-sm text-gray-600">
-              <span className="font-medium">สินค้า:</span> {aiOrder.items.length} รายการ
-              {aiOrder.items.slice(0, 2).map((item: any, index: number) => (
-                <span key={index} className="ml-1">
-                  {item.name} ({item.qty})
-                  {index < Math.min(aiOrder.items.length - 1, 1) && ', '}
-                </span>
-              ))}
-              {aiOrder.items.length > 2 && <span className="text-gray-500"> และอีก {aiOrder.items.length - 2} รายการ</span>}
             </div>
             
             <div className="mt-2 text-sm">
@@ -1151,10 +1153,13 @@ export default function AIOrdersPage() {
                     return (
                       <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                         <div className="flex-1">
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-sm text-gray-600 ml-2">x{item.qty}</span>
-                          {item.variant.color && <span className="text-sm text-gray-500 ml-2">สี: {item.variant.color}</span>}
-                          {item.variant.size && <span className="text-sm text-gray-500 ml-2">ขนาด: {item.variant.size}</span>}
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-600">จำนวน: {item.qty}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {item.variant?.color && <span>🎨 สี: {item.variant.color} </span>}
+                            {item.variant?.size && <span>📏 ขนาด: {item.variant.size} </span>}
+                            {item.note && <span>📝 {item.note}</span>}
+                          </div>
                         </div>
                         <div className="text-sm">
                           {mappedProduct ? (
@@ -1422,21 +1427,6 @@ export default function AIOrdersPage() {
               </div>
             </div>
 
-            {/* ข้อมูลลูกค้า */}
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">ข้อมูลลูกค้า</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">ชื่อ:</span> {aiOrder.customer.name || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">โทรศัพท์:</span> {aiOrder.customer.phone || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">ที่อยู่:</span> {aiOrder.customer.address || 'ไม่ระบุ'}
-                </div>
-              </div>
-            </div>
 
             {/* การแมพสินค้า */}
             {mappingMode[aiOrder._id] && (
@@ -1587,7 +1577,7 @@ export default function AIOrdersPage() {
 
             {/* รายการสินค้า */}
             <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
+              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า</h4>
               <div className="space-y-3">
                 {aiOrder.items.map((item: any, index: number) => {
                   const mapping = productMapping[aiOrder._id]?.[index];
@@ -1600,13 +1590,21 @@ export default function AIOrdersPage() {
                         <div className="flex-1">
                           <div className="font-medium text-lg">{item.name}</div>
                           <div className="text-sm text-gray-600 mt-1">
-                            จำนวนเดิม: <span className="font-medium">{item.qty}</span>
-                            {item.variant.color && ` | สี: ${item.variant.color}`}
-                            {item.variant.size && ` | ขนาด: ${item.variant.size}`}
-                            {item.note && ` | หมายเหตุ: ${item.note}`}
+                            จำนวน: <span className="font-medium">{item.qty}</span>
                           </div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            SKU: {item.sku || 'ไม่มี SKU'}
+                          <div className="text-xs text-gray-500 mt-1 space-y-1">
+                            {item.variant?.color && (
+                              <div>🎨 สี: <span className="font-medium">{item.variant.color}</span></div>
+                            )}
+                            {item.variant?.size && (
+                              <div>📏 ขนาด: <span className="font-medium">{item.variant.size}</span></div>
+                            )}
+                            {item.note && (
+                              <div>📝 หมายเหตุ: <span className="font-medium">{item.note}</span></div>
+                            )}
+                            {item.sku && (
+                              <div>🏷️ SKU: <span className="font-medium">{item.sku}</span></div>
+                            )}
                           </div>
                         </div>
                         {mappedProduct ? (
@@ -1875,6 +1873,25 @@ export default function AIOrdersPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* ข้อมูลลูกค้า */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">ข้อมูลลูกค้า</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700">ชื่อ:</span> 
+                  <span className="ml-1 text-gray-600">{aiOrder.customer.name || 'ไม่ระบุ'}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">โทรศัพท์:</span> 
+                  <span className="ml-1 text-gray-600">{aiOrder.customer.phone || 'ไม่ระบุ'}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">ที่อยู่:</span> 
+                  <span className="ml-1 text-gray-600">{aiOrder.customer.address || 'ไม่ระบุ'}</span>
+                </div>
               </div>
             </div>
 
