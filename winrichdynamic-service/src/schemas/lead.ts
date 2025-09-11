@@ -1,16 +1,21 @@
 import { z } from 'zod';
 
+const emptyToUndefined = z
+  .string()
+  .transform((val) => (val?.trim() === '' ? undefined : val))
+  .optional();
+
 export const createLeadSchema = z.object({
   name: z.string().min(1).max(200),
-  phone: z.string().optional(),
-  email: z.string().email().optional(),
-  company: z.string().max(200).optional(),
+  phone: emptyToUndefined,
+  email: emptyToUndefined.pipe(z.string().email().optional()),
+  company: emptyToUndefined.pipe(z.string().max(200).optional()),
   source: z.enum(['facebook', 'line', 'website', 'referral', 'other']).optional().default('other'),
-  score: z.number().min(0).max(100).optional(),
+  score: z.coerce.number().min(0).max(100).optional(),
   status: z.enum(['new', 'qualified', 'disqualified', 'converted']).optional(),
-  notes: z.string().max(2000).optional(),
-  ownerId: z.string().optional(),
-  team: z.string().optional(),
+  notes: emptyToUndefined.pipe(z.string().max(2000).optional()),
+  ownerId: emptyToUndefined,
+  team: emptyToUndefined,
 });
 
 export const updateLeadSchema = createLeadSchema.partial();
