@@ -38,6 +38,7 @@ const ONE_HOUR_MS = 3_600_000;
 interface UserState {
   aiEnabled: boolean;
   autoModeEnabled: boolean;
+  filterDisabled: boolean; // true = ไม่กรองข้อความ, false = กรองข้อความ
   history: { role: string; content: string | any[]; timestamp?: Date }[];
 }
 const _userState = new Map<string, UserState>();
@@ -53,11 +54,12 @@ function normalizeRoleContent(role: string = 'user', content: any = '') {
  * กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY (ยกเว้นคำสั่ง /tag)
  * @param text ข้อความที่ต้องการกรอง
  * @param isTagCommand เป็นคำสั่ง /tag หรือไม่
+ * @param filterDisabled สถานะการกรองข้อความของผู้ใช้ (true = ไม่กรอง, false = กรอง)
  * @returns ข้อความที่กรองแล้ว
  */
-export function filterThaiReplyContent(text: string, isTagCommand: boolean = false): string {
-  if (isTagCommand) {
-    return text; // ถ้าเป็นคำสั่ง /tag ให้แสดงข้อความทั้งหมด
+export function filterThaiReplyContent(text: string, isTagCommand: boolean = false, filterDisabled: boolean = false): string {
+  if (isTagCommand || filterDisabled) {
+    return text; // ถ้าเป็นคำสั่ง /tag หรือปิดการกรอง ให้แสดงข้อความทั้งหมด
   }
   
   // ตรวจสอบว่ามีแท็ก THAI_REPLY หรือไม่
@@ -72,7 +74,7 @@ export function filterThaiReplyContent(text: string, isTagCommand: boolean = fal
 
 function _ensure(userId: string): UserState {
   if (!_userState.has(userId)) {
-    _userState.set(userId, { aiEnabled: false, autoModeEnabled: false, history: [] });
+    _userState.set(userId, { aiEnabled: false, autoModeEnabled: false, filterDisabled: false, history: [] });
   }
   return _userState.get(userId)!;
 }
@@ -411,8 +413,11 @@ export async function getAssistantResponse(
     const lastUserMessage = messages[messages.length - 1]?.content;
     const isTagCommand = typeof lastUserMessage === 'string' && lastUserMessage.trim() === '/tag';
     
+    // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+    const filterDisabled = userId ? await isFilterDisabled(userId) : false;
+    
     // ใช้ฟังก์ชัน helper ในการกรองข้อความ
-    assistantReply = filterThaiReplyContent(assistantReply, isTagCommand);
+    assistantReply = filterThaiReplyContent(assistantReply, isTagCommand, filterDisabled);
 
     // ตรวจสอบและบันทึกข้อมูลการสั่งซื้อจาก AI
     if (userId) {
@@ -473,6 +478,17 @@ export async function disableAIForUser(userId: string) {
 }
 export async function isAIEnabled(userId: string) {
   return _ensure(userId).aiEnabled !== false;
+}
+
+// ---------- Filter Toggle ----------
+export async function enableFilterForUser(userId: string) {
+  _ensure(userId).filterDisabled = false;
+}
+export async function disableFilterForUser(userId: string) {
+  _ensure(userId).filterDisabled = true;
+}
+export async function isFilterDisabled(userId: string) {
+  return _ensure(userId).filterDisabled === true;
 }
 export async function addHistory(userId: string, role: string, content: string | any[]) {
   const st = _ensure(userId);

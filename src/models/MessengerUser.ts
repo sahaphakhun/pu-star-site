@@ -8,6 +8,7 @@ export interface IMessengerUser extends Document {
   otpExpire?: Date;
   aiEnabled: boolean; // เปิด/ปิดโหมด AI
   autoModeEnabled: boolean; // เปิด/ปิดโหมดอัตโนมัติ (เมื่อไม่กดเมนู 2 ครั้งขึ้นไป)
+  filterDisabled: boolean; // เปิด/ปิดการกรองข้อความ (true = ไม่กรอง, false = กรอง)
   conversationHistory: Array<{ role: string; content: string; timestamp: Date }>; // ประวัติการสนทนา
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +23,7 @@ const messengerUserSchema = new Schema<IMessengerUser>(
     otpExpire: { type: Date },
     aiEnabled: { type: Boolean, default: false },
     autoModeEnabled: { type: Boolean, default: false },
+    filterDisabled: { type: Boolean, default: false },
     conversationHistory: [{
       role: { type: String, required: true, enum: ['user', 'assistant', 'system'] },
       content: { type: String, required: true },

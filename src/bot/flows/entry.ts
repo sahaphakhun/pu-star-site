@@ -4,7 +4,7 @@ import { sendTypingOn } from '@/utils/messenger';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
-import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext } from '@/utils/openai-utils';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext, enableFilterForUser, disableFilterForUser, isFilterDisabled } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 import { sendTextMessage, hasCutOrImageCommands, sendFilteredMessage } from '@/utils/messenger-utils';
 import { enqueueAIMessage } from '@/utils/ai-batcher';
@@ -176,9 +176,32 @@ export async function handleEvent(event: MessagingEvent) {
         } else {
           // ผู้ใช้ทั่วไป - ดูสถานะ AI ของตัวเอง
           const aiEnabled = await isAIEnabled(psid);
-          const statusText = aiEnabled ? '✅ AI เปิดอยู่ค่ะ' : '❌ AI ปิดอยู่ค่ะ';
+          const filterDisabled = await isFilterDisabled(psid);
+          const statusText = `📊 สถานะของคุณ:\n\n` +
+            `🤖 AI: ${aiEnabled ? '✅ เปิดอยู่' : '❌ ปิดอยู่'}\n` +
+            `🔍 การกรองข้อความ: ${filterDisabled ? '❌ ปิดอยู่ (แสดงข้อความทั้งหมด)' : '✅ เปิดอยู่ (กรองข้อความ)'}\n\n` +
+            `คำสั่งที่ใช้ได้:\n` +
+            `/tag - ปิดการกรองข้อความ (แสดงข้อความทั้งหมด)\n` +
+            `/tag/ - เปิดการกรองข้อความ (กรองข้อความ)\n` +
+            `/สถานะเอไอ - ดูสถานะปัจจุบัน`;
           return sendFilteredMessage(psid, { text: statusText });
         }
+      }
+
+      // จัดการคำสั่ง /tag (ปิดการกรองข้อความ)
+      if (question.trim() === '/tag') {
+        await disableFilterForUser(psid);
+        return sendFilteredMessage(psid, { 
+          text: '🔍 ปิดการกรองข้อความแล้วค่ะ ตอนนี้จะแสดงข้อความทั้งหมดที่ AI สร้างขึ้น\n\nพิมพ์ /tag/ เพื่อเปิดการกรองข้อความกลับคืน' 
+        });
+      }
+
+      // จัดการคำสั่ง /tag/ (เปิดการกรองข้อความ)
+      if (question.trim() === '/tag/') {
+        await enableFilterForUser(psid);
+        return sendFilteredMessage(psid, { 
+          text: '🔍 เปิดการกรองข้อความแล้วค่ะ ตอนนี้จะแสดงเฉพาะข้อความที่อยู่ในแท็ก THAI_REPLY\n\nพิมพ์ /tag เพื่อปิดการกรองข้อความ' 
+        });
       }
 
       // ตรวจสอบโหมด AI

@@ -92,8 +92,8 @@ export default function AIOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all'); // all, draft, completed, etc.
   const [dateFilter, setDateFilter] = useState<string>('all'); // all, today, yesterday, week
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = newest first
-  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact'); // compact or detailed view
-  const [groupSimilar, setGroupSimilar] = useState<boolean>(true); // group similar orders
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact'); // compact or full view
+  const [groupByDate, setGroupByDate] = useState<boolean>(true); // group orders by date
 
   // Helper function to extract pricing from AI response
   const extractPricingFromResponse = (aiResponse: string) => {
@@ -593,59 +593,76 @@ export default function AIOrdersPage() {
     return date >= weekAgo;
   };
 
-  // Helper function to check if orders are similar
+  // Helper function to check if two orders are similar (same customer, similar items, same day)
   const areOrdersSimilar = (order1: any, order2: any) => {
-    // Check if same PSID
-    if (order1.psid !== order2.psid) return false;
+    // Check if same customer
+    if (order1.customer.phone !== order2.customer.phone) return false;
     
     // Check if same day
     const date1 = new Date(order1.createdAt).toDateString();
     const date2 = new Date(order2.createdAt).toDateString();
     if (date1 !== date2) return false;
     
-    // Check if same customer info
-    const customer1 = order1.customer;
-    const customer2 = order2.customer;
-    if (customer1.name !== customer2.name || customer1.phone !== customer2.phone) return false;
-    
-    // Check if same items (same names and quantities)
+    // Check if similar items (same number of items and similar names)
     if (order1.items.length !== order2.items.length) return false;
     
-    const items1 = order1.items.map((item: any) => `${item.name}-${item.qty}`).sort();
-    const items2 = order2.items.map((item: any) => `${item.name}-${item.qty}`).sort();
+    const items1 = order1.items.map((item: any) => item.name.toLowerCase().trim()).sort();
+    const items2 = order2.items.map((item: any) => item.name.toLowerCase().trim()).sort();
     
     return JSON.stringify(items1) === JSON.stringify(items2);
   };
 
-  // Group similar orders
-  const groupSimilarOrders = (orders: any[]) => {
-    if (!groupSimilar) return orders;
-    
-    const groups: any[] = [];
+  // Helper function to merge similar orders
+  const mergeSimilarOrders = (orders: any[]) => {
+    const merged: any[] = [];
     const processed = new Set<string>();
     
-    orders.forEach(order => {
+    orders.forEach((order, index) => {
       if (processed.has(order._id)) return;
       
-      const group = [order];
+      const similarOrders = [order];
       processed.add(order._id);
       
       // Find similar orders
-      orders.forEach(otherOrder => {
-        if (processed.has(otherOrder._id)) return;
-        if (areOrdersSimilar(order, otherOrder)) {
-          group.push(otherOrder);
+      orders.forEach((otherOrder, otherIndex) => {
+        if (index !== otherIndex && !processed.has(otherOrder._id) && areOrdersSimilar(order, otherOrder)) {
+          similarOrders.push(otherOrder);
           processed.add(otherOrder._id);
         }
       });
       
-      groups.push({
-        id: `group-${order._id}`,
-        orders: group,
-        isGroup: group.length > 1,
-        representative: order, // Use first order as representative
-        count: group.length
-      });
+      if (similarOrders.length > 1) {
+        // Merge similar orders
+        const mergedOrder = {
+          ...order,
+          _id: `merged_${order._id}`,
+          mergedOrders: similarOrders,
+          mergedCount: similarOrders.length,
+          items: order.items, // Keep items from first order
+          pricing: {
+            ...order.pricing,
+            total: similarOrders.reduce((sum, o) => sum + (o.pricing?.total || 0), 0)
+          }
+        };
+        merged.push(mergedOrder);
+      } else {
+        merged.push(order);
+      }
+    });
+    
+    return merged;
+  };
+
+  // Helper function to group orders by date
+  const groupOrdersByDate = (orders: any[]) => {
+    const groups: { [key: string]: any[] } = {};
+    
+    orders.forEach(order => {
+      const date = new Date(order.createdAt).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(order);
     });
     
     return groups;
@@ -683,8 +700,12 @@ export default function AIOrdersPage() {
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
-    // Group similar orders if enabled
-    return groupSimilarOrders(filtered);
+    // Merge similar orders if grouping is enabled
+    if (groupByDate) {
+      filtered = mergeSimilarOrders(filtered);
+    }
+
+    return filtered;
   };
 
   const getStatusColor = (status: string) => {
@@ -698,116 +719,125 @@ export default function AIOrdersPage() {
     }
   };
 
-  // Compact view component
-  const CompactOrderCard = ({ orderGroup }: { orderGroup: any }) => {
-    const order = orderGroup.representative || orderGroup;
-    const isGroup = orderGroup.isGroup;
-    const count = orderGroup.count || 1;
+  // Compact order card component
+  const CompactOrderCard = ({ aiOrder }: { aiOrder: any }) => {
+    const [expanded, setExpanded] = useState(false);
+    const extractedPricing = extractPricingFromResponse(aiOrder.aiResponse);
+    const pricing = extractedPricing || aiOrder.pricing;
     
     return (
       <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-semibold text-gray-900">
-                AI Order #{order._id.slice(-8).toUpperCase()}
+                AI Order #{aiOrder._id.slice(-8).toUpperCase()}
+                {aiOrder.mergedCount > 1 && (
+                  <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                    รวม {aiOrder.mergedCount} ออเดอร์
+                  </span>
+                )}
               </h3>
-              {isGroup && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                  รวม {count} ออเดอร์
-                </span>
-              )}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
+                {aiOrder.order_status}
+              </span>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>PSID: {order.psid}</span>
-              <span>สร้าง: {formatDate(order.createdAt)}</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.order_status)}`}>
-                {order.order_status}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+              <div>
+                <span className="font-medium">ลูกค้า:</span> {aiOrder.customer.name || 'ไม่ระบุ'}
+              </div>
+              <div>
+                <span className="font-medium">โทร:</span> {aiOrder.customer.phone || 'ไม่ระบุ'}
+              </div>
+              <div>
+                <span className="font-medium">เวลา:</span> {formatDate(aiOrder.createdAt)}
+              </div>
+            </div>
+            
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">สินค้า:</span> {aiOrder.items.length} รายการ
+              {aiOrder.items.slice(0, 2).map((item: any, index: number) => (
+                <span key={index} className="ml-1">
+                  {item.name} ({item.qty})
+                  {index < Math.min(aiOrder.items.length - 1, 1) && ', '}
+                </span>
+              ))}
+              {aiOrder.items.length > 2 && <span className="text-gray-500"> และอีก {aiOrder.items.length - 2} รายการ</span>}
+            </div>
+            
+            <div className="mt-2 text-sm">
+              <span className="font-medium text-gray-700">ยอดรวม:</span> 
+              <span className="ml-1 font-bold text-green-600">
+                {pricing.total?.toLocaleString() || 0} บาท
               </span>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-gray-900">
-              {order.pricing.total.toLocaleString()} บาท
-            </div>
-            <div className="text-sm text-gray-500">
-              {order.items.length} รายการ
-            </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-gray-700">ลูกค้า:</span>
-            <div className="text-gray-600">
-              {order.customer.name || 'ไม่ระบุ'}
-            </div>
-            <div className="text-gray-500">
-              {order.customer.phone || 'ไม่ระบุ'}
-            </div>
-          </div>
           
-          <div>
-            <span className="font-medium text-gray-700">สินค้า:</span>
-            <div className="text-gray-600">
-              {order.items.slice(0, 2).map((item: any, index: number) => (
-                <div key={index}>
-                  {item.name} x{item.qty}
-                </div>
-              ))}
-              {order.items.length > 2 && (
-                <div className="text-gray-500">
-                  +{order.items.length - 2} รายการอื่น
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-col gap-2 ml-4">
             <button
-              onClick={() => {
-                // Toggle detailed view for this order
-                setExpandedMessages(prev => ({
-                  ...prev,
-                  [order._id]: !prev[order._id]
-                }));
-              }}
+              onClick={() => setExpanded(!expanded)}
               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
             >
-              {expandedMessages[order._id] ? 'ซ่อน' : 'ดูรายละเอียด'}
+              {expanded ? 'ย่อ' : 'ดูรายละเอียด'}
             </button>
+            
+            {isAllItemsMapped(aiOrder) && (
+              <button
+                onClick={() => convertToRegularOrder(aiOrder)}
+                disabled={convertingToOrder[aiOrder._id]}
+                className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+              >
+                {convertingToOrder[aiOrder._id] ? 'กำลังแปลง...' : 'แปลงเป็น Order'}
+              </button>
+            )}
           </div>
         </div>
         
-        {/* Expanded details */}
-        {expandedMessages[order._id] && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="text-sm text-gray-600">
-              <div className="mb-2">
-                <span className="font-medium">ที่อยู่:</span> {order.customer.address || 'ไม่ระบุ'}
-              </div>
-              <div className="mb-2">
-                <span className="font-medium">รายการสินค้าทั้งหมด:</span>
-                <ul className="list-disc list-inside ml-4">
-                  {order.items.map((item: any, index: number) => (
-                    <li key={index}>
-                      {item.name} x{item.qty}
-                      {item.variant.color && ` (สี: ${item.variant.color})`}
-                      {item.variant.size && ` (ขนาด: ${item.variant.size})`}
-                      {item.note && ` (หมายเหตุ: ${item.note})`}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mb-2">
-                <span className="font-medium">ราคา:</span>
-                <div className="ml-4">
-                  <div>ยอดสินค้า: {order.pricing.subtotal.toLocaleString()} บาท</div>
-                  <div>ส่วนลด: {order.pricing.discount.toLocaleString()} บาท</div>
-                  <div>ค่าจัดส่ง: {order.pricing.shipping_fee.toLocaleString()} บาท</div>
-                  <div className="font-bold">รวม: {order.pricing.total.toLocaleString()} บาท</div>
+        {expanded && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            {/* Expanded content - simplified version of full view */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า</h4>
+                <div className="space-y-2">
+                  {aiOrder.items.map((item: any, index: number) => {
+                    const mapping = productMapping[aiOrder._id]?.[index];
+                    const mappedProduct = mapping ? getProductById(mapping.productId) : null;
+                    
+                    return (
+                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div className="flex-1">
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-sm text-gray-600 ml-2">x{item.qty}</span>
+                          {item.variant.color && <span className="text-sm text-gray-500 ml-2">สี: {item.variant.color}</span>}
+                          {item.variant.size && <span className="text-sm text-gray-500 ml-2">ขนาด: {item.variant.size}</span>}
+                        </div>
+                        <div className="text-sm">
+                          {mappedProduct ? (
+                            <span className="text-green-600 font-medium">✓ แมพแล้ว</span>
+                          ) : (
+                            <span className="text-orange-600">ยังไม่ได้แมพ</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+              
+              {aiOrder.mergedOrders && aiOrder.mergedOrders.length > 1 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">ออเดอร์ที่รวมกัน</h4>
+                  <div className="space-y-1">
+                    {aiOrder.mergedOrders.map((mergedOrder: any, index: number) => (
+                      <div key={index} className="text-sm text-gray-600 p-2 bg-purple-50 rounded">
+                        #{mergedOrder._id.slice(-8).toUpperCase()} - {formatDate(mergedOrder.createdAt)} - {mergedOrder.pricing?.total?.toLocaleString() || 0} บาท
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -960,25 +990,25 @@ export default function AIOrdersPage() {
             </label>
             <select
               value={viewMode}
-              onChange={(e) => setViewMode(e.target.value as 'compact' | 'detailed')}
+              onChange={(e) => setViewMode(e.target.value as 'compact' | 'full')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="compact">แบบย่อ</option>
-              <option value="detailed">แบบละเอียด</option>
+              <option value="full">แบบเต็ม</option>
             </select>
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              รวมออเดอร์ซ้ำ
+              จัดกลุ่ม
             </label>
             <select
-              value={groupSimilar ? 'yes' : 'no'}
-              onChange={(e) => setGroupSimilar(e.target.value === 'yes')}
+              value={groupByDate ? 'yes' : 'no'}
+              onChange={(e) => setGroupByDate(e.target.value === 'yes')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="yes">รวม</option>
-              <option value="no">ไม่รวม</option>
+              <option value="yes">รวมออเดอร์ซ้ำ</option>
+              <option value="no">แสดงทั้งหมด</option>
             </select>
           </div>
           
@@ -989,7 +1019,7 @@ export default function AIOrdersPage() {
                 setDateFilter('all');
                 setSortOrder('desc');
                 setViewMode('compact');
-                setGroupSimilar(true);
+                setGroupByDate(true);
               }}
               className="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
             >
@@ -1013,44 +1043,52 @@ export default function AIOrdersPage() {
         </div>
       </div>
       <div className="grid gap-4">
-        {getFilteredAndSortedAIOrders().map((orderGroup) => (
+        {getFilteredAndSortedAIOrders().map((aiOrder) => (
           viewMode === 'compact' ? (
-            <CompactOrderCard key={orderGroup.id || orderGroup._id} orderGroup={orderGroup} />
+            <CompactOrderCard key={aiOrder._id} aiOrder={aiOrder} />
           ) : (
-            <DetailedOrderCard key={orderGroup.id || orderGroup._id} orderGroup={orderGroup} />
-          )
-        ))}
-      </div>
-
-      {getFilteredAndSortedAIOrders().length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg">
-            {aiOrders.length === 0 
-              ? 'ไม่มี AI Orders ในระบบ' 
-              : 'ไม่พบ AI Orders ที่ตรงกับเงื่อนไขการกรอง'
-            }
-          </div>
-          {aiOrders.length > 0 && (
-            <div className="mt-4">
-              <button
-                onClick={() => {
-                  setStatusFilter('all');
-                  setDateFilter('all');
-                  setSortOrder('desc');
-                  setViewMode('compact');
-                  setGroupSimilar(true);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                รีเซ็ตตัวกรอง
-              </button>
+          <div key={aiOrder._id} className="bg-white rounded-lg shadow-md p-6 border">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  AI Order #{aiOrder._id.slice(-8).toUpperCase()}
+                </h3>
+                <p className="text-sm text-gray-500">PSID: {aiOrder.psid}</p>
+                <p className="text-sm text-gray-500">สร้างเมื่อ: {formatDate(aiOrder.createdAt)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(aiOrder.order_status)}`}>
+                  {aiOrder.order_status}
+                </span>
+                {aiOrder.mappedOrderId && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    แมพแล้ว
+                  </span>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+
+            {/* ข้อมูลลูกค้า */}
+            <div className="mb-4">
+              <h4 className="font-medium text-gray-900 mb-2">ข้อมูลลูกค้า</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">ชื่อ:</span> {aiOrder.customer.name || 'ไม่ระบุ'}
+                </div>
+                <div>
+                  <span className="font-medium">โทรศัพท์:</span> {aiOrder.customer.phone || 'ไม่ระบุ'}
+                </div>
+                <div>
+                  <span className="font-medium">ที่อยู่:</span> {aiOrder.customer.address || 'ไม่ระบุ'}
+                </div>
+              </div>
+            </div>
+
+            {/* รายการสินค้า */}
+            <div className="mb-4">
+              <h4 className="font-medium text-gray-900 mb-2">รายการสินค้า (แมพรายสินค้า)</h4>
+              <div className="space-y-3">
+                {aiOrder.items.map((item: any, index: number) => {
                   const mapping = productMapping[aiOrder._id]?.[index];
                   const mappedProduct = mapping ? getProductById(mapping.productId) : null;
                   const selectedUnit = mappedProduct ? getSelectedUnit(mappedProduct, mapping.unitIndex || 0) : null;
@@ -1406,6 +1444,7 @@ export default function AIOrdersPage() {
               </div>
             </div>
           </div>
+          )
         ))}
       </div>
 

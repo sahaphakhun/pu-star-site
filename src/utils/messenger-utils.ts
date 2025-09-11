@@ -3,7 +3,7 @@
 // =============================
 
 import { callSendAPI, FBMessagePayload } from './messenger';
-import { filterThaiReplyContent } from './openai-utils';
+import { filterThaiReplyContent, isFilterDisabled } from './openai-utils';
 
 /**
  * ตรวจสอบว่า URL สามารถเข้าถึงได้หรือไม่
@@ -32,8 +32,11 @@ export async function sendTextMessageWithCutAndImages(
 ): Promise<void> {
   console.log("[DEBUG] sendTextMessageWithCutAndImages => raw response:", response);
 
+  // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+  const filterDisabled = await isFilterDisabled(recipientId);
+  
   // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
-  const filteredResponse = filterThaiReplyContent(response, false);
+  const filteredResponse = filterThaiReplyContent(response, false, filterDisabled);
   console.log("[DEBUG] sendTextMessageWithCutAndImages => filtered response:", filteredResponse);
 
   // ทำความสะอาด [cut] ที่ซ้ำกัน
@@ -131,8 +134,11 @@ export async function sendTextMessageWithCutAndImages(
 async function sendSimpleTextMessage(recipientId: string, text: string): Promise<void> {
   console.log(`[DEBUG] Sending text message to ${recipientId}: "${text.substring(0, 100)}..."`);
   
+  // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+  const filterDisabled = await isFilterDisabled(recipientId);
+  
   // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
-  const filteredText = filterThaiReplyContent(text, false);
+  const filteredText = filterThaiReplyContent(text, false, filterDisabled);
   console.log(`[DEBUG] Filtered text: "${filteredText.substring(0, 100)}..."`);
   
   const message: FBMessagePayload = { text: filteredText };
@@ -370,8 +376,11 @@ export async function sendSmartMessage(
     // ข้อความธรรมดา
     console.log("[DEBUG] Using simple text message");
     
+    // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+    const filterDisabled = await isFilterDisabled(recipientId);
+    
     // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
-    const filteredResponse = filterThaiReplyContent(response, false);
+    const filteredResponse = filterThaiReplyContent(response, false, filterDisabled);
     console.log("[DEBUG] sendSmartMessage => filtered response:", filteredResponse);
     
     if (includeMenu) {
@@ -399,8 +408,11 @@ export async function sendTextMessage(
 ): Promise<void> {
   console.log("[DEBUG] sendTextMessage => raw response:", response);
 
+  // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+  const filterDisabled = await isFilterDisabled(recipientId);
+  
   // กรองข้อความให้เหลือเฉพาะในแท็ก THAI_REPLY ก่อน
-  const filteredResponse = filterThaiReplyContent(response, false);
+  const filteredResponse = filterThaiReplyContent(response, false, filterDisabled);
   console.log("[DEBUG] sendTextMessage => filtered response:", filteredResponse);
 
   // ทำความสะอาด [cut] ที่ซ้ำกัน
@@ -481,7 +493,10 @@ export async function sendTextMessage(
 export async function sendFilteredMessage(recipientId: string, message: FBMessagePayload): Promise<void> {
   // ถ้าเป็นข้อความธรรมดา ให้กรองก่อน
   if (message.text) {
-    const filteredText = filterThaiReplyContent(message.text, false);
+    // ตรวจสอบสถานะการกรองข้อความของผู้ใช้
+    const filterDisabled = await isFilterDisabled(recipientId);
+    
+    const filteredText = filterThaiReplyContent(message.text, false, filterDisabled);
     const filteredMessage = { ...message, text: filteredText };
     console.log("[DEBUG] sendFilteredMessage => filtered text:", filteredText.substring(0, 100) + "...");
     return callSendAPI(recipientId, filteredMessage);
