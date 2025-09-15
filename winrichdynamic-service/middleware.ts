@@ -19,8 +19,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // อนุญาต API auth routes โดยไม่ต้องตรวจสอบ token
-  if (pathname.startsWith('/api/auth/')) {
+  // อนุญาต API auth routes และ adminb2b login โดยไม่ต้องตรวจสอบ token
+  if (
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/adminb2b/login') ||
+    pathname.startsWith('/api/adminb2b/register') ||
+    pathname.startsWith('/api/adminb2b/logout')
+  ) {
     return NextResponse.next();
   }
 
@@ -65,8 +70,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // ตรวจสอบว่า token มีข้อมูลที่จำเป็นหรือไม่
-    if (!payload.adminId || !payload.phone || !payload.role) {
+    // ตรวจสอบว่า token มีข้อมูลที่จำเป็นหรือไม่ (ยอมรับเฉพาะ OTP login: adminId + phone + role)
+    if (!payload.adminId || !(payload as any).phone || !payload.role) {
       console.log('[B2B] Invalid token payload in middleware');
       
       // ถ้าเป็น API call ให้ส่ง 401
@@ -97,5 +102,3 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/adminb2b/:path*', '/api/:path*'],
 };
-
-
