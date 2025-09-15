@@ -33,6 +33,8 @@ export default function AdminB2BQuotations() {
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const [adminMap, setAdminMap] = useState<Record<string, string>>({})
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [changingStatusId, setChangingStatusId] = useState<string>('')
 
   // ดึงข้อมูลลูกค้าทั้งหมด
   const fetchCustomers = async () => {
@@ -53,7 +55,9 @@ export default function AdminB2BQuotations() {
   const fetchQuotations = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/quotations')
+      const query = new URLSearchParams()
+      if (statusFilter) query.set('status', statusFilter)
+      const response = await fetch(`/api/quotations${query.toString() ? `?${query.toString()}` : ''}`)
       if (!response.ok) {
         throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูลใบเสนอราคา')
       }
@@ -270,10 +274,10 @@ export default function AdminB2BQuotations() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800'
-      case 'sent': return 'bg-gray-100 text-gray-800'
-      case 'accepted': return 'bg-gray-100 text-gray-800'
-      case 'rejected': return 'bg-gray-100 text-gray-800'
-      case 'expired': return 'bg-gray-100 text-gray-800'
+      case 'sent': return 'bg-blue-100 text-blue-800'
+      case 'accepted': return 'bg-green-100 text-green-800'
+      case 'rejected': return 'bg-red-100 text-red-800'
+      case 'expired': return 'bg-yellow-100 text-yellow-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -286,6 +290,34 @@ export default function AdminB2BQuotations() {
       case 'rejected': return 'ปฏิเสธ'
       case 'expired': return 'หมดอายุ'
       default: return status
+    }
+  }
+
+  // เปลี่ยนสถานะใบเสนอราคา
+  const handleChangeStatus = async (quotation: Quotation, newStatus: Quotation['status']) => {
+    if (quotation.status === newStatus) return
+    try {
+      let notes: string | undefined
+      if (newStatus === 'accepted' || newStatus === 'rejected') {
+        notes = window.prompt(`กรุณาระบุหมายเหตุสำหรับสถานะ "${getStatusLabel(newStatus)}"`) || undefined
+      }
+      setChangingStatusId(quotation._id)
+      const res = await fetch(`/api/quotations/${quotation._id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, ...(notes ? { notes } : {}) }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as any))
+        throw new Error(err?.error || 'เปลี่ยนสถานะไม่สำเร็จ')
+      }
+      await fetchQuotations()
+      toast.success('เปลี่ยนสถานะเรียบร้อยแล้ว')
+    } catch (e) {
+      console.error('Error changing quotation status:', e)
+      toast.error(e instanceof Error ? e.message : 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ')
+    } finally {
+      setChangingStatusId('')
     }
   }
 
@@ -318,6 +350,25 @@ export default function AdminB2BQuotations() {
             </div>
             
             <div className="flex space-x-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md border-gray-300 bg-white"
+                title="กรองตามสถานะ"
+              >
+                <option value="">ทุกสถานะ</option>
+                <option value="draft">ร่าง</option>
+                <option value="sent">ส่งแล้ว</option>
+                <option value="accepted">ยอมรับ</option>
+                <option value="rejected">ปฏิเสธ</option>
+                <option value="expired">หมดอายุ</option>
+              </select>
+              <button
+                onClick={() => fetchQuotations()}
+                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
+              >
+                กรอง
+              </button>
               <button
                 onClick={() => setShowForm(true)}
                 className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
@@ -418,9 +469,24 @@ export default function AdminB2BQuotations() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
-                          {getStatusLabel(quotation.status)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
+                            {getStatusLabel(quotation.status)}
+                          </span>
+                          <select
+                            value={quotation.status}
+                            onChange={(e) => handleChangeStatus(quotation, e.target.value as Quotation['status'])}
+                            disabled={changingStatusId === quotation._id}
+                            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                            title="เปลี่ยนสถานะ"
+                          >
+                            <option value="draft">ร่าง</option>
+                            <option value="sent">ส่งแล้ว</option>
+                            <option value="accepted">ยอมรับ</option>
+                            <option value="rejected">ปฏิเสธ</option>
+                            <option value="expired">หมดอายุ</option>
+                          </select>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -490,4 +556,3 @@ export default function AdminB2BQuotations() {
     </div>
   )
 }
-
