@@ -4,10 +4,10 @@ import { sendTypingOn } from '@/utils/messenger';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
-import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext, enableFilterForUser, disableFilterForUser, isFilterDisabled } from '@/utils/openai-utils';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext, enableFilterForUser, disableFilterForUser, isFilterDisabled, imageUrlToDataUrl, isUrlAccessible } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 import { sendTextMessage, hasCutOrImageCommands, sendFilteredMessage } from '@/utils/messenger-utils';
-import { enqueueAIMessage } from '@/utils/ai-batcher';
+import { enqueueAIMessage, enqueueAIContent } from '@/utils/ai-batcher';
 
 interface MessagingEvent {
   sender: { id: string };
@@ -20,6 +20,7 @@ interface MessagingEvent {
   postback?: {
     title?: string;
     payload: string;
+    mid?: string;
   };
   [key: string]: unknown;
 }
@@ -63,6 +64,20 @@ export async function handleEvent(event: MessagingEvent) {
       return sendFilteredMessage(psid, {
         text: 'สวัสดีค่ะ ยินดีให้บริการค่ะ กรุณาพิมพ์คำถามหรือความต้องการของคุณได้เลยค่ะ'
       });
+    }
+
+    // Treat all other postbacks as if user typed the button title
+    const questionFromPostback = (event.postback.title || payload || '').trim();
+    if (questionFromPostback.length > 0) {
+      // ตรวจสอบ/เปิดโหมด AI อัตโนมัติให้ผู้ใช้ใหม่
+      const aiEnabled = await isAIEnabled(psid);
+      if (!aiEnabled) {
+        console.log(`[AI Debug] Enabling AI for new user (postback): ${psid}`);
+        await enableAIForUser(psid);
+      }
+      const mid = event.postback.mid as string | undefined;
+      enqueueAIMessage(psid, mid, questionFromPostback);
+      return;
     }
   }
 
@@ -222,43 +237,50 @@ export async function handleEvent(event: MessagingEvent) {
 
   // จัดการไฟล์แนบ (รูปภาพ, ไฟล์)
   if (event.message && event.message.attachments && event.message.attachments.length > 0) {
-    const attachment = event.message.attachments[0];
-    
-    if (attachment.type === 'image') {
-      // ส่งรูปภาพไปให้ AI ประมวลผล
+    const imageAttachments = event.message.attachments.filter((a: any) => a?.type === 'image');
+    if (imageAttachments.length > 0) {
+      // ส่งรูปภาพหลายไฟล์ไปให้ AI ประมวลผล (เก็บรูปเป็น base64 ในประวัติเมื่อทำได้)
       const aiEnabled = await isAIEnabled(psid);
-      
       if (!aiEnabled) {
         await enableAIForUser(psid);
       }
-      
+
       try {
-        await addToConversationHistoryWithContext(psid, 'user', 'กรุณาวิเคราะห์รูปภาพนี้', JSON.stringify([
-          { type: 'image_url', image_url: { url: (attachment.payload as any).url } }
-        ]));
-        
-        const conversationHistory = await getConversationHistory(psid);
-        const systemInstructions = await buildSystemInstructions();
-        const answer = await getAssistantResponse(systemInstructions, conversationHistory, [
-          { type: 'text', text: 'กรุณาวิเคราะห์รูปภาพนี้' },
-          { type: 'image_url', image_url: { url: (attachment.payload as any).url } }
-        ], psid);
-        
-        await addToConversationHistory(psid, 'assistant', answer);
-        
-        if (hasCutOrImageCommands(answer)) {
-          await sendTextMessage(psid, answer);
-        } else {
-          await sendFilteredMessage(psid, { text: answer });
+        const imageParts: any[] = [];
+        for (const att of imageAttachments) {
+          const rawUrl = (att.payload as any)?.url;
+          if (!rawUrl) continue;
+          const dataUrl = await imageUrlToDataUrl(rawUrl).catch(() => null);
+          if (dataUrl) {
+            imageParts.push({ type: 'image_url', image_url: { url: dataUrl } });
+            continue;
+          }
+          const ok = await isUrlAccessible(rawUrl).catch(() => false);
+          if (ok) {
+            imageParts.push({ type: 'image_url', image_url: { url: rawUrl } });
+          }
         }
-        
-      return;
+
+        let visionContent: any[];
+        if (imageParts.length > 0) {
+          visionContent = [
+            { type: 'text', text: imageParts.length > 1 ? 'กรุณาวิเคราะห์รูปภาพเหล่านี้' : 'กรุณาวิเคราะห์รูปภาพนี้' },
+            ...imageParts
+          ];
+        } else {
+          visionContent = [
+            { type: 'text', text: 'ผู้ใช้ส่งรูปภาพมา แต่ลิงก์ภาพหมดอายุ/ไม่สามารถเข้าถึงได้ทุกไฟล์ กรุณาให้ผู้ใช้ส่งรูปใหม่' }
+          ];
+        }
+
+        // ส่งเข้า batch เหมือนข้อความ รอ 15 วิ แล้วตอบครั้งเดียวรวมกับข้อความอื่นๆ หากมี
+        const mid = (event as any)?.message?.mid as string | undefined;
+        enqueueAIContent(psid, mid, visionContent);
+        return;
       } catch (error) {
-        console.error(`[AI Debug] Error processing image:`, error);
-        await sendFilteredMessage(psid, {
-          text: 'ขออภัยค่ะ ไม่สามารถประมวลผลรูปภาพได้ในขณะนี้ กรุณาลองใหม่อีกครั้งค่ะ'
-        });
-    return;
+        console.error(`[AI Debug] Error processing images:`, error);
+        await sendFilteredMessage(psid, { text: 'ขออภัยค่ะ ไม่สามารถประมวลผลรูปภาพได้ในขณะนี้ กรุณาลองใหม่อีกครั้งค่ะ' });
+        return;
       }
     }
   }

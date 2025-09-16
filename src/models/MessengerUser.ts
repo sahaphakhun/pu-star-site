@@ -9,7 +9,7 @@ export interface IMessengerUser extends Document {
   aiEnabled: boolean; // เปิด/ปิดโหมด AI
   autoModeEnabled: boolean; // เปิด/ปิดโหมดอัตโนมัติ (เมื่อไม่กดเมนู 2 ครั้งขึ้นไป)
   filterDisabled: boolean; // เปิด/ปิดการกรองข้อความ (true = ไม่กรอง, false = กรอง)
-  conversationHistory: Array<{ role: string; content: string; timestamp: Date }>; // ประวัติการสนทนา
+  conversationHistory: Array<{ role: string; content: any; timestamp: Date }>; // ประวัติการสนทนา (รองรับข้อความหรือมัลติมีเดีย)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +26,8 @@ const messengerUserSchema = new Schema<IMessengerUser>(
     filterDisabled: { type: Boolean, default: false },
     conversationHistory: [{
       role: { type: String, required: true, enum: ['user', 'assistant', 'system'] },
-      content: { type: String, required: true },
+      // เก็บได้ทั้ง string และโครงสร้าง array ของ multimodal (เช่น [{type:'text'},{type:'image_url',...}])
+      content: { type: Schema.Types.Mixed, required: true },
       timestamp: { type: Date, default: Date.now }
     }],
   },

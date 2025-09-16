@@ -403,8 +403,9 @@ export async function getAssistantResponse(
       fetchInstructionFile()
     ]);
 
-    // ใช้ enhanced system instructions ที่มี fallback
-    const enhancedSystem = await buildEnhancedSystemInstructions();
+    // ใช้ system instructions ที่ถูกส่งเข้ามา หากว่างจึง fallback ไปที่ enhanced
+    const sysFromCaller = (systemInstructions || '').trim();
+    const enhancedSystem = sysFromCaller ? sysFromCaller : await buildEnhancedSystemInstructions();
     const messages: Array<{ role: string; content: string | any[] }> = [
       normalizeRoleContent('system', enhancedSystem),
       ...history.map((h) => normalizeRoleContent(h.role, h.content))
@@ -659,11 +660,12 @@ export async function getEnhancedConversationHistory(
 export async function addToConversationHistoryWithContext(
   psid: string,
   role: 'user' | 'assistant' | 'system',
-  content: string,
-  context?: string
+  content: string | any[],
+  context?: string | any[]
 ): Promise<void> {
   const timestamp = new Date();
-  const message: any = { role, content, timestamp, context: context || undefined };
+  // เก็บ content ตามที่ได้รับ (รองรับข้อความหรือมัลติมีเดีย)
+  const message: any = { role, content, timestamp };
   const state = _ensure(psid);
   state.history.push(message);
   if (state.history.length > 30) state.history = state.history.slice(-30);
@@ -684,6 +686,47 @@ export async function addToConversationHistoryWithContext(
     );
   } catch (err) {
     console.error('[addToConversationHistoryWithContext] DB error:', err);
+  }
+}
+
+// ---------- Media Helpers ----------
+/**
+ * แปลง URL รูปภาพเป็น data URI (base64) เพื่อนำไปใช้ใน Vision และเก็บลงประวัติ
+ * ถ้าขนาดไฟล์เกิน maxBytes หรือโหลดไม่ได้ จะคืนค่า null
+ */
+export async function imageUrlToDataUrl(url: string, maxBytes = 2_000_000): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn('[imageUrlToDataUrl] HTTP error', res.status, url);
+      return null;
+    }
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (maxBytes && buf.byteLength > maxBytes) {
+      console.warn('[imageUrlToDataUrl] file too large, bytes:', buf.byteLength, 'url:', url);
+      return null;
+    }
+    const b64 = buf.toString('base64');
+    return `data:${contentType};base64,${b64}`;
+  } catch (err) {
+    console.error('[imageUrlToDataUrl] error', err);
+    return null;
+  }
+}
+
+/**
+ * ตรวจสอบความพร้อมเข้าถึงของ URL ด้วย HEAD ก่อนใช้งานกับ OpenAI
+ */
+export async function isUrlAccessible(url: string, timeoutMs = 5000): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { method: 'HEAD', signal: controller.signal as any });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

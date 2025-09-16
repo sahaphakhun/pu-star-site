@@ -4,13 +4,16 @@ import {
   addToConversationHistory, 
   getConversationHistory, 
   buildSystemInstructions, 
-  getAssistantResponse 
+  getAssistantResponse, 
+  addToConversationHistoryWithContext
 } from '@/utils/openai-utils';
 import { sendTypingOn } from '@/utils/messenger';
 
+type UserContent = string | any[];
+
 type BatchState = {
   mids: Set<string>;
-  texts: string[];
+  contents: UserContent[];
   timer?: NodeJS.Timeout;
   lastBatchId?: string;
 };
@@ -36,9 +39,9 @@ async function processBatch(psid: string) {
   }
 
   const mids = Array.from(state.mids);
-  const texts = state.texts.slice();
+  const contents = state.contents.slice();
 
-  if (texts.length === 0 || mids.length === 0) {
+  if (contents.length === 0 || mids.length === 0) {
     return; // ไม่มีอะไรต้องทำ
   }
 
@@ -51,14 +54,24 @@ async function processBatch(psid: string) {
   }
 
   try {
-    // รวมข้อความใหม่ทั้งหมดโดยไม่สรุปบริบทเก่า
-    const joined = texts.join('\n');
-
-    // เพิ่มข้อความของผู้ใช้ (รวม) ลงในประวัติ แล้วค่อยเรียก AI
-    await addToConversationHistory(psid, 'user', joined);
+    // รวมคอนเทนต์ของผู้ใช้ทั้งหมด โดยรองรับทั้งข้อความและมัลติมีเดีย
+    let combined: UserContent;
+    const hasAnyArray = contents.some((c) => Array.isArray(c));
+    if (!hasAnyArray) {
+      combined = (contents as string[]).join('\n');
+      await addToConversationHistory(psid, 'user', combined as string);
+    } else {
+      const arr: any[] = [];
+      for (const c of contents) {
+        if (Array.isArray(c)) arr.push(...c);
+        else if (typeof c === 'string') arr.push({ type: 'text', text: c });
+      }
+      combined = arr;
+      await addToConversationHistoryWithContext(psid, 'user', combined);
+    }
     const history = await getConversationHistory(psid);
     const system = await buildSystemInstructions();
-    const answer = await getAssistantResponse(system, history, joined, psid);
+    const answer = await getAssistantResponse(system, history, combined, psid);
 
     // เก็บคำตอบลงประวัติ
     await addToConversationHistory(psid, 'assistant', answer);
@@ -77,7 +90,7 @@ async function processBatch(psid: string) {
   } finally {
     // เคลียร์รายการที่ประมวลผลแล้ว
     state.mids.clear();
-    state.texts.length = 0;
+    state.contents.length = 0;
   }
 }
 
@@ -86,7 +99,7 @@ export function enqueueAIMessage(psid: string, mid: string | undefined, text: st
 
   let state = pending.get(psid);
   if (!state) {
-    state = { mids: new Set<string>(), texts: [] };
+    state = { mids: new Set<string>(), contents: [] };
     pending.set(psid, state);
   }
 
@@ -96,7 +109,7 @@ export function enqueueAIMessage(psid: string, mid: string | undefined, text: st
     return; // ข้าม event ซ้ำ
   }
   state.mids.add(id);
-  state.texts.push(text);
+  state.contents.push(text);
 
   // แจ้ง typing ให้ผู้ใช้ทราบว่าระบบกำลังประมวลผล
   try { sendTypingOn(psid); } catch {}
@@ -112,3 +125,30 @@ export function enqueueAIMessage(psid: string, mid: string | undefined, text: st
   }, DEBOUNCE_MS);
 }
 
+// รองรับการเข้าคิวคอนเทนต์มัลติมีเดีย (ข้อความ + รูป)
+export function enqueueAIContent(psid: string, mid: string | undefined, content: UserContent) {
+  if (!psid || (!content && content !== '')) return;
+
+  let state = pending.get(psid);
+  if (!state) {
+    state = { mids: new Set<string>(), contents: [] };
+    pending.set(psid, state);
+  }
+
+  const id = mid || `no-mid:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  if (state.mids.has(id)) {
+    return; // ข้าม event ซ้ำ
+  }
+  state.mids.add(id);
+  state.contents.push(content);
+
+  try { sendTypingOn(psid); } catch {}
+
+  if (state.timer) {
+    clearTimeout(state.timer);
+  }
+  state.timer = setTimeout(async () => {
+    if (state) state.timer = undefined;
+    await processBatch(psid);
+  }, DEBOUNCE_MS);
+}
