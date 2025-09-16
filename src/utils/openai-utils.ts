@@ -29,6 +29,8 @@ let _sheetJSON: Array<{ sheetName: string; data: any[] }> = [];
 let _lastGoogleDocFetchTime = 0;
 let _lastSheetsFetchTime = 0;
 let _lastCacheRefreshHour = -1; // เก็บชั่วโมงล่าสุดที่รีเฟรชแคช
+let _fileInstructions = '';
+let _lastFileFetchTime = 0;
 
 // ตั้งค่าเวลาแคช (x:44 ทุกชั่วโมง)
 const CACHE_REFRESH_MINUTE = 44; // นาทีที่ 44
@@ -101,6 +103,8 @@ function parseSheetRowsToObjects(rows: any[] = []) {
 
 // ---------- Google Auth (Service Account JWT) ----------
 import { google } from 'googleapis';
+import fs from 'fs';
+import path from 'path';
 
 const scopes = [
   'https://www.googleapis.com/auth/documents.readonly',
@@ -160,6 +164,33 @@ export async function fetchGoogleDocInstructions(forceRefresh = false) {
     console.error('[Google Docs] Error fetching document:', error);
     // ใช้ข้อมูลเดิมถ้ามี หรือคืนข้อความ fallback
     return _googleDocInstructions || 'Google Docs instructions temporarily unavailable';
+  }
+}
+
+// ---------- Local instruction.txt (ถ้ามี) ----------
+export async function fetchInstructionFile(forceRefresh = false) {
+  try {
+    const now = Date.now();
+    if (!forceRefresh && _fileInstructions && now - _lastFileFetchTime < ONE_HOUR_MS) {
+      return _fileInstructions;
+    }
+
+    const filePath = path.resolve(process.cwd(), 'instruction.txt');
+    const exists = fs.existsSync(filePath);
+    if (!exists) {
+      _fileInstructions = '';
+      _lastFileFetchTime = now;
+      return _fileInstructions;
+    }
+
+    const buf = await fs.promises.readFile(filePath);
+    const txt = buf.toString('utf-8').trim();
+    _fileInstructions = txt;
+    _lastFileFetchTime = now;
+    return _fileInstructions;
+  } catch (error) {
+    console.error('[Instruction File] Error reading instruction.txt:', error);
+    return _fileInstructions || '';
   }
 }
 
@@ -309,26 +340,15 @@ export async function getGoogleExtraData() {
 // ---------- System Instructions (สไตล์ฉบับแรก) ----------
 export function buildSystemInstructions(extraNote: string = '') {
   try {
-    const sheetsDataString = _sheetJSON && _sheetJSON.length > 0 
-      ? JSON.stringify(_sheetJSON, null, 2) 
-      : 'No additional sheet data available';
-      
-    return `
-${_googleDocInstructions || 'Google Docs instructions temporarily unavailable'}
+    // ใช้เฉพาะ instruction.txt; หากว่างจะ fallback เป็นข้อความพื้นฐาน
+    const baseText = (_fileInstructions && _fileInstructions.trim())
+      ? _fileInstructions
+      : getFallbackInstructions();
 
-Below is additional data from Google Sheets (INSTRUCTIONS) - all tabs:
----
-${sheetsDataString}
-
-${extraNote ? extraNote : ''}
-`.trim();
+    return `${baseText}`.trim();
   } catch (error) {
     console.error('[buildSystemInstructions] Error:', error);
-    return `
-${_googleDocInstructions || 'Google Docs instructions temporarily unavailable'}
-
-${extraNote ? extraNote : ''}
-`.trim();
+    return `${(_fileInstructions && _fileInstructions.trim()) ? _fileInstructions : getFallbackInstructions()}`.trim();
   }
 }
 
@@ -380,12 +400,11 @@ export async function getAssistantResponse(
   try {
     // รีเฟรช Google cache (TTL 1 ชม.) ด้วย error handling
     await Promise.allSettled([
-      fetchGoogleDocInstructions(), 
-      fetchAllSheetsData()
+      fetchInstructionFile()
     ]);
 
     // ใช้ enhanced system instructions ที่มี fallback
-    const enhancedSystem = await buildEnhancedSystemInstructions(systemInstructions);
+    const enhancedSystem = await buildEnhancedSystemInstructions();
     const messages: Array<{ role: string; content: string | any[] }> = [
       normalizeRoleContent('system', enhancedSystem),
       ...history.map((h) => normalizeRoleContent(h.role, h.content))
@@ -677,7 +696,11 @@ export async function refreshGoogleDataCache(): Promise<void> {
     _lastGoogleDocFetchTime = 0;
     _lastSheetsFetchTime = 0;
     _lastCacheRefreshHour = -1;
-    await getGoogleExtraData();
+    _fileInstructions = '';
+    _lastFileFetchTime = 0;
+    await Promise.allSettled([
+      fetchInstructionFile(true)
+    ]);
     console.log("[DEBUG] Google data cache refreshed successfully");
   } catch (error) {
     console.error('[refreshGoogleDataCache] Error:', error);
@@ -794,20 +817,13 @@ export function getFallbackInstructions(): string {
 // ---------- Enhanced System Instructions with Fallback ----------
 export async function buildEnhancedSystemInstructions(extraNote: string = 'Rules about images, privacy, etc...') {
   try {
-    // ตรวจสอบสถานะ Google API
-    const apiStatus = await checkGoogleAPIStatus();
-    
-    if (apiStatus.overall) {
-      // ใช้ข้อมูลจาก Google API
-      return buildSystemInstructions(extraNote);
-    } else {
-      // ใช้ fallback instructions
-      console.warn('[System Instructions] Using fallback mode - Google API unavailable');
-      return `${getFallbackInstructions()}\n\n${extraNote}`;
-    }
+    // ใช้เฉพาะ instruction.txt เป็นหลัก; ไม่แนบข้อความเพิ่มเติม
+    const base = buildSystemInstructions();
+    if (base && base.trim()) return base;
+    return getFallbackInstructions();
   } catch (error) {
     console.error('[buildEnhancedSystemInstructions] Error:', error);
-    return `${getFallbackInstructions()}\n\n${extraNote}`;
+    return getFallbackInstructions();
   }
 }
 

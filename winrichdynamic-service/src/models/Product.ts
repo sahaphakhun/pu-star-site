@@ -186,7 +186,28 @@ ProductSchema.index({
   description: 'text'
 });
 
-// Pre-save middleware สำหรับ auto-generate SKU
+// Pre-validate middleware เพื่อให้ผ่าน required sku โดย auto-generate ก่อน validate
+ProductSchema.pre('validate', async function(next) {
+  if (!this.sku) {
+    try {
+      const skuConfig = this.skuConfig as any;
+      const shouldAutoGenerate = skuConfig?.autoGenerate !== false; // default true
+      const timestamp = Date.now().toString(36);
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      const prefix = skuConfig?.prefix || 'PRD';
+      const separator = skuConfig?.separator || '-';
+      this.sku = shouldAutoGenerate
+        ? `${prefix}${separator}${timestamp}${separator}${randomStr}`.toUpperCase()
+        : `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+    } catch (error) {
+      console.error('Error generating SKU in pre-validate:', error);
+      this.sku = `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+    }
+  }
+  next();
+});
+
+// Pre-save middleware สำหรับ auto-generate/ensure uniqueness ซ้ำอีกชั้น
 ProductSchema.pre('save', async function(next) {
   // ถ้าไม่มี SKU ให้ auto-generate
   if (!this.sku) {
@@ -257,5 +278,4 @@ ProductSchema.set('toJSON', { virtuals: true });
 ProductSchema.set('toObject', { virtuals: true });
 
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
-
 
