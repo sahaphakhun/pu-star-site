@@ -4,7 +4,7 @@ import { sendTypingOn } from '@/utils/messenger';
 import connectDB from '@/lib/db';
 import AdminPhone from '@/models/AdminPhone';
 import { sendSMS } from '@/app/notification';
-import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext, enableFilterForUser, disableFilterForUser, isFilterDisabled, imageUrlToDataUrl, isUrlAccessible } from '@/utils/openai-utils';
+import { getAssistantResponse, buildSystemInstructions, enableAIForUser, disableAIForUser, isAIEnabled, addToConversationHistory, getConversationHistory, addToConversationHistoryWithContext, enableFilterForUser, disableFilterForUser, isFilterDisabled, imageUrlToDataUrl, isUrlAccessible, clearChatHistory } from '@/utils/openai-utils';
 import MessengerUser from '@/models/MessengerUser';
 import { sendTextMessage, hasCutOrImageCommands, sendFilteredMessage } from '@/utils/messenger-utils';
 import { enqueueAIMessage, enqueueAIContent } from '@/utils/ai-batcher';
@@ -101,6 +101,12 @@ export async function handleEvent(event: MessagingEvent) {
     if (question.length > 0) {
       console.log(`[AI Debug] Processing question: "${question}"`);
       
+      // คำสั่งลบประวัติสนทนาแบบเบา (เฉพาะ history) ด้วย #delete
+      if (question.trim() === '#delete') {
+        await clearChatHistory(psid);
+        return sendFilteredMessage(psid, { text: 'ลบประวัติการสนทนาทั้งหมดของคุณเรียบร้อยแล้วค่ะ' });
+      }
+
       // ตรวจสอบคำสั่งพิเศษ
       if (question.includes('/delete')) {
         // รีเซ็ตข้อมูลผู้ใช้ทุกอย่าง (สำหรับการทดสอบใหม่)

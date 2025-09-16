@@ -526,6 +526,18 @@ export async function getHistory(userId: string) {
 }
 export async function clearChatHistory(userId: string) {
   _ensure(userId).history = [];
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    await connectDB();
+    const MessengerUser = (await import('@/models/MessengerUser')).default;
+    await MessengerUser.findOneAndUpdate(
+      { psid: userId },
+      { conversationHistory: [], updatedAt: new Date() },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[clearChatHistory] DB error:', err);
+  }
   return true;
 }
 
