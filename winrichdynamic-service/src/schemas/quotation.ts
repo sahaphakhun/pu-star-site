@@ -56,6 +56,13 @@ export const createQuotationSchema = z.object({
     .max(500, 'ที่อยู่ลูกค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร')
     .optional()
     .or(z.literal('')),
+  // ที่อยู่จัดส่ง (กรณีที่ไม่ใช่ที่อยู่บริษัท)
+  shippingAddress: z.string()
+    .max(500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  // ใช้ที่อยู่ลูกค้าเป็นที่อยู่จัดส่งหรือไม่
+  shipToSameAsCustomer: z.boolean().optional().default(true),
   customerPhone: z.string()
     .optional()
     .or(z.literal(''))
@@ -85,6 +92,10 @@ export const createQuotationSchema = z.object({
     .or(z.literal('')),
   items: z.array(quotationItemSchema)
     .min(1, 'ต้องมีรายการสินค้าอย่างน้อย 1 รายการ'),
+  // ส่วนลดพิเศษ (จำนวนเงินเป็นบาท)
+  specialDiscount: z.number()
+    .min(0, 'ส่วนลดพิเศษต้องไม่ต่ำกว่า 0')
+    .default(0),
   vatRate: z.number()
     .min(0, 'อัตราภาษีมูลค่าเพิ่มต้องไม่ต่ำกว่า 0')
     .max(100, 'อัตราภาษีมูลค่าเพิ่มต้องไม่เกิน 100')

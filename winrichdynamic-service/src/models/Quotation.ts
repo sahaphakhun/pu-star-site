@@ -18,6 +18,8 @@ export interface IQuotation extends Document {
   customerName: string; // ชื่อลูกค้า (เก็บไว้เพื่อความเร็ว)
   customerTaxId?: string; // เลขประจำตัวผู้เสียภาษี
   customerAddress?: string; // ที่อยู่ลูกค้า
+  shippingAddress?: string; // ที่อยู่จัดส่ง (ถ้าไม่ใช่ที่อยู่บริษัท)
+  shipToSameAsCustomer?: boolean; // ใช้ที่อยู่ลูกค้าเป็นที่อยู่จัดส่ง
   customerPhone?: string; // เบอร์โทรลูกค้า
   
   // ข้อมูลใบเสนอราคา
@@ -33,7 +35,8 @@ export interface IQuotation extends Document {
   
   // การคำนวณราคา
   subtotal: number; // ราคารวมก่อนหักส่วนลด
-  totalDiscount: number; // ส่วนลดรวม
+  totalDiscount: number; // ส่วนลดรวม (รวมส่วนลดพิเศษ)
+  specialDiscount?: number; // ส่วนลดพิเศษแบบจำนวนเงิน
   totalAmount: number; // ราคารวมหลังหักส่วนลด
   vatRate: number; // อัตราภาษีมูลค่าเพิ่ม
   vatAmount: number; // ภาษีมูลค่าเพิ่ม
@@ -151,6 +154,16 @@ const quotationSchema = new Schema<IQuotation>(
       trim: true,
       maxlength: [500, 'ที่อยู่ลูกค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
     },
+    shippingAddress: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
+    },
+    shipToSameAsCustomer: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     customerPhone: {
       type: String,
       trim: true,
@@ -204,6 +217,12 @@ const quotationSchema = new Schema<IQuotation>(
       type: Number,
       default: 0,
       min: [0, 'ส่วนลดรวมต้องไม่ต่ำกว่า 0'],
+    },
+    specialDiscount: {
+      type: Number,
+      default: 0,
+      min: [0, 'ส่วนลดพิเศษต้องไม่ต่ำกว่า 0'],
+      index: true,
     },
     totalAmount: {
       type: Number,
@@ -362,7 +381,8 @@ quotationSchema.pre('save', function(next) {
     const itemGross = (item.quantity * item.unitPrice);
     return sum + (itemGross * (item.discount / 100));
   }, 0);
-  this.totalDiscount = round2(totalDiscountRaw);
+  const special = Number((this as any).specialDiscount || 0);
+  this.totalDiscount = round2(totalDiscountRaw + special);
   
   // คำนวณ totalAmount
   this.totalAmount = round2(this.subtotal - this.totalDiscount);

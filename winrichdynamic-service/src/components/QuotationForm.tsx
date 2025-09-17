@@ -21,12 +21,15 @@ interface QuotationFormData {
   customerName: string;
   customerTaxId: string;
   customerAddress: string;
+  shippingAddress: string;
+  shipToSameAsCustomer: boolean;
   customerPhone: string;
   subject: string;
   validUntil: string;
   paymentTerms: string;
   deliveryTerms: string;
   items: QuotationItem[];
+  specialDiscount: string; // จำนวนเงินเป็นบาท
   vatRate: string;
   assignedTo: string;
   notes: string;
@@ -71,6 +74,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     customerName: '',
     customerTaxId: '',
     customerAddress: '',
+    shippingAddress: '',
+    shipToSameAsCustomer: true,
     customerPhone: '',
     subject: '',
     validUntil: getDefaultValidUntil(),
@@ -88,6 +93,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         totalPrice: '',
       }
     ],
+    specialDiscount: '0',
     vatRate: '7',
     assignedTo: '',
     notes: '',
@@ -96,6 +102,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   type QuotationFormErrors = Partial<Record<keyof QuotationFormData, string>>;
   const [errors, setErrors] = useState<QuotationFormErrors>({});
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
 
   // โหลดรายการสินค้า
   useEffect(() => {
@@ -125,6 +133,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         const customer = customers.find(c => c._id === initialData.customerId);
         if (customer) {
           setSelectedCustomer(customer);
+          setCustomerQuery(customer.name || '');
         }
       }
     }
@@ -147,21 +156,24 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }, 0);
     const subtotal = round2(subtotalRaw);
     
-    const totalDiscountRaw = formData.items.reduce((sum, item) => {
+    const itemsDiscountRaw = formData.items.reduce((sum, item) => {
       const qty = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.unitPrice) || 0;
       const disc = parseFloat(item.discount) || 0;
       const itemGross = qty * price;
       return sum + (itemGross * (disc / 100));
     }, 0);
-    const totalDiscount = round2(totalDiscountRaw);
+    const itemsDiscount = round2(itemsDiscountRaw);
+
+    const specialDiscount = Math.max(0, parseFloat(formData.specialDiscount || '0') || 0);
+    const totalDiscount = round2(itemsDiscount + specialDiscount);
     
     const totalAmount = round2(subtotal - totalDiscount);
     const vatRate = parseFloat(formData.vatRate) || 7;
     const { vatAmount } = computeVatIncluded(totalAmount, vatRate);
     const grandTotal = totalAmount; // รวมภาษีอยู่แล้ว
     
-    return { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal };
+    return { subtotal, itemsDiscount, specialDiscount, totalDiscount, totalAmount, vatAmount, grandTotal };
   };
 
   const validateForm = (): boolean => {
@@ -199,6 +211,15 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       }
     });
 
+    // ตรวจสอบส่วนลดพิเศษ
+    const { subtotal, itemsDiscount } = calculateTotals();
+    const sd = Math.max(0, parseFloat(formData.specialDiscount || '0') || 0);
+    if (sd < 0) {
+      newErrors.specialDiscount = 'ส่วนลดพิเศษต้องไม่เป็นค่าติดลบ';
+    } else if (sd > round2(subtotal - itemsDiscount)) {
+      newErrors.specialDiscount = 'ส่วนลดพิเศษต้องไม่มากกว่าราคารวมหลังหักส่วนลดตามรายการ';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -213,7 +234,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
     try {
       // Calculate totals first
-      const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal } = calculateTotals();
+      const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal, specialDiscount } = calculateTotals();
       
       // Validate required fields
       if (!formData.customerId || !formData.subject || !formData.validUntil) {
@@ -256,6 +277,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
           discount: parseFloat(item.discount) || 0,
           totalPrice: calculateItemTotal(item),
         })),
+        specialDiscount: Math.max(0, parseFloat(formData.specialDiscount || '0') || 0),
         vatRate: parseFloat(formData.vatRate) || 7,
         // Add calculated fields that the model expects
         subtotal,
@@ -317,8 +339,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         customerName: customer.name,
         customerTaxId: customer.taxId || '',
         customerAddress: customer.companyAddress || '',
+        shippingAddress: prev.shipToSameAsCustomer ? (customer.companyAddress || '') : prev.shippingAddress,
         customerPhone: customer.companyPhone || '',
       }));
+      setCustomerQuery(customer.name || '');
     }
   };
 
@@ -419,26 +443,44 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ข้อมูลลูกค้า */}
+        {/* ข้อมูลลูกค้า */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               เลือกลูกค้า *
             </label>
-            <select
-              value={formData.customerId}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.customerId ? 'border-red-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">เลือกลูกค้า</option>
-              {customers.map(customer => (
-                <option key={customer._id} value={customer._id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                type="text"
+                value={customerQuery}
+                onChange={(e) => { setCustomerQuery(e.target.value); setShowCustomerSuggestions(true); }}
+                onFocus={() => setShowCustomerSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 150)}
+                placeholder="พิมพ์เพื่อค้นหาลูกค้า..."
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.customerId ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {showCustomerSuggestions && (
+                <div className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full max-h-56 overflow-auto shadow-lg">
+                  {customers
+                    .filter(c => (c.name || '').toLowerCase().includes((customerQuery || '').toLowerCase()))
+                    .slice(0, 20)
+                    .map(c => (
+                      <button
+                        type="button"
+                        key={c._id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleCustomerChange(c._id)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  {customers.filter(c => (c.name || '').toLowerCase().includes((customerQuery || '').toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-gray-500 text-sm">ไม่พบลูกค้า</div>
+                  )}
+                </div>
+              )}
+            </div>
             {errors.customerId && (
               <p className="text-red-500 text-sm mt-1">{errors.customerId}</p>
             )}
@@ -499,6 +541,35 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
               onChange={(e) => handleInputChange('customerAddress', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="ที่อยู่ลูกค้า"
+            />
+          </div>
+
+          {/* ที่อยู่จัดส่ง */}
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                id="shipSame"
+                type="checkbox"
+                checked={formData.shipToSameAsCustomer}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData(prev => ({
+                    ...prev,
+                    shipToSameAsCustomer: checked,
+                    shippingAddress: checked ? prev.customerAddress : prev.shippingAddress,
+                  }));
+                }}
+              />
+              <label htmlFor="shipSame" className="text-sm text-gray-700">ที่อยู่จัดส่งเหมือนที่อยู่ลูกค้า</label>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่จัดส่ง</label>
+            <textarea
+              value={formData.shipToSameAsCustomer ? (formData.customerAddress || '') : formData.shippingAddress}
+              onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
+              disabled={formData.shipToSameAsCustomer}
+              rows={2}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formData.shipToSameAsCustomer ? 'bg-gray-100 border-gray-200' : 'border-gray-300'}`}
+              placeholder="ระบุที่อยู่จัดส่ง (ถ้าไม่เหมือนที่อยู่ลูกค้า)"
             />
           </div>
         </div>
@@ -708,6 +779,23 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                 <span className="text-gray-600">ราคารวม:</span>
                 <span className="font-medium">฿{subtotal.toFixed(2)}</span>
               </div>
+              <div className="flex justify-between items-center gap-4">
+                <label className="text-gray-600">ส่วนลดพิเศษ:</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.specialDiscount}
+                    onChange={(e) => handleInputChange('specialDiscount', e.target.value)}
+                    className={`w-32 px-2 py-1 border rounded text-right ${errors.specialDiscount ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  <span>฿</span>
+                </div>
+              </div>
+              {errors.specialDiscount && (
+                <p className="text-red-500 text-sm">{errors.specialDiscount}</p>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-600">ส่วนลดรวม:</span>
                 <span className="font-medium">฿{totalDiscount.toFixed(2)}</span>
