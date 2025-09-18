@@ -443,7 +443,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ข้อมูลลูกค้า */
+        {/* ข้อมูลลูกค้า */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
