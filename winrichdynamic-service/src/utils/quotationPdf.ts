@@ -214,6 +214,15 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               <div class="row"><div class="k">ชื่อลูกค้า</div><div class="v">${q.customerName}</div></div>
               ${q.customerTaxId ? `<div class="row"><div class="k">เลขผู้เสียภาษี</div><div class="v">${q.customerTaxId}</div></div>` : ''}
               ${q.customerAddress ? `<div class="row"><div class="k">ที่อยู่</div><div class="v">${q.customerAddress}</div></div>` : ''}
+              ${(() => {
+                if (q.shipToSameAsCustomer && q.customerAddress) {
+                  return `<div class="row"><div class="k">ที่อยู่จัดส่ง</div><div class="v">ใช้ที่อยู่ลูกค้า</div></div>`;
+                }
+                if (!q.shipToSameAsCustomer && q.shippingAddress) {
+                  return `<div class="row"><div class="k">ที่อยู่จัดส่ง</div><div class="v">${q.shippingAddress}</div></div>`;
+                }
+                return '';
+              })()}
               ${q.customerPhone ? `<div class="row"><div class="k">โทร</div><div class="v">${q.customerPhone}</div></div>` : ''}
             </div>
             <div class="ibox">
@@ -233,7 +242,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               <tr>
                 <th>ลำดับ</th>
                 <th>รายละเอียด</th>
-                <th>รหัสสินค้า</th>
+                <th>SKU</th>
                 <th>จำนวน</th>
                 <th>หน่วย</th>
                 <th>ราคา/หน่วย</th>
