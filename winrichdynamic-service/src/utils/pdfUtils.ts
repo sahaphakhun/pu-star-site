@@ -17,6 +17,8 @@ export interface QuotationData {
   customerName: string;
   customerTaxId?: string;
   customerAddress?: string;
+  shippingAddress?: string;
+  shipToSameAsCustomer?: boolean;
   customerPhone?: string;
   subject: string;
   validUntil: Date | string;
@@ -33,6 +35,7 @@ export interface QuotationData {
     notes?: string[];
     productId?: string; // for SKU column
     selectedOptions?: Record<string, string>;
+    sku?: string;
   }>;
   subtotal: number;
   totalDiscount: number;
@@ -143,7 +146,8 @@ function sanitizeQuotationData(quotation: any): any {
         ...item,
         productName: sanitizeString(item.productName),
         description: sanitizeString(item.description),
-        unit: sanitizeString(item.unit)
+        unit: sanitizeString(item.unit),
+        sku: sanitizeString(item.sku),
       }));
     };
 
@@ -153,6 +157,8 @@ function sanitizeQuotationData(quotation: any): any {
       customerName: sanitizeString(quotation.customerName),
       customerTaxId: sanitizeString(quotation.customerTaxId),
       customerAddress: sanitizeString(quotation.customerAddress),
+      shippingAddress: sanitizeString(quotation.shippingAddress),
+      shipToSameAsCustomer: Boolean(quotation.shipToSameAsCustomer),
       customerPhone: sanitizeString(quotation.customerPhone),
       subject: sanitizeString(quotation.subject),
       paymentTerms: sanitizeString(quotation.paymentTerms),

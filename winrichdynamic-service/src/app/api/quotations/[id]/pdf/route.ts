@@ -49,15 +49,33 @@ export async function GET(
     const q: any = quotation as any;
     const productIds = (q.items || []).map((it: any) => it.productId).filter(Boolean);
     const products = productIds.length ? await Product.find({ _id: { $in: productIds } }).lean() : [];
-    const idToSku: Record<string, string> = {};
+    const skuMap: Record<string, { defaultSku?: string; unitSku: Record<string, string> }> = {};
     for (const p of products as any[]) {
-      idToSku[String(p._id)] = p.sku;
+      const productId = String(p._id);
+      const unitSku: Record<string, string> = {};
+      if (Array.isArray(p.units)) {
+        for (const unit of p.units) {
+          if (unit?.label && unit?.sku) {
+            unitSku[String(unit.label)] = String(unit.sku);
+          }
+        }
+      }
+      skuMap[productId] = {
+        defaultSku: p.sku ? String(p.sku) : undefined,
+        unitSku,
+      };
     }
 
-    const enrichedItems = (q.items || []).map((it: any) => ({
-      ...it,
-      sku: idToSku[it.productId] || undefined,
-    }));
+    const enrichedItems = (q.items || []).map((it: any) => {
+      const productId = String(it.productId || '');
+      const skuInfo = skuMap[productId] || { unitSku: {} };
+      const unitSku = skuInfo.unitSku?.[String(it.unit || '')];
+      const resolvedSku = (typeof it.sku === 'string' && it.sku.trim()) || unitSku || skuInfo.defaultSku;
+      return {
+        ...it,
+        sku: resolvedSku || undefined,
+      };
+    });
 
     // แนบข้อมูลฝ่ายขายจาก assignedTo (ถ้ามี)
     let salesInfo: any = {};
