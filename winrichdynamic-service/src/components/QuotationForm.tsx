@@ -434,23 +434,21 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
 
-  const handleInputChange = (field: keyof QuotationFormData, value: string) => {
+  const handleInputChange = <K extends keyof QuotationFormData>(field: K, value: QuotationFormData[K]) => {
     setFormData(prev => {
-      const next = { ...prev } as QuotationFormData;
-      next[field] = value as any;
+      const next = { ...prev, [field]: value } as QuotationFormData;
 
-      if (field === 'customerAddress' && prev.shipToSameAsCustomer) {
+      if (field === 'customerAddress' && prev.shipToSameAsCustomer && typeof value === 'string') {
         next.shippingAddress = value;
       }
 
-      if (field === 'shippingAddress' && value && prev.shipToSameAsCustomer) {
+      if (field === 'shippingAddress' && typeof value === 'string' && value && prev.shipToSameAsCustomer) {
         next.shipToSameAsCustomer = false;
       }
 
       return next;
     });
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
@@ -499,8 +497,9 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     const product = products.find(p => p._id === productId);
     const newItems = [...formData.items];
     if (product) {
-      const hasUnits = Array.isArray(product.units) && product.units.length > 0;
-      const firstUnit = hasUnits ? product.units[0] : undefined;
+      const unitsList = Array.isArray(product.units) ? product.units : [];
+      const hasUnits = unitsList.length > 0;
+      const firstUnit = hasUnits ? unitsList[0] : undefined;
       const unitLabel = firstUnit?.label || (hasUnits ? '' : 'ชิ้น');
       const unitPrice = firstUnit
         ? String(firstUnit.price)
@@ -854,7 +853,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
           <div className="space-y-4">
             {formData.items.map((item, index) => {
               const product = products.find(p => p._id === item.productId);
-              const unitList = product?.units || [];
+              const unitList = Array.isArray(product?.units) ? product!.units : [];
               const hasMatchingUnit = unitList.some(unit => unit.label === item.unit);
               const optionList = (product?.options || []).filter(option => (option.values || []).length > 0);
 

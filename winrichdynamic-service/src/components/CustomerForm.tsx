@@ -169,7 +169,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         return next;
       }
 
-      next[field] = value as any;
+      (next as Record<keyof CustomerFormData, string | boolean>)[field] = value;
 
       if (field === 'companyAddress' && prev.shippingSameAsCompany) {
         next.shippingAddress = value as string;

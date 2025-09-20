@@ -68,10 +68,6 @@ export async function PUT(
     }
 
     const updateData = { ...parsed.data } as any;
-    if (updateData.shippingSameAsCompany) {
-      const baseAddress = updateData.companyAddress ?? existingCustomer.companyAddress ?? updateData.shippingAddress;
-      updateData.shippingAddress = baseAddress || '';
-    }
 
     await connectDB();
     const resolvedParams = await params;
@@ -83,6 +79,13 @@ export async function PUT(
         { error: 'ไม่พบลูกค้านี้' },
         { status: 404 }
       );
+    }
+
+    if (updateData.shippingSameAsCompany) {
+      const baseAddress = (typeof updateData.companyAddress === 'string' && updateData.companyAddress.trim())
+        ? updateData.companyAddress
+        : existingCustomer.companyAddress;
+      updateData.shippingAddress = baseAddress || '';
     }
     
     // ตรวจสอบว่าเบอร์โทร, Tax ID, หรือ Email ซ้ำกับลูกค้าอื่นหรือไม่
