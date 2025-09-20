@@ -32,6 +32,7 @@ export interface QuotationData {
     totalPrice: number;
     notes?: string[];
     productId?: string; // for SKU column
+    selectedOptions?: Record<string, string>;
   }>;
   subtotal: number;
   totalDiscount: number;

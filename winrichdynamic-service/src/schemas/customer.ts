@@ -33,6 +33,11 @@ export const createCustomerSchema = z.object({
     .email('รูปแบบอีเมลบริษัทไม่ถูกต้อง')
     .optional()
     .or(z.literal('')),
+  shippingAddress: z.string()
+    .max(500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  shippingSameAsCompany: z.boolean().optional().default(false),
   customerType: z.enum(['new', 'regular', 'target', 'inactive'])
     .default('new'),
   assignedTo: z.string()

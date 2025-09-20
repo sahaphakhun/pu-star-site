@@ -34,11 +34,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
 
   // Units States
-  const [units, setUnits] = useState<Array<{ label: string; price: string; shippingFee: string }>>(
+  const [units, setUnits] = useState<Array<{ label: string; price: string; shippingFee: string; sku: string }>>(
     (initialData?.units || []).map(u => ({
-      label: u.label,
-      price: u.price.toString(),
-      shippingFee: (u.shippingFee || 0).toString()
+      label: String(u.label || ''),
+      price: u.price !== undefined && u.price !== null ? String(u.price) : '',
+      shippingFee: u.shippingFee !== undefined && u.shippingFee !== null ? String(u.shippingFee) : '',
+      sku: u.sku ? String(u.sku) : '',
     }))
   );
 
@@ -66,9 +67,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setIsAvailable(initialData.isAvailable !== false);
       setImageUrl(initialData.imageUrl || '');
       setUnits((initialData.units || []).map(u => ({
-        label: u.label,
-        price: u.price.toString(),
-        shippingFee: (u.shippingFee || 0).toString()
+        label: String(u.label || ''),
+        price: u.price !== undefined && u.price !== null ? String(u.price) : '',
+        shippingFee: u.shippingFee !== undefined && u.shippingFee !== null ? String(u.shippingFee) : '',
+        sku: u.sku ? String(u.sku) : '',
       })));
       setOptions(initialData.options || []);
     }
@@ -134,6 +136,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
         };
         if (u.shippingFee.trim() !== '') {
           unit.shippingFee = parseFloat(u.shippingFee);
+        }
+        if (u.sku.trim() !== '') {
+          unit.sku = u.sku.trim();
         }
         return unit;
       });
@@ -397,7 +402,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             <h3 className="text-lg font-semibold text-gray-900">หน่วยสินค้า</h3>
             <button
               type="button"
-              onClick={() => setUnits([...units, { label: '', price: '', shippingFee: '' }])}
+              onClick={() => setUnits([...units, { label: '', price: '', shippingFee: '', sku: '' }])}
               className="bg-indigo-600 text-white text-sm px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
             >
               + เพิ่มหน่วย
@@ -411,7 +416,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           <div className="space-y-3">
             {units.map((unit, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
-                <div className="col-span-4">
+                <div className="col-span-3">
                     <input
                       type="text"
                     placeholder="หน่วย เช่น หลอด"
@@ -424,7 +429,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                <div className="col-span-3">
+                <div className="col-span-2">
                     <input
                       type="number"
                       step="0.01"
@@ -438,7 +443,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                <div className="col-span-3">
+                <div className="col-span-2">
                     <input
                       type="number"
                       step="0.01"
@@ -447,6 +452,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     onChange={(e) => {
                       const newUnits = [...units];
                       newUnits[idx].shippingFee = e.target.value;
+                      setUnits(newUnits);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <input
+                    type="text"
+                    placeholder="SKU สำหรับหน่วย"
+                    value={unit.sku}
+                    onChange={(e) => {
+                      const newUnits = [...units];
+                      newUnits[idx].sku = e.target.value;
                       setUnits(newUnits);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -22,7 +22,13 @@ function sanitizeQuotationData(quotation: any): any {
       ...item,
       productName: sanitizeString(item.productName),
       description: sanitizeString(item.description),
-      unit: sanitizeString(item.unit)
+      unit: sanitizeString(item.unit),
+      selectedOptions: (() => {
+        if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
+        const entries = Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value));
+        if (!entries.length) return undefined;
+        return Object.fromEntries(entries.map(([key, value]) => [sanitizeString(key), sanitizeString(value)]));
+      })()
     }));
   };
   return {
@@ -242,6 +248,14 @@ export function generateQuotationHTML(quotation: QuotationData): string {
                   <td class=\"desc\">
                     <div>${item.productName || '-'}</div>
                     ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}
+                    ${(() => {
+                      const opts = item.selectedOptions && typeof item.selectedOptions === 'object'
+                        ? Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value))
+                        : [];
+                      if (!opts.length) return '';
+                      const text = opts.map(([name, value]) => `${sanitizeString(name)}: ${sanitizeString(value)}`).join(' · ');
+                      return `<div class=\"note\">${text}</div>`;
+                    })()}
                   </td>
                   <td class=\"sku\">${sanitizeString((item as any).sku) || sanitizeString(item.productId) || '-'}</td>
                   <td class=\"qty\">${Number(item.quantity||0).toLocaleString()}</td>

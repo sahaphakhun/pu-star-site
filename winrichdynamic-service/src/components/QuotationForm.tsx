@@ -14,6 +14,29 @@ interface QuotationItem {
   unitPrice: string;
   discount: string;
   totalPrice: string;
+  sku?: string;
+  selectedOptions?: Record<string, string>;
+}
+
+interface ProductOptionValue {
+  label: string;
+  imageUrl?: string;
+  isAvailable?: boolean;
+}
+
+interface ProductOption {
+  name: string;
+  values: ProductOptionValue[];
+}
+
+interface ProductSummary {
+  _id: string;
+  name: string;
+  sku?: string;
+  price?: number;
+  units?: Array<{ label: string; price: number; shippingFee?: number; sku?: string }>;
+  options?: ProductOption[];
+  isAvailable: boolean;
 }
 
 interface QuotationFormData {
@@ -31,16 +54,18 @@ interface QuotationFormData {
   items: QuotationItem[];
   specialDiscount: string; // จำนวนเงินเป็นบาท
   vatRate: string;
-  assignedTo: string;
   notes: string;
 }
 
 interface Customer {
   _id: string;
   name: string;
+  phoneNumber?: string;
   taxId?: string;
   companyAddress?: string;
   companyPhone?: string;
+  shippingAddress?: string;
+  shippingSameAsCompany?: boolean;
 }
 
 interface QuotationFormProps {
@@ -68,7 +93,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   };
-  const [products, setProducts] = useState<Array<{ _id: string; name: string; price?: number; units?: Array<{ label: string; price: number }>; isAvailable: boolean }>>([]);
+  const [products, setProducts] = useState<ProductSummary[]>([]);
   const [formData, setFormData] = useState<QuotationFormData>({
     customerId: '',
     customerName: '',
@@ -88,14 +113,15 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         description: '',
         quantity: '',
         unit: '',
+        sku: '',
         unitPrice: '',
         discount: '0',
         totalPrice: '',
+        selectedOptions: {},
       }
     ],
     specialDiscount: '0',
     vatRate: '7',
-    assignedTo: '',
     notes: '',
   });
 
@@ -112,7 +138,42 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         const res = await fetch('/api/products?isAvailable=true&limit=100&page=1', { credentials: 'include' });
         const data = await res.json();
         if (data?.success) {
-          setProducts(Array.isArray(data.data) ? data.data : []);
+          const productList: ProductSummary[] = (Array.isArray(data.data) ? data.data : []).map((p: any) => ({
+            _id: String(p._id || ''),
+            name: String(p.name || ''),
+            sku: p.sku ? String(p.sku) : undefined,
+            price: typeof p.price === 'number' ? p.price : undefined,
+            units: Array.isArray(p.units)
+              ? p.units
+                  .filter((u: any) => u && u.label)
+                  .map((u: any) => ({
+                    label: String(u.label),
+                    price: typeof u.price === 'number' ? u.price : Number(u.price) || 0,
+                    shippingFee: typeof u.shippingFee === 'number' || typeof u.shippingFee === 'string'
+                      ? Number(u.shippingFee)
+                      : undefined,
+                    sku: u.sku ? String(u.sku) : undefined,
+                  }))
+              : undefined,
+            options: Array.isArray(p.options)
+              ? p.options
+                  .filter((opt: any) => opt && opt.name)
+                  .map((opt: any) => ({
+                    name: String(opt.name),
+                    values: Array.isArray(opt.values)
+                      ? opt.values
+                          .filter((val: any) => val && val.label)
+                          .map((val: any) => ({
+                            label: String(val.label),
+                            imageUrl: val.imageUrl ? String(val.imageUrl) : undefined,
+                            isAvailable: val.isAvailable !== false,
+                          }))
+                      : [],
+                  }))
+              : [],
+            isAvailable: p.isAvailable !== false,
+          }));
+          setProducts(productList);
         }
       } catch (e) {
         // เงียบไว้ ไม่ต้องบล็อคการกรอกฟอร์ม
@@ -123,10 +184,33 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
   useEffect(() => {
     if (initialData) {
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-      }));
+      setFormData(prev => {
+        const merged: QuotationFormData = {
+          ...prev,
+          ...initialData,
+        } as QuotationFormData;
+
+        if (initialData.items && Array.isArray(initialData.items)) {
+          merged.items = initialData.items.map(item => ({
+            productId: item.productId || '',
+            productName: item.productName || '',
+            description: item.description || '',
+            quantity: typeof item.quantity === 'string' ? item.quantity : String(item.quantity ?? ''),
+            unit: item.unit || '',
+            sku: item.sku ? String(item.sku) : '',
+            unitPrice: typeof item.unitPrice === 'string' ? item.unitPrice : String(item.unitPrice ?? ''),
+            discount: typeof item.discount === 'string' ? item.discount : String(item.discount ?? '0'),
+            totalPrice: typeof item.totalPrice === 'string' ? item.totalPrice : String(item.totalPrice ?? ''),
+            selectedOptions: item.selectedOptions
+              ? Object.fromEntries(
+                  Object.entries(item.selectedOptions).map(([key, value]) => [key, String(value)])
+                )
+              : undefined,
+          }));
+        }
+
+        return merged;
+      });
       
       // หาลูกค้าที่เลือก
       if (initialData.customerId) {
@@ -209,6 +293,19 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
       if (!item.unitPrice || parseFloat(item.unitPrice) < 0) {
         newErrors.items = 'กรุณาระบุราคาต่อหน่วยสินค้าทุกรายการ';
       }
+      if (!newErrors.items) {
+        const product = products.find(p => p._id === item.productId);
+        if (product?.options && product.options.length > 0) {
+          const hasMissingSelection = product.options.some(option => {
+            const selected = item.selectedOptions?.[option.name] || '';
+            if (!selected) return true;
+            return !(option.values || []).some(value => value.label === selected);
+          });
+          if (hasMissingSelection) {
+            newErrors.items = 'กรุณาเลือกตัวเลือกสินค้าให้ครบถ้วน';
+          }
+        }
+      }
     });
 
     // ตรวจสอบส่วนลดพิเศษ
@@ -234,7 +331,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
     try {
       // Calculate totals first
-      const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal, specialDiscount } = calculateTotals();
+      const { subtotal, totalDiscount, totalAmount, vatAmount, grandTotal } = calculateTotals();
       
       // Validate required fields
       if (!formData.customerId || !formData.subject || !formData.validUntil) {
@@ -253,13 +350,20 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
       // Validate items
       const hasInvalidItems = formData.items.some(item => 
-        !item.productName.trim() || 
-        !item.quantity || 
-        parseFloat(item.quantity) <= 0 ||
-        // unit และ unitPrice ไม่บังคับในฟอร์ม (จะดึงจากสินค้า)
-        // !item.unit.trim() ||
-        // !item.unitPrice ||
-        parseFloat(item.unitPrice) < 0
+        {
+          if (!item.productName.trim() || !item.quantity || parseFloat(item.quantity) <= 0 || parseFloat(item.unitPrice) < 0) {
+            return true;
+          }
+          const product = products.find(p => p._id === item.productId);
+          if (product?.options && product.options.length > 0) {
+            return product.options.some(option => {
+              const selected = item.selectedOptions?.[option.name] || '';
+              if (!selected) return true;
+              return !(option.values || []).some(value => value.label === selected);
+            });
+          }
+          return false;
+        }
       );
 
       if (hasInvalidItems) {
@@ -271,11 +375,18 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         ...formData,
         items: formData.items.map(item => ({
           ...item,
+          sku: (item.sku || '').trim() || undefined,
           productId: item.productId,
           quantity: parseFloat(item.quantity) || 0,
           unitPrice: parseFloat(item.unitPrice) || 0,
           discount: parseFloat(item.discount) || 0,
           totalPrice: calculateItemTotal(item),
+          selectedOptions: (() => {
+            if (!item.selectedOptions) return undefined;
+            const entries = Object.entries(item.selectedOptions).filter(([, value]) => (value || '').trim() !== '');
+            if (!entries.length) return undefined;
+            return Object.fromEntries(entries.map(([key, value]) => [key, value.trim()]));
+          })(),
         })),
         specialDiscount: Math.max(0, parseFloat(formData.specialDiscount || '0') || 0),
         vatRate: parseFloat(formData.vatRate) || 7,
@@ -288,6 +399,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         // Add status field
         status: 'draft' as const,
       };
+
+      if (submitData.shipToSameAsCustomer) {
+        submitData.shippingAddress = submitData.customerAddress;
+      }
       
       // Validate that all required numeric fields are valid numbers
       const hasInvalidNumbers = submitData.items.some(item => 
@@ -320,7 +435,20 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   };
 
   const handleInputChange = (field: keyof QuotationFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev } as QuotationFormData;
+      next[field] = value as any;
+
+      if (field === 'customerAddress' && prev.shipToSameAsCustomer) {
+        next.shippingAddress = value;
+      }
+
+      if (field === 'shippingAddress' && value && prev.shipToSameAsCustomer) {
+        next.shipToSameAsCustomer = false;
+      }
+
+      return next;
+    });
     
     // Clear error when user starts typing
     if (errors[field]) {
@@ -333,14 +461,21 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     setSelectedCustomer(customer);
     
     if (customer) {
+      const companyAddress = customer.companyAddress || '';
+      const useSame = customer.shippingSameAsCompany !== false;
+      const shippingAddress = useSame
+        ? companyAddress
+        : (customer.shippingAddress || companyAddress);
+      const primaryPhone = customer.phoneNumber || customer.companyPhone || '';
       setFormData(prev => ({
         ...prev,
         customerId,
         customerName: customer.name,
         customerTaxId: customer.taxId || '',
-        customerAddress: customer.companyAddress || '',
-        shippingAddress: prev.shipToSameAsCustomer ? (customer.companyAddress || '') : prev.shippingAddress,
-        customerPhone: customer.companyPhone || '',
+        customerAddress: companyAddress,
+        shipToSameAsCustomer: useSame,
+        shippingAddress,
+        customerPhone: primaryPhone,
       }));
       setCustomerQuery(customer.name || '');
     }
@@ -364,19 +499,33 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     const product = products.find(p => p._id === productId);
     const newItems = [...formData.items];
     if (product) {
-      // ใช้หน่วยแรกถ้ามี ไม่งั้นปล่อยว่าง
-      const unitLabel = product.units && product.units.length > 0 ? product.units[0].label : '';
-      const unitPrice = product.units && product.units.length > 0
-        ? String(product.units[0].price)
+      const hasUnits = Array.isArray(product.units) && product.units.length > 0;
+      const firstUnit = hasUnits ? product.units[0] : undefined;
+      const unitLabel = firstUnit?.label || (hasUnits ? '' : 'ชิ้น');
+      const unitPrice = firstUnit
+        ? String(firstUnit.price)
         : String(product.price || 0);
+      const unitSku = firstUnit?.sku || product.sku || '';
+      const optionList = Array.isArray(product.options) ? product.options : [];
+      const previousSelections = newItems[index].selectedOptions || {};
+      const normalizedSelections = optionList.reduce((acc, option) => {
+        const validValues = (option.values || []).map(v => String(v.label));
+        if (validValues.length === 0) return acc;
+        const prev = previousSelections[option.name];
+        acc[option.name] = prev && validValues.includes(prev) ? prev : '';
+        return acc;
+      }, {} as Record<string, string>);
+
       newItems[index] = {
         ...newItems[index],
         productId: product._id,
         productName: product.name,
         unit: unitLabel,
+        sku: unitSku,
         unitPrice,
+        selectedOptions: Object.keys(normalizedSelections).length > 0 ? normalizedSelections : undefined,
       } as any;
-      // อัปเดตราคารวมของรายการนี้หลังเลือกสินค้า
+
       const total = calculateItemTotal(newItems[index]);
       newItems[index].totalPrice = String(round2(total));
       setFormData(prev => ({ ...prev, items: newItems }));
@@ -386,11 +535,51 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         productId: '',
         productName: '',
         unit: '',
+        sku: '',
         unitPrice: '',
         totalPrice: '',
+        selectedOptions: undefined,
       } as any;
       setFormData(prev => ({ ...prev, items: newItems }));
     }
+  };
+
+  const handleUnitSelect = (index: number, unitLabel: string) => {
+    setFormData(prev => {
+      const newItems = [...prev.items];
+      const targetItem: QuotationItem = { ...newItems[index], unit: unitLabel };
+      const product = products.find(p => p._id === targetItem.productId);
+      if (product && Array.isArray(product.units)) {
+        const matchedUnit = product.units.find(u => u.label === unitLabel);
+        if (matchedUnit) {
+          targetItem.unitPrice = String(matchedUnit.price);
+          targetItem.sku = matchedUnit.sku || product.sku || targetItem.sku || '';
+        } else if (!unitLabel) {
+          targetItem.unitPrice = '';
+          targetItem.sku = product.sku || '';
+        }
+      } else if (!unitLabel) {
+        targetItem.unitPrice = '';
+        targetItem.sku = product?.sku || '';
+      }
+
+      const total = calculateItemTotal(targetItem);
+      targetItem.totalPrice = String(round2(total));
+      newItems[index] = targetItem;
+      return { ...prev, items: newItems };
+    });
+  };
+
+  const handleOptionSelect = (index: number, optionName: string, value: string) => {
+    setFormData(prev => {
+      const newItems = [...prev.items];
+      const targetItem: QuotationItem = { ...newItems[index] };
+      const currentSelections = { ...(targetItem.selectedOptions || {}) };
+      currentSelections[optionName] = value;
+      targetItem.selectedOptions = currentSelections;
+      newItems[index] = targetItem;
+      return { ...prev, items: newItems };
+    });
   };
 
   const addItem = () => {
@@ -404,9 +593,11 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
           description: '',
           quantity: '',
           unit: '',
+          sku: '',
           unitPrice: '',
           discount: '0',
           totalPrice: '',
+          selectedOptions: {},
         }
       ]
     }));
@@ -661,112 +852,183 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
           )}
 
           <div className="space-y-4">
-            {formData.items.map((item, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      เลือกสินค้า *
-                    </label>
-                    <select
-                      value={item.productId || ''}
-                      onChange={(e) => handleProductSelect(index, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">เลือกสินค้า</option>
-                      {products.map(p => (
-                        <option key={p._id} value={p._id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+            {formData.items.map((item, index) => {
+              const product = products.find(p => p._id === item.productId);
+              const unitList = product?.units || [];
+              const hasMatchingUnit = unitList.some(unit => unit.label === item.unit);
+              const optionList = (product?.options || []).filter(option => (option.values || []).length > 0);
+
+              return (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        เลือกสินค้า *
+                      </label>
+                      <select
+                        value={item.productId || ''}
+                        onChange={(e) => handleProductSelect(index, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">เลือกสินค้า</option>
+                        {products.map(p => (
+                          <option key={p._id} value={p._id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        รายละเอียด
+                      </label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="รายละเอียด"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        จำนวน *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        หน่วย
+                      </label>
+                      {unitList.length > 0 ? (
+                        <select
+                          value={item.unit}
+                          onChange={(e) => handleUnitSelect(index, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">เลือกหน่วย</option>
+                          {!hasMatchingUnit && item.unit && (
+                            <option value={item.unit}>{item.unit} (ไม่พบในสินค้า)</option>
+                          )}
+                          {unitList.map(unit => (
+                            <option key={unit.label} value={unit.label}>
+                              {unit.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={item.unit}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
+                          placeholder="หน่วยจากสินค้า"
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SKU
+                      </label>
+                      <input
+                        type="text"
+                        value={item.sku || ''}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
+                        placeholder="SKU จากสินค้า"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ราคาต่อหน่วย (รวม VAT)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unitPrice}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
+                        placeholder="ราคาอัตโนมัติจากสินค้า"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        ส่วนลด (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.discount}
+                        onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      รายละเอียด
-                    </label>
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="รายละเอียด"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      จำนวน *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      หน่วย
-                    </label>
-                    <input
-                      type="text"
-                      value={item.unit}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
-                      placeholder="หน่วยจากสินค้า"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ราคาต่อหน่วย (รวม VAT)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={item.unitPrice}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md focus:outline-none"
-                      placeholder="ราคาอัตโนมัติจากสินค้า"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ส่วนลด (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={item.discount}
-                      onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-3 flex justify-between items-center">
-                  <div className="text-sm text-gray-600">
-                    ราคารวม: <span className="font-medium">฿{parseFloat(item.totalPrice || '0').toFixed(2)}</span>
-                  </div>
-                  {formData.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="px-3 py-1 text-red-600 hover:text-red-800 transition-colors"
-                    >
-                      ลบ
-                    </button>
+                  {optionList.length > 0 && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {optionList.map(option => {
+                        const optionValues = option.values || [];
+                        const selectedValue = item.selectedOptions?.[option.name] || '';
+                        const hasOptionError = !selectedValue && (errors.items || '').includes('ตัวเลือกสินค้า');
+                        return (
+                          <div key={`${option.name}-${index}`}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {option.name}
+                            </label>
+                            <select
+                              value={selectedValue}
+                              onChange={(e) => handleOptionSelect(index, option.name, e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasOptionError ? 'border-red-500' : 'border-gray-300'}`}
+                            >
+                              <option value="">เลือก{option.name}</option>
+                              {optionValues.map(value => (
+                                <option
+                                  key={value.label}
+                                  value={value.label}
+                                  disabled={value.isAvailable === false}
+                                >
+                                  {value.label}{value.isAvailable === false ? ' (ไม่พร้อมขาย)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
+
+                  <div className="mt-3 flex justify-between items-center">
+                    <div className="text-sm text-gray-600">
+                      ราคารวม: <span className="font-medium">฿{parseFloat(item.totalPrice || '0').toFixed(2)}</span>
+                    </div>
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="px-3 py-1 text-red-600 hover:text-red-800 transition-colors"
+                      >
+                        ลบ
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -837,16 +1099,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
         {/* ข้อมูลเพิ่มเติม */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              ผู้รับผิดชอบ
-            </label>
-            <input
-              type="text"
-              value={formData.assignedTo}
-              onChange={(e) => handleInputChange('assignedTo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="ชื่อผู้รับผิดชอบ"
-            />
+            <p className="text-sm font-medium text-gray-700 mb-2">ผู้รับผิดชอบ</p>
+            <div className="text-sm text-gray-600 bg-gray-50 border border-dashed border-gray-300 rounded-md px-3 py-2">
+              ระบบจะกำหนดผู้รับผิดชอบเป็นผู้สร้างใบเสนอราคาโดยอัตโนมัติ
+            </div>
           </div>
 
           <div className="md:col-span-2">

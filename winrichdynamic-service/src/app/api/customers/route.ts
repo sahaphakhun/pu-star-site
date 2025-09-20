@@ -112,7 +112,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const customerData = parsed.data;
+    const customerData = { ...parsed.data } as any;
+
+    if (customerData.shippingSameAsCompany) {
+      customerData.shippingAddress = customerData.companyAddress || customerData.shippingAddress || '';
+    }
     
     // ตรวจสอบว่าเบอร์โทรหรือ Tax ID ซ้ำหรือไม่
     const existingCustomer = await Customer.findOne({

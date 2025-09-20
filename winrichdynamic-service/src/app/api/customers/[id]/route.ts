@@ -67,8 +67,12 @@ export async function PUT(
       );
     }
 
-    const updateData = parsed.data;
-    
+    const updateData = { ...parsed.data } as any;
+    if (updateData.shippingSameAsCompany) {
+      const baseAddress = updateData.companyAddress ?? existingCustomer.companyAddress ?? updateData.shippingAddress;
+      updateData.shippingAddress = baseAddress || '';
+    }
+
     await connectDB();
     const resolvedParams = await params;
     
@@ -128,6 +132,12 @@ export async function PUT(
         }
       }
     } catch {}
+
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
     // อัพเดทข้อมูลลูกค้า
     const updatedCustomer = await Customer.findByIdAndUpdate(

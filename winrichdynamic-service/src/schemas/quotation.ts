@@ -23,6 +23,10 @@ export const quotationItemSchema = z.object({
     .trim()
     .optional()
     .or(z.literal('')),
+  sku: z.string()
+    .max(100, 'SKU ต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
   // ราคาต่อหน่วย (ราคารวมภาษี) จะมาจากสินค้า
   unitPrice: z.number()
     .min(0, 'ราคาต่อหน่วยต้องไม่ต่ำกว่า 0')
@@ -34,6 +38,7 @@ export const quotationItemSchema = z.object({
   totalPrice: z.number()
     .min(0, 'ราคารวมต้องไม่ต่ำกว่า 0')
     .optional(),
+  selectedOptions: z.record(z.string(), z.string().min(1, 'กรุณาเลือกตัวเลือกสินค้า')).optional(),
 });
 
 // Schema สำหรับการสร้างใบเสนอราคาใหม่

@@ -17,7 +17,8 @@ const productOptionSchema = z.object({
 const unitSchema = z.object({
   label: z.string().min(1, 'ชื่อหน่วยไม่สามารถว่างได้'),
   price: z.number().min(0, 'ราคาต้องไม่ต่ำกว่า 0'),
-  shippingFee: z.number().min(0, 'ค่าส่งต้องไม่ต่ำกว่า 0').optional()
+  shippingFee: z.number().min(0, 'ค่าส่งต้องไม่ต่ำกว่า 0').optional(),
+  sku: z.string().min(1, 'SKU ของหน่วยต้องไม่ว่าง').optional()
 });
 
 // Schema สำหรับ SKU variant

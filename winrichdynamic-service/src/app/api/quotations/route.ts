@@ -186,6 +186,14 @@ export async function POST(request: Request) {
         unitPrice: Number(item.unitPrice),
         discount: Number(item.discount),
         totalPrice: Number(item.totalPrice),
+        selectedOptions: (() => {
+          if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
+          const entries = Object.entries(item.selectedOptions).filter(([, value]) =>
+            typeof value === 'string' && value.trim() !== ''
+          );
+          if (!entries.length) return undefined;
+          return Object.fromEntries(entries.map(([key, value]) => [String(key).trim(), String(value).trim()]));
+        })(),
       })),
       vatRate: Number(quotationData.vatRate),
       subtotal: round2(Number(quotationData.subtotal || 0)),
@@ -199,6 +207,10 @@ export async function POST(request: Request) {
         return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
       })(),
     } as any;
+
+    if (modelData.shipToSameAsCustomer) {
+      modelData.shippingAddress = modelData.customerAddress;
+    }
     
     // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership และ context guardrails
     try {

@@ -16,6 +16,8 @@ interface Customer {
   companyAddress?: string
   companyPhone?: string
   companyEmail?: string
+  shippingAddress?: string
+  shippingSameAsCompany?: boolean
   customerCode?: string
   customerType: 'new' | 'regular' | 'target' | 'inactive'
   assignedTo?: string

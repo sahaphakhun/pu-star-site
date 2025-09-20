@@ -66,6 +66,10 @@ export async function PUT(
       return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
     }
     const body = parsed.data as any;
+
+    if (body.shipToSameAsCustomer) {
+      body.shippingAddress = body.customerAddress;
+    }
     
     const resolvedParams = await params;
     // RBAC: ตรวจสิทธิ์เป็นเจ้าของก่อน (เฉพาะ Seller)

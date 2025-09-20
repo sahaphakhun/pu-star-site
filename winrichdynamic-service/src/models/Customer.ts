@@ -9,6 +9,8 @@ export interface ICustomer extends Document {
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
+  shippingAddress?: string;
+  shippingSameAsCompany?: boolean;
   customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string;
@@ -87,6 +89,16 @@ const customerSchema = new Schema<ICustomer>(
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
         'รูปแบบอีเมลบริษัทไม่ถูกต้อง',
       ],
+    },
+    shippingAddress: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
+    },
+    shippingSameAsCompany: {
+      type: Boolean,
+      default: false,
     },
     customerCode: {
       type: String,

@@ -10,6 +10,7 @@ export interface IProduct extends Document {
     label: string;
     price: number;
     shippingFee?: number;
+    sku?: string;
   }>;
   category: string;
   imageUrl: string;
@@ -81,6 +82,11 @@ const ProductSchema: Schema = new Schema({
       type: Number,
       required: false,
       min: 0
+    },
+    sku: {
+      type: String,
+      required: false,
+      trim: true
     }
   }],
   category: {
@@ -278,4 +284,3 @@ ProductSchema.set('toJSON', { virtuals: true });
 ProductSchema.set('toObject', { virtuals: true });
 
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
-

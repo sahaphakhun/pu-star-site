@@ -13,6 +13,8 @@ interface QuotationItem {
   unitPrice: number
   discount: number
   totalPrice: number
+  sku?: string
+  selectedOptions?: Record<string, string>
 }
 
 interface Quotation {
@@ -21,6 +23,8 @@ interface Quotation {
   customerName: string
   customerTaxId?: string
   customerAddress?: string
+  shippingAddress?: string
+  shipToSameAsCustomer?: boolean
   customerPhone?: string
   subject: string
   validUntil: string
@@ -213,6 +217,13 @@ export default function QuotationView() {
                 {quotation.customerAddress && (
                   <p>ที่อยู่: {quotation.customerAddress}</p>
                 )}
+                {quotation.shipToSameAsCustomer ? (
+                  quotation.customerAddress ? (
+                    <p>ที่อยู่จัดส่ง: ใช้ที่อยู่ลูกค้า</p>
+                  ) : null
+                ) : quotation.shippingAddress ? (
+                  <p>ที่อยู่จัดส่ง: {quotation.shippingAddress}</p>
+                ) : null}
                 {quotation.customerPhone && (
                   <p>โทร: {quotation.customerPhone}</p>
                 )}
@@ -258,6 +269,9 @@ export default function QuotationView() {
                   <th className="border border-gray-300 px-4 py-3 text-center text-sm font-medium text-gray-700">
                     หน่วย
                   </th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                    SKU
+                  </th>
                   <th className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-700">
                     ราคาต่อหน่วย
                   </th>
@@ -270,31 +284,49 @@ export default function QuotationView() {
                 </tr>
               </thead>
               <tbody>
-                {quotation.items.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                      {item.productName}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
-                      {item.description}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
-                      {item.quantity.toLocaleString()}
-                    </td>
+                {quotation.items.map((item, index) => {
+                  const optionEntries = item.selectedOptions
+                    ? Object.entries(item.selectedOptions).filter(([, value]) => value)
+                    : [];
+
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                        {item.productName}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
+                        <div>{item.description || '-'}</div>
+                        {optionEntries.length > 0 && (
+                          <div className="mt-1 space-y-1">
+                            {optionEntries.map(([name, value]) => (
+                              <div key={`${name}-${value}`} className="text-xs text-gray-500">
+                                {name}: {value}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
+                        {item.quantity.toLocaleString()}
+                      </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
                       {item.unit}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                      {item.sku || '-'}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right">
                       {formatCurrency(item.unitPrice)}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
-                      {item.discount > 0 ? `${item.discount}%` : '-'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                      {formatCurrency(item.totalPrice)}
-                    </td>
-                  </tr>
-                ))}
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
+                        {item.discount > 0 ? `${item.discount}%` : '-'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                        {formatCurrency(item.totalPrice)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

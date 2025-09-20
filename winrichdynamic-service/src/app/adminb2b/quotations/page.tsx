@@ -20,9 +20,12 @@ interface Quotation {
 interface Customer {
   _id: string
   name: string
+  phoneNumber?: string
   taxId?: string
   companyAddress?: string
   companyPhone?: string
+  shippingAddress?: string
+  shippingSameAsCompany?: boolean
 }
 
 export default function AdminB2BQuotations() {

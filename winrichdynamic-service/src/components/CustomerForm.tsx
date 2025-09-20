@@ -13,6 +13,8 @@ interface CustomerFormData {
   companyAddress: string;
   companyPhone: string;
   companyEmail: string;
+  shippingAddress: string;
+  shippingSameAsCompany: boolean;
   customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo: string;
@@ -46,6 +48,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
+    shippingAddress: '',
+    shippingSameAsCompany: true,
     customerCode: '',
     customerType: 'new',
     assignedTo: '',
@@ -56,16 +60,34 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Partial<CustomerFormData>>({});
-  const [showCompanyFields, setShowCompanyFields] = useState(false);
+  const [showCompanyFields, setShowCompanyFields] = useState(true);
 
   useEffect(() => {
     if (initialData) {
+      const shippingSame = initialData.shippingSameAsCompany ?? (
+        initialData.shippingAddress
+          ? initialData.shippingAddress === initialData.companyAddress
+          : true
+      );
+      const resolvedShippingAddress = shippingSame
+        ? (initialData.companyAddress || initialData.shippingAddress || '')
+        : (initialData.shippingAddress || '');
       setFormData(prev => ({
         ...prev,
         ...initialData,
         creditLimit: initialData.creditLimit?.toString() || '',
+        shippingSameAsCompany: shippingSame,
+        shippingAddress: resolvedShippingAddress,
       }));
-      setShowCompanyFields(!!(initialData.companyName || initialData.companyAddress || initialData.companyPhone || initialData.companyEmail));
+      setShowCompanyFields(
+        !!(
+          initialData.companyName ||
+          initialData.companyAddress ||
+          initialData.companyPhone ||
+          initialData.companyEmail ||
+          initialData.shippingAddress
+        )
+      );
     }
   }, [initialData]);
 
@@ -102,6 +124,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       newErrors.creditLimit = 'วงเงินเครดิตต้องไม่ต่ำกว่า 0';
     }
 
+    if (!formData.shippingSameAsCompany && !formData.shippingAddress.trim()) {
+      newErrors.shippingAddress = 'กรุณาระบุที่อยู่จัดส่ง';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -117,9 +143,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     try {
       const submitData = {
         ...formData,
+        shippingAddress: formData.shippingSameAsCompany
+          ? formData.companyAddress
+          : formData.shippingAddress,
         creditLimit: formData.creditLimit ? parseFloat(formData.creditLimit) : undefined,
       };
-      
+
       await onSubmit(submitData);
       toast.success(isEditing ? 'อัพเดทข้อมูลลูกค้าเรียบร้อยแล้ว' : 'สร้างลูกค้าใหม่เรียบร้อยแล้ว');
     } catch (error) {
@@ -128,11 +157,38 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   const handleInputChange = (field: keyof CustomerFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev } as CustomerFormData;
+
+      if (field === 'shippingSameAsCompany') {
+        const checked = Boolean(value);
+        next.shippingSameAsCompany = checked;
+        if (checked) {
+          next.shippingAddress = prev.companyAddress;
+        }
+        return next;
+      }
+
+      next[field] = value as any;
+
+      if (field === 'companyAddress' && prev.shippingSameAsCompany) {
+        next.shippingAddress = value as string;
+      }
+
+      return next;
+    });
     
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+
+    if (field === 'shippingSameAsCompany' && Boolean(value)) {
+      setErrors(prev => ({ ...prev, shippingAddress: undefined }));
+    }
+
+    if (field === 'companyAddress' && formData.shippingSameAsCompany && errors.shippingAddress) {
+      setErrors(prev => ({ ...prev, shippingAddress: undefined }));
     }
   };
 
@@ -345,6 +401,35 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                   placeholder="company@example.com"
                 />
                 {errors.companyEmail && <p className="text-red-500 text-sm mt-1">{errors.companyEmail}</p>}
+              </div>
+
+              <div className="md:col-span-2 border-t pt-4">
+                <div className="flex items-center mb-3">
+                  <input
+                    type="checkbox"
+                    id="shippingSameAsCompany"
+                    checked={formData.shippingSameAsCompany}
+                    onChange={(e) => handleInputChange('shippingSameAsCompany', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label htmlFor="shippingSameAsCompany" className="text-sm font-medium text-gray-700">
+                    ใช้ที่อยู่บริษัทเป็นที่อยู่จัดส่ง
+                  </label>
+                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ที่อยู่จัดส่ง
+                </label>
+                <textarea
+                  value={formData.shippingSameAsCompany ? formData.companyAddress : formData.shippingAddress}
+                  onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
+                  rows={3}
+                  disabled={formData.shippingSameAsCompany}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    formData.shippingSameAsCompany ? 'bg-gray-100 border-gray-200' : 'border-gray-300'
+                  }`}
+                  placeholder="ที่อยู่สำหรับการจัดส่งสินค้า"
+                />
+                {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress}</p>}
               </div>
             </motion.div>
           )}

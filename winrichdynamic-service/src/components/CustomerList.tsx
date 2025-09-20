@@ -14,6 +14,8 @@ export interface Customer {
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
+  shippingAddress?: string;
+  shippingSameAsCompany?: boolean;
   customerCode?: string;
   customerType: 'new' | 'regular' | 'target' | 'inactive';
   assignedTo?: string;
@@ -265,13 +267,32 @@ const CustomerList: React.FC<CustomerListProps> = ({
                         <span>{customer.email}</span>
                       </div>
                     )}
-                    {customer.taxId && (
-                      <div className="flex items-center gap-2">
-                        <span>🆔</span>
-                        <span>Tax ID: {customer.taxId}</span>
+                  {customer.taxId && (
+                    <div className="flex items-center gap-2">
+                      <span>🆔</span>
+                      <span>Tax ID: {customer.taxId}</span>
+                    </div>
+                  )}
+                  {customer.companyAddress && (
+                    <div className="flex items-start gap-2">
+                      <span>🏢</span>
+                      <span>{customer.companyAddress}</span>
+                    </div>
+                  )}
+                  {customer.shippingSameAsCompany ? (
+                    customer.companyAddress ? (
+                      <div className="flex items-start gap-2 text-xs text-gray-500">
+                        <span>🚚</span>
+                        <span>ใช้ที่อยู่บริษัทเป็นที่อยู่จัดส่ง</span>
                       </div>
-                    )}
-                  </div>
+                    ) : null
+                  ) : customer.shippingAddress ? (
+                    <div className="flex items-start gap-2">
+                      <span>🚚</span>
+                      <span>{customer.shippingAddress}</span>
+                    </div>
+                  ) : null}
+                </div>
                   
                   <div className="flex justify-between items-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -387,6 +408,22 @@ const CustomerList: React.FC<CustomerListProps> = ({
                           Tax ID: {customer.taxId}
                         </div>
                       )}
+                      {customer.companyAddress && (
+                        <div className="text-sm text-gray-500">
+                          บริษัท: {customer.companyAddress}
+                        </div>
+                      )}
+                      {customer.shippingSameAsCompany ? (
+                        customer.companyAddress ? (
+                          <div className="text-sm text-gray-400">
+                            จัดส่ง: ใช้ที่อยู่บริษัท
+                          </div>
+                        ) : null
+                      ) : customer.shippingAddress ? (
+                        <div className="text-sm text-gray-500">
+                          จัดส่ง: {customer.shippingAddress}
+                        </div>
+                      ) : null}
                     </td>
                     
                     <td className="px-6 py-4 whitespace-nowrap">

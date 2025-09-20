@@ -7,9 +7,11 @@ export interface IQuotationItem {
   description?: string;
   quantity: number;
   unit: string;
+  sku?: string;
   unitPrice: number;
   discount: number; // ส่วนลดเป็นเปอร์เซ็นต์
   totalPrice: number; // ราคารวมหลังหักส่วนลด
+  selectedOptions?: Record<string, string>;
 }
 
 export interface IQuotation extends Document {
@@ -105,6 +107,11 @@ const quotationItemSchema = new Schema<IQuotationItem>({
     trim: true,
     maxlength: [20, 'หน่วยต้องมีความยาวไม่เกิน 20 ตัวอักษร'],
   },
+  sku: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'SKU ต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+  },
   unitPrice: {
     type: Number,
     required: [true, 'กรุณาระบุราคาต่อหน่วย'],
@@ -120,6 +127,10 @@ const quotationItemSchema = new Schema<IQuotationItem>({
     type: Number,
     required: [true, 'กรุณาระบุราคารวม'],
     min: [0, 'ราคารวมต้องไม่ต่ำกว่า 0'],
+  },
+  selectedOptions: {
+    type: Schema.Types.Mixed,
+    default: undefined,
   },
 });
 
