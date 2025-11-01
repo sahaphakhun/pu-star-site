@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useState } from 'react';
-import { mockSettings } from '@/features/jubili/data/mockData';
-import { Building2, Info, Construction, Trophy, Users, Settings as SettingsIcon, Bell, Award, User, ClipboardList, Store, UserCheck, Megaphone, Edit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '@/features/jubili/services/apiService';
+import { Building2, Info, Construction, Trophy, Users, Settings as SettingsIcon, Bell, Award, User, ClipboardList, Store, UserCheck, Megaphone, Edit, Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Settings = () => {
   const [activeMenu, setActiveMenu] = useState('company');
-  const settings = mockSettings;
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({});
 
   // เมนู Sidebar
   const menuItems = [
@@ -35,6 +41,150 @@ const Settings = () => {
     'bg-purple-100 text-purple-800',
     'bg-pink-100 text-pink-800'
   ];
+
+  // Fetch settings data
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiService.settings.getSettings();
+        setSettings(data);
+        setFormData(data);
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+        setError('ไม่สามารถดึงข้อมูลการตั้งค่าได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle nested object changes (for bankInfo)
+  const handleBankInfoChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      bankInfo: {
+        ...prev.bankInfo,
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle sales policy changes
+  const handleSalesPolicyChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      salesPolicy: {
+        ...prev.salesPolicy,
+        [field]: value
+      }
+    }));
+  };
+
+  // Save settings
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccessMessage(null);
+      
+      const updatedSettings = await apiService.settings.updateSettings(formData);
+      setSettings(updatedSettings);
+      setSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+      setEditMode(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setError('ไม่สามารถบันทึกการตั้งค่าได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Cancel edit mode
+  const handleCancel = () => {
+    setFormData(settings);
+    setEditMode(false);
+    setError(null);
+  };
+
+  // Convert API data to display format
+  const getDisplayData = () => {
+    if (!settings) return null;
+    
+    return {
+      company: {
+        name: settings.companyName || 'บริษัท วินริช ไดนามิค จำกัด',
+        logo: settings.companyName?.replace('บริษัท ', '').replace(' จำกัด', '').toUpperCase() || 'WINRICH DYNAMIC',
+        address: settings.companyAddress || '',
+        mainAddress: settings.companyAddress || '',
+        taxId: settings.taxId || '',
+        phone: settings.companyPhone || '',
+        email: settings.companyEmail || '',
+        bankInfo: settings.bankInfo || {
+          bankName: '',
+          accountName: '',
+          accountNumber: '',
+          branch: ''
+        }
+      },
+      features: {
+        geoFence: true,
+        autoSuggestProducts: true,
+        checkInWithLocation: true
+      },
+      salesPolicy: settings.salesPolicy || {
+        approvalAmountThreshold: 1000000,
+        maxDiscountPercentWithoutApproval: 10,
+        tieredDiscounts: []
+      }
+    };
+  };
+
+  const displayData = getDisplayData();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !settings) {
+    return (
+      <div className="flex h-screen bg-gray-50 items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">เกิดข้อผิดพลาด</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+          >
+            ลองใหม่
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -67,6 +217,20 @@ const Settings = () => {
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-8">
+        {successMessage && (
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircle size={20} />
+            {successMessage}
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
+
         {activeMenu === 'company' ? (
           <div className="max-w-4xl">
             {/* Header */}
@@ -75,20 +239,51 @@ const Settings = () => {
                 <Info className="text-blue-500" size={32} />
                 <h1 className="text-2xl font-bold text-gray-800">ข้อมูลกิจการ</h1>
               </div>
-              <button
-                onClick={() => alert('ฟีเจอร์นี้กำลังพัฒนา')}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all"
-              >
-                <Edit size={18} />
-                แก้ไข
-              </button>
+              <div className="flex gap-2">
+                {editMode ? (
+                  <>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all"
+                    >
+                      {saving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          กำลังบันทึก...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={18} />
+                          บันทึก
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all"
+                    >
+                      <X size={18} />
+                      ยกเลิก
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all"
+                  >
+                    <Edit size={18} />
+                    แก้ไข
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Logo */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <div className="flex justify-center">
                 <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-2xl font-bold px-8 py-4 rounded-lg">
-                  {settings.company.logo}
+                  {displayData?.company?.logo}
                 </div>
               </div>
             </div>
@@ -100,7 +295,17 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[0]}`}>
                   ชื่อกิจการ
                 </div>
-                <div className="text-gray-800 font-medium">{settings.company.name}</div>
+                {editMode ? (
+                  <input
+                    type="text"
+                    name="companyName"
+                    value={formData.companyName || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-gray-800 font-medium">{displayData?.company?.name}</div>
+                )}
               </div>
 
               {/* ที่อยู่ */}
@@ -108,7 +313,17 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[1]}`}>
                   ที่อยู่
                 </div>
-                <div className="text-gray-600">{settings.company.address || '-'}</div>
+                {editMode ? (
+                  <textarea
+                    name="companyAddress"
+                    value={formData.companyAddress || ''}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-gray-600">{displayData?.company?.address || '-'}</div>
+                )}
               </div>
 
               {/* ที่อยู่หลัก */}
@@ -116,7 +331,7 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[2]}`}>
                   ที่อยู่หลัก (สำนักงานใหญ่)
                 </div>
-                <div className="text-gray-800">{settings.company.mainAddress}</div>
+                <div className="text-gray-800">{displayData?.company?.mainAddress}</div>
               </div>
 
               {/* เลขประจำตัวผู้เสียภาษี */}
@@ -124,23 +339,17 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[3]}`}>
                   เลขประจำตัวผู้เสียภาษี
                 </div>
-                <div className="text-gray-800 font-mono">{settings.company.taxId}</div>
-              </div>
-
-              {/* หมายเลข Promptpay */}
-              <div>
-                <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[4]}`}>
-                  หมายเลข Promptpay
-                </div>
-                <div className="text-gray-600">{settings.company.promptpayNumber || '-'}</div>
-              </div>
-
-              {/* ชื่อบัญชี Promptpay */}
-              <div>
-                <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[5]}`}>
-                  ชื่อบัญชี Promptpay
-                </div>
-                <div className="text-gray-600">{settings.company.promptpayName || '-'}</div>
+                {editMode ? (
+                  <input
+                    type="text"
+                    name="taxId"
+                    value={formData.taxId || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                ) : (
+                  <div className="text-gray-800 font-mono">{displayData?.company?.taxId}</div>
+                )}
               </div>
 
               {/* เบอร์โทรศัพท์ */}
@@ -148,15 +357,17 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[2]}`}>
                   เบอร์โทรศัพท์
                 </div>
-                <div className="text-gray-800 font-mono">{settings.company.phone}</div>
-              </div>
-
-              {/* โทรศัพท์มือถือ */}
-              <div>
-                <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[6]}`}>
-                  โทรศัพท์มือถือ
-                </div>
-                <div className="text-gray-600">{settings.company.mobile || '-'}</div>
+                {editMode ? (
+                  <input
+                    type="text"
+                    name="companyPhone"
+                    value={formData.companyPhone || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                ) : (
+                  <div className="text-gray-800 font-mono">{displayData?.company?.phone}</div>
+                )}
               </div>
 
               {/* อีเมล */}
@@ -164,7 +375,155 @@ const Settings = () => {
                 <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[5]}`}>
                   อีเมล
                 </div>
-                <div className="text-gray-800">{settings.company.email}</div>
+                {editMode ? (
+                  <input
+                    type="email"
+                    name="companyEmail"
+                    value={formData.companyEmail || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-gray-800">{displayData?.company?.email}</div>
+                )}
+              </div>
+
+              {/* เว็บไซต์ */}
+              <div>
+                <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[4]}`}>
+                  เว็บไซต์
+                </div>
+                {editMode ? (
+                  <input
+                    type="text"
+                    name="companyWebsite"
+                    value={formData.companyWebsite || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="text-gray-800">{settings?.companyWebsite || '-'}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Bank Info */}
+            <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <SettingsIcon className="text-gray-600" size={24} />
+                <h2 className="text-xl font-bold text-gray-800">ข้อมูลธนาคาร</h2>
+              </div>
+              <div className="space-y-4">
+                {/* ชื่อธนาคาร */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[0]}`}>
+                    ชื่อธนาคาร
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={formData.bankInfo?.bankName || ''}
+                      onChange={(e) => handleBankInfoChange('bankName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-gray-800">{displayData?.company?.bankInfo?.bankName || '-'}</div>
+                  )}
+                </div>
+
+                {/* ชื่อบัญชี */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[1]}`}>
+                    ชื่อบัญชี
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={formData.bankInfo?.accountName || ''}
+                      onChange={(e) => handleBankInfoChange('accountName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-gray-800">{displayData?.company?.bankInfo?.accountName || '-'}</div>
+                  )}
+                </div>
+
+                {/* เลขที่บัญชี */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[2]}`}>
+                    เลขที่บัญชี
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={formData.bankInfo?.accountNumber || ''}
+                      onChange={(e) => handleBankInfoChange('accountNumber', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    />
+                  ) : (
+                    <div className="text-gray-800 font-mono">{displayData?.company?.bankInfo?.accountNumber || '-'}</div>
+                  )}
+                </div>
+
+                {/* สาขา */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[3]}`}>
+                    สาขา
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      value={formData.bankInfo?.branch || ''}
+                      onChange={(e) => handleBankInfoChange('branch', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-gray-800">{displayData?.company?.bankInfo?.branch || '-'}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sales Policy */}
+            <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <SettingsIcon className="text-gray-600" size={24} />
+                <h2 className="text-xl font-bold text-gray-800">นโยบายการขาย</h2>
+              </div>
+              <div className="space-y-4">
+                {/* วงเงินที่ต้องขออนุมัติ */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[0]}`}>
+                    วงเงินที่ต้องขออนุมัติ (บาท)
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      value={formData.salesPolicy?.approvalAmountThreshold || ''}
+                      onChange={(e) => handleSalesPolicyChange('approvalAmountThreshold', Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-gray-800">{displayData?.salesPolicy?.approvalAmountThreshold?.toLocaleString() || '-'}</div>
+                  )}
+                </div>
+
+                {/* ส่วนลดสูงสุดที่ไม่ต้องอนุมัติ */}
+                <div>
+                  <div className={`inline-block px-3 py-1 rounded-md text-sm font-semibold mb-2 ${labelColors[1]}`}>
+                    ส่วนลดสูงสุดที่ไม่ต้องอนุมัติ (%)
+                  </div>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      value={formData.salesPolicy?.maxDiscountPercentWithoutApproval || ''}
+                      onChange={(e) => handleSalesPolicyChange('maxDiscountPercentWithoutApproval', Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <div className="text-gray-800">{displayData?.salesPolicy?.maxDiscountPercentWithoutApproval || '-'}</div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -177,20 +536,20 @@ const Settings = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">เปิดใช้งานฟังก์ชั่นเช็คอินด้วยสถานที่</span>
-                  <div className={`w-12 h-6 rounded-full transition-all ${settings.features.checkInWithLocation ? 'bg-green-500' : 'bg-gray-300'}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${settings.features.checkInWithLocation ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
+                  <div className={`w-12 h-6 rounded-full transition-all ${displayData?.features?.checkInWithLocation ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${displayData?.features?.checkInWithLocation ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">เปิดใช้งาน GeoFence</span>
-                  <div className={`w-12 h-6 rounded-full transition-all ${settings.features.geoFence ? 'bg-green-500' : 'bg-gray-300'}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${settings.features.geoFence ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
+                  <div className={`w-12 h-6 rounded-full transition-all ${displayData?.features?.geoFence ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${displayData?.features?.geoFence ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">แนะนำรายการสินค้าอัตโนมัติ</span>
-                  <div className={`w-12 h-6 rounded-full transition-all ${settings.features.autoSuggestProducts ? 'bg-green-500' : 'bg-gray-300'}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${settings.features.autoSuggestProducts ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
+                  <div className={`w-12 h-6 rounded-full transition-all ${displayData?.features?.autoSuggestProducts ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-all transform ${displayData?.features?.autoSuggestProducts ? 'translate-x-6' : 'translate-x-1'} mt-0.5`}></div>
                   </div>
                 </div>
               </div>

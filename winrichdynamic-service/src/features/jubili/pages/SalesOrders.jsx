@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from 'react';
-import { useData } from '@/features/jubili/context/DataContext';
-import { Plus, Search, Filter, Edit, Trash2, Package, Star, TrendingUp, Clock, CheckCircle, XCircle, Circle, Truck, CreditCard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Filter, Edit, Trash2, Package, Star, TrendingUp, Clock, CheckCircle, XCircle, Circle, Truck, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import SalesOrderForm from '@/components/SalesOrderForm';
+import { salesOrdersApi, SalesOrderFilters } from '@/features/jubili/services/apiService';
 
 const statusConfig = {
   draft: { label: 'ร่าง', color: 'bg-gray-100 text-gray-800 border-gray-300', icon: Circle },
@@ -28,23 +28,124 @@ const paymentStatusConfig = {
 };
 
 export default function SalesOrders() {
-  const { salesOrders, deleteSalesOrder } = useData();
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingSalesOrder, setEditingSalesOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
-
-  const filteredSalesOrders = salesOrders.filter(order => {
-    const matchesSearch = order.salesOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (activeTab === 'pending_delivery') {
-      return matchesSearch && order.deliveryStatus !== 'delivered';
-    } else if (activeTab === 'pending_payment') {
-      return matchesSearch && order.paymentStatus !== 'paid';
-    }
-    return matchesSearch;
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
   });
+  const [filters, setFilters] = useState({});
+
+  // Fetch sales orders from API
+  const fetchSalesOrders = async (page = 1, newFilters = {}) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const apiFilters = {
+        page,
+        limit: pagination.limit,
+        ...newFilters
+      };
+
+      // Add search term if provided
+      if (searchTerm) {
+        apiFilters.q = searchTerm;
+      }
+
+      // Add tab-specific filters
+      if (activeTab === 'pending_delivery') {
+        apiFilters.status = 'confirmed,ready,shipped'; // Orders that are not delivered yet
+      } else if (activeTab === 'pending_payment') {
+        apiFilters.status = 'pending,confirmed,ready'; // Orders that might not be fully paid
+      }
+
+      const response = await salesOrdersApi.getSalesOrders(apiFilters);
+      
+      setSalesOrders(response.data || []);
+      setPagination({
+        page: response.page || 1,
+        limit: response.limit || 10,
+        total: response.total || 0,
+        totalPages: response.totalPages || 0
+      });
+    } catch (err) {
+      console.error('Error fetching sales orders:', err);
+      setError('ไม่สามารถโหลดข้อมูลใบสั่งขายได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load and when filters change
+  useEffect(() => {
+    fetchSalesOrders(1, filters);
+  }, [searchTerm, activeTab, filters]);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    fetchSalesOrders(newPage, filters);
+  };
+
+  // Handle search
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Handle delete
+  const handleDelete = async (id) => {
+    if (confirm('คุณต้องการลบใบสั่งขายนี้หรือไม่?')) {
+      try {
+        await salesOrdersApi.deleteSalesOrder(id);
+        // Refresh the list
+        fetchSalesOrders(pagination.page, filters);
+      } catch (err) {
+        console.error('Error deleting sales order:', err);
+        setError('ไม่สามารถลบใบสั่งขายได้ กรุณาลองใหม่อีกครั้ง');
+      }
+    }
+  };
+
+  // Handle form save
+  const handleFormSave = () => {
+    setShowForm(false);
+    setEditingSalesOrder(null);
+    // Refresh the list
+    fetchSalesOrders(pagination.page, filters);
+  };
+
+  // Transform order data for UI
+  const transformOrderData = (order) => {
+    // Map API fields to UI expected fields
+    return {
+      ...order,
+      id: order._id,
+      salesOrderNumber: order._id.substring(0, 8).toUpperCase(), // Generate a short ID for display
+      customerName: order.customerName || '-',
+      owner: 'Admin', // Default owner since it's not in the model
+      projectName: '-', // Not in the model
+      importance: 3, // Default importance
+      orderDate: order.orderDate || order.createdAt,
+      deliveryDate: order.deliveryDate || null,
+      deliveryStatus: order.status === 'delivered' ? 'delivered' :
+                     order.status === 'shipped' ? 'shipped' :
+                     order.status === 'ready' ? 'preparing' : 'pending',
+      paymentStatus: order.slipVerification?.verified ? 'paid' : 'unpaid',
+      total: order.totalAmount || 0,
+      paidAmount: order.slipVerification?.verified ? order.totalAmount || 0 : 0,
+      remainingAmount: order.slipVerification?.verified ? 0 : order.totalAmount || 0,
+      status: order.status || 'draft'
+    };
+  };
+
+  const transformedSalesOrders = salesOrders.map(transformOrderData);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('th-TH', {
@@ -118,10 +219,10 @@ export default function SalesOrders() {
   };
 
   // คำนวณสถิติ
-  const totalOrders = salesOrders.length;
-  const totalValue = salesOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-  const totalPaid = salesOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
-  const totalRemaining = salesOrders.reduce((sum, order) => sum + (order.remainingAmount || 0), 0);
+  const totalOrders = pagination.total;
+  const totalValue = transformedSalesOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const totalPaid = transformedSalesOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
+  const totalRemaining = transformedSalesOrders.reduce((sum, order) => sum + (order.remainingAmount || 0), 0);
 
   return (
     <div className="p-6">
@@ -168,14 +269,33 @@ export default function SalesOrders() {
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">ใบสั่งขาย</h1>
-          <Button 
-            onClick={() => setShowForm(true)}
-            className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            สร้าง
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => fetchSalesOrders(pagination.page, filters)}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              รีเฟรช
+            </Button>
+            <Button
+              onClick={() => setShowForm(true)}
+              className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              สร้าง
+            </Button>
+          </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <span className="text-red-700">{error}</span>
+          </div>
+        )}
 
         {/* Search and Filter */}
         <div className="flex gap-3 mb-4">
@@ -185,19 +305,19 @@ export default function SalesOrders() {
               type="text"
               placeholder="ค้นหาจาก หมายเลขใบสั่งขาย หรือ ชื่อลูกค้า"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearch}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="flex items-center gap-2 bg-pink-50 text-pink-700 border-pink-300 hover:bg-pink-100"
           >
             <Filter className="h-4 w-4" />
             ทีม - กำหนดเอง
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="flex items-center gap-2 bg-red-50 text-red-700 border-red-300 hover:bg-red-100"
           >
             <Filter className="h-4 w-4" />
@@ -207,31 +327,31 @@ export default function SalesOrders() {
 
         {/* Tabs */}
         <div className="flex gap-4 border-b">
-          <button 
+          <button
             onClick={() => setActiveTab('all')}
             className={`pb-2 px-4 border-b-2 font-semibold transition-colors ${
-              activeTab === 'all' 
-                ? 'border-blue-500 text-blue-600' 
+              activeTab === 'all'
+                ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-800'
             }`}
           >
             ใบสั่งขายทั้งหมด
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('pending_delivery')}
             className={`pb-2 px-4 border-b-2 font-semibold transition-colors ${
-              activeTab === 'pending_delivery' 
-                ? 'border-blue-500 text-blue-600' 
+              activeTab === 'pending_delivery'
+                ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-800'
             }`}
           >
             รอจัดส่ง
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('pending_payment')}
             className={`pb-2 px-4 border-b-2 font-semibold transition-colors ${
-              activeTab === 'pending_payment' 
-                ? 'border-blue-500 text-blue-600' 
+              activeTab === 'pending_payment'
+                ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-800'
             }`}
           >
@@ -242,12 +362,17 @@ export default function SalesOrders() {
 
       {/* Sales Orders Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        {filteredSalesOrders.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-500 mb-2">กำลังโหลดข้อมูลใบสั่งขาย...</p>
+          </div>
+        ) : transformedSalesOrders.length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-2">ไม่พบใบสั่งขาย</p>
             <p className="text-sm text-gray-400 mb-4">เริ่มต้นสร้างใบสั่งขายแรกของคุณ</p>
-            <Button 
+            <Button
               onClick={() => setShowForm(true)}
               className="bg-blue-500 hover:bg-blue-600 text-white"
             >
@@ -277,7 +402,7 @@ export default function SalesOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredSalesOrders.map((order, index) => {
+                {transformedSalesOrders.map((order, index) => {
                   const rowColors = getRowColors(index);
                   const StatusIcon = statusConfig[order.status]?.icon || Circle;
                   const DeliveryIcon = deliveryStatusConfig[order.deliveryStatus]?.icon || Package;
@@ -366,11 +491,7 @@ export default function SalesOrders() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (confirm('คุณต้องการลบใบสั่งขายนี้หรือไม่?')) {
-                                deleteSalesOrder(order.id);
-                              }
-                            }}
+                            onClick={() => handleDelete(order.id)}
                             className="text-red-600 hover:text-red-800 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -394,25 +515,52 @@ export default function SalesOrders() {
             setShowForm(false);
             setEditingSalesOrder(null);
           }}
-          onSave={() => {
-            setShowForm(false);
-            setEditingSalesOrder(null);
-          }}
+          onSave={handleFormSave}
         />
       )}
 
       {/* Pagination */}
-      {filteredSalesOrders.length > 0 && (
+      {transformedSalesOrders.length > 0 && (
         <div className="mt-4 flex items-center justify-between bg-white rounded-lg shadow p-4">
           <div className="text-sm text-gray-700">
-            แสดง <span className="font-semibold text-blue-600">{filteredSalesOrders.length}</span> จาก <span className="font-semibold">{salesOrders.length}</span> รายการ
+            แสดง <span className="font-semibold text-blue-600">{transformedSalesOrders.length}</span> จาก <span className="font-semibold">{pagination.total}</span> รายการ
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="hover:bg-gray-100">ก่อนหน้า</Button>
-            <Button variant="outline" size="sm" className="bg-blue-500 text-white hover:bg-blue-600">1</Button>
-            <Button variant="outline" size="sm" className="hover:bg-gray-100">2</Button>
-            <Button variant="outline" size="sm" className="hover:bg-gray-100">3</Button>
-            <Button variant="outline" size="sm" className="hover:bg-gray-100">ถัดไป</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-gray-100"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page <= 1}
+            >
+              ก่อนหน้า
+            </Button>
+            
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <Button
+                  key={pageNum}
+                  variant="outline"
+                  size="sm"
+                  className={pagination.page === pageNum ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100"}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-gray-100"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page >= pagination.totalPages}
+            >
+              ถัดไป
+            </Button>
           </div>
         </div>
       )}

@@ -1,81 +1,125 @@
 "use client"
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { X, Plus, Trash2, Upload, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 
-// TODO: Replace with actual data context when available
-const mockData = {
-  addCustomer: (customer: any) => console.log('Add customer:', customer),
-  updateCustomer: (id: string, customer: any) => console.log('Update customer:', id, customer),
-};
-
 interface CustomerFormNewProps {
   customer?: any;
   onClose: () => void;
-  onSave?: () => void;
+  onSubmit: (payload: any, options: { customerId?: string }) => Promise<void>;
 }
 
-export default function CustomerFormNew({ customer, onClose, onSave }: CustomerFormNewProps) {
-  const { addCustomer, updateCustomer } = mockData;
-  
-  const [formData, setFormData] = useState(customer || {
-    // ข้อมูลลูกค้า
-    name: '',
-    referenceCode: '',
-    country: 'Thailand (ไทย)',
-    province: '',
-    district: '',
-    
-    // ข้อมูลผู้ติดต่อ
-    contacts: [{
-      name: '',
-      isPrimary: true,
-      phone: '',
-      phoneExt: '',
-      position: '',
-      role: '',
-      email: '',
-      lineId: '',
-    }],
-    
-    // ข้อมูลกิจการ
-    registeredAddress: '',
-    registeredCountry: 'Thailand (ไทย)',
-    registeredProvince: '',
-    registeredDistrict: '',
-    branches: [],
-    companyPhone: '',
-    companyPhoneExt: '',
-    taxId: '',
-    companyEmail: '',
-    importantDateType: 'วันก่อตั้ง',
-    importantDate: '',
-    documents: [],
-    
-    // ความสัมพันธ์ลูกค้า
-    logo: null,
-    dataCompleteness: 5,
-    
-    // ทีมที่รับผิดชอบ
-    team: 'Trade Sales Team',
-    owner: 'PU STAR Office',
-    
-    // ความสำคัญ
-    importance: 3,
-    
-    // แท็ก
-    tags: [],
-    
-    // บันทึกเพิ่มเติม
-    notes: '',
-  });
+const ensureContact = (contact?: any) => ({
+  name: contact?.name || '',
+  isPrimary: contact?.isPrimary ?? true,
+  phone: contact?.phone || '',
+  phoneExt: contact?.phoneExt || '',
+  position: contact?.position || '',
+  role: contact?.role || '',
+  email: contact?.email || '',
+  lineId: contact?.lineId || '',
+});
+
+const normalizePhone = (input: string) => {
+  if (!input) return '';
+  const digits = input.replace(/\D/g, '');
+  if (digits.startsWith('66') && digits.length === 11) {
+    return `+${digits}`;
+  }
+  if (digits.startsWith('0') && digits.length === 10) {
+    return `+66${digits.slice(1)}`;
+  }
+  if (digits.length === 9) {
+    return `+66${digits}`;
+  }
+  return `+${digits}`;
+};
+
+export default function CustomerFormNew({ customer, onClose, onSubmit }: CustomerFormNewProps) {
+  const initialFormData = useMemo(() => {
+    if (!customer) {
+      return {
+        // ข้อมูลลูกค้า
+        name: '',
+        referenceCode: '',
+        country: 'Thailand (ไทย)',
+        province: '',
+        district: '',
+
+        // ข้อมูลผู้ติดต่อ
+        contacts: [
+          ensureContact(),
+        ],
+
+        // ข้อมูลกิจการ
+        registeredAddress: '',
+        registeredCountry: 'Thailand (ไทย)',
+        registeredProvince: '',
+        registeredDistrict: '',
+        branches: [],
+        companyPhone: '',
+        companyPhoneExt: '',
+        taxId: '',
+        companyEmail: '',
+        importantDateType: 'วันก่อตั้ง',
+        importantDate: '',
+        documents: [],
+
+        // ความสัมพันธ์ลูกค้า
+        logo: null,
+        dataCompleteness: 5,
+
+        // ทีมที่รับผิดชอบ
+        team: 'Trade Sales Team',
+        owner: 'PU STAR Office',
+
+        // ความสำคัญ
+        importance: 3,
+
+        // แท็ก
+        tags: [],
+
+        // บันทึกเพิ่มเติม
+        notes: '',
+        customerType: 'new',
+        assignedTo: '',
+        paymentTerms: 'ชำระเงินทันที',
+      };
+    }
+
+    return {
+      ...customer,
+      contacts: customer.contacts && customer.contacts.length
+        ? customer.contacts.map(ensureContact)
+        : [ensureContact({
+            name: customer.contactName,
+            phone: customer.phoneNumber,
+            email: customer.email,
+          })],
+      branches: customer.branches || [],
+      documents: customer.documents || [],
+      importance: customer.priorityStar ?? customer.importance ?? 0,
+      team: customer.team || customer.customerType || 'Trade Sales Team',
+      owner: customer.assignedTo || customer.owner || '',
+      registeredAddress: customer.companyAddress || customer.registeredAddress || '',
+      taxId: customer.taxId || '',
+      tags: customer.tags || [],
+      notes: customer.notes || '',
+      customerType: customer.customerType || 'new',
+      paymentTerms: customer.paymentTerms || 'ชำระเงินทันที',
+    };
+  }, [customer]);
+
+  const [formData, setFormData] = useState(initialFormData);
 
   const [newTag, setNewTag] = useState('');
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // แท็กที่มีอยู่แล้วในระบบ (ตัวอย่าง)
   const availableTags = [
@@ -143,7 +187,7 @@ export default function CustomerFormNew({ customer, onClose, onSave }: CustomerF
   const addBranch = () => {
     setFormData({
       ...formData,
-      branches: [...formData.branches, {
+      branches: [...(formData.branches || []), {
         name: '',
         address: '',
         country: 'Thailand (ไทย)',
@@ -154,12 +198,12 @@ export default function CustomerFormNew({ customer, onClose, onSave }: CustomerF
   };
 
   const removeBranch = (index: number) => {
-    const newBranches = formData.branches.filter((_: any, i: number) => i !== index);
+    const newBranches = (formData.branches || []).filter((_: any, i: number) => i !== index);
     setFormData({ ...formData, branches: newBranches });
   };
 
   const handleBranchChange = (index: number, field: string, value: any) => {
-    const newBranches = [...formData.branches];
+    const newBranches = [...(formData.branches || [])];
     (newBranches[index] as any)[field] = value;
     setFormData({ ...formData, branches: newBranches });
   };
@@ -190,21 +234,58 @@ export default function CustomerFormNew({ customer, onClose, onSave }: CustomerF
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (customer) {
-      updateCustomer(customer.id, formData);
-    } else {
-      addCustomer({
-        ...formData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      });
+  const buildPayload = () => {
+    const primaryContact = formData.contacts?.[0] || {};
+    const phoneNumber = normalizePhone(primaryContact.phone || formData.phoneNumber || '');
+    if (!phoneNumber || phoneNumber.length < 10) {
+      throw new Error('กรุณาระบุเบอร์โทรศัพท์ลูกค้าให้ถูกต้อง');
     }
-    
-    if (onSave) onSave();
-    onClose();
+
+    const payload: Record<string, any> = {
+      name: formData.name,
+      phoneNumber,
+      email: primaryContact.email || '',
+      taxId: formData.taxId || '',
+      companyName: formData.companyName || formData.name,
+      companyAddress: formData.registeredAddress || '',
+      companyPhone: formData.companyPhone ? normalizePhone(formData.companyPhone) : '',
+      companyEmail: formData.companyEmail || '',
+      shippingAddress: formData.deliveryAddress || '',
+      shippingSameAsCompany: !formData.deliveryAddress,
+      customerType: formData.customerType || 'new',
+      assignedTo: formData.owner || '',
+      paymentTerms: formData.paymentTerms || 'ชำระเงินทันที',
+      creditLimit: formData.creditLimit ? Number(formData.creditLimit) : undefined,
+      notes: formData.notes || '',
+      tags: formData.tags || [],
+      priorityStar: formData.importance || 0,
+      goals: formData.goals || '',
+      authorizedPhones: (formData.contacts || [])
+        .map((c: any) => normalizePhone(c.phone || ''))
+        .filter(Boolean),
+      isActive: formData.isActive ?? true,
+    };
+
+    return payload;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      setErrorMessage(null);
+      const payload = buildPayload();
+      await onSubmit(payload, { customerId: customer?._id || customer?.id });
+      onClose();
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('เกิดข้อผิดพลาดในการบันทึกลูกค้า');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const calculateCompleteness = () => {
@@ -248,6 +329,11 @@ export default function CustomerFormNew({ customer, onClose, onSave }: CustomerF
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6">
+            {errorMessage && (
+              <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             <div className="grid grid-cols-12 gap-6">
               {/* Left Column - ข้อมูลลูกค้า + ผู้ติดต่อ */}
               <div className="col-span-12 lg:col-span-4 space-y-6">
@@ -830,9 +916,10 @@ export default function CustomerFormNew({ customer, onClose, onSave }: CustomerF
             </Button>
             <Button
               type="submit"
-              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={submitting}
+              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-60"
             >
-              บันทึก
+              {submitting ? 'กำลังบันทึก...' : 'บันทึก'}
             </Button>
           </div>
         </form>

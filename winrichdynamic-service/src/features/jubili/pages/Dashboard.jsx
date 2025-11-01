@@ -1,11 +1,131 @@
 "use client";
 
-import { useData } from '@/features/jubili/context/DataContext';
-import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { apiService } from '@/features/jubili/services/apiService';
+import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
-  const { dashboard } = useData();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiService.dashboard.getDashboardData();
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Loading state component
+  const LoadingState = () => (
+    <div className="flex flex-col items-center justify-center h-96">
+      <RefreshCw className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+      <p className="text-gray-600">กำลังโหลดข้อมูลแดชบอร์ด...</p>
+    </div>
+  );
+
+  // Error state component
+  const ErrorState = ({ error, onRetry }) => (
+    <div className="flex flex-col items-center justify-center h-96">
+      <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+      <p className="text-red-600 mb-4">{error}</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
+      >
+        <RefreshCw className="h-4 w-4" />
+        ลองใหม่
+      </button>
+    </div>
+  );
+
+  // Handle retry
+  const handleRetry = () => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await apiService.dashboard.getDashboardData();
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-3 md:p-6 bg-gray-50 min-h-screen">
+        <LoadingState />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="p-3 md:p-6 bg-gray-50 min-h-screen">
+        <ErrorState error={error} onRetry={handleRetry} />
+      </div>
+    );
+  }
+
+  // Format data for charts
+  const formatProjectStatusData = () => {
+    if (!dashboardData?.charts?.projectStatusDistribution) return [];
+    
+    const statusMap = {
+      'planning': 'วางแผน',
+      'proposed': 'นำเสนอบริษัท',
+      'quoted': 'เสนอราคา',
+      'testing': 'ทดสอบสินค้า/ส่งตัวอย่าง',
+      'approved': 'อนุมัติราคา',
+      'closed': 'ปิดใบเสนอราคา'
+    };
+    
+    return dashboardData.charts.projectStatusDistribution.map(item => ({
+      name: statusMap[item._id] || item._id,
+      value: item.count
+    }));
+  };
+
+  const formatDealStageData = () => {
+    if (!dashboardData?.charts?.dealStageDistribution) return [];
+    
+    return dashboardData.charts.dealStageDistribution.map(item => ({
+      name: item._id || 'ไม่ระบุ',
+      count: item.count,
+      value: item.totalValue
+    }));
+  };
+
+  const formatMonthlySalesData = () => {
+    if (!dashboardData?.charts?.monthlySalesTrend) return [];
+    
+    return dashboardData.charts.monthlySalesTrend.map(item => ({
+      month: new Date(item.month + '-01').toLocaleDateString('th-TH', { month: 'short', year: '2-digit' }),
+      revenue: item.value,
+      orders: item.count
+    }));
+  };
 
   const KPICard = ({ title, value, subtitle, change, trend, color = 'blue', additionalInfo, icon }) => {
     const colorClasses = {
@@ -54,43 +174,31 @@ const Dashboard = () => {
     );
   };
 
-  const statusChartData = [
-    { name: 'โครงการใหม่', value: 76.3, color: '#84cc16' },
-    { name: 'WIN', value: 16.9, color: '#3b82f6' },
-    { name: 'เสนอราคา', value: 5.1, color: '#f59e0b' },
-    { name: 'LOST', value: 0.0, color: '#ef4444' },
-    { name: 'ต่อรองราคา', value: 1.7, color: '#8b5cf6' }
-  ];
+  // Use formatted data from API
+  const statusChartData = formatProjectStatusData();
+  
+  // Add colors to status chart data
+  const statusChartDataWithColors = statusChartData.map((item, index) => {
+    const colors = ['#84cc16', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
+    return {
+      ...item,
+      color: colors[index % colors.length]
+    };
+  });
 
-  const salesTeamData = [
-    { name: 'PU STAR Office', total: 23, new: 0, quotation: 1, negotiation: 2, lost: 0, win: 21 },
-    { name: 'Saletrades 1 Kitti Sale', total: 17, new: 0, quotation: 4, negotiation: 0, lost: 0, win: 8 },
-    { name: 'Saleprojects 2 Suchada', total: 13, new: 0, quotation: 0, negotiation: 0, lost: 0, win: 1 },
-    { name: 'Chawanya Thanomwong', total: 11, new: 0, quotation: 2, negotiation: 1, lost: 1, win: 11 },
-    { name: 'Saleprojects 1 Sunisa', total: 9, new: 0, quotation: 0, negotiation: 0, lost: 0, win: 0 },
-    { name: 'ณรงค์เดช ศรสมบัติ', total: 8, new: 0, quotation: 3, negotiation: 0, lost: 0, win: 4 },
-  ];
+  const salesTeamData = []; // This data would need to be provided by the API
 
-  const trendData = [
-    { date: '1. Oct', activity: 20, lead: 15, win: 10 },
-    { date: '3. Oct', activity: 25, lead: 20, win: 12 },
-    { date: '5. Oct', activity: 30, lead: 18, win: 15 },
-    { date: '7. Oct', activity: 28, lead: 22, win: 14 },
-  ];
+  const trendData = formatMonthlySalesData();
 
-  const projectStatusData = [
-    { name: 'นำเสนอบริษัท', value: 5 },
-    { name: 'เสนอราคา', value: 10 },
-    { name: 'ทดสอบสินค้า/ส่งตัวอย่าง', value: 3 },
-    { name: 'อนุมัติราคา', value: 8 },
-    { name: 'ปิดใบเสนอราคา', value: 2 },
-  ];
+  const projectStatusData = formatProjectStatusData();
 
+  // Payment method data - would need to be provided by API
   const paymentMethodData = [
     { name: 'เงินสด', value: 63.2, color: '#3b82f6' },
     { name: 'เครดิต', value: 36.8, color: '#f59e0b' },
   ];
 
+  // Product group data - would need to be provided by API
   const productGroupData = [
     { name: 'PU40', value: 38.1 },
     { name: 'ซิลิโคนไร้กรด PU40', value: 17.9 },
@@ -152,60 +260,54 @@ const Dashboard = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <KPICard
-          title="จำนวนลูกค้าเคลื่อนไหว"
-          value="41 / 1,597"
-          change={17.14}
-          trend="up"
+          title="ลูกค้าทั้งหมด"
+          value={dashboardData?.kpis?.customers?.total || 0}
+          subtitle={`ใหม่เดือนนี้: ${dashboardData?.kpis?.customers?.newThisMonth || 0}`}
           color="green"
-          additionalInfo="35"
+          additionalInfo={`ลูกค้า active: ${dashboardData?.kpis?.customers?.active || 0}`}
           icon={<Users className="w-4 h-4 text-white" />}
         />
         <KPICard
-          title="กิจกรรม"
-          value="82"
-          change={19.61}
-          trend="down"
-          color="red"
-          additionalInfo="102"
-          icon={<Activity className="w-4 h-4 text-white" />}
+          title="โครงการทั้งหมด"
+          value={dashboardData?.kpis?.projects?.total || 0}
+          subtitle={`กำลังดำเนินการ: ${dashboardData?.kpis?.projects?.active || 0}`}
+          color="blue"
+          additionalInfo={`เดือนนี้: ${dashboardData?.kpis?.projects?.thisMonth || 0}`}
+          icon={<Target className="w-4 h-4 text-white" />}
         />
         <KPICard
-          title="ยอดขาย (46)"
-          value="334,978.59"
-          subtitle="เฉลี่ย 7,282.14"
-          change={35.35}
-          trend="up"
-          color="green"
-          additionalInfo="ช่วงก่อน 247,490.21"
-          icon={<DollarSign className="w-4 h-4 text-white" />}
-        />
-        <KPICard
-          title="ยอดขายรอส่ง (3)"
-          value="160,182.06"
-          subtitle="เฉลี่ย 53,394.02"
-          change={13.35}
-          trend="up"
+          title="ใบเสนอราคา"
+          value={dashboardData?.kpis?.quotations?.total || 0}
+          subtitle={`ส่งแล้ว: ${dashboardData?.kpis?.quotations?.sent || 0}`}
           color="orange"
-          additionalInfo="รอส่ง"
+          additionalInfo={`ยอดรวม: ${dashboardData?.kpis?.quotations?.totalValue?.toLocaleString() || 0}`}
           icon={<Package className="w-4 h-4 text-white" />}
         />
         <KPICard
-          title="รอชำระเงิน (34)"
-          value="262,376.20"
-          subtitle="เฉลี่ย 7,716.95"
-          color="blue"
-          additionalInfo="ค้างรับ (วัน) 4"
-          icon={<CreditCard className="w-4 h-4 text-white" />}
+          title="โอกาสในการขาย"
+          value={dashboardData?.kpis?.deals?.total || 0}
+          subtitle={`เปิดอยู่: ${dashboardData?.kpis?.deals?.open || 0}`}
+          color="purple"
+          additionalInfo={`มูลค่า pipeline: ${dashboardData?.kpis?.deals?.pipelineValue?.toLocaleString() || 0}`}
+          icon={<Star className="w-4 h-4 text-white" />}
         />
         <KPICard
-          title="คาดการณ์ยอดใหม่ (0)"
-          value="0.00"
-          subtitle="เฉลี่ย 0.00"
-          change={0.00}
-          trend="neutral"
-          color="yellow"
-          additionalInfo="~ 0.00"
-          icon={<Star className="w-4 h-4 text-white" />}
+          title="ยอดขาย"
+          value={dashboardData?.kpis?.orders?.total || 0}
+          subtitle={`เดือนนี้: ${dashboardData?.kpis?.orders?.thisMonth || 0}`}
+          change={dashboardData?.kpis?.orders?.growthRate || 0}
+          trend={dashboardData?.kpis?.orders?.growthRate > 0 ? 'up' : dashboardData?.kpis?.orders?.growthRate < 0 ? 'down' : 'neutral'}
+          color="green"
+          additionalInfo={`มูลค่า: ${dashboardData?.kpis?.orders?.totalValue?.toLocaleString() || 0}`}
+          icon={<DollarSign className="w-4 h-4 text-white" />}
+        />
+        <KPICard
+          title="กิจกรรมล่าสุด"
+          value={dashboardData?.recentActivities?.length || 0}
+          subtitle="กิจกรรมทั้งหมด"
+          color="red"
+          additionalInfo="อัพเดทล่าสุด"
+          icon={<Activity className="w-4 h-4 text-white" />}
         />
       </div>
 
@@ -218,23 +320,39 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <div className="p-3 md:p-4 bg-gray-50 rounded-lg">
             <div className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">ลูกค้าใหม่</div>
-            <div className="text-xl md:text-2xl font-bold text-blue-600 mb-1">0.01%</div>
-            <div className="text-xs text-gray-500">35 / 451,613</div>
+            <div className="text-xl md:text-2xl font-bold text-blue-600 mb-1">
+              {dashboardData?.kpis?.customers?.newThisMonth || 0}
+            </div>
+            <div className="text-xs text-gray-500">
+              เดือนนี้ / ทั้งหมด {dashboardData?.kpis?.customers?.total || 0}
+            </div>
           </div>
           <div className="p-3 md:p-4 bg-gray-50 rounded-lg">
             <div className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">โอกาส</div>
-            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">1,080.00%</div>
-            <div className="text-xs text-gray-500">54 / 5</div>
+            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">
+              {dashboardData?.kpis?.deals?.won || 0}
+            </div>
+            <div className="text-xs text-gray-500">
+              ชนะ / ทั้งหมด {dashboardData?.kpis?.deals?.total || 0}
+            </div>
           </div>
           <div className="p-3 md:p-4 bg-gray-50 rounded-lg">
             <div className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">ยอดขาย (รายได้)</div>
-            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">100.00%</div>
-            <div className="text-xs text-gray-500">334,978.59 / 0.00</div>
+            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">
+              {dashboardData?.kpis?.orders?.growthRate > 0 ? '+' : ''}{dashboardData?.kpis?.orders?.growthRate || 0}%
+            </div>
+            <div className="text-xs text-gray-500">
+              {dashboardData?.kpis?.orders?.totalValue?.toLocaleString() || 0} บาท
+            </div>
           </div>
           <div className="p-3 md:p-4 bg-gray-50 rounded-lg">
-            <div className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">กำไร(%)</div>
-            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">100.00%</div>
-            <div className="text-xs text-gray-500">334,978.59 / 0.00</div>
+            <div className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">มูลค่าโครงการ</div>
+            <div className="text-xl md:text-2xl font-bold text-green-600 mb-1">
+              {dashboardData?.kpis?.projects?.totalValue?.toLocaleString() || 0}
+            </div>
+            <div className="text-xs text-gray-500">
+              โครงการทั้งหมด {dashboardData?.kpis?.projects?.total || 0}
+            </div>
           </div>
         </div>
       </div>
@@ -249,7 +367,7 @@ const Dashboard = () => {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
-                    data={statusChartData}
+                    data={statusChartDataWithColors}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -258,7 +376,7 @@ const Dashboard = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {statusChartData.map((entry, index) => (
+                    {statusChartDataWithColors.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -266,7 +384,7 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-2 justify-center mt-2">
-                {statusChartData.map((item, index) => (
+                {statusChartDataWithColors.map((item, index) => (
                   <div key={index} className="flex items-center gap-1 text-xs">
                     <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }}></div>
                     <span>{item.name}</span>
@@ -321,13 +439,12 @@ const Dashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="activity" stroke="#6b7280" strokeWidth={2} name="ACTIVITY" />
-              <Line type="monotone" dataKey="lead" stroke="#fbbf24" strokeWidth={2} name="LEAD" />
-              <Line type="monotone" dataKey="win" stroke="#10b981" strokeWidth={2} name="WIN" />
+              <Line type="monotone" dataKey="revenue" stroke="#6b7280" strokeWidth={2} name="รายได้" />
+              <Line type="monotone" dataKey="orders" stroke="#fbbf24" strokeWidth={2} name="จำนวนออเดอร์" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -339,14 +456,14 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">กระบวนการขาย</h2>
           <div className="space-y-2">
-            <div className="bg-gray-200 p-3 text-center font-bold rounded">ACTIVITY 86</div>
-            <div className="bg-yellow-200 p-3 text-center font-bold rounded ml-4">LEAD 59</div>
-            <div className="bg-orange-200 p-3 text-center font-bold rounded ml-8">QO 59 (3)</div>
-            <div className="bg-green-200 p-3 text-center font-bold rounded ml-12">WIN 45 (4)</div>
+            <div className="bg-gray-200 p-3 text-center font-bold rounded">ACTIVITY {dashboardData?.kpis?.projects?.total || 0}</div>
+            <div className="bg-yellow-200 p-3 text-center font-bold rounded ml-4">LEAD {dashboardData?.kpis?.deals?.total || 0}</div>
+            <div className="bg-orange-200 p-3 text-center font-bold rounded ml-8">QO {dashboardData?.kpis?.quotations?.total || 0}</div>
+            <div className="bg-green-200 p-3 text-center font-bold rounded ml-12">WIN {dashboardData?.kpis?.deals?.won || 0}</div>
           </div>
           <div className="mt-4 text-xs text-gray-600 space-y-1">
-            <div>WIN : WIN Rate - โอกาส 76.27%</div>
-            <div>WIN : WIN Rate - ใบเสนอราคา 76.27%</div>
+            <div>WIN Rate - โอกาส: {dashboardData?.kpis?.deals?.total > 0 ? ((dashboardData?.kpis?.deals?.won / dashboardData?.kpis?.deals?.total) * 100).toFixed(2) : 0}%</div>
+            <div>WIN Rate - ใบเสนอราคา: {dashboardData?.kpis?.quotations?.total > 0 ? ((dashboardData?.kpis?.deals?.won / dashboardData?.kpis?.quotations?.total) * 100).toFixed(2) : 0}%</div>
           </div>
         </div>
 
@@ -381,13 +498,13 @@ const Dashboard = () => {
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <div>
               <div className="text-gray-600">ใบเสนอราคาโครงการ</div>
-              <div className="font-bold">5</div>
-              <div className="text-xs text-gray-500">THB 7,384,888.93</div>
+              <div className="font-bold">{dashboardData?.kpis?.quotations?.total || 0}</div>
+              <div className="text-xs text-gray-500">THB {dashboardData?.kpis?.quotations?.totalValue?.toLocaleString() || 0}</div>
             </div>
             <div>
               <div className="text-gray-600">ยอดขายโครงการ</div>
-              <div className="font-bold">16</div>
-              <div className="text-xs text-gray-500">THB 2,912,487.48</div>
+              <div className="font-bold">{dashboardData?.kpis?.orders?.total || 0}</div>
+              <div className="text-xs text-gray-500">THB {dashboardData?.kpis?.orders?.totalValue?.toLocaleString() || 0}</div>
             </div>
           </div>
         </div>

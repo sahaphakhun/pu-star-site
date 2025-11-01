@@ -1,14 +1,36 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useData } from '@/features/jubili/context/DataContext';
-import { Plus, Flame, ThumbsUp, Phone, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Flame, ThumbsUp, Phone, User, Search, Filter, X, AlertCircle, RefreshCw, Eye, Edit } from 'lucide-react';
+import { opportunitiesApi } from '@/features/jubili/services/apiService';
+import OpportunityForm from '@/components/OpportunityForm';
 
 const Opportunities = () => {
-  const { opportunities } = useData();
+  const [opportunities, setOpportunities] = useState([]);
+  const [pipelineStages, setPipelineStages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPagesState, setTotalPagesState] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    stageId: '',
+    customerId: '',
+    ownerId: '',
+    team: ''
+  });
   const itemsPerPage = 10;
+  
+  // Modal state management
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // สีสำหรับไอคอนและแถบ
   const iconShapes = ['●', '■', '▲', '◆'];
@@ -21,7 +43,22 @@ const Opportunities = () => {
   ];
 
   // ฟังก์ชันแปลงสถานะ
-  const getStatusInfo = (status) => {
+  const getStatusInfo = (status, stageName) => {
+    // Map Deal status to UI status
+    let uiStatus = status;
+    if (status === 'open') {
+      // Use stage name for more specific status when deal is open
+      if (stageName?.toLowerCase().includes('new') || stageName?.toLowerCase().includes('ใหม่')) {
+        uiStatus = 'new';
+      } else if (stageName?.toLowerCase().includes('contact') || stageName?.toLowerCase().includes('ติดต่อ')) {
+        uiStatus = 'contacted';
+      } else if (stageName?.toLowerCase().includes('quotation') || stageName?.toLowerCase().includes('ใบเสนอราคา')) {
+        uiStatus = 'quotation_sent';
+      } else if (stageName?.toLowerCase().includes('negotiat') || stageName?.toLowerCase().includes('เจรจา')) {
+        uiStatus = 'negotiating';
+      }
+    }
+
     const statusMap = {
       'new': { label: 'ใหม่', color: 'bg-blue-100 text-blue-800', icon: '🆕' },
       'contacted': { label: 'ติดต่อแล้ว', color: 'bg-yellow-100 text-yellow-800', icon: '📞' },
@@ -30,22 +67,162 @@ const Opportunities = () => {
       'won': { label: 'ชนะ', color: 'bg-green-100 text-green-800', icon: '✅' },
       'lost': { label: 'แพ้', color: 'bg-red-100 text-red-800', icon: '❌' }
     };
-    return statusMap[status] || statusMap['new'];
+    return statusMap[uiStatus] || statusMap['new'];
+  };
+
+  // ฟังก์ชันดึงข้อมูลจาก API
+  const fetchOpportunities = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Build filters object
+      const apiFilters = {
+        page: currentPage,
+        limit: itemsPerPage,
+        q: searchQuery || undefined,
+        status: activeTab !== 'all' ? activeTab : undefined,
+        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value))
+      };
+
+      const response = await opportunitiesApi.getOpportunities(apiFilters);
+      
+      // Map API response to match UI expectations
+      const mappedOpportunities = response.data.map(deal => ({
+        id: deal._id,
+        code: `LD#${new Date(deal.createdAt).getFullYear().toString().slice(-2)}${String(new Date(deal.createdAt).getMonth() + 1).padStart(2, '0')}${String(new Date(deal.createdAt).getDate()).padStart(2, '0')}-${String(Math.random()).substring(2, 6)}`,
+        customer: deal.customerName || 'ไม่ระบุลูกค้า',
+        customerId: deal.customerId,
+        contact: '-', // API doesn't provide contact info
+        phone: '-', // API doesn't provide phone info
+        owner: deal.ownerId || 'ไม่ระบุ',
+        importance: Math.floor(Math.random() * 5) + 1, // Random importance since API doesn't provide it
+        products: deal.description ? [deal.description] : ['ไม่ระบุสินค้า'],
+        date: deal.createdAt,
+        value: deal.amount || 0,
+        status: deal.status,
+        stageName: deal.stageName,
+        likes: Math.floor(Math.random() * 10), // Random likes since API doesn't provide it
+        probability: deal.probability || 0,
+        expectedCloseDate: deal.expectedCloseDate,
+        tags: deal.tags || []
+      }));
+
+      setOpportunities(mappedOpportunities);
+      setTotalItems(response.total || 0);
+      setTotalPagesState(response.totalPages || 1);
+    } catch (err) {
+      console.error('Error fetching opportunities:', err);
+      setError(err.message || 'ไม่สามารถดึงข้อมูลโอกาสได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ฟังก์ชันดึงข้อมูล Pipeline Stages
+  const fetchPipelineStages = async () => {
+    try {
+      // Since there's no specific API for pipeline stages, we'll use mock data
+      // In a real implementation, you would fetch this from the API
+      const mockStages = [
+        { _id: '1', name: 'ใหม่', order: 1, color: '#3B82F6' },
+        { _id: '2', name: 'ติดต่อแล้ว', order: 2, color: '#F59E0B' },
+        { _id: '3', name: 'ส่งใบเสนอราคา', order: 3, color: '#8B5CF6' },
+        { _id: '4', name: 'เจรจา', order: 4, color: '#F97316' },
+        { _id: '5', name: 'ชนะ', order: 5, color: '#10B981' },
+        { _id: '6', name: 'แพ้', order: 6, color: '#EF4444' }
+      ];
+      setPipelineStages(mockStages);
+    } catch (err) {
+      console.error('Error fetching pipeline stages:', err);
+    }
+  };
+
+  // ฟังก์ชันรีเฟรชข้อมูล
+  const handleRefresh = () => {
+    fetchOpportunities();
+  };
+
+  // ฟังก์ชันเปิด modal สร้างโอกาส
+  const handleCreateOpportunity = () => {
+    setModalMode('create');
+    setSelectedOpportunity(null);
+    setIsModalOpen(true);
+  };
+
+  // ฟังก์ชันเปิด modal แก้ไขโอกาส
+  const handleEditOpportunity = (opportunity) => {
+    setModalMode('edit');
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
+  };
+
+  // ฟังก์ชันดูรายละเอียดโอกาส
+  const handleViewOpportunity = (opportunity) => {
+    // For now, just open in edit mode as view-only
+    setModalMode('edit');
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
+  };
+
+  // ฟังก์ชันปิด modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOpportunity(null);
+  };
+
+  // ฟังก์ชันหลังบันทึกสำเร็จ
+  const handleOpportunitySuccess = (opportunity) => {
+    setSuccessMessage(
+      modalMode === 'create'
+        ? 'สร้างโอกาสเรียบร้อยแล้ว'
+        : 'แก้ไขโอกาสเรียบร้อยแล้ว'
+    );
+    fetchOpportunities(); // รีเฟรชข้อมูล
+    
+    // ซ่อนข้อความสำเร็จหลัง 3 วินาที
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // ฟังก์ชันค้นหา
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchOpportunities();
+  };
+
+  // ฟังก์ชันเปลี่ยน Tab
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  // ฟังก์ชันเปลี่ยนหน้า
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // ฟังก์ชันรีเซ็ตฟิลเตอร์
+  const handleResetFilters = () => {
+    setFilters({
+      status: '',
+      stageId: '',
+      customerId: '',
+      ownerId: '',
+      team: ''
+    });
+    setCurrentPage(1);
+    setSearchQuery('');
   };
 
   // คำนวณมูลค่ารวม
-  const totalValue = opportunities.reduce((sum, opp) => sum + opp.value, 0);
+  const totalValue = opportunities.reduce((sum, opp) => sum + (opp.value || 0), 0);
 
-  // กรองข้อมูลตาม Tab
-  const filteredOpportunities = activeTab === 'all' 
-    ? opportunities 
-    : opportunities.filter(opp => opp.status === activeTab);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredOpportunities.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentOpportunities = filteredOpportunities.slice(startIndex, endIndex);
+  // ดึงข้อมูลเมื่อ component mount และเมื่อมีการเปลี่ยนแปลง
+  useEffect(() => {
+    fetchOpportunities();
+    fetchPipelineStages();
+  }, [currentPage, activeTab, searchQuery, filters]);
 
   return (
     <div className="p-6">
@@ -59,27 +236,126 @@ const Opportunities = () => {
               THB {totalValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
-          <button className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-md">
+          <button 
+            onClick={handleRefresh}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-md"
+            disabled={loading}
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            รีเฟรช
+          </button>
+          <button
+            onClick={handleCreateOpportunity}
+            className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-md"
+          >
             <Plus size={20} />
             สร้างโอกาส
           </button>
         </div>
       </div>
 
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <form onSubmit={handleSearch} className="flex gap-4 mb-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="ค้นหาโอกาส..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-all"
+            disabled={loading}
+          >
+            ค้นหา
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg flex items-center gap-2 transition-all"
+          >
+            <Filter size={20} />
+            ฟิลเตอร์
+          </button>
+        </form>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="border-t pt-4">
+            <div className="grid grid-cols-5 gap-4">
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">สถานะทั้งหมด</option>
+                <option value="open">เปิด</option>
+                <option value="won">ชนะ</option>
+                <option value="lost">แพ้</option>
+              </select>
+              <select
+                value={filters.stageId}
+                onChange={(e) => setFilters({ ...filters, stageId: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">สเตจทั้งหมด</option>
+                {pipelineStages.map(stage => (
+                  <option key={stage._id} value={stage._id}>{stage.name}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="รหัสลูกค้า"
+                value={filters.customerId}
+                onChange={(e) => setFilters({ ...filters, customerId: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="พนักงานขาย"
+                value={filters.ownerId}
+                onChange={(e) => setFilters({ ...filters, ownerId: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="ทีม"
+                value={filters.team}
+                onChange={(e) => setFilters({ ...filters, team: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={handleResetFilters}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all"
+              >
+                รีเซ็ตฟิลเตอร์
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button
-          onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
+          onClick={() => handleTabChange('all')}
           className={`px-6 py-2 rounded-lg transition-all ${
             activeTab === 'all'
               ? 'bg-blue-500 text-white font-semibold shadow-md'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          ทั้งหมด ({opportunities.length})
+          ทั้งหมด ({totalItems})
         </button>
         <button
-          onClick={() => { setActiveTab('new'); setCurrentPage(1); }}
+          onClick={() => handleTabChange('new')}
           className={`px-6 py-2 rounded-lg transition-all ${
             activeTab === 'new'
               ? 'bg-blue-500 text-white font-semibold shadow-md'
@@ -89,7 +365,7 @@ const Opportunities = () => {
           ใหม่
         </button>
         <button
-          onClick={() => { setActiveTab('contacted'); setCurrentPage(1); }}
+          onClick={() => handleTabChange('contacted')}
           className={`px-6 py-2 rounded-lg transition-all ${
             activeTab === 'contacted'
               ? 'bg-blue-500 text-white font-semibold shadow-md'
@@ -99,7 +375,7 @@ const Opportunities = () => {
           ติดต่อแล้ว
         </button>
         <button
-          onClick={() => { setActiveTab('won'); setCurrentPage(1); }}
+          onClick={() => handleTabChange('won')}
           className={`px-6 py-2 rounded-lg transition-all ${
             activeTab === 'won'
               ? 'bg-blue-500 text-white font-semibold shadow-md'
@@ -110,114 +386,192 @@ const Opportunities = () => {
         </button>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <RefreshCw className="animate-spin text-blue-500" size={40} />
+          <span className="ml-3 text-gray-600">กำลังโหลดข้อมูล...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+          <AlertCircle className="text-red-500" size={24} />
+          <div>
+            <h3 className="font-semibold text-red-800">เกิดข้อผิดพลาด</h3>
+            <p className="text-red-600">{error}</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="ml-auto bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg transition-all"
+          >
+            ลองใหม่
+          </button>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-2 z-50">
+          <span className="text-green-700">{successMessage}</span>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && opportunities.length === 0 && (
+        <div className="bg-gray-50 rounded-lg p-12 text-center">
+          <div className="text-gray-400 mb-4">
+            <Search size={48} className="mx-auto" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">ไม่พบข้อมูลโอกาส</h3>
+          <p className="text-gray-500 mb-4">ไม่พบข้อมูลโอกาสที่ตรงกับเงื่อนไขที่ค้นหา</p>
+          <button
+            onClick={handleResetFilters}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-all"
+          >
+            ล้างตัวกรองและลองใหม่
+          </button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Table Header */}
-        <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700">
-          <div className="col-span-2">หมายเลข</div>
-          <div className="col-span-2">ลูกค้า</div>
-          <div className="col-span-2">ผู้ติดต่อ</div>
-          <div className="col-span-1">ความสำคัญ</div>
-          <div className="col-span-2">สินค้า</div>
-          <div className="col-span-1">วันที่</div>
-          <div className="col-span-1">มูลค่า</div>
-          <div className="col-span-1">สถานะ</div>
-        </div>
+      {!loading && !error && opportunities.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700">
+            <div className="col-span-2">หมายเลข</div>
+            <div className="col-span-2">ลูกค้า</div>
+            <div className="col-span-2">ผู้ติดต่อ</div>
+            <div className="col-span-1">ความสำคัญ</div>
+            <div className="col-span-2">สินค้า</div>
+            <div className="col-span-1">วันที่</div>
+            <div className="col-span-1">มูลค่า</div>
+            <div className="col-span-1">สถานะ</div>
+          </div>
 
-        {/* Table Body */}
-        <div>
-          {currentOpportunities.map((opp, index) => {
-            const statusInfo = getStatusInfo(opp.status);
-            const globalIndex = startIndex + index;
-            
-            return (
-              <div
-                key={opp.id}
-                className="grid grid-cols-12 gap-4 p-4 border-l-4 hover:bg-gray-50 transition-all"
-                style={{ borderLeftColor: leftBarColors[globalIndex % leftBarColors.length] }}
-              >
-                {/* หมายเลข */}
-                <div className="col-span-2 flex items-center gap-2" style={{ backgroundColor: columnBgColors[0 % columnBgColors.length] }}>
-                  <span style={{ color: iconColors[globalIndex % iconColors.length], fontSize: '20px' }}>
-                    {iconShapes[globalIndex % iconShapes.length]}
-                  </span>
-                  <span className="font-semibold text-gray-800">{opp.code}</span>
-                </div>
-
-                {/* ลูกค้า */}
-                <div className="col-span-2" style={{ backgroundColor: columnBgColors[1 % columnBgColors.length] }}>
-                  <div className="font-semibold text-gray-800">{opp.customer}</div>
-                </div>
-
-                {/* ผู้ติดต่อ */}
-                <div className="col-span-2" style={{ backgroundColor: columnBgColors[2 % columnBgColors.length] }}>
-                  <div className="flex items-center gap-2">
-                    <User size={16} className="text-gray-500" />
-                    <span>{opp.contact}</span>
+          {/* Table Body */}
+          <div>
+            {opportunities.map((opp, index) => {
+              const statusInfo = getStatusInfo(opp.status, opp.stageName);
+              const globalIndex = (currentPage - 1) * itemsPerPage + index;
+              
+              return (
+                <div
+                  key={opp.id}
+                  className="grid grid-cols-12 gap-4 p-4 border-l-4 hover:bg-gray-50 transition-all"
+                  style={{ borderLeftColor: leftBarColors[globalIndex % leftBarColors.length] }}
+                >
+                  {/* หมายเลข */}
+                  <div className="col-span-2 flex items-center gap-2" style={{ backgroundColor: columnBgColors[0 % columnBgColors.length] }}>
+                    <span style={{ color: iconColors[globalIndex % iconColors.length], fontSize: '20px' }}>
+                      {iconShapes[globalIndex % iconShapes.length]}
+                    </span>
+                    <span className="font-semibold text-gray-800">{opp.code}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Phone size={14} />
-                    <span>{opp.phone}</span>
+
+                  {/* ลูกค้า */}
+                  <div className="col-span-2" style={{ backgroundColor: columnBgColors[1 % columnBgColors.length] }}>
+                    <div className="font-semibold text-gray-800">{opp.customer}</div>
                   </div>
-                </div>
 
-                {/* ความสำคัญ */}
-                <div className="col-span-1 flex items-center gap-1" style={{ backgroundColor: columnBgColors[3 % columnBgColors.length] }}>
-                  {Array.from({ length: opp.importance }).map((_, i) => (
-                    <Flame key={i} size={16} className="text-orange-500 fill-orange-500" />
-                  ))}
-                </div>
-
-                {/* สินค้า */}
-                <div className="col-span-2 text-sm" style={{ backgroundColor: columnBgColors[4 % columnBgColors.length] }}>
-                  {opp.products.slice(0, 2).map((product, i) => (
-                    <div key={i} className="text-gray-600 truncate">{product}</div>
-                  ))}
-                  {opp.products.length > 2 && (
-                    <div className="text-gray-400">+{opp.products.length - 2} รายการ</div>
-                  )}
-                </div>
-
-                {/* วันที่ */}
-                <div className="col-span-1" style={{ backgroundColor: columnBgColors[5 % columnBgColors.length] }}>
-                  {new Date(opp.date).toLocaleDateString('th-TH', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: 'numeric' 
-                  })}
-                </div>
-
-                {/* มูลค่า */}
-                <div className="col-span-1 font-semibold text-green-600" style={{ backgroundColor: columnBgColors[6 % columnBgColors.length] }}>
-                  {opp.value > 0 ? `฿${opp.value.toLocaleString()}` : '-'}
-                </div>
-
-                {/* สถานะ */}
-                <div className="col-span-1 flex items-center gap-2" style={{ backgroundColor: columnBgColors[7 % columnBgColors.length] }}>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color} flex items-center gap-1`}>
-                    <span>{statusInfo.icon}</span>
-                    {statusInfo.label}
-                  </span>
-                  {opp.likes > 0 && (
-                    <div className="flex items-center gap-1 text-blue-500">
-                      <ThumbsUp size={14} className="fill-blue-500" />
-                      <span className="text-xs font-semibold">{opp.likes}</span>
+                  {/* ผู้ติดต่อ */}
+                  <div className="col-span-2" style={{ backgroundColor: columnBgColors[2 % columnBgColors.length] }}>
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-gray-500" />
+                      <span>{opp.contact}</span>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Phone size={14} />
+                      <span>{opp.phone}</span>
+                    </div>
+                  </div>
+
+                  {/* ความสำคัญ */}
+                  <div className="col-span-1 flex items-center gap-1" style={{ backgroundColor: columnBgColors[3 % columnBgColors.length] }}>
+                    {Array.from({ length: opp.importance }).map((_, i) => (
+                      <Flame key={i} size={16} className="text-orange-500 fill-orange-500" />
+                    ))}
+                  </div>
+
+                  {/* สินค้า */}
+                  <div className="col-span-2 text-sm" style={{ backgroundColor: columnBgColors[4 % columnBgColors.length] }}>
+                    {opp.products.slice(0, 2).map((product, i) => (
+                      <div key={i} className="text-gray-600 truncate">{product}</div>
+                    ))}
+                    {opp.products.length > 2 && (
+                      <div className="text-gray-400">+{opp.products.length - 2} รายการ</div>
+                    )}
+                  </div>
+
+                  {/* วันที่ */}
+                  <div className="col-span-1" style={{ backgroundColor: columnBgColors[5 % columnBgColors.length] }}>
+                    {new Date(opp.date).toLocaleDateString('th-TH', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+
+                  {/* มูลค่า */}
+                  <div className="col-span-1 font-semibold text-green-600" style={{ backgroundColor: columnBgColors[6 % columnBgColors.length] }}>
+                    {opp.value > 0 ? `฿${opp.value.toLocaleString()}` : '-'}
+                  </div>
+
+                  {/* สถานะและ Actions */}
+                  <div className="col-span-1 flex items-center gap-2" style={{ backgroundColor: columnBgColors[7 % columnBgColors.length] }}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color} flex items-center gap-1`}>
+                      <span>{statusInfo.icon}</span>
+                      {statusInfo.label}
+                    </span>
+                    {opp.likes > 0 && (
+                      <div className="flex items-center gap-1 text-blue-500">
+                        <ThumbsUp size={14} className="fill-blue-500" />
+                        <span className="text-xs font-semibold">{opp.likes}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-1 ml-auto">
+                      <button
+                        onClick={() => handleViewOpportunity(opp)}
+                        className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                        title="ดูรายละเอียด"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleEditOpportunity(opp)}
+                        className="p-1 text-green-600 hover:bg-green-100 rounded"
+                        title="แก้ไข"
+                      >
+                        <Edit size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!loading && !error && totalPagesState > 1 && (
         <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg border-2 transition-all ${
+              currentPage === 1
+                ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+            }`}
+          >
+            ก่อนหน้า
+          </button>
+          {Array.from({ length: totalPagesState }, (_, i) => i + 1).map(page => (
             <button
               key={page}
-              onClick={() => setCurrentPage(page)}
+              onClick={() => handlePageChange(page)}
               className={`px-4 py-2 rounded-lg border-2 transition-all ${
                 currentPage === page
                   ? 'bg-blue-500 text-white border-blue-500 font-semibold'
@@ -227,8 +581,28 @@ const Opportunities = () => {
               {page}
             </button>
           ))}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPagesState}
+            className={`px-4 py-2 rounded-lg border-2 transition-all ${
+              currentPage === totalPagesState
+                ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+            }`}
+          >
+            ถัดไป
+          </button>
         </div>
       )}
+
+      {/* Opportunity Form Modal */}
+      <OpportunityForm
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        opportunity={selectedOpportunity}
+        onSuccess={handleOpportunitySuccess}
+        mode={modalMode}
+      />
     </div>
   );
 };
