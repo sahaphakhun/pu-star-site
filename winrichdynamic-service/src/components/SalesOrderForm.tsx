@@ -137,9 +137,9 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     
     // Auto-fill from quotation
     if (field === 'quotationId' && value) {
-      const quotation = quotations.find((q: any) => q.id === value)
+      const quotation = quotations.find((q: any) => q.id === value) as any
       if (quotation) {
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
           ...prev,
           customerId: quotation.customerId,
           customerName: quotation.customerName,
@@ -160,7 +160,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     if (field === 'paidAmount') {
       const remaining = formData.total - value
       const status = remaining <= 0 ? 'paid' : value > 0 ? 'partial' : 'unpaid'
-      setFormData(prev => ({
+      setFormData((prev: any) => ({
         ...prev,
         remainingAmount: remaining,
         paymentStatus: status,
@@ -188,7 +188,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     const total = subtotal + vatAmount
     const remaining = total - formData.paidAmount
     
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       subtotal,
       vatAmount,
@@ -246,7 +246,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex justify-between items-center">

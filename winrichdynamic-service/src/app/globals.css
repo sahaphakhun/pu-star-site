@@ -49,10 +49,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
@@ -179,7 +180,10 @@ html {
 
 /* Ensure modals don't overlap with sidebar */
 .adminb2b-modal-overlay {
-  @apply fixed inset-0 bg-black bg-opacity-50 z-50;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 50;
 }
 
 @media (min-width: 768px) {

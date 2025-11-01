@@ -44,7 +44,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
         onClick={onClose}
       />
       

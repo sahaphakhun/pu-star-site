@@ -191,7 +191,7 @@ const AdminSidebar: React.FC = () => {
             exit={{ x: '-100%' }}
             className="fixed inset-0 z-[9998] md:hidden"
           >
-            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="absolute inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">

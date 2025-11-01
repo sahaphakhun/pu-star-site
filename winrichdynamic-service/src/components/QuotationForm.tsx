@@ -16,14 +16,31 @@ const mockData = {
 
 interface QuotationFormProps {
   quotation?: any;
-  onClose: () => void;
+  initialData?: any;
+  customers?: any[];
+  onSubmit?: (quotationData: any) => void | Promise<void>;
+  onCancel?: () => void;
+  onClose?: () => void;
   onSave?: () => void;
+  isEditing?: boolean;
+  loading?: boolean;
 }
 
-export default function QuotationForm({ quotation, onClose, onSave }: QuotationFormProps) {
-  const { customers, addQuotation, updateQuotation } = mockData;
+export default function QuotationForm({
+  quotation,
+  initialData,
+  customers,
+  onSubmit,
+  onCancel,
+  onClose,
+  onSave,
+}: QuotationFormProps) {
+  const dataSource = mockData;
+  const customersList = customers ?? dataSource.customers;
+  const addQuotation = dataSource.addQuotation;
+  const updateQuotation = dataSource.updateQuotation;
   
-  const [formData, setFormData] = useState(quotation || {
+  const [formData, setFormData] = useState(initialData || quotation || {
     // ข้อมูลลูกค้า
     customerId: '',
     customerName: '',
@@ -88,10 +105,10 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
     
     // Auto-fill contact info when customer is selected
     if (field === 'customerId' && value) {
-      const customer = customers.find((c: any) => c.id === value);
+      const customer = customersList.find((c: any) => c.id === value);
       if (customer) {
         const primaryContact = customer.contacts?.[0];
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
           ...prev,
           customerName: customer.name,
           contactName: primaryContact?.name || '',
@@ -130,7 +147,7 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
     const vatAmount = (subtotal * formData.vat) / 100;
     const total = subtotal + vatAmount;
     
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       subtotal,
       vatAmount,
@@ -161,29 +178,38 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
     calculateTotals(newItems);
   };
 
-  const handleSubmit = (e: React.FormEvent, action: string = 'draft') => {
+  const handleSubmit = async (e: React.SyntheticEvent, action: string = 'draft') => {
     e.preventDefault();
     
     const quotationData = {
       ...formData,
       status: action === 'submit' ? 'pending' : 'draft',
       quotationNumber: quotation?.quotationNumber || `Q${Date.now()}`,
-      id: quotation?.id || Date.now().toString(),
-      createdAt: quotation?.createdAt || new Date().toISOString(),
+      id: quotation?.id || (initialData as any)?.id || Date.now().toString(),
+      createdAt: quotation?.createdAt || (initialData as any)?.createdAt || new Date().toISOString(),
     };
     
-    if (quotation) {
+    if (onSubmit) {
+      await onSubmit(quotationData);
+    } else if (quotation?.id) {
       updateQuotation(quotation.id, quotationData);
+    } else if ((initialData as any)?.id) {
+      updateQuotation((initialData as any).id, quotationData);
     } else {
       addQuotation(quotationData);
     }
     
     if (onSave) onSave();
-    onClose();
+    onClose?.();
+  };
+
+  const handleCancel = () => {
+    onCancel?.();
+    onClose?.();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex justify-between items-center">
@@ -194,14 +220,14 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
             <span className="text-lg font-bold">
               จำนวนเงินรวมทั้งหมด THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
             </span>
-            <button onClick={onClose} className="text-white hover:text-gray-200">
+            <button onClick={() => onClose?.()} className="text-white hover:text-gray-200">
               <X size={24} />
             </button>
           </div>
         </div>
 
         {/* Form Content */}
-        <form className="flex-1 overflow-y-auto">
+        <form className="flex-1 overflow-y-auto" onSubmit={(e) => handleSubmit(e, 'submit')}>
           <div className="p-6">
             <div className="grid grid-cols-12 gap-6">
               {/* Left Column - ข้อมูลลูกค้า */}
@@ -223,7 +249,7 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">โปรดเลือกชื่อกิจการ</option>
-                        {customers.map((customer: any) => (
+                        {customersList.map((customer: any) => (
                           <option key={customer.id} value={customer.id}>
                             {customer.name}
                           </option>
@@ -769,7 +795,7 @@ export default function QuotationForm({ quotation, onClose, onSave }: QuotationF
           <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
             <Button
               type="button"
-              onClick={onClose}
+              onClick={handleCancel}
               className="px-6 py-2 border border-blue-500 text-blue-500 hover:bg-blue-50"
             >
               ยกเลิก

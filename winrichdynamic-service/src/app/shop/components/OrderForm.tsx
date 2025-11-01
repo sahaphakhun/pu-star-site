@@ -41,7 +41,7 @@ export default function OrderForm({
 
 	return (
 		<motion.div
-			className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+	className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			exit={{ opacity: 0 }}
@@ -65,7 +65,7 @@ export default function OrderForm({
 							onClick={() => setShowOrderForm(false)}
 							whileHover={{ scale: 1.1 }}
 							whileTap={{ scale: 0.9 }}
-							className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+						className="p-2 hover:bg-white/20 rounded-full transition-colors"
 						>
 							<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -253,5 +253,3 @@ export default function OrderForm({
 		</motion.div>
 	);
 }
-
-
