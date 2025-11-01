@@ -1,0 +1,68 @@
+{
+  "name": "WINRICH DYNAMIC - ระบบร้านค้าออนไลน์",
+  "short_name": "WinRich",
+  "description": "ระบบจัดการร้านค้าออนไลน์ที่ครบครันสำหรับธุรกิจขนาดกลางและขนาดใหญ่",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#223f81",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "th",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ร้านค้า",
+      "short_name": "Shop",
+      "description": "ดูสินค้าและสั่งซื้อ",
+      "url": "/shop",
+      "icons": [
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "32x32"
+        }
+      ]
+    },
+    {
+      "name": "ออเดอร์ของฉัน",
+      "short_name": "Orders",
+      "description": "ดูออเดอร์และสถานะ",
+      "url": "/my-orders",
+      "icons": [
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "32x32"
+        }
+      ]
+    },
+    {
+      "name": "บทความ",
+      "short_name": "Articles",
+      "description": "อ่านบทความและข่าวสาร",
+      "url": "/articles",
+      "icons": [
+        {
+          "src": "/favicon-32x32.png",
+          "sizes": "32x32"
+        }
+      ]
+    }
+  ]
+}

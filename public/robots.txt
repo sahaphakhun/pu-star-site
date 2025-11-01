@@ -1,0 +1,48 @@
+User-agent: *
+Allow: /
+
+# Facebook crawlers
+User-agent: facebookexternalhit
+Allow: /
+Crawl-delay: 1
+
+User-agent: facebookbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Facebot
+Allow: /
+Crawl-delay: 1
+
+# Instagram crawler
+User-agent: Instagram
+Allow: /
+Crawl-delay: 1
+
+# WhatsApp crawler
+User-agent: WhatsApp
+Allow: /
+Crawl-delay: 1
+
+# Allow all media files
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.png
+Allow: /*.gif
+Allow: /*.webp
+Allow: /*.svg
+
+# Allow all video files
+Allow: /*.mp4
+Allow: /*.avi
+Allow: /*.mov
+Allow: /*.wmv
+Allow: /*.webm
+
+# Allow API endpoints
+Allow: /api/*
+Allow: /messenger/*
+Allow: /webhook/*
+
+# Sitemap
+Sitemap: https://yourdomain.com/sitemap.xml
