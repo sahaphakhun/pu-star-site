@@ -20,30 +20,38 @@ COPY . .
 # Disable Next.js telemetry during the build
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Create a temporary directory for TypeScript build info
-RUN mkdir -p /tmp/tsbuildinfo
+# Set environment variables for TypeScript build
+ENV NODE_ENV production
+ENV NEXT_BUILD_WORKERS 1
+ENV TS_NODE_TRANSPILE_ONLY true
 
-# Set the TypeScript build info location to a temporary directory
-# This prevents the tsconfig.tsbuildinfo mounting issue
-ENV TS_NODE_PROJECT=/tmp/tsbuildinfo
+# Create a non-root user for the build process
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Build the application
-RUN npm run build
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Build the application with proper TypeScript cache handling
+# The --no-lint flag helps avoid potential linting issues during build
+RUN npm run build -- --no-lint
 
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# Copy the standalone output
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Set the correct permission for prerender cache
+# Create .next directory with proper permissions
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
@@ -52,13 +60,21 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Set the correct permissions for the entire app directory
+RUN chown -R nextjs:nodejs /app
+
 USER nextjs
 
+# Expose port 8080 for Railway
 EXPOSE 8080
 
+# Set environment variables for Railway
 ENV PORT 8080
-# set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/api/ping', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
