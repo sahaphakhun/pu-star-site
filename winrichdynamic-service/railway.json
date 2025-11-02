@@ -1,11 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm run build"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "npm start",
     "healthcheckPath": "/api/ping",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
@@ -15,7 +14,8 @@
     "production": {
       "variables": {
         "NEXT_TELEMETRY_DISABLED": "1",
-        "PORT": "8080"
+        "PORT": "8080",
+        "NODE_ENV": "production"
       }
     }
   }

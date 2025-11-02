@@ -15,6 +15,26 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Enable standalone output for Docker builds
+  output: 'standalone',
+  // Configure TypeScript build info to avoid mounting issues
+  typescript: {
+    // Don't build the project during build time
+    ignoreBuildErrors: false,
+    // Use a custom build info file path to avoid mounting issues
+    tsconfigPath: './tsconfig.json',
+  },
+  // Configure webpack to handle build info properly
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Ensure TypeScript build info is handled properly
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: ['**/tsconfig.tsbuildinfo'],
+      };
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig
