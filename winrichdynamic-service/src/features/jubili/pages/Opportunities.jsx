@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Flame, ThumbsUp, Phone, User, Search, Filter, X, AlertCircle, RefreshCw, Eye, Edit } from 'lucide-react';
-import { opportunitiesApi } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 import OpportunityForm from '@/components/OpportunityForm';
 
 const Opportunities = () => {
@@ -31,6 +31,7 @@ const Opportunities = () => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const { opportunities: opportunitiesApi } = useApiService();
 
   // สีสำหรับไอคอนและแถบ
   const iconShapes = ['●', '■', '▲', '◆'];

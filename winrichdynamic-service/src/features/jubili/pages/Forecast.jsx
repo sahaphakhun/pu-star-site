@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   DollarSign,
   BarChart3,
@@ -16,22 +16,22 @@ import {
   Calendar,
   Info
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   Area,
   AreaChart,
   ReferenceLine
 } from 'recharts';
-import { apiService } from '../services/apiService';
+import useApiService from '../hooks/useApiService';
 
 export default function Forecast() {
   const [forecastData, setForecastData] = useState(null);
@@ -39,13 +39,14 @@ export default function Forecast() {
   const [error, setError] = useState(null);
   const [period, setPeriod] = useState('6months');
   const [forecastType, setForecastType] = useState('conservative');
+  const { forecast: forecastApi } = useApiService();
 
   // Fetch forecast data
   const fetchForecastData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiService.forecast.getForecast(period, forecastType);
+      const data = await forecastApi.getForecast(period, forecastType);
       setForecastData(data);
     } catch (err) {
       console.error('Error fetching forecast data:', err);

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { activitiesApi } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 import { Users, Target, DollarSign, Briefcase, Plus, Phone, MessageCircle, Calendar, CheckCircle, Clock, Flame, Search, Filter, AlertCircle, Edit, Eye } from 'lucide-react';
 import ActivityForm from '@/components/ActivityForm';
 
@@ -30,6 +30,7 @@ const Activities = () => {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [formMode, setFormMode] = useState('create'); // 'create' or 'edit'
+  const { activities: activitiesApi } = useApiService();
 
   // สถิติ
   const stats = [

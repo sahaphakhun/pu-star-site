@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiService } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -9,13 +9,14 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { dashboard, loading: apiLoading } = useApiService();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiService.dashboard.getDashboardData();
+        const data = await dashboard.getDashboardData();
         setDashboardData(data);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -26,7 +27,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [dashboard]);
 
   // Loading state component
   const LoadingState = () => (
@@ -57,7 +58,7 @@ const Dashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiService.dashboard.getDashboardData();
+        const data = await dashboard.getDashboardData();
         setDashboardData(data);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);

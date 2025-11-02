@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiService, APIError } from '@/features/jubili/services/apiService';
+import { APIError } from '@/features/jubili/services/apiService';
 import { Plus, Search, Star, FileText, Activity, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import ProjectForm from '@/components/ProjectForm';
+import useApiService from '@/features/jubili/hooks/useApiService';
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -22,6 +23,7 @@ export default function Projects() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [selectedProject, setSelectedProject] = useState(null);
+  const { projects: projectsApi } = useApiService();
 
   // Map Thai status to English status for API
   const statusMap = {
@@ -46,7 +48,7 @@ export default function Projects() {
         status: statusMap[status] || status
       };
       
-      const response = await apiService.projects.getProjects(filters);
+      const response = await projectsApi.getProjects(filters);
       setProjects(response.data || []);
       setPagination({
         page: response.page || 1,
@@ -91,7 +93,7 @@ export default function Projects() {
   // CRUD operation handlers
   const handleViewProject = async (projectId) => {
     try {
-      const project = await apiService.projects.getProject(projectId);
+      const project = await projectsApi.getProject(projectId);
       setSelectedProject(project);
       setModalMode('view'); // We'll use edit mode but make fields read-only
       setIsModalOpen(true);
@@ -107,7 +109,7 @@ export default function Projects() {
 
   const handleEditProject = async (projectId) => {
     try {
-      const project = await apiService.projects.getProject(projectId);
+      const project = await projectsApi.getProject(projectId);
       setSelectedProject(project);
       setModalMode('edit');
       setIsModalOpen(true);
@@ -140,7 +142,7 @@ export default function Projects() {
   const handleDeleteProject = async (projectId) => {
     if (window.confirm('คุณต้องการลบโปรเจคนี้ใช่หรือไม่?')) {
       try {
-        await apiService.projects.deleteProject(projectId);
+        await projectsApi.deleteProject(projectId);
         // Refresh the projects list
         fetchProjects(pagination.page, searchTerm, statusFilter);
       } catch (err) {

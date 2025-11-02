@@ -1,7 +1,5 @@
 'use client';
 
-import { useTokenManager } from '@/utils/tokenManager';
-
 // Base API configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -46,11 +44,9 @@ export interface LoadingState {
 // Generic API request function
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  token?: string | null
 ): Promise<ApiResponse<T>> {
-  const tokenManager = useTokenManager();
-  const token = await tokenManager.getValidToken();
-  
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   
   const config: RequestInit = {
@@ -90,32 +86,32 @@ async function apiRequest<T>(
 
 // Utility functions for HTTP methods
 const api = {
-  get: <T>(endpoint: string, options?: RequestInit) => 
-    apiRequest<T>(endpoint, { method: 'GET', ...options }),
+  get: <T>(endpoint: string, options?: RequestInit, token?: string | null) =>
+    apiRequest<T>(endpoint, { method: 'GET', ...options }, token),
   
-  post: <T>(endpoint: string, data?: any, options?: RequestInit) => 
+  post: <T>(endpoint: string, data?: any, options?: RequestInit, token?: string | null) =>
     apiRequest<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
       ...options,
-    }),
+    }, token),
   
-  put: <T>(endpoint: string, data?: any, options?: RequestInit) => 
+  put: <T>(endpoint: string, data?: any, options?: RequestInit, token?: string | null) =>
     apiRequest<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
       ...options,
-    }),
+    }, token),
   
-  delete: <T>(endpoint: string, options?: RequestInit) => 
-    apiRequest<T>(endpoint, { method: 'DELETE', ...options }),
+  delete: <T>(endpoint: string, options?: RequestInit, token?: string | null) =>
+    apiRequest<T>(endpoint, { method: 'DELETE', ...options }, token),
   
-  patch: <T>(endpoint: string, data?: any, options?: RequestInit) => 
+  patch: <T>(endpoint: string, data?: any, options?: RequestInit, token?: string | null) =>
     apiRequest<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
       ...options,
-    }),
+    }, token),
 };
 
 // Type definitions based on models
@@ -493,7 +489,7 @@ export interface CustomerFilters {
 // Projects API
 export const projectsApi = {
   // Get all projects with filters
-  getProjects: async (filters: ProjectFilters = {}): Promise<PaginatedResponse<Project>> => {
+  getProjects: async (filters: ProjectFilters = {}, token?: string | null): Promise<PaginatedResponse<Project>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -501,36 +497,36 @@ export const projectsApi = {
       }
     });
     
-    const response = await api.get<Project[]>(`/api/projects?${params}`);
+    const response = await api.get<Project[]>(`/api/projects?${params}`, undefined, token);
     return response as PaginatedResponse<Project>;
   },
 
   // Get single project by ID
-  getProject: async (id: string): Promise<Project> => {
-    const response = await api.get<Project>(`/api/projects/${id}`);
+  getProject: async (id: string, token?: string | null): Promise<Project> => {
+    const response = await api.get<Project>(`/api/projects/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new project
-  createProject: async (projectData: Partial<Project>): Promise<Project> => {
-    const response = await api.post<Project>('/api/projects', projectData);
+  createProject: async (projectData: Partial<Project>, token?: string | null): Promise<Project> => {
+    const response = await api.post<Project>('/api/projects', projectData, undefined, token);
     return response.data!;
   },
 
   // Update project
-  updateProject: async (id: string, projectData: Partial<Project>): Promise<Project> => {
-    const response = await api.put<Project>(`/api/projects/${id}`, projectData);
+  updateProject: async (id: string, projectData: Partial<Project>, token?: string | null): Promise<Project> => {
+    const response = await api.put<Project>(`/api/projects/${id}`, projectData, undefined, token);
     return response.data!;
   },
 
   // Delete project
-  deleteProject: async (id: string): Promise<void> => {
-    await api.delete(`/api/projects/${id}`);
+  deleteProject: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/projects/${id}`, undefined, token);
   },
 
   // Update project status
-  updateProjectStatus: async (id: string, status: string, notes?: string): Promise<Project> => {
-    const response = await api.patch<Project>(`/api/projects/${id}/status`, { status, notes });
+  updateProjectStatus: async (id: string, status: string, notes?: string, token?: string | null): Promise<Project> => {
+    const response = await api.patch<Project>(`/api/projects/${id}/status`, { status, notes }, undefined, token);
     return response.data!;
   },
 };
@@ -538,7 +534,7 @@ export const projectsApi = {
 // Quotations API
 export const quotationsApi = {
   // Get all quotations with filters
-  getQuotations: async (filters: QuotationFilters = {}): Promise<PaginatedResponse<Quotation>> => {
+  getQuotations: async (filters: QuotationFilters = {}, token?: string | null): Promise<PaginatedResponse<Quotation>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -546,48 +542,48 @@ export const quotationsApi = {
       }
     });
     
-    const response = await api.get<Quotation[]>(`/api/quotations?${params}`);
+    const response = await api.get<Quotation[]>(`/api/quotations?${params}`, undefined, token);
     return response as PaginatedResponse<Quotation>;
   },
 
   // Get single quotation by ID
-  getQuotation: async (id: string): Promise<Quotation> => {
-    const response = await api.get<Quotation>(`/api/quotations/${id}`);
+  getQuotation: async (id: string, token?: string | null): Promise<Quotation> => {
+    const response = await api.get<Quotation>(`/api/quotations/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new quotation
-  createQuotation: async (quotationData: Partial<Quotation>): Promise<Quotation> => {
-    const response = await api.post<Quotation>('/api/quotations', quotationData);
+  createQuotation: async (quotationData: Partial<Quotation>, token?: string | null): Promise<Quotation> => {
+    const response = await api.post<Quotation>('/api/quotations', quotationData, undefined, token);
     return response.data!;
   },
 
   // Update quotation
-  updateQuotation: async (id: string, quotationData: Partial<Quotation>): Promise<Quotation> => {
-    const response = await api.put<Quotation>(`/api/quotations/${id}`, quotationData);
+  updateQuotation: async (id: string, quotationData: Partial<Quotation>, token?: string | null): Promise<Quotation> => {
+    const response = await api.put<Quotation>(`/api/quotations/${id}`, quotationData, undefined, token);
     return response.data!;
   },
 
   // Delete quotation
-  deleteQuotation: async (id: string): Promise<void> => {
-    await api.delete(`/api/quotations/${id}`);
+  deleteQuotation: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/quotations/${id}`, undefined, token);
   },
 
   // Send quotation
-  sendQuotation: async (id: string, method: 'email' | 'line' | 'manual'): Promise<Quotation> => {
-    const response = await api.post<Quotation>(`/api/quotations/${id}/send`, { method });
+  sendQuotation: async (id: string, method: 'email' | 'line' | 'manual', token?: string | null): Promise<Quotation> => {
+    const response = await api.post<Quotation>(`/api/quotations/${id}/send`, { method }, undefined, token);
     return response.data!;
   },
 
   // Convert quotation to sales order
-  convertToSalesOrder: async (id: string): Promise<SalesOrder> => {
-    const response = await api.post<SalesOrder>(`/api/quotations/${id}/convert`);
+  convertToSalesOrder: async (id: string, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.post<SalesOrder>(`/api/quotations/${id}/convert`, undefined, undefined, token);
     return response.data!;
   },
 
   // Update quotation status
-  updateQuotationStatus: async (id: string, status: string, responseNotes?: string): Promise<Quotation> => {
-    const response = await api.patch<Quotation>(`/api/quotations/${id}/status`, { status, responseNotes });
+  updateQuotationStatus: async (id: string, status: string, responseNotes?: string, token?: string | null): Promise<Quotation> => {
+    const response = await api.patch<Quotation>(`/api/quotations/${id}/status`, { status, responseNotes }, undefined, token);
     return response.data!;
   },
 };
@@ -595,7 +591,7 @@ export const quotationsApi = {
 // Sales Orders API
 export const salesOrdersApi = {
   // Get all sales orders with filters
-  getSalesOrders: async (filters: SalesOrderFilters = {}): Promise<PaginatedResponse<SalesOrder>> => {
+  getSalesOrders: async (filters: SalesOrderFilters = {}, token?: string | null): Promise<PaginatedResponse<SalesOrder>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -603,52 +599,49 @@ export const salesOrdersApi = {
       }
     });
     
-    const response = await api.get<SalesOrder[]>(`/api/orders?${params}`);
+    const response = await api.get<SalesOrder[]>(`/api/orders?${params}`, undefined, token);
     return response as PaginatedResponse<SalesOrder>;
   },
 
   // Get single sales order by ID
-  getSalesOrder: async (id: string): Promise<SalesOrder> => {
-    const response = await api.get<SalesOrder>(`/api/orders/${id}`);
+  getSalesOrder: async (id: string, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.get<SalesOrder>(`/api/orders/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new sales order
-  createSalesOrder: async (orderData: Partial<SalesOrder>): Promise<SalesOrder> => {
-    const response = await api.post<SalesOrder>('/api/orders', orderData);
+  createSalesOrder: async (orderData: Partial<SalesOrder>, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.post<SalesOrder>('/api/orders', orderData, undefined, token);
     return response.data!;
   },
 
   // Update sales order
-  updateSalesOrder: async (id: string, orderData: Partial<SalesOrder>): Promise<SalesOrder> => {
-    const response = await api.put<SalesOrder>(`/api/orders/${id}`, orderData);
+  updateSalesOrder: async (id: string, orderData: Partial<SalesOrder>, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.put<SalesOrder>(`/api/orders/${id}`, orderData, undefined, token);
     return response.data!;
   },
 
   // Delete sales order
-  deleteSalesOrder: async (id: string): Promise<void> => {
-    await api.delete(`/api/orders/${id}`);
+  deleteSalesOrder: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/orders/${id}`, undefined, token);
   },
 
   // Update order status
-  updateOrderStatus: async (id: string, status: string): Promise<SalesOrder> => {
-    const response = await api.patch<SalesOrder>(`/api/orders/${id}/status`, { status });
+  updateOrderStatus: async (id: string, status: string, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.patch<SalesOrder>(`/api/orders/${id}/status`, { status }, undefined, token);
     return response.data!;
   },
 
   // Add tracking information
-  addTracking: async (id: string, trackingNumber: string, provider: string): Promise<SalesOrder> => {
-    const response = await api.post<SalesOrder>(`/api/orders/${id}/tracking`, { trackingNumber, provider });
+  addTracking: async (id: string, trackingNumber: string, provider: string, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.post<SalesOrder>(`/api/orders/${id}/tracking`, { trackingNumber, provider }, undefined, token);
     return response.data!;
   },
 
   // Upload packing proof
-  uploadPackingProof: async (id: string, file: File): Promise<SalesOrder> => {
+  uploadPackingProof: async (id: string, file: File, token?: string | null): Promise<SalesOrder> => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const tokenManager = useTokenManager();
-    const token = await tokenManager.getValidToken();
     
     const response = await fetch(`${API_BASE_URL}/api/orders/${id}/upload-packing-proof`, {
       method: 'POST',
@@ -666,8 +659,8 @@ export const salesOrdersApi = {
   },
 
   // Request tax invoice
-  requestTaxInvoice: async (id: string, taxInvoiceData: any): Promise<SalesOrder> => {
-    const response = await api.post<SalesOrder>(`/api/orders/${id}/tax-invoice`, taxInvoiceData);
+  requestTaxInvoice: async (id: string, taxInvoiceData: any, token?: string | null): Promise<SalesOrder> => {
+    const response = await api.post<SalesOrder>(`/api/orders/${id}/tax-invoice`, taxInvoiceData, undefined, token);
     return response.data!;
   },
 };
@@ -675,7 +668,7 @@ export const salesOrdersApi = {
 // Activities API
 export const activitiesApi = {
   // Get all activities with filters
-  getActivities: async (filters: ActivityFilters = {}): Promise<PaginatedResponse<Activity>> => {
+  getActivities: async (filters: ActivityFilters = {}, token?: string | null): Promise<PaginatedResponse<Activity>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -683,51 +676,51 @@ export const activitiesApi = {
       }
     });
     
-    const response = await api.get<Activity[]>(`/api/activities?${params}`);
+    const response = await api.get<Activity[]>(`/api/activities?${params}`, undefined, token);
     return response as PaginatedResponse<Activity>;
   },
 
   // Get single activity by ID
-  getActivity: async (id: string): Promise<Activity> => {
-    const response = await api.get<Activity>(`/api/activities/${id}`);
+  getActivity: async (id: string, token?: string | null): Promise<Activity> => {
+    const response = await api.get<Activity>(`/api/activities/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new activity
-  createActivity: async (activityData: Partial<Activity>): Promise<Activity> => {
-    const response = await api.post<Activity>('/api/activities', activityData);
+  createActivity: async (activityData: Partial<Activity>, token?: string | null): Promise<Activity> => {
+    const response = await api.post<Activity>('/api/activities', activityData, undefined, token);
     return response.data!;
   },
 
   // Update activity
-  updateActivity: async (id: string, activityData: Partial<Activity>): Promise<Activity> => {
-    const response = await api.put<Activity>(`/api/activities/${id}`, activityData);
+  updateActivity: async (id: string, activityData: Partial<Activity>, token?: string | null): Promise<Activity> => {
+    const response = await api.put<Activity>(`/api/activities/${id}`, activityData, undefined, token);
     return response.data!;
   },
 
   // Delete activity
-  deleteActivity: async (id: string): Promise<void> => {
-    await api.delete(`/api/activities/${id}`);
+  deleteActivity: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/activities/${id}`, undefined, token);
   },
 
   // Complete activity
-  completeActivity: async (id: string, notes?: string): Promise<Activity> => {
-    const response = await api.patch<Activity>(`/api/activities/${id}/complete`, { notes });
+  completeActivity: async (id: string, notes?: string, token?: string | null): Promise<Activity> => {
+    const response = await api.patch<Activity>(`/api/activities/${id}/complete`, { notes }, undefined, token);
     return response.data!;
   },
 
   // Postpone activity
-  postponeActivity: async (id: string, newScheduledAt: string, reason?: string): Promise<Activity> => {
-    const response = await api.patch<Activity>(`/api/activities/${id}/postpone`, { 
-      newScheduledAt, 
-      reason 
-    });
+  postponeActivity: async (id: string, newScheduledAt: string, reason?: string, token?: string | null): Promise<Activity> => {
+    const response = await api.patch<Activity>(`/api/activities/${id}/postpone`, {
+      newScheduledAt,
+      reason
+    }, undefined, token);
     return response.data!;
   },
 
   // Cancel activity
-  cancelActivity: async (id: string, reason?: string): Promise<Activity> => {
-    const response = await api.patch<Activity>(`/api/activities/${id}/cancel`, { reason });
+  cancelActivity: async (id: string, reason?: string, token?: string | null): Promise<Activity> => {
+    const response = await api.patch<Activity>(`/api/activities/${id}/cancel`, { reason }, undefined, token);
     return response.data!;
   },
 };
@@ -735,7 +728,7 @@ export const activitiesApi = {
 // Opportunities API (using Deals API)
 export const opportunitiesApi = {
   // Get all opportunities with filters
-  getOpportunities: async (filters: OpportunityFilters = {}): Promise<PaginatedResponse<Opportunity>> => {
+  getOpportunities: async (filters: OpportunityFilters = {}, token?: string | null): Promise<PaginatedResponse<Opportunity>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -743,48 +736,48 @@ export const opportunitiesApi = {
       }
     });
     
-    const response = await api.get<Opportunity[]>(`/api/deals?${params}`);
+    const response = await api.get<Opportunity[]>(`/api/deals?${params}`, undefined, token);
     return response as PaginatedResponse<Opportunity>;
   },
 
   // Get single opportunity by ID
-  getOpportunity: async (id: string): Promise<Opportunity> => {
-    const response = await api.get<Opportunity>(`/api/deals/${id}`);
+  getOpportunity: async (id: string, token?: string | null): Promise<Opportunity> => {
+    const response = await api.get<Opportunity>(`/api/deals/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new opportunity
-  createOpportunity: async (opportunityData: Partial<Opportunity>): Promise<Opportunity> => {
-    const response = await api.post<Opportunity>('/api/deals', opportunityData);
+  createOpportunity: async (opportunityData: Partial<Opportunity>, token?: string | null): Promise<Opportunity> => {
+    const response = await api.post<Opportunity>('/api/deals', opportunityData, undefined, token);
     return response.data!;
   },
 
   // Update opportunity
-  updateOpportunity: async (id: string, opportunityData: Partial<Opportunity>): Promise<Opportunity> => {
-    const response = await api.put<Opportunity>(`/api/deals/${id}`, opportunityData);
+  updateOpportunity: async (id: string, opportunityData: Partial<Opportunity>, token?: string | null): Promise<Opportunity> => {
+    const response = await api.put<Opportunity>(`/api/deals/${id}`, opportunityData, undefined, token);
     return response.data!;
   },
 
   // Delete opportunity
-  deleteOpportunity: async (id: string): Promise<void> => {
-    await api.delete(`/api/deals/${id}`);
+  deleteOpportunity: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/deals/${id}`, undefined, token);
   },
 
   // Update opportunity stage
-  updateOpportunityStage: async (id: string, stageId: string): Promise<Opportunity> => {
-    const response = await api.patch<Opportunity>(`/api/deals/${id}/stage`, { stageId });
+  updateOpportunityStage: async (id: string, stageId: string, token?: string | null): Promise<Opportunity> => {
+    const response = await api.patch<Opportunity>(`/api/deals/${id}/stage`, { stageId }, undefined, token);
     return response.data!;
   },
 
   // Update opportunity status
-  updateOpportunityStatus: async (id: string, status: 'open' | 'won' | 'lost'): Promise<Opportunity> => {
-    const response = await api.patch<Opportunity>(`/api/deals/${id}/status`, { status });
+  updateOpportunityStatus: async (id: string, status: 'open' | 'won' | 'lost', token?: string | null): Promise<Opportunity> => {
+    const response = await api.patch<Opportunity>(`/api/deals/${id}/status`, { status }, undefined, token);
     return response.data!;
   },
 
   // Add quotation to opportunity
-  addQuotation: async (id: string, quotationId: string): Promise<Opportunity> => {
-    const response = await api.post<Opportunity>(`/api/deals/${id}/quotations`, { quotationId });
+  addQuotation: async (id: string, quotationId: string, token?: string | null): Promise<Opportunity> => {
+    const response = await api.post<Opportunity>(`/api/deals/${id}/quotations`, { quotationId }, undefined, token);
     return response.data!;
   },
 };
@@ -792,7 +785,7 @@ export const opportunitiesApi = {
 // Customers API
 export const customersApi = {
   // Get all customers with filters
-  getCustomers: async (filters: CustomerFilters = {}): Promise<PaginatedResponse<Customer>> => {
+  getCustomers: async (filters: CustomerFilters = {}, token?: string | null): Promise<PaginatedResponse<Customer>> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -800,36 +793,36 @@ export const customersApi = {
       }
     });
     
-    const response = await api.get<Customer[]>(`/api/customers?${params}`);
+    const response = await api.get<Customer[]>(`/api/customers?${params}`, undefined, token);
     return response as PaginatedResponse<Customer>;
   },
 
   // Get single customer by ID
-  getCustomer: async (id: string): Promise<Customer> => {
-    const response = await api.get<Customer>(`/api/customers/${id}`);
+  getCustomer: async (id: string, token?: string | null): Promise<Customer> => {
+    const response = await api.get<Customer>(`/api/customers/${id}`, undefined, token);
     return response.data!;
   },
 
   // Create new customer
-  createCustomer: async (customerData: Partial<Customer>): Promise<Customer> => {
-    const response = await api.post<Customer>('/api/customers', customerData);
+  createCustomer: async (customerData: Partial<Customer>, token?: string | null): Promise<Customer> => {
+    const response = await api.post<Customer>('/api/customers', customerData, undefined, token);
     return response.data!;
   },
 
   // Update customer
-  updateCustomer: async (id: string, customerData: Partial<Customer>): Promise<Customer> => {
-    const response = await api.put<Customer>(`/api/customers/${id}`, customerData);
+  updateCustomer: async (id: string, customerData: Partial<Customer>, token?: string | null): Promise<Customer> => {
+    const response = await api.put<Customer>(`/api/customers/${id}`, customerData, undefined, token);
     return response.data!;
   },
 
   // Delete customer
-  deleteCustomer: async (id: string): Promise<void> => {
-    await api.delete(`/api/customers/${id}`);
+  deleteCustomer: async (id: string, token?: string | null): Promise<void> => {
+    await api.delete(`/api/customers/${id}`, undefined, token);
   },
 
   // Search customers by phone or name
-  searchCustomers: async (query: string): Promise<Customer[]> => {
-    const response = await api.get<Customer[]>(`/api/customers/search?q=${encodeURIComponent(query)}`);
+  searchCustomers: async (query: string, token?: string | null): Promise<Customer[]> => {
+    const response = await api.get<Customer[]>(`/api/customers/search?q=${encodeURIComponent(query)}`, undefined, token);
     return response.data || [];
   },
 };
@@ -837,26 +830,26 @@ export const customersApi = {
 // Dashboard API
 export const dashboardApi = {
   // Get dashboard data
-  getDashboardData: async (): Promise<DashboardData> => {
-    const response = await api.get<DashboardData>('/api/dashboard');
+  getDashboardData: async (token?: string | null): Promise<DashboardData> => {
+    const response = await api.get<DashboardData>('/api/dashboard', undefined, token);
     return response.data!;
   },
 
   // Get sales chart data
-  getSalesChart: async (period: 'week' | 'month' | 'quarter' | 'year' = 'month'): Promise<any[]> => {
-    const response = await api.get<any[]>(`/api/reports/sales-chart?period=${period}`);
+  getSalesChart: async (period: 'week' | 'month' | 'quarter' | 'year' = 'month', token?: string | null): Promise<any[]> => {
+    const response = await api.get<any[]>(`/api/reports/sales-chart?period=${period}`, undefined, token);
     return response.data || [];
   },
 
   // Get project status distribution
-  getProjectStatusChart: async (): Promise<any[]> => {
-    const response = await api.get<any[]>('/api/reports/project-status');
+  getProjectStatusChart: async (token?: string | null): Promise<any[]> => {
+    const response = await api.get<any[]>('/api/reports/project-status', undefined, token);
     return response.data || [];
   },
 
   // Get opportunity pipeline data
-  getOpportunityPipeline: async (): Promise<any[]> => {
-    const response = await api.get<any[]>('/api/reports/opportunity-pipeline');
+  getOpportunityPipeline: async (token?: string | null): Promise<any[]> => {
+    const response = await api.get<any[]>('/api/reports/opportunity-pipeline', undefined, token);
     return response.data || [];
   },
 };
@@ -864,20 +857,17 @@ export const dashboardApi = {
 // Forecast API
 export const forecastApi = {
   // Get forecast data
-  getForecast: async (period: string = '6months', forecastType: string = 'conservative'): Promise<any> => {
-    const response = await api.get<any>(`/api/forecast?period=${period}&type=${forecastType}`);
+  getForecast: async (period: string = '6months', forecastType: string = 'conservative', token?: string | null): Promise<any> => {
+    const response = await api.get<any>(`/api/forecast?period=${period}&type=${forecastType}`, undefined, token);
     return response.data!;
   },
 };
 
 // File upload utility
-export const uploadFile = async (file: File, type: 'image' | 'document' = 'image'): Promise<string> => {
+export const uploadFile = async (file: File, type: 'image' | 'document' = 'image', token?: string | null): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('type', type);
-  
-  const tokenManager = useTokenManager();
-  const token = await tokenManager.getValidToken();
   
   const response = await fetch(`${API_BASE_URL}/api/upload`, {
     method: 'POST',
@@ -897,14 +887,14 @@ export const uploadFile = async (file: File, type: 'image' | 'document' = 'image
 // Settings API
 export const settingsApi = {
   // Get settings
-  getSettings: async (): Promise<Settings> => {
-    const response = await api.get<Settings>('/api/settings');
+  getSettings: async (token?: string | null): Promise<Settings> => {
+    const response = await api.get<Settings>('/api/settings', undefined, token);
     return response.data!;
   },
 
   // Update settings
-  updateSettings: async (settingsData: Partial<Settings>): Promise<Settings> => {
-    const response = await api.put<Settings>('/api/settings', settingsData);
+  updateSettings: async (settingsData: Partial<Settings>, token?: string | null): Promise<Settings> => {
+    const response = await api.put<Settings>('/api/settings', settingsData, undefined, token);
     return response.data!;
   },
 };

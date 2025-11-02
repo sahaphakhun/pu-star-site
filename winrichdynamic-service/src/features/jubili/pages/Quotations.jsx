@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Eye, Edit, Trash2, FileText, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import QuotationForm from '@/components/QuotationForm';
-import { quotationsApi } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 
 const statusConfig = {
   draft: { label: 'ร่าง', color: 'bg-gray-100 text-gray-800 border-gray-300' },
@@ -34,6 +34,7 @@ export default function Quotations() {
     dateFrom: '',
     dateTo: ''
   });
+  const { quotations: quotationsApi } = useApiService();
 
   // Fetch quotations from API
   const fetchQuotations = async (page = 1, searchTerm = '', filters = {}) => {

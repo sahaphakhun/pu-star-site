@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { apiService } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 import { Building2, Info, Construction, Trophy, Users, Settings as SettingsIcon, Bell, Award, User, ClipboardList, Store, UserCheck, Megaphone, Edit, Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Settings = () => {
@@ -13,6 +13,7 @@ const Settings = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
+  const { settings: settingsApi } = useApiService();
 
   // เมนู Sidebar
   const menuItems = [
@@ -48,7 +49,7 @@ const Settings = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiService.settings.getSettings();
+        const data = await settingsApi.getSettings();
         setSettings(data);
         setFormData(data);
       } catch (err) {
@@ -60,7 +61,7 @@ const Settings = () => {
     };
 
     fetchSettings();
-  }, []);
+  }, [settingsApi]);
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -100,7 +101,7 @@ const Settings = () => {
       setError(null);
       setSuccessMessage(null);
       
-      const updatedSettings = await apiService.settings.updateSettings(formData);
+      const updatedSettings = await settingsApi.updateSettings(formData);
       setSettings(updatedSettings);
       setSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');
       setEditMode(false);

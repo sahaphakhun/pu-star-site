@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Package, Star, TrendingUp, Clock, CheckCircle, XCircle, Circle, Truck, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import SalesOrderForm from '@/components/SalesOrderForm';
-import { salesOrdersApi, SalesOrderFilters } from '@/features/jubili/services/apiService';
+import useApiService from '@/features/jubili/hooks/useApiService';
 
 const statusConfig = {
   draft: { label: 'ร่าง', color: 'bg-gray-100 text-gray-800 border-gray-300', icon: Circle },
@@ -42,6 +42,7 @@ export default function SalesOrders() {
     totalPages: 0
   });
   const [filters, setFilters] = useState({});
+  const { salesOrders: salesOrdersApi } = useApiService();
 
   // Fetch sales orders from API
   const fetchSalesOrders = async (page = 1, newFilters = {}) => {
