@@ -1,26 +1,38 @@
 # syntax=docker/dockerfile:1
 
-# Multi-stage build for the B2B admin service located in winrichdynamic-service/
+# Multi-stage build for the B2B admin service. Supports repositories where the
+# service lives at the root *or* under ./winrichdynamic-service.
 FROM node:18-alpine AS base
+
+# Prepare the source tree so subsequent stages always see the app at /app.
+FROM base AS prep
+WORKDIR /app
+COPY . .
+RUN set -eux; \
+    if [ -f package.json ] && grep -q '"name": "winrichdynamic-service"' package.json; then \
+      echo "Detected winrichdynamic-service at repository root"; \
+    elif [ -f winrichdynamic-service/package.json ]; then \
+      echo "Detected winrichdynamic-service in subdirectory; flattening"; \
+      find . -mindepth 1 -maxdepth 1 ! -name 'winrichdynamic-service' -exec rm -rf {} \;; \
+      cp -R winrichdynamic-service/. .; \
+      rm -rf winrichdynamic-service; \
+    else \
+      echo "winrichdynamic-service sources not found" >&2; \
+      exit 1; \
+    fi
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-
-# Copy dependency manifests from the service directory
-COPY winrichdynamic-service/package.json winrichdynamic-service/package-lock.json* ./
+COPY --from=prep /app/package.json /app/package-lock.json* ./
 RUN npm ci
 
 # Build the application
 FROM base AS builder
 WORKDIR /app
-
-# Bring installed node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy service sources
-COPY winrichdynamic-service/ ./
+COPY --from=prep /app/. .
 
 # Disable Next.js telemetry during the build
 ENV NEXT_TELEMETRY_DISABLED 1
