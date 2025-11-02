@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { activitiesApi } from '@/features/jubili/services/apiService';
-import { Users, Target, DollarSign, Briefcase, Plus, Phone, MessageCircle, Calendar, CheckCircle, Clock, Flame, Search, Filter, AlertCircle } from 'lucide-react';
+import { Users, Target, DollarSign, Briefcase, Plus, Phone, MessageCircle, Calendar, CheckCircle, Clock, Flame, Search, Filter, AlertCircle, Edit, Eye } from 'lucide-react';
+import ActivityForm from '@/components/ActivityForm';
 
 const Activities = () => {
   const [activeTab, setActiveTab] = useState('today');
@@ -24,6 +25,11 @@ const Activities = () => {
     total: 0,
     totalPages: 0
   });
+  
+  // Activity form modal state
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [formMode, setFormMode] = useState('create'); // 'create' or 'edit'
 
   // สถิติ
   const stats = [
@@ -296,7 +302,11 @@ const Activities = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">งานติดตาม</h1>
         <button
-          onClick={() => alert('ฟีเจอร์นี้กำลังพัฒนา')}
+          onClick={() => {
+            setSelectedActivity(null);
+            setFormMode('create');
+            setShowActivityModal(true);
+          }}
           className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md"
         >
           <Plus size={20} />
@@ -508,6 +518,32 @@ const Activities = () => {
 
                     {/* Right Side */}
                     <div className="flex flex-col items-end gap-2">
+                      {/* Action Buttons */}
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setSelectedActivity(activity);
+                            setFormMode('edit');
+                            setShowActivityModal(true);
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="แก้ไขกิจกรรม"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedActivity(activity);
+                            setFormMode('view');
+                            setShowActivityModal(true);
+                          }}
+                          className="p-1 text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                          title="ดูรายละเอียด"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </div>
+                      
                       {/* Time */}
                       <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         isOverdue(activity.scheduledAt, activity.status)
@@ -564,6 +600,31 @@ const Activities = () => {
           </div>
         )}
       </div>
+      
+      {/* Activity Form Modal */}
+      <ActivityForm
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        activity={selectedActivity}
+        mode={formMode}
+        onSuccess={(savedActivity) => {
+          // Refresh activities list after successful save
+          fetchActivities(1, true);
+          
+          // Show success message
+          if (formMode === 'create') {
+            // Could add a toast notification here
+            console.log('Activity created successfully');
+          } else {
+            console.log('Activity updated successfully');
+          }
+          
+          // Close the modal and reset form state
+          setShowActivityModal(false);
+          setSelectedActivity(null);
+          setFormMode('create');
+        }}
+      />
     </div>
   );
 };

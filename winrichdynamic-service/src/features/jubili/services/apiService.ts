@@ -861,6 +861,15 @@ export const dashboardApi = {
   },
 };
 
+// Forecast API
+export const forecastApi = {
+  // Get forecast data
+  getForecast: async (period: string = '6months', forecastType: string = 'conservative'): Promise<any> => {
+    const response = await api.get<any>(`/api/forecast?period=${period}&type=${forecastType}`);
+    return response.data!;
+  },
+};
+
 // File upload utility
 export const uploadFile = async (file: File, type: 'image' | 'document' = 'image'): Promise<string> => {
   const formData = new FormData();
@@ -909,6 +918,7 @@ export const apiService = {
   opportunities: opportunitiesApi,
   customers: customersApi,
   dashboard: dashboardApi,
+  forecast: forecastApi,
   settings: settingsApi,
   upload: uploadFile,
 };
