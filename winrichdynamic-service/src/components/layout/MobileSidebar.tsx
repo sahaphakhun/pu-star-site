@@ -49,22 +49,21 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       />
       
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-blue-100 to-blue-200 shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out">
+      <aside className="fixed top-0 left-0 h-full w-16 bg-gradient-to-b from-blue-100 to-blue-200 shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out">
         {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-blue-300">
-          <h2 className="text-lg font-bold text-gray-800">เมนู</h2>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+        <div className="h-16 flex items-center justify-center border-b border-blue-300">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             className="hover:bg-blue-300"
           >
-            <X className="h-6 w-6 text-gray-700" />
+            <X className="h-4 w-4 text-gray-700" />
           </Button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="flex-1 py-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
@@ -74,18 +73,18 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 key={item.id}
                 href={item.path}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-6 py-3 transition-all relative ${
+                className={`flex flex-col items-center justify-center gap-1 py-3 transition-all relative ${
                   isActive
-                    ? 'bg-blue-300 text-gray-800 font-semibold shadow-md'
+                    ? 'bg-blue-300 text-gray-800 shadow-md'
                     : 'text-gray-800 hover:bg-blue-300/50'
                 }`}
               >
-                <div className={`${item.color} p-2 rounded-lg shadow-sm`}>
-                  <Icon className="h-5 w-5 text-white" />
+                <div className={`${item.color} p-1.5 rounded-lg shadow-sm`}>
+                  <Icon className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium flex-1">{item.label}</span>
+                <span className="text-xs font-medium text-center w-full px-1">{item.label}</span>
                 {item.badge && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-full">
                     {item.badge}
                   </span>
                 )}

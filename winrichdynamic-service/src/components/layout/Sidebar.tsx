@@ -32,8 +32,8 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex w-64 bg-gradient-to-b from-blue-100 to-blue-200 flex-col shadow-lg">
-      <nav className="flex-1 py-4">
+    <aside className="hidden md:flex w-16 bg-gradient-to-b from-blue-100 to-blue-200 flex-col shadow-lg">
+      <nav className="flex-1 py-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
@@ -42,18 +42,18 @@ export default function Sidebar() {
             <Link
               key={item.id}
               href={item.path}
-              className={`flex items-center gap-3 px-6 py-3 transition-all relative ${
+              className={`flex flex-col items-center justify-center gap-1 py-3 transition-all relative ${
                 isActive
-                  ? 'bg-blue-300 text-gray-800 font-semibold shadow-md'
+                  ? 'bg-blue-300 text-gray-800 shadow-md'
                   : 'text-gray-800 hover:bg-blue-300/50'
               }`}
             >
-              <div className={`${item.color} p-2 rounded-lg shadow-sm`}>
-                <Icon className="h-5 w-5 text-white" />
+              <div className={`${item.color} p-1.5 rounded-lg shadow-sm`}>
+                <Icon className="h-4 w-4 text-white" />
               </div>
-              <span className="text-sm font-medium flex-1">{item.label}</span>
+              <span className="text-xs font-medium text-center w-full px-1">{item.label}</span>
               {item.badge && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-full">
                   {item.badge}
                 </span>
               )}
