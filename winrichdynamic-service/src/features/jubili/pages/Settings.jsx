@@ -13,7 +13,9 @@ const Settings = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
-  const { settings: settingsApi } = useApiService();
+  const {
+    settings: { getSettings, updateSettings },
+  } = useApiService();
 
   // เมนู Sidebar
   const menuItems = [
@@ -49,7 +51,7 @@ const Settings = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await settingsApi.getSettings();
+        const data = await getSettings();
         setSettings(data);
         setFormData(data);
       } catch (err) {
@@ -61,7 +63,7 @@ const Settings = () => {
     };
 
     fetchSettings();
-  }, [settingsApi]);
+  }, [getSettings]);
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -101,7 +103,7 @@ const Settings = () => {
       setError(null);
       setSuccessMessage(null);
       
-      const updatedSettings = await settingsApi.updateSettings(formData);
+      const updatedSettings = await updateSettings(formData);
       setSettings(updatedSettings);
       setSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');
       setEditMode(false);

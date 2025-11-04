@@ -6,7 +6,9 @@ import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Activity from '@/models/Activity';
 import Deal from '@/models/Deal';
-import { createActivitySchema, searchActivitySchema } from '@/schemas/activity';
+import mongoose from 'mongoose';
+import { createActivitySchema } from '@/schemas/activity';
+import Customer from '@/models/Customer';
 
 // GET: list activities with filters
 export async function GET(request: NextRequest) {
@@ -51,9 +53,44 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
+    const customerIds = Array.from(
+      new Set(
+        items
+          .map((item) => item.customerId)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      )
+    );
+
+    const validCustomerObjectIds = customerIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    let customerMap = new Map<string, string>();
+
+    if (validCustomerObjectIds.length > 0) {
+      const customers = await Customer.find({ _id: { $in: validCustomerObjectIds } })
+        .select(['name', 'companyName'])
+        .lean();
+
+      customers.forEach((customer) => {
+        const displayName = customer.companyName
+          ? `${customer.companyName} (${customer.name})`
+          : customer.name;
+        customerMap.set(customer._id.toString(), displayName);
+      });
+    }
+
+    const itemsWithNames = items.map((item) => ({
+      ...item,
+      customerName: item.customerId ? customerMap.get(item.customerId) || item.customerId : undefined,
+    }));
+
     const hasParams = url.searchParams.size > 0;
-    if (!hasParams) return NextResponse.json(items);
-    return NextResponse.json({ data: items, total, page, limit, totalPages: Math.ceil(total / limit) });
+    if (!hasParams) return NextResponse.json(itemsWithNames);
+    return NextResponse.json({
+      data: itemsWithNames,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     console.error('[B2B] GET /activities error', error);
     return NextResponse.json({ error: 'ไม่สามารถดึงรายการกิจกรรมได้' }, { status: 500 });
@@ -96,5 +133,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'ไม่สามารถสร้างกิจกรรมได้' }, { status: 500 });
   }
 }
-
-

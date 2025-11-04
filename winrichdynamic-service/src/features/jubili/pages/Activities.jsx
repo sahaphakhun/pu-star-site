@@ -540,8 +540,10 @@ const Activities = () => {
                         )}
                       </div>
                       <div className="text-sm text-gray-700 mb-2">
-                        {activity.customerId && (
-                          <span className="font-medium text-blue-600">ลูกค้า ID: {activity.customerId}</span>
+                        {(activity.customerName || activity.customerId) && (
+                          <span className="font-medium text-blue-600">
+                            ลูกค้า: {activity.customerName || activity.customerId}
+                          </span>
                         )}
                         {activity.dealId && (
                           <span className="ml-2 font-medium text-purple-600">ดีล ID: {activity.dealId}</span>
