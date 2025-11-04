@@ -20,11 +20,20 @@ export interface IOrder extends Document {
 	orderDate: Date;
 	createdAt: Date;
 	updatedAt: Date;
-	paymentMethod?: 'cod' | 'transfer';
+  orderType?: 'online' | 'sales_order';
+	paymentMethod?: 'cod' | 'transfer' | 'credit';
   status?: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled';
   trackingNumber?: string;
   shippingProvider?: string;
   deliveryMethod?: 'standard' | 'lalamove';
+  // COD specific fields
+  codPaymentStatus?: 'pending' | 'collected' | 'failed';
+  codPaymentDueDate?: Date;
+  codReminderSent?: boolean;
+  paymentConfirmationRequired?: boolean;
+  // Credit payment fields
+  creditPaymentDueDate?: Date;
+  creditReminderSent?: boolean;
   // Packing proofs
   packingProofs?: { url: string; type: 'image' | 'video'; addedAt: Date }[];
   // Tax invoice request
@@ -53,7 +62,20 @@ export interface IOrder extends Document {
     verifiedBy?: string;
     status?: string;
     error?: string;
+    slipUrl?: string;
+    slipUploadedAt?: Date;
   };
+  
+  // Quotation linkage
+  generatedQuotationId?: string;
+  quotationGeneratedAt?: Date;
+  quotationRequired?: boolean; // Based on product/configuration
+  quotationStatus?: 'pending' | 'generated' | 'accepted' | 'rejected';
+  autoConvertToSalesOrder?: boolean;
+  sourceQuotationId?: string;
+  sourceOrderId?: string;
+  linkedSalesOrderId?: string;
+  salesOrderGeneratedAt?: Date;
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
@@ -75,11 +97,20 @@ const orderSchema = new Schema<IOrder>(
 		shippingFee: { type: Number, required: true, default: 0 },
 		discount: { type: Number, default: 0 },
 		orderDate: { type: Date, default: Date.now },
-		paymentMethod: { type: String, enum: ['cod', 'transfer'], default: 'cod' },
+    orderType: { type: String, enum: ['online', 'sales_order'], default: 'online', index: true },
+		paymentMethod: { type: String, enum: ['cod', 'transfer', 'credit'], default: 'cod' },
     status: { type: String, enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
     trackingNumber: { type: String },
     shippingProvider: { type: String },
     deliveryMethod: { type: String, enum: ['standard', 'lalamove'], default: 'standard' },
+    // COD specific fields
+    codPaymentStatus: { type: String, enum: ['pending', 'collected', 'failed'], default: 'pending' },
+    codPaymentDueDate: { type: Date },
+    codReminderSent: { type: Boolean, default: false },
+    paymentConfirmationRequired: { type: Boolean, default: false },
+    // Credit payment fields
+    creditPaymentDueDate: { type: Date },
+    creditReminderSent: { type: Boolean, default: false },
     packingProofs: {
       type: [
         {
@@ -113,14 +144,25 @@ const orderSchema = new Schema<IOrder>(
       verifiedBy: { type: String },
       status: { type: String },
       error: { type: String },
+      slipUrl: { type: String },
+      slipUploadedAt: { type: Date },
     },
-	},
-	{ timestamps: true }
+    // Quotation linkage
+    generatedQuotationId: { type: String },
+    quotationGeneratedAt: { type: Date },
+    quotationRequired: { type: Boolean, default: false },
+    quotationStatus: { type: String, enum: ['pending', 'generated', 'accepted', 'rejected'] },
+    autoConvertToSalesOrder: { type: Boolean, default: false },
+    sourceQuotationId: { type: String },
+    sourceOrderId: { type: String },
+    linkedSalesOrderId: { type: String },
+    salesOrderGeneratedAt: { type: Date },
+ },
+ { timestamps: true }
 );
 
 orderSchema.index({ orderDate: -1 });
 orderSchema.index({ customerPhone: 1 });
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema);
-
 

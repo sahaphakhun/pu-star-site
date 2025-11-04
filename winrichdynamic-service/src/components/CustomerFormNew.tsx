@@ -40,11 +40,22 @@ const normalizePhone = (input: string) => {
 };
 
 export default function CustomerFormNew({ customer, onClose, onSubmit }: CustomerFormNewProps) {
+  // ฟังก์ชันสร้างรหัสลูกค้าอัตโนมัติ
+  const generateCustomerCode = () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2); // 2 หลักสุดท้ายของปี
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // เดือน 2 หลัก
+    const day = now.getDate().toString().padStart(2, '0'); // วันที่ 2 หลัก
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // สุ่ม 3 หลัก
+    return `C${year}${month}${day}${random}`;
+  };
+
   const initialFormData = useMemo(() => {
     if (!customer) {
       return {
         // ข้อมูลลูกค้า
         name: '',
+        customerCode: generateCustomerCode(), // เพิ่มรหัสลูกค้าอัตโนมัติ
         referenceCode: '',
         country: 'Thailand (ไทย)',
         province: '',
@@ -88,6 +99,9 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
         customerType: 'new',
         assignedTo: '',
         paymentTerms: 'ชำระเงินทันที',
+        
+        // สถานะการขาย
+        status: 'planning',
       };
     }
 
@@ -111,6 +125,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
       notes: customer.notes || '',
       customerType: customer.customerType || 'new',
       paymentTerms: customer.paymentTerms || 'ชำระเงินทันที',
+      status: customer.status || 'planning',
     };
   }, [customer]);
 
@@ -243,6 +258,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
 
     const payload: Record<string, any> = {
       name: formData.name,
+      customerCode: formData.customerCode || generateCustomerCode(), // เพิ่มรหัสลูกค้า
       phoneNumber,
       email: primaryContact.email || '',
       taxId: formData.taxId || '',
@@ -260,6 +276,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
       tags: formData.tags || [],
       priorityStar: formData.importance || 0,
       goals: formData.goals || '',
+      status: formData.status || 'planning', // เพิ่มสถานะการขาย
       authorizedPhones: (formData.contacts || [])
         .map((c: any) => normalizePhone(c.phone || ''))
         .filter(Boolean),
@@ -354,6 +371,27 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                         onChange={(e) => handleChange('name', e.target.value)}
                         placeholder="ชื่อกิจการ"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        รหัสลูกค้า
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={formData.customerCode}
+                          onChange={(e) => handleChange('customerCode', e.target.value)}
+                          placeholder="รหัสลูกค้า"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => handleChange('customerCode', generateCustomerCode())}
+                          className="bg-gray-500 hover:bg-gray-600 text-white px-3"
+                        >
+                          สร้างอัตโนมัติ
+                        </Button>
+                      </div>
                     </div>
 
                     <div>
@@ -890,6 +928,48 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* สถานะการขาย */}
+            <div className="mt-6 border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">สถานะการขาย</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { value: 'planning', label: 'วางแผน', color: 'bg-gray-100 text-gray-800 border-gray-300' },
+                  { value: 'proposed', label: 'นำเสนอสินค้า', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+                  { value: 'quoted', label: 'เสนอราคา', color: 'bg-orange-100 text-orange-800 border-orange-300' },
+                  { value: 'testing', label: 'ทดสอบตัวอย่างสินค้า', color: 'bg-purple-100 text-purple-800 border-purple-300' },
+                  { value: 'approved', label: 'อนุมัติราคา', color: 'bg-green-100 text-green-800 border-green-300' },
+                  { value: 'closed', label: 'ปิดใบเสนอราคา', color: 'bg-red-100 text-red-800 border-red-300' },
+                ].map((status) => (
+                  <button
+                    key={status.value}
+                    type="button"
+                    onClick={() => handleChange('status', status.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      formData.status === status.value
+                        ? `${status.color} ring-2 ring-offset-2 ring-blue-500`
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {status.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>ขั้นตอนปัจจุบัน:</strong> {
+                    [
+                      { value: 'planning', label: 'วางแผน' },
+                      { value: 'proposed', label: 'นำเสนอสินค้า' },
+                      { value: 'quoted', label: 'เสนอราคา' },
+                      { value: 'testing', label: 'ทดสอบตัวอย่างสินค้า' },
+                      { value: 'approved', label: 'อนุมัติราคา' },
+                      { value: 'closed', label: 'ปิดใบเสนอราคา' },
+                    ].find(s => s.value === formData.status)?.label || 'วางแผน'
+                  }
+                </p>
               </div>
             </div>
 

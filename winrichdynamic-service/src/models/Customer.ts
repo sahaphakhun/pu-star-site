@@ -24,6 +24,65 @@ export interface ICustomer extends Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  
+  // สถานะการขาย
+  status?: 'planning' | 'proposed' | 'quoted' | 'testing' | 'approved' | 'closed';
+  
+  // ข้อมูลสำหรับสถานะ "นำเสนอสินค้า"
+  companyPhoto?: string; // รูปหน้าร้าน
+  storeDetails?: string; // รายละเอียดร้านค้า
+  salesOpportunities?: Array<{
+    productId: string;
+    productName: string;
+    competitorPrice?: number;
+    competitorBrand?: string;
+  }>;
+  futureProducts?: Array<{
+    productName: string;
+    details: string;
+  }>;
+  
+  // ข้อมูลสำหรับสถานะ "เสนอราคา"
+  quotationHistory?: Array<{
+    quotationId: string;
+    date: Date;
+    amount: number;
+    status: string;
+  }>;
+  newQuotationReason?: string;
+  
+  // ข้อมูลสำหรับสถานะ "ทดสอบตัวอย่างสินค้า"
+  sampleRequestHistory?: Array<{
+    requestId: string;
+    date: Date;
+    items: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+    }>;
+    status: string;
+    testImages?: string[];
+  }>;
+  sampleReceipt?: {
+    companyCopy?: string; // ใบรับสินค้าตัวอย่างฉบับบริษัท
+    customerCopy?: string; // ใบรับสินค้าตัวอย่างฉบับลูกค้า
+  };
+  
+  // ข้อมูลสำหรับสถานะ "อนุมัติราคา"
+  creditApproval?: {
+    requestedAmount?: number;
+    paymentPeriod?: string;
+    reason?: string;
+    responsiblePerson?: string;
+    documents?: Array<{
+      type: string;
+      url: string;
+      name: string;
+    }>;
+    creditLimit?: number;
+    creditStartDate?: Date;
+    status?: 'pending' | 'approved' | 'rejected';
+  };
 }
 
 export interface ICustomerModel extends Model<ICustomer> {
@@ -162,6 +221,165 @@ const customerSchema = new Schema<ICustomer>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    
+    // สถานะการขาย
+    status: {
+      type: String,
+      enum: ['planning', 'proposed', 'quoted', 'testing', 'approved', 'closed'],
+      default: 'planning',
+    },
+    
+    // ข้อมูลสำหรับสถานะ "นำเสนอสินค้า"
+    companyPhoto: {
+      type: String,
+      required: false,
+    },
+    storeDetails: {
+      type: String,
+      required: false,
+      maxlength: [1000, 'รายละเอียดร้านค้าต้องมีความยาวไม่เกิน 1000 ตัวอักษร'],
+    },
+    salesOpportunities: [{
+      productId: {
+        type: String,
+        required: false,
+      },
+      productName: {
+        type: String,
+        required: false,
+      },
+      competitorPrice: {
+        type: Number,
+        required: false,
+      },
+      competitorBrand: {
+        type: String,
+        required: false,
+      },
+    }],
+    futureProducts: [{
+      productName: {
+        type: String,
+        required: false,
+      },
+      details: {
+        type: String,
+        required: false,
+      },
+    }],
+    
+    // ข้อมูลสำหรับสถานะ "เสนอราคา"
+    quotationHistory: [{
+      quotationId: {
+        type: String,
+        required: false,
+      },
+      date: {
+        type: Date,
+        required: false,
+      },
+      amount: {
+        type: Number,
+        required: false,
+      },
+      status: {
+        type: String,
+        required: false,
+      },
+    }],
+    newQuotationReason: {
+      type: String,
+      required: false,
+      maxlength: [500, 'เหตุผลการสร้างใบเสนอราคาใหม่ต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
+    },
+    
+    // ข้อมูลสำหรับสถานะ "ทดสอบตัวอย่างสินค้า"
+    sampleRequestHistory: [{
+      requestId: {
+        type: String,
+        required: false,
+      },
+      date: {
+        type: Date,
+        required: false,
+      },
+      items: [{
+        productId: {
+          type: String,
+          required: false,
+        },
+        productName: {
+          type: String,
+          required: false,
+        },
+        quantity: {
+          type: Number,
+          required: false,
+        },
+      }],
+      status: {
+        type: String,
+        required: false,
+      },
+      testImages: [String],
+    }],
+    sampleReceipt: {
+      companyCopy: {
+        type: String,
+        required: false,
+      },
+      customerCopy: {
+        type: String,
+        required: false,
+      },
+    },
+    
+    // ข้อมูลสำหรับสถานะ "อนุมัติราคา"
+    creditApproval: {
+      requestedAmount: {
+        type: Number,
+        required: false,
+      },
+      paymentPeriod: {
+        type: String,
+        required: false,
+      },
+      reason: {
+        type: String,
+        required: false,
+      },
+      responsiblePerson: {
+        type: String,
+        required: false,
+      },
+      documents: [{
+        type: {
+          type: String,
+          required: false,
+        },
+        url: {
+          type: String,
+          required: false,
+        },
+        name: {
+          type: String,
+          required: false,
+        },
+      }],
+      creditLimit: {
+        type: Number,
+        required: false,
+      },
+      creditStartDate: {
+        type: Date,
+        required: false,
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
     },
   },
   {

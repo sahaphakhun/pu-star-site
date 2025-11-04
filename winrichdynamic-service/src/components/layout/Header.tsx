@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from 'react';
 import { Bell, User, ChevronDown, Anchor, Gift, MessageSquare, Calendar, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -8,6 +9,36 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuToggle }: HeaderProps) {
+  const [notificationCount, setNotificationCount] = useState<number>(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch('/api/notifications?limit=5', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted) {
+          setNotificationCount(data?.unreadCount ?? 0);
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+      }
+    };
+
+    fetchNotifications();
+    const intervalId = setInterval(fetchNotifications, 60_000);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const displayNotificationCount =
+    notificationCount > 99 ? '99+' : notificationCount.toString();
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-6 shadow-sm">
       <div className="flex items-center gap-2 md:gap-6">
@@ -44,17 +75,19 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         {/* Notification Icons with Badges */}
         <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 h-8 w-8 md:h-10 md:w-10">
           <Bell className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 rounded-full text-white text-[10px] md:text-xs flex items-center justify-center font-bold">3</span>
+          {notificationCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[1rem] h-4 md:h-5 bg-red-500 rounded-full text-white text-[10px] md:text-xs flex items-center justify-center font-bold px-[2px]">
+              {displayNotificationCount}
+            </span>
+          )}
         </Button>
         
         <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 h-8 w-8 md:h-10 md:w-10 hidden sm:flex">
           <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 rounded-full text-white text-[10px] md:text-xs flex items-center justify-center font-bold">5</span>
         </Button>
 
         <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 h-8 w-8 md:h-10 md:w-10 hidden sm:flex">
           <Calendar className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 rounded-full text-white text-[10px] md:text-xs flex items-center justify-center font-bold">2</span>
         </Button>
 
         {/* WINR Button - Hidden on small mobile */}

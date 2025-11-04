@@ -151,6 +151,45 @@ export async function PUT(
       (body as any).approvalReason = (body as any).approvalReason || 'ส่วนลดเกินนโยบาย';
     }
 
+    if (Array.isArray((body as any).deliveryBatches)) {
+      const deliveryBatches = (body as any).deliveryBatches.map((batch: any, index: number) => ({
+        batchId: (batch.batchId && String(batch.batchId).trim()) || `BATCH-${index + 1}`,
+        deliveredQuantity: Number(batch.deliveredQuantity || 0),
+        deliveryDate: new Date(batch.deliveryDate),
+        deliveryStatus: batch.deliveryStatus || 'pending',
+        trackingNumber: batch.trackingNumber ? String(batch.trackingNumber).trim() : undefined,
+        notes: batch.notes ? String(batch.notes).trim() : undefined,
+        deliveredBy: batch.deliveredBy ? String(batch.deliveredBy).trim() : undefined,
+        createdAt: batch.createdAt ? new Date(batch.createdAt) : new Date(),
+      }));
+
+      (body as any).deliveryBatches = deliveryBatches;
+
+      const totalItemQuantity = (existingBeforeUpdate.items || []).reduce(
+        (sum: number, item: any) => sum + Number(item.quantity || 0),
+        0
+      );
+
+      (body as any).totalDeliveredQuantity = Number(
+        deliveryBatches.reduce((sum: number, batch: any) => sum + Number(batch.deliveredQuantity || 0), 0)
+      );
+      (body as any).remainingQuantity = Math.max(
+        0,
+        totalItemQuantity - Number((body as any).totalDeliveredQuantity || 0)
+      );
+
+      if (deliveryBatches.length > 0) {
+        (body as any).deliveryStartDate = new Date(deliveryBatches[0].deliveryDate);
+        (body as any).deliveryCompletionDate = undefined;
+        (body as any).deliveryStatus =
+          (body as any).totalDeliveredQuantity >= totalItemQuantity && totalItemQuantity > 0
+            ? 'fully_delivered'
+            : (body as any).totalDeliveredQuantity > 0
+              ? 'partially_delivered'
+              : 'not_started';
+      }
+    }
+
     const quotation = await Quotation.findByIdAndUpdate(
       resolvedParams.id,
       { $set: body, $push: { editHistory: editLog } },

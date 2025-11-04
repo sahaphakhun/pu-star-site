@@ -11,11 +11,13 @@ const Activities = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
     customerId: '',
+    ownerId: '',
     dateFrom: '',
     dateTo: ''
   });
@@ -116,6 +118,11 @@ const Activities = () => {
       // Add search query if exists
       if (searchQuery) {
         apiFilters.q = searchQuery;
+      }
+      
+      // Add owner search query if exists
+      if (ownerSearchQuery) {
+        apiFilters.ownerId = ownerSearchQuery;
       }
       
       const response = await activitiesApi.getActivities(apiFilters);
@@ -265,10 +272,12 @@ const Activities = () => {
       type: '',
       status: '',
       customerId: '',
+      ownerId: '',
       dateFrom: '',
       dateTo: ''
     });
     setSearchQuery('');
+    setOwnerSearchQuery('');
     fetchActivities(1, true);
   };
 
@@ -294,6 +303,17 @@ const Activities = () => {
     
     return () => clearTimeout(timer);
   }, [searchQuery]);
+  
+  // Owner search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ownerSearchQuery !== undefined) {
+        fetchActivities(1, true);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [ownerSearchQuery]);
 
   const filteredActivities = getFilteredActivities();
 
@@ -326,6 +346,16 @@ const Activities = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 relative">
+            <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="ค้นหาผู้รับผิดชอบ..."
+              value={ownerSearchQuery}
+              onChange={(e) => setOwnerSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <button
@@ -363,6 +393,14 @@ const Activities = () => {
                 <option value="cancelled">ยกเลิก</option>
                 <option value="postponed">เลื่อน</option>
               </select>
+              
+              <input
+                type="text"
+                placeholder="ผู้รับผิดชอบ..."
+                value={filters.ownerId}
+                onChange={(e) => handleFilterChange('ownerId', e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
               
               <input
                 type="date"

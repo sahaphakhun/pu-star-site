@@ -19,8 +19,10 @@ interface OrderFormProps {
 	calculateTotal: () => number;
 	calculateShippingFee: () => number;
 	calculateGrandTotal: () => number;
-	paymentMethod: 'cod' | 'transfer';
-	setPaymentMethod: (m: 'cod' | 'transfer') => void;
+	paymentMethod: 'cod' | 'transfer' | 'credit';
+	setPaymentMethod: (m: 'cod' | 'transfer' | 'credit') => void;
+	creditPaymentDueDate?: string;
+	setCreditPaymentDueDate?: (d: string) => void;
 }
 
 export default function OrderForm({
@@ -36,6 +38,8 @@ export default function OrderForm({
 	calculateGrandTotal,
 	paymentMethod,
 	setPaymentMethod,
+	creditPaymentDueDate,
+	setCreditPaymentDueDate,
 }: OrderFormProps) {
 	const cartItems = Object.values(cart);
 
@@ -122,50 +126,101 @@ export default function OrderForm({
 								วิธีการชำระเงิน
 							</h4>
 							<div className="space-y-3">
-								<motion.label 
+								<motion.label
 									className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-										paymentMethod === 'cod' 
-											? 'border-blue-500 bg-blue-50' 
+										paymentMethod === 'cod'
+											? 'border-blue-500 bg-blue-50'
 											: 'border-gray-200 hover:border-gray-300'
 									}`}
 									whileHover={{ scale: 1.02 }}
 									whileTap={{ scale: 0.98 }}
 								>
-									<input 
-										type="radio" 
-										value="cod" 
-										checked={paymentMethod === 'cod'} 
-										onChange={() => setPaymentMethod('cod')} 
+									<input
+										type="radio"
+										value="cod"
+										checked={paymentMethod === 'cod'}
+										onChange={() => setPaymentMethod('cod')}
 										className="mr-3 w-4 h-4 text-blue-600 focus:ring-blue-500"
 									/>
-									<div>
+									<div className="flex-1">
 										<div className="font-medium text-gray-900">เก็บเงินปลายทาง (COD)</div>
-										<div className="text-sm text-gray-500">ชำระเงินเมื่อได้รับสินค้า</div>
+										<div className="text-sm text-gray-500">ชำระเงินเมื่อได้รับสินค้า • ไม่มีค่าธรรมเนียมเพิ่มเติม</div>
+										<div className="mt-2 p-2 bg-blue-100 rounded text-xs text-blue-800">
+											⏰ มีเวลา 3 วันหลังจากได้รับสินค้าในการชำระเงิน
+										</div>
 									</div>
 								</motion.label>
 								
-								<motion.label 
+								<motion.label
 									className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-										paymentMethod === 'transfer' 
-											? 'border-blue-500 bg-blue-50' 
+										paymentMethod === 'transfer'
+											? 'border-blue-500 bg-blue-50'
 											: 'border-gray-200 hover:border-gray-300'
 									}`}
 									whileHover={{ scale: 1.02 }}
 									whileTap={{ scale: 0.98 }}
 								>
-									<input 
-										type="radio" 
-										value="transfer" 
-										checked={paymentMethod === 'transfer'} 
-										onChange={() => setPaymentMethod('transfer')} 
+									<input
+										type="radio"
+										value="transfer"
+										checked={paymentMethod === 'transfer'}
+										onChange={() => setPaymentMethod('transfer')}
 										className="mr-3 w-4 h-4 text-blue-600 focus:ring-blue-500"
 									/>
-									<div>
+									<div className="flex-1">
 										<div className="font-medium text-gray-900">โอนเงินผ่านธนาคาร</div>
-										<div className="text-sm text-gray-500">โอนเงินก่อนจัดส่งสินค้า</div>
+										<div className="text-sm text-gray-500">โอนเงินก่อนจัดส่งสินค้า • ต้องอัพโหลดสลิปยืนยัน</div>
+										<div className="mt-2 p-2 bg-green-100 rounded text-xs text-green-800">
+											📸 ต้องอัพโหลดสลิปเพื่อยืนยันการชำระเงิน
+										</div>
+									</div>
+								</motion.label>
+
+								<motion.label
+									className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+										paymentMethod === 'credit'
+											? 'border-blue-500 bg-blue-50'
+											: 'border-gray-200 hover:border-gray-300'
+									}`}
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<input
+										type="radio"
+										value="credit"
+										checked={paymentMethod === 'credit'}
+										onChange={() => setPaymentMethod('credit')}
+										className="mr-3 w-4 h-4 text-blue-600 focus:ring-blue-500"
+									/>
+									<div className="flex-1">
+										<div className="font-medium text-gray-900">เครดิต (สำหรับลูกค้าองค์กร)</div>
+										<div className="text-sm text-gray-500">ชำระเงินตามรอบบิลที่กำหนด</div>
+										<div className="mt-2 p-2 bg-purple-100 rounded text-xs text-purple-800">
+											🏢 สำหรับลูกค้าองค์กรที่มีเครดิตเทอมกับบริษัท
+										</div>
 									</div>
 								</motion.label>
 							</div>
+
+							{/* Credit Payment Due Date */}
+							{paymentMethod === 'credit' && setCreditPaymentDueDate && (
+								<div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										วันที่ครบกำหนดชำระเงิน <span className="text-red-500">*</span>
+									</label>
+									<input
+										type="date"
+										value={creditPaymentDueDate || ''}
+										onChange={(e) => setCreditPaymentDueDate(e.target.value)}
+										className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+										min={new Date().toISOString().split('T')[0]}
+										required
+									/>
+									<p className="mt-2 text-xs text-purple-700">
+										กรุณาระบุวันที่ครบกำหนดสำหรับการชำระเงินแบบเครดิต
+									</p>
+								</div>
+							)}
 						</div>
 
 						{/* Order Summary */}

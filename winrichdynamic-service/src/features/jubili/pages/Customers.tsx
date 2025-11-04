@@ -2,9 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Search, Star } from "lucide-react";
+import { Plus, Search, Star, CreditCard, Edit, Tag } from "lucide-react";
 import Button from "@/components/ui/Button";
 import CustomerFormNew from "@/components/CustomerFormNew";
+import CreditApprovalForm from "@/components/CreditApprovalForm";
+import ProductProposalForm from "@/components/sales-status/ProductProposalForm";
+import QuotationForm from "@/components/sales-status/QuotationForm";
+import SampleTestingForm from "@/components/sales-status/SampleTestingForm";
+import PriceApprovalForm from "@/components/sales-status/PriceApprovalForm";
+import CustomerTagManager from "@/components/CustomerTagManager";
 
 interface CustomerRecord {
   _id: string;
@@ -22,6 +28,7 @@ interface CustomerRecord {
   notes?: string;
   tags?: string[];
   priorityStar?: number;
+  status?: "planning" | "proposed" | "quoted" | "testing" | "approved" | "closed" | string;
   updatedAt?: string;
   createdAt?: string;
 }
@@ -48,11 +55,45 @@ const renderStars = (importance: number) => (
   </div>
 );
 
+// ฟังก์ชันสำหรับแสดงสถานะ
+const getStatusDisplay = (status?: string) => {
+  switch (status) {
+    case "planning":
+      return { label: "วางแผน", color: "bg-gray-100 text-gray-800 border-gray-300" };
+    case "proposed":
+      return { label: "นำเสนอสินค้า", color: "bg-blue-100 text-blue-800 border-blue-300" };
+    case "quoted":
+      return { label: "เสนอราคา", color: "bg-orange-100 text-orange-800 border-orange-300" };
+    case "testing":
+      return { label: "ทดสอบตัวอย่างสินค้า", color: "bg-purple-100 text-purple-800 border-purple-300" };
+    case "approved":
+      return { label: "อนุมัติราคา", color: "bg-green-100 text-green-800 border-green-300" };
+    case "closed":
+      return { label: "ปิดใบเสนอราคา", color: "bg-red-100 text-red-800 border-red-300" };
+    default:
+      return { label: "วางแผน", color: "bg-gray-100 text-gray-800 border-gray-300" };
+  }
+};
+
 export default function Customers() {
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
+  const [showCreditForm, setShowCreditForm] = useState(false);
+  const [creditCustomer, setCreditCustomer] = useState<CustomerRecord | null>(null);
+  
+  // สถานะการขาย
+  const [showProductProposalForm, setShowProductProposalForm] = useState(false);
+  const [showQuotationForm, setShowQuotationForm] = useState(false);
+  const [showSampleTestingForm, setShowSampleTestingForm] = useState(false);
+  const [showPriceApprovalForm, setShowPriceApprovalForm] = useState(false);
+  const [statusCustomer, setStatusCustomer] = useState<CustomerRecord | null>(null);
+  
+  // จัดการแท็ก
+  const [showTagManager, setShowTagManager] = useState(false);
+  const [tagCustomer, setTagCustomer] = useState<CustomerRecord | null>(null);
   const [activeTab, setActiveTab] = useState<"list" | "pipeline">("list");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +133,8 @@ export default function Customers() {
 
   const filteredCustomers = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return customers;
     return customers.filter((customer) => {
+      // Filter by search term
       const fields = [
         customer.name,
         customer.companyName,
@@ -104,9 +145,15 @@ export default function Customers() {
       ]
         .filter(Boolean)
         .map((value) => String(value).toLowerCase());
-      return fields.some((value) => value.includes(term));
+      
+      const matchesSearch = !term || fields.some((value) => value.includes(term));
+      
+      // Filter by status
+      const matchesStatus = !statusFilter || customer.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
     });
-  }, [customers, searchTerm]);
+  }, [customers, searchTerm, statusFilter]);
 
   const handleSubmitCustomer = useCallback(
     async (payload: any, options: { customerId?: string }) => {
@@ -135,6 +182,126 @@ export default function Customers() {
     },
     [loadCustomers]
   );
+
+  const handleSubmitCreditApproval = useCallback(
+    async (payload: any) => {
+      try {
+        const res = await fetch("/api/credit-approvals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || "ไม่สามารถส่งคำขออนุมัติเครดิตได้");
+        }
+
+        toast.success("ส่งคำขออนุมัติเครดิตเรียบร้อย");
+        setShowCreditForm(false);
+        setCreditCustomer(null);
+      } catch (error) {
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("เกิดข้อผิดพลาดในการส่งคำขออนุมัติเครดิต");
+        }
+        throw error;
+      }
+    },
+    []
+  );
+
+  const handleStatusAction = (customer: CustomerRecord, action: string) => {
+    setStatusCustomer(customer);
+    
+    switch (action) {
+      case 'product-proposal':
+        setShowProductProposalForm(true);
+        break;
+      case 'quotation':
+        setShowQuotationForm(true);
+        break;
+      case 'sample-testing':
+        setShowSampleTestingForm(true);
+        break;
+      case 'price-approval':
+        setShowPriceApprovalForm(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSubmitStatusAction = async (payload: any) => {
+    try {
+      const url = `/api/customers/${statusCustomer?._id}`;
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้');
+      }
+
+      toast.success('อัปเดตข้อมูลลูกค้าเรียบร้อย');
+      
+      // ปิดฟอร์มทั้งหมด
+      setShowProductProposalForm(false);
+      setShowQuotationForm(false);
+      setShowSampleTestingForm(false);
+      setShowPriceApprovalForm(false);
+      setStatusCustomer(null);
+      
+      await loadCustomers();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการอัปเดตข้อมูลลูกค้า');
+      }
+      throw error;
+    }
+  };
+
+  const handleTagManager = (customer: CustomerRecord) => {
+    setTagCustomer(customer);
+    setShowTagManager(true);
+  };
+
+  const handleSubmitTagManager = async (payload: any) => {
+    try {
+      const url = `/api/customers/${tagCustomer?._id}`;
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้');
+      }
+
+      toast.success('อัปเดตแท็กลูกค้าเรียบร้อย');
+      setShowTagManager(false);
+      setTagCustomer(null);
+      await loadCustomers();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('เกิดข้อผิดพลาดในการอัปเดตข้อมูลลูกค้า');
+      }
+      throw error;
+    }
+  };
 
   const getRowColor = (index: number) => {
     const colors = [
@@ -235,7 +402,7 @@ export default function Customers() {
         </div>
 
         {/* Filter Buttons and Search */}
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-3 items-center flex-wrap">
           <button className="px-4 py-2 bg-pink-100 text-pink-700 rounded-lg text-sm font-medium hover:bg-pink-200">
             ทีม - กำหนดเอง
           </button>
@@ -245,8 +412,22 @@ export default function Customers() {
           <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200">
             คำลูกค้า - กำหนดเอง
           </button>
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">ทุกสถานะ</option>
+            <option value="planning">วางแผน</option>
+            <option value="proposed">นำเสนอสินค้า</option>
+            <option value="quoted">เสนอราคา</option>
+            <option value="testing">ทดสอบตัวอย่างสินค้า</option>
+            <option value="approved">อนุมัติราคา</option>
+            <option value="closed">ปิดใบเสนอราคา</option>
+          </select>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -271,6 +452,17 @@ export default function Customers() {
             <Plus className="h-4 w-4 mr-2" />
             สร้าง
           </Button>
+
+          <Button
+            onClick={() => {
+              setCreditCustomer(null);
+              setShowCreditForm(true);
+            }}
+            className="bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            ขออนุมัติเครดิต
+          </Button>
         </div>
       </div>
 
@@ -288,18 +480,19 @@ export default function Customers() {
                 <th className="px-4 py-3 text-left text-sm font-medium">ผู้รับผิดชอบ</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">อัปเดตล่าสุด</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">สร้างเมื่อ</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
                     ไม่พบลูกค้าตามเงื่อนไขที่ค้นหา
                   </td>
                 </tr>
@@ -307,14 +500,12 @@ export default function Customers() {
                 filteredCustomers.map((customer, index) => (
                   <tr
                     key={customer._id || index}
-                    className={`border-b border-l-4 ${getLeftBorderColor(index)} ${getRowColor(index)} hover:bg-gray-100 cursor-pointer`}
-                    onClick={() => {
-                      setEditingCustomer(customer);
-                      setShowForm(true);
-                    }}
+                    className={`border-b border-l-4 ${getLeftBorderColor(index)} ${getRowColor(index)} hover:bg-gray-100`}
                   >
                     <td className="px-4 py-3">
-                      <div className="w-8 h-8 rounded bg-blue-500" />
+                      <div className={`px-2 py-1 rounded text-xs font-medium border ${getStatusDisplay(customer.status).color}`}>
+                        {getStatusDisplay(customer.status).label}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{customer.name}</div>
@@ -381,6 +572,67 @@ export default function Customers() {
                           : "ลูกค้าใหม่"}
                       </div>
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {/* แสดงปุ่มตามสถานะปัจจุบัน */}
+                        {customer.status === 'planning' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusAction(customer, 'product-proposal')}
+                            className="bg-blue-500 hover:bg-blue-600 text-white"
+                          >
+                            <Edit size={14} className="mr-1" />
+                            นำเสนอสินค้า
+                          </Button>
+                        )}
+                        
+                        {customer.status === 'proposed' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusAction(customer, 'quotation')}
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                          >
+                            <Edit size={14} className="mr-1" />
+                            เสนอราคา
+                          </Button>
+                        )}
+                        
+                        {customer.status === 'quoted' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusAction(customer, 'sample-testing')}
+                            className="bg-purple-500 hover:bg-purple-600 text-white"
+                          >
+                            <Edit size={14} className="mr-1" />
+                            ทดสอบตัวอย่าง
+                          </Button>
+                        )}
+                        
+                        {customer.status === 'testing' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusAction(customer, 'price-approval')}
+                            className="bg-green-500 hover:bg-green-600 text-white"
+                          >
+                            <Edit size={14} className="mr-1" />
+                            อนุมัติราคา
+                          </Button>
+                        )}
+                        
+                        {/* แสดงปุ่มสำหรับทุกสถานะ */}
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setEditingCustomer(customer);
+                            setShowForm(true);
+                          }}
+                          className="bg-gray-500 hover:bg-gray-600 text-white"
+                        >
+                          <Edit size={14} className="mr-1" />
+                          แก้ไข
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -397,6 +649,17 @@ export default function Customers() {
             setShowForm(false);
           }}
           onSubmit={handleSubmitCustomer}
+        />
+      )}
+
+      {showCreditForm && (
+        <CreditApprovalForm
+          customer={creditCustomer}
+          onClose={() => {
+            setCreditCustomer(null);
+            setShowCreditForm(false);
+          }}
+          onSubmit={handleSubmitCreditApproval}
         />
       )}
     </div>

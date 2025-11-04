@@ -14,6 +14,75 @@ const mockData = {
   updateQuotation: (id: string, quotation: any) => console.log('Update quotation:', id, quotation),
 };
 
+const defaultFormData = {
+  // ข้อมูลลูกค้า
+  customerId: '',
+  customerName: '',
+  projectId: '',
+  opportunityId: '',
+  
+  // วันที่
+  issueDate: new Date().toISOString().split('T')[0],
+  validUntilDate: '',
+  
+  // ผู้รับผิดชอบ
+  importance: 3,
+  owner: 'PU STAR Office',
+  team: 'PU STAR Office',
+  
+  // ข้อมูลผู้ติดต่อ
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  
+  // ข้อมูลการจัดส่ง
+  deliveryMethod: 'รับเอง',
+  deliveryMethodNote: '',
+  deliveryDate: '',
+  hideDeliveryDate: false,
+  
+  // ที่อยู่จัดส่ง
+  sameAsCompanyAddress: true,
+  deliveryLocationName: '',
+  deliveryAddress: '',
+  deliveryCountry: 'Thailand (ไทย)',
+  deliveryProvince: '',
+  deliveryDistrict: '',
+  
+  // รายการสินค้า
+  showProductCode: false,
+  items: [
+    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+  ],
+  
+  // สรุปยอด
+  subtotal: 0,
+  vat: 7,
+  vatAmount: 0,
+  total: 0,
+  
+  // เงื่อนไข
+  paymentTerms: '',
+  paymentDays: 0,
+  
+  // เอกสารแนบ
+  attachments: [],
+  
+  // สถานะ
+  status: 'draft',
+
+  // แผนการจัดส่ง
+  deliveryBatches: [] as Array<{
+    batchId: string;
+    deliveryDate: string;
+    quantity: number;
+    notes?: string;
+  }>,
+  isSplitDelivery: false,
+};
+
 interface QuotationFormProps {
   quotation?: any;
   initialData?: any;
@@ -40,64 +109,29 @@ export default function QuotationForm({
   const addQuotation = dataSource.addQuotation;
   const updateQuotation = dataSource.updateQuotation;
   
-  const [formData, setFormData] = useState(initialData || quotation || {
-    // ข้อมูลลูกค้า
-    customerId: '',
-    customerName: '',
-    projectId: '',
-    opportunityId: '',
-    
-    // วันที่
-    issueDate: new Date().toISOString().split('T')[0],
-    validUntilDate: '',
-    
-    // ผู้รับผิดชอบ
-    importance: 3,
-    owner: 'PU STAR Office',
-    team: 'PU STAR Office',
-    
-    // ข้อมูลผู้ติดต่อ
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    
-    // ข้อมูลการจัดส่ง
-    deliveryMethod: 'รับเอง',
-    deliveryMethodNote: '',
-    deliveryDate: '',
-    hideDeliveryDate: false,
-    
-    // ที่อยู่จัดส่ง
-    sameAsCompanyAddress: true,
-    deliveryLocationName: '',
-    deliveryAddress: '',
-    deliveryCountry: 'Thailand (ไทย)',
-    deliveryProvince: '',
-    deliveryDistrict: '',
-    
-    // รายการสินค้า
-    showProductCode: false,
-    items: [
-      { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-      { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-      { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-    ],
-    
-    // สรุปยอด
-    subtotal: 0,
-    vat: 7,
-    vatAmount: 0,
-    total: 0,
-    
-    // เงื่อนไข
-    paymentTerms: '',
-    paymentDays: 0,
-    
-    // เอกสารแนบ
-    attachments: [],
-    
-    // สถานะ
-    status: 'draft',
+  const [formData, setFormData] = useState(() => {
+    const base = initialData || quotation;
+    if (base) {
+      const mappedBatches = Array.isArray(base.deliveryBatches)
+        ? base.deliveryBatches.map((batch: any, index: number) => ({
+            batchId: batch.batchId || `รอบที่ ${index + 1}`,
+            deliveryDate: batch.deliveryDate
+              ? new Date(batch.deliveryDate).toISOString().split('T')[0]
+              : '',
+            quantity: Number(batch.deliveredQuantity ?? batch.quantity ?? 0),
+            notes: batch.notes || '',
+          }))
+        : [];
+
+      return {
+        ...defaultFormData,
+        ...base,
+        deliveryBatches: mappedBatches,
+        isSplitDelivery: mappedBatches.length > 0,
+      };
+    }
+
+    return { ...defaultFormData };
   });
 
   const handleChange = (field: string, value: any) => {
@@ -155,6 +189,93 @@ export default function QuotationForm({
     }));
   };
 
+  const totalItemQuantity = formData.items.reduce(
+    (sum: number, item: any) => sum + Number(item.quantity || 0),
+    0
+  );
+
+  const plannedDeliveryQuantity = formData.deliveryBatches?.reduce(
+    (sum: number, batch: any) => sum + Number(batch.quantity || 0),
+    0
+  ) || 0;
+
+  const addDeliveryBatch = () => {
+    setFormData((prev: any) => {
+      const nextIndex = (prev.deliveryBatches?.length || 0) + 1;
+      const existingTotalQuantity = prev.items?.reduce(
+        (sum: number, item: any) => sum + Number(item.quantity || 0),
+        0
+      ) || 0;
+      const existingPlanned = prev.deliveryBatches?.reduce(
+        (sum: number, batch: any) => sum + Number(batch.quantity || 0),
+        0
+      ) || 0;
+      const remaining = Math.max(existingTotalQuantity - existingPlanned, 0);
+      const fallbackQuantity = remaining > 0 ? remaining : 0;
+      return {
+        ...prev,
+        deliveryBatches: [
+          ...(prev.deliveryBatches || []),
+          {
+            batchId: `รอบที่ ${nextIndex}`,
+            deliveryDate: '',
+            quantity: fallbackQuantity,
+            notes: '',
+          },
+        ],
+      };
+    });
+  };
+
+  const updateDeliveryBatch = (index: number, field: string, value: any) => {
+    setFormData((prev: any) => {
+      const batches = [...(prev.deliveryBatches || [])];
+      batches[index] = {
+        ...batches[index],
+        [field]: field === 'quantity' ? Number(value) : value,
+      };
+      return { ...prev, deliveryBatches: batches };
+    });
+  };
+
+  const removeDeliveryBatch = (index: number) => {
+    setFormData((prev: any) => {
+      const batches = (prev.deliveryBatches || []).filter((_: any, i: number) => i !== index);
+      return {
+        ...prev,
+        deliveryBatches: batches,
+      };
+    });
+  };
+
+  const toggleSplitDelivery = (enabled: boolean) => {
+    setFormData((prev: any) => {
+      if (!enabled) {
+        return { ...prev, isSplitDelivery: false, deliveryBatches: [] };
+      }
+
+      const existingTotalQuantity = prev.items?.reduce(
+        (sum: number, item: any) => sum + Number(item.quantity || 0),
+        0
+      ) || 0;
+
+      const existingBatches = prev.deliveryBatches && prev.deliveryBatches.length > 0
+        ? prev.deliveryBatches
+        : [{
+            batchId: 'รอบที่ 1',
+            deliveryDate: '',
+            quantity: existingTotalQuantity || 0,
+            notes: '',
+          }];
+
+      return {
+        ...prev,
+        isSplitDelivery: true,
+        deliveryBatches: existingBatches,
+      };
+    });
+  };
+
   const addItems = (count: number) => {
     const newItems = [...formData.items];
     for (let i = 0; i < count; i++) {
@@ -180,9 +301,43 @@ export default function QuotationForm({
 
   const handleSubmit = async (e: React.SyntheticEvent, action: string = 'draft') => {
     e.preventDefault();
-    
+
+    const { isSplitDelivery, deliveryBatches, ...rest } = formData as any;
+
+    if (isSplitDelivery) {
+      const hasIncompleteBatch = (deliveryBatches || []).some(
+        (batch: any) => !batch.deliveryDate || Number(batch.quantity || 0) <= 0
+      );
+      if (hasIncompleteBatch) {
+        alert('กรุณาระบุวันที่และจำนวนสำหรับทุก ๆ รอบการจัดส่ง');
+        return;
+      }
+
+      const planned = (deliveryBatches || []).reduce(
+        (sum: number, batch: any) => sum + Number(batch.quantity || 0),
+        0
+      );
+
+      if (totalItemQuantity > 0 && planned !== totalItemQuantity) {
+        if (!confirm('จำนวนสินค้าที่แบ่งส่งไม่เท่ากับจำนวนรวมทั้งหมด คุณต้องการดำเนินการต่อหรือไม่?')) {
+          return;
+        }
+      }
+    }
+
+    const preparedDeliveryBatches = isSplitDelivery
+      ? (deliveryBatches || []).map((batch: any, index: number) => ({
+          batchId: batch.batchId || `BATCH-${index + 1}`,
+          deliveredQuantity: Number(batch.quantity || 0),
+          deliveryDate: new Date(batch.deliveryDate).toISOString(),
+          deliveryStatus: 'pending',
+          notes: batch.notes || '',
+        }))
+      : [];
+
     const quotationData = {
-      ...formData,
+      ...rest,
+      deliveryBatches: preparedDeliveryBatches,
       status: action === 'submit' ? 'pending' : 'draft',
       quotationNumber: quotation?.quotationNumber || `Q${Date.now()}`,
       id: quotation?.id || (initialData as any)?.id || Date.now().toString(),
@@ -566,6 +721,121 @@ export default function QuotationForm({
                     )}
                   </div>
                 </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <span className="mr-2">📦</span> การจัดส่งแบบแบ่งรอบ
+                  </h3>
+
+                  <div className="space-y-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.isSplitDelivery}
+                        onChange={(e) => toggleSplitDelivery(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm font-medium">
+                        แบ่งการจัดส่งสินค้าออกเป็นหลายรอบ
+                      </span>
+                    </label>
+
+                    {formData.isSplitDelivery && (
+                      <div className="space-y-4">
+                        {formData.deliveryBatches?.map((batch: any, index: number) => (
+                          <div key={index} className="border border-dashed border-blue-200 rounded-md p-3 bg-blue-50/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-semibold text-blue-700">
+                                รอบที่ {index + 1}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeDeliveryBatch(index)}
+                              >
+                                <Trash2 size={16} className="mr-1" /> ลบรอบนี้
+                              </Button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  ชื่อรอบ/หมายเหตุ
+                                </label>
+                                <Input
+                                  value={batch.batchId}
+                                  onChange={(e) => updateDeliveryBatch(index, 'batchId', e.target.value)}
+                                  placeholder={`รอบที่ ${index + 1}`}
+                                  className="w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  วันที่ส่ง
+                                </label>
+                                <Input
+                                  type="date"
+                                  value={batch.deliveryDate}
+                                  onChange={(e) => updateDeliveryBatch(index, 'deliveryDate', e.target.value)}
+                                  className="w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  จำนวนที่จะส่ง
+                                </label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={batch.quantity}
+                                  onChange={(e) => updateDeliveryBatch(index, 'quantity', e.target.value)}
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                หมายเหตุเพิ่มเติม
+                              </label>
+                              <Textarea
+                                value={batch.notes || ''}
+                                onChange={(e) => updateDeliveryBatch(index, 'notes', e.target.value)}
+                                rows={2}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="text-sm text-gray-600">
+                            จำนวนสินค้ารวมทั้งหมด: <span className="font-semibold text-gray-900">{totalItemQuantity}</span> หน่วย<br />
+                            จำนวนที่วางแผนส่งแล้ว: <span className="font-semibold text-gray-900">{plannedDeliveryQuantity}</span> หน่วย
+                            {totalItemQuantity > 0 && (
+                              <span className="ml-1">
+                                ({plannedDeliveryQuantity - totalItemQuantity === 0
+                                  ? 'ครบกำหนดการส่ง'
+                                  : plannedDeliveryQuantity < totalItemQuantity
+                                    ? `เหลืออีก ${totalItemQuantity - plannedDeliveryQuantity} หน่วย`
+                                    : `เกินจำนวนสินค้า ${plannedDeliveryQuantity - totalItemQuantity} หน่วย`})
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={addDeliveryBatch}
+                            className="flex items-center justify-center"
+                          >
+                            <Plus size={16} className="mr-2" /> เพิ่มรอบการส่ง
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Right Column - เงื่อนไข */}
@@ -588,6 +858,7 @@ export default function QuotationForm({
                       >
                         <option value="">โปรดเลือกเงื่อนไขการชำระเงิน</option>
                         <option>เงินสด</option>
+                        <option>เก็บเงินปลายทาง (COD)</option>
                         <option>เครดิต</option>
                         <option>เช็ค</option>
                         <option>โอนเงิน</option>

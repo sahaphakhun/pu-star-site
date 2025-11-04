@@ -34,6 +34,7 @@ function sanitizeQuotationData(quotation: any): any {
   return {
     ...quotation,
     quotationNumber: sanitizeString(quotation.quotationNumber),
+    customerCode: sanitizeString(quotation.customerCode),
     customerName: sanitizeString(quotation.customerName),
     customerTaxId: sanitizeString(quotation.customerTaxId),
     customerAddress: sanitizeString(quotation.customerAddress),
@@ -211,6 +212,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
           <div class="infoGrid">
             <div class="ibox">
               <h4>ผู้ซื้อ</h4>
+              <div class="row"><div class="k">รหัสลูกค้า</div><div class="v">${q.customerCode || '-'}</div></div>
               <div class="row"><div class="k">ชื่อลูกค้า</div><div class="v">${q.customerName}</div></div>
               ${q.customerTaxId ? `<div class="row"><div class="k">เลขผู้เสียภาษี</div><div class="v">${q.customerTaxId}</div></div>` : ''}
               ${q.customerAddress ? `<div class="row"><div class="k">ที่อยู่</div><div class="v">${q.customerAddress}</div></div>` : ''}

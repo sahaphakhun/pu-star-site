@@ -62,6 +62,66 @@ export const createCustomerSchema = z.object({
   authorizedPhones: z.array(
     z.string().regex(/^(\+?66)\d{9}$/, 'รูปแบบเบอร์โทรต้องเป็น 66xxxxxxxxx')
   ).optional().default([]),
+  
+  // สถานะการขาย
+  status: z.enum(['planning', 'proposed', 'quoted', 'testing', 'approved', 'closed'])
+    .default('planning'),
+  
+  // ข้อมูลสำหรับสถานะ "นำเสนอสินค้า"
+  companyPhoto: z.string().optional(),
+  storeDetails: z.string().max(1000).optional(),
+  salesOpportunities: z.array(z.object({
+    productId: z.string().optional(),
+    productName: z.string().optional(),
+    competitorPrice: z.number().optional(),
+    competitorBrand: z.string().optional(),
+  })).optional().default([]),
+  futureProducts: z.array(z.object({
+    productName: z.string().optional(),
+    details: z.string().optional(),
+  })).optional().default([]),
+  
+  // ข้อมูลสำหรับสถานะ "เสนอราคา"
+  quotationHistory: z.array(z.object({
+    quotationId: z.string().optional(),
+    date: z.date().optional(),
+    amount: z.number().optional(),
+    status: z.string().optional(),
+  })).optional().default([]),
+  newQuotationReason: z.string().max(500).optional(),
+  
+  // ข้อมูลสำหรับสถานะ "ทดสอบตัวอย่างสินค้า"
+  sampleRequestHistory: z.array(z.object({
+    requestId: z.string().optional(),
+    date: z.date().optional(),
+    items: z.array(z.object({
+      productId: z.string().optional(),
+      productName: z.string().optional(),
+      quantity: z.number().optional(),
+    })).optional().default([]),
+    status: z.string().optional(),
+    testImages: z.array(z.string()).optional().default([]),
+  })).optional().default([]),
+  sampleReceipt: z.object({
+    companyCopy: z.string().optional(),
+    customerCopy: z.string().optional(),
+  }).optional(),
+  
+  // ข้อมูลสำหรับสถานะ "อนุมัติราคา"
+  creditApproval: z.object({
+    requestedAmount: z.number().optional(),
+    paymentPeriod: z.string().optional(),
+    reason: z.string().optional(),
+    responsiblePerson: z.string().optional(),
+    documents: z.array(z.object({
+      type: z.string().optional(),
+      url: z.string().optional(),
+      name: z.string().optional(),
+    })).optional().default([]),
+    creditLimit: z.number().optional(),
+    creditStartDate: z.date().optional(),
+    status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  }).optional(),
 });
 
 // Schema สำหรับการอัพเดทลูกค้า

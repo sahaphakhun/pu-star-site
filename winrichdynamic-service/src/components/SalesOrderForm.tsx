@@ -492,14 +492,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                         <SelectTrigger>
                           <SelectValue placeholder="โปรดเลือก" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">โปรดเลือก</SelectItem>
-                          <SelectItem value="เงินสด">เงินสด</SelectItem>
-                          <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
-                          <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
-                          <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <SelectContent>
+                            <SelectItem value="">โปรดเลือก</SelectItem>
+                            <SelectItem value="เงินสด">เงินสด</SelectItem>
+                            <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
+                            <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
+                            <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
+                            <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
+                          </SelectContent>
+                        </Select>
                     </div>
 
                     <div>

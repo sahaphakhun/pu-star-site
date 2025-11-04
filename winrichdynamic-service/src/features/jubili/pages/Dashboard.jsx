@@ -214,47 +214,47 @@ const Dashboard = () => {
   return (
     <div className="p-3 md:p-6 bg-gray-50 min-h-screen">
       {/* Header with Filters */}
-      <div className="bg-white rounded-lg shadow p-3 md:p-4 mb-4 md:mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">แผงบริหาร</h1>
+      <div className="bg-white rounded-lg shadow p-2 md:p-3 mb-3 md:mb-4">
+        <h1 className="text-lg md:text-xl font-bold text-gray-800 mb-2 md:mb-3">แผงบริหาร</h1>
         
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 mb-3 md:mb-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-1 md:gap-3 mb-2 md:mb-3">
           <div className="relative">
-            <select className="w-full md:w-auto px-3 md:px-4 py-2 pr-10 border-2 border-orange-300 rounded-lg bg-orange-50 text-orange-800 font-medium appearance-none cursor-pointer hover:bg-orange-100 text-sm">
+            <select className="w-full md:w-auto px-2 md:px-3 py-1.5 pr-8 border border-orange-300 rounded bg-orange-50 text-orange-800 font-medium appearance-none cursor-pointer hover:bg-orange-100 text-xs">
               <option>ทีม - กำหนดเอง</option>
             </select>
-            <span className="absolute top-1 right-1 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="absolute top-0.5 right-0.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
               15
             </span>
           </div>
           
           <div className="relative flex-1">
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="ผู้รับผิดชอบ - กำหนดเอง"
-              className="w-full px-3 md:px-4 py-2 pr-10 border-2 border-purple-300 rounded-lg bg-purple-50 text-purple-800 font-medium placeholder-purple-600 text-sm"
+              className="w-full px-2 md:px-3 py-1.5 pr-8 border border-purple-300 rounded bg-purple-50 text-purple-800 font-medium placeholder-purple-600 text-xs"
             />
-            <span className="absolute top-1 right-1 bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="absolute top-0.5 right-0.5 bg-purple-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
               46
             </span>
           </div>
           
-          <button className="px-4 md:px-6 py-2 bg-gradient-to-r from-cyan-400 to-cyan-500 text-white font-medium rounded-lg shadow-md hover:from-cyan-500 hover:to-cyan-600 text-sm">
+          <button className="px-3 md:px-4 py-1.5 bg-gradient-to-r from-cyan-400 to-cyan-500 text-white font-medium rounded shadow-md hover:from-cyan-500 hover:to-cyan-600 text-xs">
             ค้นหาเพิ่มเติม
           </button>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 mb-3 md:mb-4 overflow-x-auto">
-          <div className="px-3 md:px-4 py-2 bg-gray-100 rounded-lg border border-gray-300 font-medium text-gray-700 text-xs md:text-sm whitespace-nowrap">
+        <div className="flex items-center gap-1 md:gap-3 mb-2 md:mb-3 overflow-x-auto">
+          <div className="px-2 md:px-3 py-1.5 bg-gray-100 rounded border border-gray-300 font-medium text-gray-700 text-xs whitespace-nowrap">
             01 ต.ค. 2025 - 31 ต.ค. 2025
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <button className="px-3 md:px-4 py-2 bg-pink-50 border-2 border-pink-300 text-pink-700 rounded-lg hover:bg-pink-100 text-xs md:text-sm font-medium whitespace-nowrap">วันนี้</button>
-          <button className="px-3 md:px-4 py-2 bg-purple-50 border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 text-xs md:text-sm font-medium whitespace-nowrap">เดือนนี้</button>
-          <button className="px-3 md:px-4 py-2 bg-orange-50 border-2 border-orange-300 text-orange-700 rounded-lg hover:bg-orange-100 text-xs md:text-sm font-medium whitespace-nowrap">ไตรมาสนี้</button>
-          <button className="px-3 md:px-4 py-2 bg-green-50 border-2 border-green-300 text-green-700 rounded-lg hover:bg-green-100 text-xs md:text-sm font-medium whitespace-nowrap">ปีนี้</button>
-          <button className="px-3 md:px-4 py-2 bg-red-50 border-2 border-red-300 text-red-700 rounded-lg hover:bg-red-100 text-xs md:text-sm font-medium whitespace-nowrap">กำหนดเอง</button>
+        <div className="flex gap-1 overflow-x-auto pb-2">
+          <button className="px-2 md:px-3 py-1.5 bg-pink-50 border border-pink-300 text-pink-700 rounded hover:bg-pink-100 text-xs font-medium whitespace-nowrap">วันนี้</button>
+          <button className="px-2 md:px-3 py-1.5 bg-purple-50 border border-purple-300 text-purple-700 rounded hover:bg-purple-100 text-xs font-medium whitespace-nowrap">เดือนนี้</button>
+          <button className="px-2 md:px-3 py-1.5 bg-orange-50 border border-orange-300 text-orange-700 rounded hover:bg-orange-100 text-xs font-medium whitespace-nowrap">ไตรมาสนี้</button>
+          <button className="px-2 md:px-3 py-1.5 bg-green-50 border border-green-300 text-green-700 rounded hover:bg-green-100 text-xs font-medium whitespace-nowrap">ปีนี้</button>
+          <button className="px-2 md:px-3 py-1.5 bg-red-50 border border-red-300 text-red-700 rounded hover:bg-red-100 text-xs font-medium whitespace-nowrap">กำหนดเอง</button>
         </div>
       </div>
 

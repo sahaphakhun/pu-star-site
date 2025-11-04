@@ -41,6 +41,31 @@ export const quotationItemSchema = z.object({
   selectedOptions: z.record(z.string(), z.string().min(1, 'กรุณาเลือกตัวเลือกสินค้า')).optional(),
 });
 
+const deliveryBatchSchema = z.object({
+  batchId: z.string()
+    .min(1, 'กรุณาระบุรหัสรอบการส่ง')
+    .trim(),
+  deliveredQuantity: z.number()
+    .min(0, 'จำนวนที่ส่งต้องไม่ต่ำกว่า 0'),
+  deliveryDate: z.string()
+    .min(1, 'กรุณาระบุวันที่จัดส่ง'),
+  deliveryStatus: z.enum(['pending', 'in_transit', 'delivered', 'failed'])
+    .optional()
+    .default('pending'),
+  trackingNumber: z.string()
+    .optional()
+    .or(z.literal('')),
+  notes: z.string()
+    .max(1000, 'หมายเหตุต้องไม่เกิน 1000 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  deliveredBy: z.string()
+    .max(100, 'ชื่อผู้จัดส่งต้องไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  createdAt: z.string().optional().or(z.date())
+});
+
 // Schema สำหรับการสร้างใบเสนอราคาใหม่
 export const createQuotationSchema = z.object({
   customerId: z.string()
@@ -113,6 +138,7 @@ export const createQuotationSchema = z.object({
     .max(1000, 'หมายเหตุต้องมีความยาวไม่เกิน 1000 ตัวอักษร')
     .optional()
     .or(z.literal('')),
+  deliveryBatches: z.array(deliveryBatchSchema).optional(),
   // Add calculated fields that the model expects
   subtotal: z.number().optional(),
   totalDiscount: z.number().optional(),

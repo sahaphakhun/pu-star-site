@@ -171,10 +171,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // ดึงข้อมูลลูกค้าเพื่อเอารหัสลูกค้า
+    let customerCode = '';
+    try {
+      const Customer = (await import('@/models/Customer')).default;
+      const customer = await Customer.findById(quotationData.customerId).lean();
+      customerCode = (customer as any)?.customerCode || '';
+    } catch (error) {
+      console.warn('[Quotation API] Failed to fetch customer code:', error);
+    }
+
     // แปลงข้อมูลให้ตรงกับ Model
     const modelData: any = {
       ...quotationData,
       quotationNumber,
+      customerCode, // เพิ่มรหัสลูกค้า
       // หากไม่ได้ส่งวันหมดอายุมา ให้ตั้งค่า +7 วันจากวันนี้
       validUntil: quotationData.validUntil && quotationData.validUntil !== ''
         ? new Date(quotationData.validUntil)
@@ -203,10 +214,35 @@ export async function POST(request: Request) {
       ...(() => {
         const total = Number(quotationData.totalAmount || 0);
         const rate = Number(quotationData.vatRate || 7);
-        const { vatAmount } = computeVatIncluded(total, rate);
-        return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
-      })(),
-    } as any;
+      const { vatAmount } = computeVatIncluded(total, rate);
+      return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
+    })(),
+  } as any;
+
+    if (Array.isArray(quotationData.deliveryBatches) && quotationData.deliveryBatches.length > 0) {
+      modelData.deliveryBatches = quotationData.deliveryBatches.map((batch: any, index: number) => ({
+        batchId: (batch.batchId && String(batch.batchId).trim()) || `BATCH-${index + 1}`,
+        deliveredQuantity: Number(batch.deliveredQuantity || 0),
+        deliveryDate: new Date(batch.deliveryDate),
+        deliveryStatus: batch.deliveryStatus || 'pending',
+        trackingNumber: batch.trackingNumber ? String(batch.trackingNumber).trim() : undefined,
+        notes: batch.notes ? String(batch.notes).trim() : undefined,
+        deliveredBy: batch.deliveredBy ? String(batch.deliveredBy).trim() : undefined,
+        createdAt: batch.createdAt ? new Date(batch.createdAt) : new Date(),
+      }));
+
+      const totalItemQuantity = modelData.items.reduce(
+        (sum: number, item: any) => sum + Number(item.quantity || 0),
+        0
+      );
+
+      modelData.totalDeliveredQuantity = 0;
+      modelData.remainingQuantity = totalItemQuantity;
+      modelData.deliveryStatus = 'not_started';
+      modelData.deliveryStartDate = modelData.deliveryBatches.length
+        ? new Date(modelData.deliveryBatches[0].deliveryDate)
+        : undefined;
+    }
 
     if (modelData.shipToSameAsCustomer) {
       modelData.shippingAddress = modelData.customerAddress;
