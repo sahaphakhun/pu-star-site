@@ -6,12 +6,13 @@ import { z } from 'zod';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const customer = await Customer.findById(params.id);
+    const { id } = await params;
+    const customer = await Customer.findById(id);
     
     if (!customer) {
       return NextResponse.json(
@@ -32,7 +33,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
@@ -43,7 +44,8 @@ export async function PUT(
     const validatedData = updateCustomerSchema.parse(body);
     
     // ค้นหาลูกค้า
-    const existingCustomer = await Customer.findById(params.id);
+    const { id } = await params;
+    const existingCustomer = await Customer.findById(id);
     
     if (!existingCustomer) {
       return NextResponse.json(
@@ -54,7 +56,7 @@ export async function PUT(
     
     // อัปเดตข้อมูลลูกค้า
     const updatedCustomer = await Customer.findByIdAndUpdate(
-      params.id,
+      id,
       { ...validatedData, updatedAt: new Date() },
       { new: true, runValidators: true }
     );
@@ -79,12 +81,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const customer = await Customer.findById(params.id);
+    const { id } = await params;
+    const customer = await Customer.findById(id);
     
     if (!customer) {
       return NextResponse.json(
@@ -93,7 +96,7 @@ export async function DELETE(
       );
     }
     
-    await Customer.findByIdAndDelete(params.id);
+    await Customer.findByIdAndDelete(id);
     
     return NextResponse.json({ message: 'ลบข้อมูลลูกค้าเรียบร้อย' });
   } catch (error) {
