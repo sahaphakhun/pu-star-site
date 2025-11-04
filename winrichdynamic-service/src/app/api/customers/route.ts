@@ -3,7 +3,9 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Customer from '@/models/Customer';
+import mongoose from 'mongoose';
 import { createCustomerSchema, searchCustomerSchema } from '@/schemas/customer';
+import Admin from '@/models/Admin';
 
 // GET: ดึงลูกค้าทั้งหมด (พร้อมการค้นหาและ pagination)
 export async function GET(request: Request) {
@@ -70,16 +72,47 @@ export async function GET(request: Request) {
       .limit(limit)
       .lean();
 
+    const assignedAdminIds = Array.from(
+      new Set(
+        customers
+          .map((customer) => customer.assignedTo)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      )
+    );
+
+    const validAdminIds = assignedAdminIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const adminMap = new Map<string, string>();
+
+    if (validAdminIds.length > 0) {
+      const admins = await Admin.find({ _id: { $in: validAdminIds } })
+        .select(['name', 'phone'])
+        .lean();
+
+      admins.forEach((admin) => {
+        adminMap.set(
+          admin._id.toString(),
+          admin.name || admin.phone || 'ไม่ระบุชื่อ'
+        );
+      });
+    }
+
+    const customersWithAssignee = customers.map((customer) => ({
+      ...customer,
+      assignedToName: customer.assignedTo
+        ? adminMap.get(customer.assignedTo) || customer.assignedTo
+        : undefined,
+    }));
+
     // ถ้าไม่ได้ส่ง query parameters ให้คงรูปแบบ array เดิม
     const hasSearchParams = searchParams.has('page') || searchParams.has('limit') || searchParams.has('q') || 
                            searchParams.has('customerType') || searchParams.has('assignedTo') || searchParams.has('isActive');
     
     if (!hasSearchParams) {
-      return NextResponse.json(customers);
+      return NextResponse.json(customersWithAssignee);
     }
 
     return NextResponse.json({
-      data: customers,
+      data: customersWithAssignee,
       total,
       page,
       limit,

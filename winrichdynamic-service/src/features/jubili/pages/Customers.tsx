@@ -24,6 +24,7 @@ interface CustomerRecord {
   customerCode?: string;
   customerType?: "new" | "regular" | "target" | "inactive" | string;
   assignedTo?: string;
+  assignedToName?: string;
   paymentTerms?: string;
   notes?: string;
   tags?: string[];
@@ -548,7 +549,7 @@ export default function Customers() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">
-                        {customer.assignedTo || "ไม่ระบุ"}
+                        {customer.assignedToName || customer.assignedTo || "ไม่ระบุ"}
                       </div>
                       <div className="text-sm text-gray-600">
                         {customer.customerType || "—"}
