@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useApiService from '@/features/jubili/hooks/useApiService';
 import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -9,25 +9,26 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { dashboard, loading: apiLoading } = useApiService();
+  const { dashboard } = useApiService();
+  const { getDashboardData } = dashboard;
+
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getDashboardData();
+      setDashboardData(data);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด');
+    } finally {
+      setLoading(false);
+    }
+  }, [getDashboardData]);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await dashboard.getDashboardData();
-        setDashboardData(data);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [dashboard]);
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // Loading state component
   const LoadingState = () => (
@@ -54,21 +55,7 @@ const Dashboard = () => {
 
   // Handle retry
   const handleRetry = () => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await dashboard.getDashboardData();
-        setDashboardData(data);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+    loadDashboardData();
   };
 
   // Show loading state
