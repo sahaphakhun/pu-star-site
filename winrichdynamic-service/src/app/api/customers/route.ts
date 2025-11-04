@@ -84,13 +84,19 @@ export async function GET(request: Request) {
     const adminMap = new Map<string, string>();
 
     if (validAdminIds.length > 0) {
+      type LeanAdmin = {
+        _id: mongoose.Types.ObjectId | string;
+        name?: string | null;
+        phone?: string | null;
+      };
       const admins = await Admin.find({ _id: { $in: validAdminIds } })
         .select(['name', 'phone'])
-        .lean();
+        .lean<LeanAdmin[]>();
 
       admins.forEach((admin) => {
+        const adminId = typeof admin._id === 'string' ? admin._id : admin._id.toString();
         adminMap.set(
-          admin._id.toString(),
+          adminId,
           admin.name || admin.phone || 'ไม่ระบุชื่อ'
         );
       });
