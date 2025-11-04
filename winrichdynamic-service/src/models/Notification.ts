@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export type NotificationType = 
   | 'payment_cod_reminder'
@@ -26,6 +26,14 @@ export interface INotification extends Document {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   actionUrl?: string;
   actionText?: string;
+}
+
+export interface NotificationModel extends Model<INotification> {
+  createNotification(notificationData: Partial<INotification>): Promise<INotification>;
+  getUnreadCount(userId?: string): Promise<number>;
+  markAsRead(notificationIds: string[]): Promise<any>;
+  markAllAsRead(userId?: string): Promise<any>;
+  clearOldNotifications(daysOld?: number): Promise<any>;
 }
 
 const notificationSchema = new Schema<INotification>(
@@ -141,4 +149,8 @@ notificationSchema.statics.clearOldNotifications = function(daysOld = 30) {
   });
 };
 
-export default mongoose.models.Notification || mongoose.model<INotification>('Notification', notificationSchema);
+const Notification =
+  (mongoose.models.Notification as NotificationModel) ||
+  mongoose.model<INotification, NotificationModel>('Notification', notificationSchema);
+
+export default Notification;

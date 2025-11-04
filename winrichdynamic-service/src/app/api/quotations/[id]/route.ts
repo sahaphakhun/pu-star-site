@@ -165,7 +165,11 @@ export async function PUT(
 
       (body as any).deliveryBatches = deliveryBatches;
 
-      const totalItemQuantity = (existingBeforeUpdate.items || []).reduce(
+      const existingItems = Array.isArray((existingBeforeUpdate as any).items)
+        ? (existingBeforeUpdate as any).items
+        : [];
+
+      const totalItemQuantity = existingItems.reduce(
         (sum: number, item: any) => sum + Number(item.quantity || 0),
         0
       );

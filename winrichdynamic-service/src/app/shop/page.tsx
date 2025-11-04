@@ -20,7 +20,8 @@ const ShopPage = () => {
 	const [quantities, setQuantities] = useState<{ [id: string]: number }>({});
 	const [customerName, setCustomerName] = useState('');
 	const [customerPhone, setCustomerPhone] = useState('');
-	const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer'>('cod');
+	const [paymentMethod, setPaymentMethod] = useState<'cod' | 'transfer' | 'credit'>('cod');
+	const [creditPaymentDueDate, setCreditPaymentDueDate] = useState('');
 	const [categories, setCategories] = useState<string[]>(['ทั้งหมด']);
 	const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด');
 	const [searchTerm, setSearchTerm] = useState<string>('');
@@ -133,11 +134,23 @@ const ShopPage = () => {
 	const calculateShippingFee = () => 0; // ฟรีค่าจัดส่งสำหรับ B2B
 	const calculateGrandTotal = () => calculateTotal() + calculateShippingFee();
 
+	const handleSetPaymentMethod = (method: 'cod' | 'transfer' | 'credit') => {
+		setPaymentMethod(method);
+		if (method !== 'credit') {
+			setCreditPaymentDueDate('');
+		}
+	};
+
 	const handleSubmitOrder = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		
 		if (!customerName.trim() || !customerPhone.trim()) {
 			toast.error('กรุณากรอกข้อมูลให้ครบถ้วน');
+			return;
+		}
+
+		if (paymentMethod === 'credit' && !creditPaymentDueDate) {
+			toast.error('กรุณาระบุวันที่ครบกำหนดชำระสำหรับการชำระแบบเครดิต');
 			return;
 		}
 
@@ -159,6 +172,7 @@ const ShopPage = () => {
 					shippingFee: calculateShippingFee(),
 					discount: 0,
 					paymentMethod,
+					creditPaymentDueDate: paymentMethod === 'credit' ? creditPaymentDueDate : undefined,
 				}),
 			});
 
@@ -172,6 +186,7 @@ const ShopPage = () => {
 				setCustomerName('');
 				setCustomerPhone('');
 				setPaymentMethod('cod');
+				setCreditPaymentDueDate('');
 			}
 		} catch (error) {
 			console.error('Error submitting order:', error);
@@ -293,7 +308,9 @@ const ShopPage = () => {
 					calculateShippingFee={calculateShippingFee}
 					calculateGrandTotal={calculateGrandTotal}
 					paymentMethod={paymentMethod}
-					setPaymentMethod={setPaymentMethod}
+					setPaymentMethod={handleSetPaymentMethod}
+					creditPaymentDueDate={creditPaymentDueDate}
+					setCreditPaymentDueDate={setCreditPaymentDueDate}
 				/>
 			)}
 		</div>
@@ -301,4 +318,3 @@ const ShopPage = () => {
 };
 
 export default ShopPage;
-

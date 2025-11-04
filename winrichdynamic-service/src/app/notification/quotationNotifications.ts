@@ -18,6 +18,8 @@ interface QuotationNotificationData {
   };
 }
 
+const adminGroupId = process.env.LINE_ADMIN_GROUP_ID;
+
 /**
  * Send notification when quotation is generated from order
  */
@@ -26,7 +28,6 @@ export async function sendQuotationGeneratedNotification(data: QuotationNotifica
   
   try {
     // Send LINE notification (using admin group if configured)
-    const adminGroupId = process.env.LINE_ADMIN_GROUP_ID;
     if (adminGroupId) {
       await sendLineTextToGroup(adminGroupId, message);
     }
@@ -50,7 +51,6 @@ export async function sendQuotationAcceptedNotification(data: QuotationNotificat
   
   try {
     // Send LINE notification to admin
-    const adminGroupId = process.env.LINE_ADMIN_GROUP_ID;
     if (adminGroupId) {
       await sendLineTextToGroup(adminGroupId, message);
     }
@@ -72,7 +72,6 @@ export async function sendQuotationConvertedNotification(data: QuotationNotifica
   
   try {
     // Send LINE notification to admin
-    const adminGroupId = process.env.LINE_ADMIN_GROUP_ID;
     if (adminGroupId) {
       await sendLineTextToGroup(adminGroupId, message);
     }
@@ -94,9 +93,9 @@ export async function sendQuotationConversionFailedNotification(data: QuotationN
   
   try {
     // Send LINE notification to admin
-    await sendLineTextToGroup(adminGroupId, message);
-      message
-    });
+    if (adminGroupId) {
+      await sendLineTextToGroup(adminGroupId, message);
+    }
     
     console.log(`Quotation conversion failed notification sent for ${data.quotationNumber}`);
   } catch (error) {
@@ -112,7 +111,6 @@ export async function sendQuotationExpiryNotification(data: QuotationNotificatio
   
   try {
     // Send LINE notification to admin
-    const adminGroupId = process.env.LINE_ADMIN_GROUP_ID;
     if (adminGroupId) {
       await sendLineTextToGroup(adminGroupId, message);
     }
@@ -134,9 +132,9 @@ export async function sendQuotationRejectedNotification(data: QuotationNotificat
   
   try {
     // Send LINE notification to admin
-    await sendLineTextToGroup(adminGroupId, message);
-      message
-    });
+    if (adminGroupId) {
+      await sendLineTextToGroup(adminGroupId, message);
+    }
     
     // Send confirmation to customer
     await sendSMS(data.customerPhone, `เรียน ${data.customerName}\n\nเราได้รับการปฏิเสธใบเสนอราคา ${data.quotationNumber} ของคุณ${reason ? `\nสาเหตุ: ${reason}` : ''}\n\nหากมีข้อสงสัยหรือต้องการสอบถามเพิ่มเติม กรุณาติดต่อเรา`);
@@ -157,9 +155,9 @@ export async function sendQuotationDailySummary(date: Date) {
     
     const summaryMessage = `สรุปกิจกรรมใบเสนอราคาประจำวันที่ ${date.toLocaleDateString('th-TH')}\n\n- สร้างใหม่: X รายการ\n- ยอมรับ: X รายการ\n- ปฏิเสธ: X รายการ\n- แปลงเป็นใบสั่งขาย: X รายการ`;
     
-    await sendLineTextToGroup(adminGroupId, message);
-      summaryMessage
-    });
+    if (adminGroupId) {
+      await sendLineTextToGroup(adminGroupId, summaryMessage);
+    }
     
     console.log(`Daily quotation summary sent for ${date.toLocaleDateString('th-TH')}`);
   } catch (error) {

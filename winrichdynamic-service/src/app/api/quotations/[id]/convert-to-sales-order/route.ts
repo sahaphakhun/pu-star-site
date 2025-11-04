@@ -7,11 +7,11 @@ import { generateSalesOrderFromQuotation, checkAutoConversionConditions, getConv
 // POST: Convert quotation to sales order
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const quotationId = params.id;
+    const { id: quotationId } = await params;
 
     // Find the quotation
     const quotation = await Quotation.findById(quotationId);
@@ -83,11 +83,11 @@ export async function POST(
 // GET: Check conversion status and history
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const quotationId = params.id;
+    const { id: quotationId } = await params;
 
     // Find the quotation
     const quotation = await Quotation.findById(quotationId);
@@ -143,11 +143,11 @@ export async function GET(
 // PUT: Update conversion settings
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const quotationId = params.id;
+    const { id: quotationId } = await params;
     const body = await request.json();
     const { conversionSettings } = body;
 
