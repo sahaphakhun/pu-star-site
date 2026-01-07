@@ -53,6 +53,7 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     font-noto-thai
+RUN if [ -x /usr/bin/chromium-browser ]; then ln -sf /usr/bin/chromium-browser /usr/bin/chromium; elif [ -x /usr/lib/chromium/chromium ]; then ln -sf /usr/lib/chromium/chromium /usr/bin/chromium; fi
 
 # Set Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
