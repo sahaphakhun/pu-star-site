@@ -82,7 +82,11 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[Sales Order PDF API] Error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้าง PDF' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[Sales Order PDF API] Error:', errorMessage);
+    console.error('[Sales Order PDF API] Stack:', errorStack);
+    console.error('[Sales Order PDF API] PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้าง PDF', details: errorMessage }, { status: 500 });
   }
 }

@@ -18,10 +18,10 @@ export async function GET(
 ) {
   try {
     await connectDB();
-    
+
     const resolvedParams = await params;
     const quotation = await Quotation.findById(resolvedParams.id).lean();
-    
+
     if (!quotation) {
       return NextResponse.json(
         { error: 'ไม่พบใบเสนอราคา' },
@@ -46,7 +46,7 @@ export async function GET(
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
       }
-    } catch {}
+    } catch { }
 
     // ดึง Settings (โลโก้ + ข้อมูลบริษัท/บัญชีธนาคาร)
     const settings = await Settings.findOne();
@@ -105,7 +105,7 @@ export async function GET(
           }
         }
       }
-    } catch {}
+    } catch { }
 
     // เติมลายเซ็นจากผู้ที่เรียกพิมพ์ (ตามบทบาท)
     try {
@@ -129,7 +129,7 @@ export async function GET(
           }
         }
       }
-    } catch {}
+    } catch { }
 
     const quotationWithSettings = {
       ...quotation,
@@ -147,10 +147,10 @@ export async function GET(
 
     // สร้าง HTML สำหรับ PDF
     const html = generateQuotationHTML(quotationWithSettings as any, signatureInfo);
-    
+
     // สร้าง PDF ด้วย Puppeteer
     const pdfBuffer = await generatePDFFromHTML(html);
-    
+
     // เตรียมชื่อไฟล์และทำให้ปลอดภัยสำหรับ HTTP headers
     const fileName = `ใบเสนอราคา_${(quotation as any).quotationNumber || 'unknown'}.pdf`;
     const asciiFileName = `quotation_${(quotation as any).quotationNumber || 'unknown'}.pdf`;
@@ -163,11 +163,15 @@ export async function GET(
         'Content-Disposition': `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodedFileName}`
       }
     });
-    
+
   } catch (error) {
-    console.error('[Quotation PDF API] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[Quotation PDF API] Error:', errorMessage);
+    console.error('[Quotation PDF API] Stack:', errorStack);
+    console.error('[Quotation PDF API] PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการสร้าง PDF' },
+      { error: 'เกิดข้อผิดพลาดในการสร้าง PDF', details: errorMessage },
       { status: 500 }
     );
   }
@@ -212,13 +216,13 @@ export async function POST(
         const payload: any = jose.decodeJwt(token);
         if (payload?.adminId) editLog.editedBy = String(payload.adminId);
       }
-    } catch {}
+    } catch { }
     quotation.editHistory = [...(quotation.editHistory || []), editLog] as any;
     await quotation.save();
 
     // ส่งต่อไปยังการสร้าง PDF ใบเสนอราคาเดิม (reuse) หรือจะมีไฟล์ template ใบสั่งขายแยกในอนาคต
     const req2 = new NextRequest(request.url, { method: 'GET', headers: request.headers });
-    
+
     // แจ้ง LINE กลุ่ม
     try {
       const qn = (quotation as any).quotationNumber || (await params).id;
