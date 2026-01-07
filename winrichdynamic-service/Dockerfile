@@ -56,7 +56,7 @@ RUN apk add --no-cache \
 
 # Set Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
