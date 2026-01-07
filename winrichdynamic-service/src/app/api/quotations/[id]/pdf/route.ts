@@ -4,6 +4,7 @@ import Quotation from '@/models/Quotation';
 import { Settings } from '@/models/Settings';
 import { generatePDFFromHTML } from '@/utils/pdfUtils';
 import { generateQuotationHTML } from '@/utils/quotationPdf';
+import { buildSalesOrderNumber } from '@/utils/salesOrderNumber';
 import Product from '@/models/Product';
 import Admin from '@/models/Admin';
 import * as jose from 'jose';
@@ -197,14 +198,20 @@ export async function POST(
       return NextResponse.json({ error: 'ไม่พบใบเสนอราคา' }, { status: 404 });
     }
 
+    const inputSalesOrderNumber = typeof salesOrderNumber === 'string' ? salesOrderNumber.trim() : '';
+    const existingSalesOrderNumber = typeof (quotation as any).salesOrderNumber === 'string'
+      ? String((quotation as any).salesOrderNumber).trim()
+      : '';
+    const resolvedSalesOrderNumber =
+      inputSalesOrderNumber || existingSalesOrderNumber || buildSalesOrderNumber(quotation._id);
 
     // อัพเดทสถานะออกใบสั่งขาย
     quotation.salesOrderIssued = true;
-    quotation.salesOrderNumber = salesOrderNumber;
+    quotation.salesOrderNumber = resolvedSalesOrderNumber;
     quotation.salesOrderIssuedAt = new Date();
     const editLog: any = {
       editedAt: new Date(),
-      remark: `ออกใบสั่งขายเลขที่ ${salesOrderNumber}: ${remark}`,
+      remark: `ออกใบสั่งขายเลขที่ ${resolvedSalesOrderNumber}: ${remark}`,
       changedFields: ['salesOrderIssued', 'salesOrderNumber', 'salesOrderIssuedAt'],
     };
     try {
@@ -226,7 +233,7 @@ export async function POST(
     // แจ้ง LINE กลุ่ม
     try {
       const qn = (quotation as any).quotationNumber || (await params).id;
-      const msg = `ออกใบสั่งขายแล้ว เลขที่ ${salesOrderNumber} (จากใบเสนอราคา ${qn})`;
+      const msg = `ออกใบสั่งขายแล้ว เลขที่ ${resolvedSalesOrderNumber} (จากใบเสนอราคา ${qn})`;
       await sendLineTextToCustomerGroups(String((quotation as any).customerId), msg);
     } catch (e) {
       console.warn('[Quotation Issue SO] LINE notify failed:', e);

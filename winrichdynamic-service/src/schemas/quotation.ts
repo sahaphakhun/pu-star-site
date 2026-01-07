@@ -220,7 +220,7 @@ export const convertToOrderSchema = z.object({
 
 // Schema สำหรับการทำเครื่องหมายออกใบสั่งขายและสร้าง PDF
 export const issueSalesOrderSchema = z.object({
-  salesOrderNumber: z.string().min(1, 'กรุณาระบุเลขที่ใบสั่งขาย'),
+  salesOrderNumber: z.string().optional().or(z.literal('')),
   remark: z.string().min(1, 'กรุณาระบุหมายเหตุ').max(1000, 'หมายเหตุต้องไม่เกิน 1000 ตัวอักษร'),
 });
 

@@ -7,6 +7,7 @@ import AdminModal from '@/components/AdminModal'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { useTokenManager } from '@/utils/tokenManager'
+import { buildSalesOrderNumber } from '@/utils/salesOrderNumber'
 
 interface Quotation {
   _id: string
@@ -18,6 +19,7 @@ interface Quotation {
   validUntil: string
   createdAt: string
   assignedTo?: string
+  salesOrderNumber?: string
 }
 
 interface Customer {
@@ -37,6 +39,7 @@ interface PromptField {
   placeholder?: string
   required?: boolean
   multiline?: boolean
+  initialValue?: string
 }
 
 interface PromptConfig {
@@ -70,7 +73,7 @@ export default function AdminB2BQuotations() {
     onConfirm: (values: Record<string, string>) => Promise<void> | void
   ) => {
     const initialValues = config.fields.reduce((acc, field) => {
-      acc[field.name] = ''
+      acc[field.name] = field.initialValue ?? ''
       return acc
     }, {} as Record<string, string>)
     setPromptValues(initialValues)
@@ -390,17 +393,19 @@ export default function AdminB2BQuotations() {
 
   // ออกใบสั่งขายจากใบเสนอราคา (ดาวน์โหลด PDF และทำเครื่องหมายว่าออกแล้ว)
   const handleIssueSalesOrder = async (quotation: Quotation) => {
+    const suggestedSalesOrderNumber =
+      quotation.salesOrderNumber?.trim() || buildSalesOrderNumber(quotation._id)
     openPrompt(
       {
         title: 'ออกใบสั่งขาย',
-        description: 'กรุณาระบุเลขที่ใบสั่งขายและหมายเหตุ',
+        description: 'ระบบจะสร้างเลขที่ใบสั่งขายอัตโนมัติ หากเว้นว่าง',
         confirmLabel: 'ออกใบสั่งขาย',
         fields: [
           {
             name: 'salesOrderNumber',
             label: 'เลขที่ใบสั่งขาย',
-            placeholder: 'เช่น SO-2024-001',
-            required: true,
+            placeholder: 'ระบบจะสร้างให้อัตโนมัติ',
+            initialValue: suggestedSalesOrderNumber,
           },
           {
             name: 'remark',
@@ -414,10 +419,11 @@ export default function AdminB2BQuotations() {
       async (values) => {
         const salesOrderNumber = values.salesOrderNumber?.trim()
         const remark = values.remark?.trim()
-        if (!salesOrderNumber || !remark) {
-          throw new Error('กรุณากรอกข้อมูลให้ครบถ้วน')
+        if (!remark) {
+          throw new Error('กรุณาระบุหมายเหตุการออกใบสั่งขาย')
         }
-        await submitIssueSalesOrder(quotation, salesOrderNumber, remark)
+        const resolvedSalesOrderNumber = salesOrderNumber || suggestedSalesOrderNumber
+        await submitIssueSalesOrder(quotation, resolvedSalesOrderNumber, remark)
       }
     )
   }
