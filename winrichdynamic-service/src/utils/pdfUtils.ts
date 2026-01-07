@@ -72,26 +72,26 @@ export interface QuotationData {
  */
 function sanitizeString(str: any): string {
   if (!str) return '';
-  
+
   try {
     // แปลงเป็น string
     let cleanStr = String(str);
-    
+
     // ลบ control characters และ replacement characters
     cleanStr = cleanStr
       .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
       .replace(/[\uFFFD]/g, '')
       .trim();
-    
+
     // ตรวจสอบว่าเป็น string ที่ถูกต้อง
     if (cleanStr.length === 0) return '';
-    
+
     // ใช้วิธีที่ง่ายกว่า: ตรวจสอบว่าเป็น ASCII หรือ Thai characters เท่านั้น
     const safeChars = /^[\u0E00-\u0E7F\u0020-\u007E]*$/;
     if (safeChars.test(cleanStr)) {
       return cleanStr;
     }
-    
+
     // ถ้าไม่ปลอดภัย ให้ลบตัวอักษรที่ไม่ได้กำหนด
     return cleanStr.replace(/[^\u0E00-\u0E7F\u0020-\u007E]/g, '');
   } catch (error) {
@@ -106,8 +106,8 @@ function sanitizeString(str: any): string {
  * หมายเหตุ: สำหรับงานเอกสาร (ไม่ครอบคลุมกรณีทุกรูปแบบ 100%)
  */
 function bahtText(amount: number): string {
-  const thNum = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
-  const thUnit = ['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  const thNum = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+  const thUnit = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
   const toText = (n: number): string => {
     if (n === 0) return '';
     let s = '';
@@ -200,11 +200,14 @@ function sanitizeQuotationData(quotation: any): any {
  * สร้าง PDF จาก HTML ด้วย Puppeteer
  */
 export async function generatePDFFromHTML(
-  html: string, 
+  html: string,
   options: PDFOptions = {}
 ): Promise<Buffer> {
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: executablePath || undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -215,24 +218,24 @@ export async function generatePDFFromHTML(
       '--allow-running-insecure-content'
     ]
   });
-  
+
   try {
     const page = await browser.newPage();
-    
+
     // ตั้งค่า viewport
-    await page.setViewport({ 
-      width: 1200, 
-      height: 1600 
+    await page.setViewport({
+      width: 1200,
+      height: 1600
     });
-    
+
     // ตั้งค่า content
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0' 
+    await page.setContent(html, {
+      waitUntil: 'networkidle0'
     });
-    
+
     // รอให้ font โหลดเสร็จ
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     // สร้าง PDF
     const pdfBuffer = await page.pdf({
       format: options.format || 'A4',
@@ -245,7 +248,7 @@ export async function generatePDFFromHTML(
       },
       landscape: options.landscape || false
     });
-    
+
     return Buffer.from(pdfBuffer);
   } finally {
     await browser.close();
@@ -259,19 +262,19 @@ export function generateQuotationHTML(quotation: QuotationData): string {
   try {
     // ทำความสะอาดข้อมูลก่อน
     const sanitizedQuotation = sanitizeQuotationData(quotation);
-    
+
     console.log('Original quotation:', {
       customerName: quotation.customerName,
       subject: quotation.subject,
       itemsCount: quotation.items?.length
     });
-    
+
     console.log('Sanitized quotation:', {
       customerName: sanitizedQuotation.customerName,
       subject: sanitizedQuotation.subject,
       itemsCount: sanitizedQuotation.items?.length
     });
-    
+
     const formatDate = (dateString: string | Date) => {
       const date = new Date(dateString);
       return date.toLocaleDateString('th-TH', {
@@ -291,7 +294,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     // ดึงโลโก้จาก Cloudinary (จะต้องส่งมาจาก API)
     const logoUrl = quotation.logoUrl || '';
 
-  return `
+    return `
 <!DOCTYPE html>
 <html lang="th">
 <head>
