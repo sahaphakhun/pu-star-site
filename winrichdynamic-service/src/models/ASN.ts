@@ -45,7 +45,7 @@ const asnSchema = new Schema<IASN>(
   { timestamps: true }
 );
 
-asnSchema.index({ asnNumber: 1 }, { unique: true });
+// asnNumber already has unique: true which creates an index automatically
 asnSchema.index({ status: 1 });
 
 export default mongoose.models.ASN || mongoose.model<IASN>('ASN', asnSchema);

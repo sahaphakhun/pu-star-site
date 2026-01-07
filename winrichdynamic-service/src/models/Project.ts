@@ -60,7 +60,6 @@ const projectSchema = new Schema<IProject>(
     customerId: {
       type: String,
       required: [true, 'กรุณาระบุลูกค้า'],
-      index: true,
       trim: true,
     },
     customerName: {
@@ -97,7 +96,7 @@ const projectSchema = new Schema<IProject>(
     endDate: {
       type: Date,
       validate: {
-        validator: function(this: IProject, value: Date) {
+        validator: function (this: IProject, value: Date) {
           return !value || value >= this.startDate;
         },
         message: 'วันที่สิ้นสุดต้องมาหลังวันที่เริ่มต้น'
@@ -111,7 +110,6 @@ const projectSchema = new Schema<IProject>(
     ownerId: {
       type: String,
       required: [true, 'กรุณาระบุผู้รับผิดชอบ'],
-      index: true,
       trim: true,
     },
     ownerName: {
@@ -123,7 +121,6 @@ const projectSchema = new Schema<IProject>(
     team: {
       type: String,
       required: [true, 'กรุณาระบุทีม'],
-      index: true,
       trim: true,
       maxlength: [100, 'ชื่อทีมต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
     },
@@ -131,7 +128,6 @@ const projectSchema = new Schema<IProject>(
       type: String,
       enum: ['planning', 'proposed', 'quoted', 'testing', 'approved', 'closed'],
       default: 'planning',
-      index: true,
     },
     description: {
       type: String,
@@ -175,7 +171,7 @@ const projectSchema = new Schema<IProject>(
 
 // Create indexes for performance
 projectSchema.index({ name: 'text', customerName: 'text', tags: 'text' });
-projectSchema.index({ projectCode: 1 }, { unique: true });
+// projectCode already has unique: true which creates an index automatically
 projectSchema.index({ customerId: 1 });
 projectSchema.index({ ownerId: 1 });
 projectSchema.index({ team: 1 });
@@ -186,14 +182,14 @@ projectSchema.index({ createdAt: -1 });
 projectSchema.index({ updatedAt: -1 });
 
 // Virtual field for project duration in days
-projectSchema.virtual('durationDays').get(function() {
+projectSchema.virtual('durationDays').get(function () {
   if (!this.endDate) return null;
   const diffTime = Math.abs(this.endDate.getTime() - this.startDate.getTime());
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
 // Virtual field for project status in Thai
-projectSchema.virtual('statusThai').get(function() {
+projectSchema.virtual('statusThai').get(function () {
   const statusMap = {
     planning: 'วางแผน',
     proposed: 'เสนอ',
@@ -209,19 +205,19 @@ projectSchema.virtual('statusThai').get(function() {
 async function generateUniqueProjectCode(): Promise<string> {
   const today = new Date();
   const dateStr = today.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD format
-  
+
   // Try to generate a unique code with random 4-digit suffix
   for (let attempt = 0; attempt < 20; attempt++) {
     const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const code = `PJ#${dateStr}-${randomSuffix}`;
-    
+
     // Check if code already exists
     const exists = await (mongoose.models.Project as any).exists({ projectCode: code });
     if (!exists) {
       return code;
     }
   }
-  
+
   // Fallback: increment suffix if random generation fails
   for (let i = 0; i < 10000; i++) {
     const suffix = i.toString().padStart(4, '0');
@@ -231,12 +227,12 @@ async function generateUniqueProjectCode(): Promise<string> {
       return code;
     }
   }
-  
+
   throw new Error('ไม่สามารถสร้างรหัสโปรเจคที่ไม่ซ้ำได้');
 }
 
 // Pre-save hook to generate project code
-projectSchema.pre('save', async function(next) {
+projectSchema.pre('save', async function (next) {
   try {
     if (!this.isNew) return next();
     const doc: any = this;

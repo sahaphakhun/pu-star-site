@@ -116,8 +116,7 @@ const ProductSchema: Schema = new Schema({
   },
   isDeleted: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   deletedAt: {
     type: Date,
@@ -255,7 +254,7 @@ ProductSchema.index({
 });
 
 // Pre-validate middleware เพื่อให้ผ่าน required sku โดย auto-generate ก่อน validate
-ProductSchema.pre('validate', async function(next) {
+ProductSchema.pre('validate', async function (next) {
   if (!this.sku) {
     try {
       const skuConfig = this.skuConfig as any;
@@ -276,23 +275,23 @@ ProductSchema.pre('validate', async function(next) {
 });
 
 // Pre-save middleware สำหรับ auto-generate/ensure uniqueness ซ้ำอีกชั้น
-ProductSchema.pre('save', async function(next) {
+ProductSchema.pre('save', async function (next) {
   // ถ้าไม่มี SKU ให้ auto-generate
   if (!this.sku) {
     try {
       // ตรวจสอบ skuConfig และ autoGenerate
       const skuConfig = this.skuConfig as any;
       const shouldAutoGenerate = skuConfig?.autoGenerate !== false; // default เป็น true
-      
+
       if (shouldAutoGenerate) {
         // สร้าง SKU จาก prefix + timestamp + random string
         const timestamp = Date.now().toString(36);
         const randomStr = Math.random().toString(36).substring(2, 8);
         const prefix = skuConfig?.prefix || 'PRD';
         const separator = skuConfig?.separator || '-';
-        
+
         this.sku = `${prefix}${separator}${timestamp}${separator}${randomStr}`.toUpperCase();
-        
+
         // ตรวจสอบว่า SKU ไม่ซ้ำ
         const existingProduct = await mongoose.model('Product').findOne({ sku: this.sku });
         if (existingProduct) {
@@ -310,17 +309,17 @@ ProductSchema.pre('save', async function(next) {
       this.sku = `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
     }
   }
-  
+
   // ถ้ายังไม่มี SKU ให้สร้าง fallback
   if (!this.sku) {
     this.sku = `PRD-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
   }
-  
+
   next();
 });
 
 // Virtual for display price
-ProductSchema.virtual('displayPrice').get(function(this: any) {
+ProductSchema.virtual('displayPrice').get(function (this: any) {
   if (this.price !== undefined) {
     return this.price;
   }
@@ -331,7 +330,7 @@ ProductSchema.virtual('displayPrice').get(function(this: any) {
 });
 
 // Virtual for display shipping fee
-ProductSchema.virtual('displayShippingFee').get(function(this: any) {
+ProductSchema.virtual('displayShippingFee').get(function (this: any) {
   if (this.shippingFee !== undefined) {
     return this.shippingFee;
   }

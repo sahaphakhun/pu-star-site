@@ -49,7 +49,7 @@ const purchaseOrderSchema = new Schema<IPurchaseOrder>(
   { timestamps: true }
 );
 
-purchaseOrderSchema.index({ poNumber: 1 }, { unique: true });
+// poNumber already has unique: true which creates an index automatically
 purchaseOrderSchema.index({ status: 1 });
 
 export default mongoose.models.PurchaseOrder ||
