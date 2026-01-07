@@ -19,6 +19,7 @@
 - [x] เชื่อมปุ่มดู/พิมพ์จากหน้า list ใบสั่งขาย
 - [x] ทำ migration อัตโนมัติบน Railway (assignedTo/ownerId → adminId)
 - [x] เก็บกวาด localStorage/mock (DataContext/mockData/useSavedFilters/AdminSidebar)
+- [x] อัปเกรด Next.js แก้ช่องโหว่ที่ทำให้ Railway บล็อกการ deploy
 
 ## บันทึกการเปลี่ยนแปลง (สรุปสั้น ๆ)
 ### 2026-01-08 04:22
@@ -35,6 +36,11 @@
 - ทำอะไร: เพิ่ม migration เสริม (customerCode, order linkage, salesOrderNumber)
 - ไฟล์: `src/scripts/run-migrations.js`
 - ผลลัพธ์: backfill customerCode และเติม owner/ที่อยู่/เลข SO จากใบเสนอราคาให้ใบสั่งขาย
+
+### 2026-01-08 05:08
+- ทำอะไร: อัปเกรด Next.js เพื่อปิดช่องโหว่ที่ Railway ตรวจพบ
+- ไฟล์: `package.json`, `package-lock.json`
+- ผลลัพธ์: เวอร์ชัน Next.js ใหม่พร้อมสำหรับ deploy
 
 ## เช็กลิสต์ตามโมดูล
 ### ลูกค้า
@@ -79,4 +85,5 @@
 - [ ] ทดสอบสิทธิ์/การเข้าถึง API
 
 ## ไฟล์ที่แตะล่าสุด (อัปเดตสั้น ๆ)
-- `path/to/file`
+- `package.json`
+- `package-lock.json`
