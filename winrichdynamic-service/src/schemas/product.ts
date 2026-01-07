@@ -49,6 +49,13 @@ export const productSchema = z.object({
   category: z.string().min(1, 'หมวดหมู่ไม่สามารถว่างได้'),
   imageUrl: z.string().min(1, 'รูปภาพสินค้าไม่สามารถว่างได้'),
   isAvailable: z.boolean().default(true),
+  stock: z.number().min(0, 'สต็อกต้องไม่ต่ำกว่า 0').optional(),
+  minStock: z.number().min(0, 'สต็อกขั้นต่ำต้องไม่ต่ำกว่า 0').optional(),
+  maxStock: z.number().min(0, 'สต็อกสูงสุดต้องไม่ต่ำกว่า 0').optional(),
+  unit: z.string().optional(),
+  cost: z.number().min(0, 'ต้นทุนต้องไม่ต่ำกว่า 0').optional(),
+  location: z.string().optional(),
+  lastUpdated: z.string().optional(),
   options: z.array(productOptionSchema).optional(),
   skuConfig: skuConfigSchema.optional(),
   skuVariants: z.array(skuVariantSchema).optional()
@@ -65,6 +72,7 @@ export const productSearchSchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   isAvailable: z.boolean().optional(),
+  includeDeleted: z.boolean().optional(),
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(20)
 });

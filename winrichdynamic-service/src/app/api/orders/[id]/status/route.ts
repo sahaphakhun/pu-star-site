@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     let doc = await Order.findByIdAndUpdate(resolvedParams.id, { status }, { new: true });
     if (!doc) return NextResponse.json({ error: 'ไม่พบคำสั่งซื้อ' }, { status: 404 });
 
-    if (status === 'confirmed') {
+    if (status === 'confirmed' && doc?.orderType !== 'sales_order') {
       await ensureSalesOrderFromQuotation(doc);
       doc = await Order.findById(resolvedParams.id);
     }
@@ -66,4 +66,3 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ' }, { status: 500 });
   }
 }
-

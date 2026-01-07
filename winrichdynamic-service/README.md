@@ -116,10 +116,6 @@ API_BASE_URL=http://localhost:3001/api
 LINE_CHANNEL_SECRET=your_line_channel_secret_here
 LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token_here
 
-# WMS API Configuration
-WMS_API_URL=your_wms_api_url_here
-WMS_API_KEY=your_wms_api_key_here
-
 # JWT Secret
 JWT_SECRET=your_jwt_secret_here
 
@@ -187,7 +183,6 @@ NEXT_TELEMETRY_DISABLED=1
 ### Integration
 - **LINE Bot** - การแจ้งเตือนและตอบกลับลูกค้า
 - **Email Service** - ส่งใบเสนอราคาทางอีเมล
-- **WMS Integration** - เชื่อมต่อกับระบบคลังสินค้า
 - **SMS Service (DeeSMSx)** - ส่ง OTP และข้อความ SMS
 
 ## 🐛 การแก้ไขปัญหา

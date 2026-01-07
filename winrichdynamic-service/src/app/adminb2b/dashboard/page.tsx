@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Loading from '@/components/ui/Loading';
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -33,14 +34,6 @@ const Dashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Loading state component
-  const LoadingState = () => (
-    <div className="flex flex-col items-center justify-center h-96">
-      <RefreshCw className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-      <p className="text-gray-600">กำลังโหลดข้อมูลแดชบอร์ด...</p>
-    </div>
-  );
-
   // Error state component
   const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
     <div className="flex flex-col items-center justify-center h-96">
@@ -65,7 +58,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="p-3 md:p-6 bg-gray-50 min-h-screen">
-        <LoadingState />
+        <Loading size="lg" label="กำลังโหลดข้อมูลแดชบอร์ด..." className="h-96" />
       </div>
     );
   }
@@ -180,23 +173,13 @@ const Dashboard = () => {
 
   const projectStatusData = formatProjectStatusData();
 
-  // Payment method data - would need to be provided by API
-  const paymentMethodData = [
-    { name: 'เงินสด', value: 63.2, color: '#3b82f6' },
-    { name: 'เครดิต', value: 36.8, color: '#f59e0b' },
-  ];
+  const paymentPalette = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
+  const paymentMethodData = (dashboardData?.charts?.paymentMethods || []).map((entry: any, index: number) => ({
+    ...entry,
+    color: paymentPalette[index % paymentPalette.length],
+  }));
 
-  // Product group data - would need to be provided by API
-  const productGroupData = [
-    { name: 'PU40', value: 38.1 },
-    { name: 'ซิลิโคนไร้กรด PU40', value: 17.9 },
-    { name: 'Tiger Acrylic', value: 12.0 },
-    { name: 'PU Foam', value: 11.3 },
-    { name: 'น้ำยาทากระจก', value: 9.1 },
-    { name: 'ซิลิโคนไร้กรด 6134', value: 3.9 },
-    { name: 'ฟิล์มกันรอย', value: 3.2 },
-    { name: 'MS 240a', value: 1.6 },
-  ];
+  const productGroupData = dashboardData?.charts?.productGroups || [];
 
   return (
     <div className="p-3 md:p-6 bg-gray-50 min-h-screen">

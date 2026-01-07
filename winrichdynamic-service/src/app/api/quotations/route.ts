@@ -247,6 +247,10 @@ export async function POST(request: Request) {
     if (modelData.shipToSameAsCustomer) {
       modelData.shippingAddress = modelData.customerAddress;
     }
+
+    if (!modelData.deliveryZipcode) {
+      delete modelData.deliveryZipcode;
+    }
     
     // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership และ context guardrails
     try {
@@ -256,8 +260,13 @@ export async function POST(request: Request) {
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
         if (payload?.adminId) {
-          modelData.assignedTo = payload.adminId; // เก็บ owner เป็น adminId
+          if (roleName === 'seller') {
+            modelData.assignedTo = payload.adminId;
+          } else if (!modelData.assignedTo) {
+            modelData.assignedTo = payload.adminId;
+          }
         }
         // เติม role สำหรับการตรวจ guardrails รอบหน้า (เช่น update)
         modelData._creatorRole = payload?.role;

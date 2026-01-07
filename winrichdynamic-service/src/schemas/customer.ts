@@ -25,6 +25,38 @@ export const createCustomerSchema = z.object({
     .max(500, 'ที่อยู่บริษัทต้องมีความยาวไม่เกิน 500 ตัวอักษร')
     .optional()
     .or(z.literal('')),
+  province: z.string()
+    .max(100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  district: z.string()
+    .max(100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  subdistrict: z.string()
+    .max(100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  zipcode: z.string()
+    .regex(/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก')
+    .optional()
+    .or(z.literal('')),
+  registeredProvince: z.string()
+    .max(100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  registeredDistrict: z.string()
+    .max(100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  registeredSubdistrict: z.string()
+    .max(100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  registeredZipcode: z.string()
+    .regex(/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก')
+    .optional()
+    .or(z.literal('')),
   companyPhone: z.string()
     .regex(/^\+?66\d{9}$/, 'รูปแบบเบอร์โทรศัพท์บริษัทไม่ถูกต้อง')
     .optional()
@@ -38,6 +70,10 @@ export const createCustomerSchema = z.object({
     .optional()
     .or(z.literal('')),
   shippingSameAsCompany: z.boolean().optional().default(false),
+  customerCode: z.string()
+    .regex(/^(C\d{8}|[A-Z]\d[A-Z]\d)$/, 'รหัสลูกค้าต้องอยู่ในรูปแบบ CYYMMXXXX หรือ A1B2')
+    .optional()
+    .or(z.literal('')),
   customerType: z.enum(['new', 'regular', 'target', 'inactive'])
     .default('new'),
   assignedTo: z.string()

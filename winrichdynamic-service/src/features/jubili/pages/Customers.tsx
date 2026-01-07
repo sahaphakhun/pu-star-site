@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Plus, Search, Star, CreditCard, Edit, Tag } from "lucide-react";
+import { Plus, Search, Star, CreditCard, Edit } from "lucide-react";
 import Button from "@/components/ui/Button";
 import CustomerFormNew from "@/components/CustomerFormNew";
 import CreditApprovalForm from "@/components/CreditApprovalForm";
@@ -304,30 +304,6 @@ export default function Customers() {
     }
   };
 
-  const getRowColor = (index: number) => {
-    const colors = [
-      "bg-blue-50",
-      "bg-purple-50",
-      "bg-green-50",
-      "bg-orange-50",
-      "bg-pink-50",
-      "bg-cyan-50",
-    ];
-    return colors[index % colors.length];
-  };
-
-  const getLeftBorderColor = (index: number) => {
-    const colors = [
-      "border-l-blue-500",
-      "border-l-purple-500",
-      "border-l-green-500",
-      "border-l-orange-500",
-      "border-l-pink-500",
-      "border-l-cyan-500",
-    ];
-    return colors[index % colors.length];
-  };
-
   return (
     <div className="p-6">
       {error && (
@@ -402,18 +378,8 @@ export default function Customers() {
           </a>
         </div>
 
-        {/* Filter Buttons and Search */}
+        {/* Filter and Search */}
         <div className="flex gap-3 items-center flex-wrap">
-          <button className="px-4 py-2 bg-pink-100 text-pink-700 rounded-lg text-sm font-medium hover:bg-pink-200">
-            ทีม - กำหนดเอง
-          </button>
-          <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200">
-            ผู้รับผิดชอบ - กำหนดเอง
-          </button>
-          <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200">
-            คำลูกค้า - กำหนดเอง
-          </button>
-          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -438,10 +404,6 @@ export default function Customers() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
-          <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200">
-            ค้นหาเพิ่มเติม
-          </button>
 
           <Button
             onClick={() => {
@@ -501,7 +463,7 @@ export default function Customers() {
                 filteredCustomers.map((customer, index) => (
                   <tr
                     key={customer._id || index}
-                    className={`border-b border-l-4 ${getLeftBorderColor(index)} ${getRowColor(index)} hover:bg-gray-100`}
+                    className="border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100"
                   >
                     <td className="px-4 py-3">
                       <div className={`px-2 py-1 rounded text-xs font-medium border ${getStatusDisplay(customer.status).color}`}>

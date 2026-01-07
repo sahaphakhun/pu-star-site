@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import Loading from '@/components/ui/Loading';
 
 interface SalesOrder {
   id: string;
@@ -50,74 +51,14 @@ const OutboundPage: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // TODO: แทนที่ด้วย API จริง
-      const mockOrders: SalesOrder[] = [
-        {
-          id: '1',
-          orderNumber: 'SO-2024-001',
-          customer: 'บริษัท 123 จำกัด',
-          orderDate: '2024-01-15',
-          expectedDelivery: '2024-01-18',
-          status: 'picking',
-          priority: 'high',
-          totalItems: 5,
-          pickedItems: 3,
-          totalValue: 25000,
-          shippingMethod: 'Express'
-        },
-        {
-          id: '2',
-          orderNumber: 'SO-2024-002',
-          customer: 'บริษัท 456 จำกัด',
-          orderDate: '2024-01-16',
-          expectedDelivery: '2024-01-20',
-          status: 'pending',
-          priority: 'medium',
-          totalItems: 8,
-          pickedItems: 0,
-          totalValue: 40000,
-          shippingMethod: 'Standard'
-        },
-        {
-          id: '3',
-          orderNumber: 'SO-2024-003',
-          customer: 'บริษัท 789 จำกัด',
-          orderDate: '2024-01-17',
-          expectedDelivery: '2024-01-19',
-          status: 'packing',
-          priority: 'urgent',
-          totalItems: 3,
-          pickedItems: 3,
-          totalValue: 15000,
-          shippingMethod: 'Express'
-        }
-      ];
-
-      const mockPickingTasks: PickingTask[] = [
-        {
-          id: '1',
-          taskNumber: 'PT-2024-001',
-          orderNumber: 'SO-2024-001',
-          picker: 'พนักงาน A',
-          status: 'in_progress',
-          priority: 'high',
-          estimatedDuration: 30,
-          items: [
-            {
-              productId: '1',
-              productName: 'สินค้า A',
-              sku: 'SKU001',
-              location: 'A1-B2-C3',
-              requiredQty: 10,
-              pickedQty: 6,
-              unit: 'ชิ้น'
-            }
-          ]
-        }
-      ];
-
-      setSalesOrders(mockOrders);
-      setPickingTasks(mockPickingTasks);
+      setLoading(true);
+      const response = await fetch('/api/wms/outbound', { credentials: 'include' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'ไม่สามารถโหลดข้อมูลได้');
+      }
+      setSalesOrders(Array.isArray(data?.salesOrders) ? data.salesOrders : []);
+      setPickingTasks(Array.isArray(data?.pickingTasks) ? data.pickingTasks : []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -188,7 +129,7 @@ const OutboundPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <Loading size="lg" label="กำลังโหลดข้อมูลจ่ายสินค้า..." />
       </div>
     );
   }

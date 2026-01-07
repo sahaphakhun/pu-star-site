@@ -1,7 +1,6 @@
 "use client";
-// @ts-nocheck
 
-import Opportunities from "@/features/jubili/pages/Opportunities.jsx";
+import Opportunities from "@/features/jubili/pages/Opportunities";
 
 export default function OpportunitiesPage() {
   return <Opportunities />;

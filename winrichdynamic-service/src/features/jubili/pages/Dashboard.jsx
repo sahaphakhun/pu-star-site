@@ -174,29 +174,58 @@ const Dashboard = () => {
     };
   });
 
-  const salesTeamData = []; // This data would need to be provided by the API
+  const salesTeamData = dashboardData?.charts?.salesTeam || [];
 
   const trendData = formatMonthlySalesData();
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const trendPeriodLabel = `${periodStart.toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })} - ${periodEnd.toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })}`;
 
   const projectStatusData = formatProjectStatusData();
 
-  // Payment method data - would need to be provided by API
-  const paymentMethodData = [
-    { name: 'เงินสด', value: 63.2, color: '#3b82f6' },
-    { name: 'เครดิต', value: 36.8, color: '#f59e0b' },
-  ];
+  const paymentMethodColors = {
+    เงินสด: '#3b82f6',
+    โอนเงิน: '#10b981',
+    เครดิต: '#f59e0b',
+    ไม่ระบุ: '#9ca3af',
+  };
 
-  // Product group data - would need to be provided by API
-  const productGroupData = [
-    { name: 'PU40', value: 38.1 },
-    { name: 'ซิลิโคนไร้กรด PU40', value: 17.9 },
-    { name: 'Tiger Acrylic', value: 12.0 },
-    { name: 'PU Foam', value: 11.3 },
-    { name: 'น้ำยาทากระจก', value: 9.1 },
-    { name: 'ซิลิโคนไร้กรด 6134', value: 3.9 },
-    { name: 'ฟิล์มกันรอย', value: 3.2 },
-    { name: 'MS 240a', value: 1.6 },
-  ];
+  const paymentMethodData = (dashboardData?.charts?.paymentMethods || []).map((entry, index) => ({
+    ...entry,
+    color: paymentMethodColors[entry.name] || `hsl(${index * 45}, 70%, 50%)`,
+  }));
+
+  const productGroupData = dashboardData?.charts?.productGroups || [];
+
+  const teamSummary = salesTeamData.reduce((acc, member) => ({
+    total: acc.total + (member.total || 0),
+    new: acc.new + (member.new || 0),
+    quotation: acc.quotation + (member.quotation || 0),
+    negotiation: acc.negotiation + (member.negotiation || 0),
+    lost: acc.lost + (member.lost || 0),
+    win: acc.win + (member.win || 0),
+  }), { total: 0, new: 0, quotation: 0, negotiation: 0, lost: 0, win: 0 });
+
+  const latestActivity = dashboardData?.recentActivities?.[0];
+  const latestActivityDate = latestActivity?.createdAt || latestActivity?.scheduledAt;
+  const latestActivityDateLabel = latestActivityDate
+    ? new Date(latestActivityDate).toLocaleString('th-TH', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : '';
 
   return (
     <div className="p-3 md:p-6 bg-gray-50 min-h-screen">
@@ -385,7 +414,7 @@ const Dashboard = () => {
               <table className="w-full text-xs">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-2 py-2 text-left">ชื่อพนักงาน (7)</th>
+                    <th className="px-2 py-2 text-left">ชื่อพนักงาน ({salesTeamData.length})</th>
                     <th className="px-2 py-2 text-center bg-gray-200">กิจกรรม</th>
                     <th className="px-2 py-2 text-center bg-blue-100">โครงการใหม่</th>
                     <th className="px-2 py-2 text-center bg-gray-200">เสนอราคา</th>
@@ -395,26 +424,36 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {salesTeamData.map((member, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-2 py-2 text-left font-medium">{member.name}</td>
-                      <td className="px-2 py-2 text-center bg-gray-100">{member.total}</td>
-                      <td className="px-2 py-2 text-center bg-blue-50">{member.new}</td>
-                      <td className="px-2 py-2 text-center bg-gray-100">{member.quotation}</td>
-                      <td className="px-2 py-2 text-center bg-blue-50">{member.negotiation} {member.negotiation > 0 && `(${member.negotiation})`}</td>
-                      <td className="px-2 py-2 text-center">{member.lost}</td>
-                      <td className="px-2 py-2 text-center bg-green-50 font-semibold">{member.win} {member.win > 5 && `(${member.win})`}</td>
+                  {salesTeamData.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-2 py-4 text-center text-gray-500">
+                        ยังไม่มีข้อมูลทีมขาย
+                      </td>
                     </tr>
-                  ))}
-                  <tr className="bg-gray-600 text-white font-bold">
-                    <td className="px-2 py-2 text-left">กำหนด</td>
-                    <td className="px-2 py-2 text-center">82</td>
-                    <td className="px-2 py-2 text-center">0</td>
-                    <td className="px-2 py-2 text-center">10</td>
-                    <td className="px-2 py-2 text-center">3(3)</td>
-                    <td className="px-2 py-2 text-center">1</td>
-                    <td className="px-2 py-2 text-center">45(4)</td>
-                  </tr>
+                  ) : (
+                    <>
+                      {salesTeamData.map((member, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-2 py-2 text-left font-medium">{member.name}</td>
+                          <td className="px-2 py-2 text-center bg-gray-100">{member.total}</td>
+                          <td className="px-2 py-2 text-center bg-blue-50">{member.new}</td>
+                          <td className="px-2 py-2 text-center bg-gray-100">{member.quotation}</td>
+                          <td className="px-2 py-2 text-center bg-blue-50">{member.negotiation}</td>
+                          <td className="px-2 py-2 text-center">{member.lost}</td>
+                          <td className="px-2 py-2 text-center bg-green-50 font-semibold">{member.win}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-gray-600 text-white font-bold">
+                        <td className="px-2 py-2 text-left">รวม</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.total}</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.new}</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.quotation}</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.negotiation}</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.lost}</td>
+                        <td className="px-2 py-2 text-center">{teamSummary.win}</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -423,7 +462,7 @@ const Dashboard = () => {
 
         {/* Trend Line Chart */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">ความเคลื่อนไหว 01 ต.ค. 2025- 31 ต.ค. 2025</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">ความเคลื่อนไหว {trendPeriodLabel}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -462,12 +501,19 @@ const Dashboard = () => {
             รูปภาพกิจกรรมล่าสุด
           </h2>
           <div className="bg-gray-100 rounded-lg p-4 h-48 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <Camera className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm">saleprojects 2 Suchada</p>
-              <p className="text-xs">06 October 2025 • 19:16</p>
-              <p className="text-xs mt-2">ส่งน้อง รร SB</p>
-            </div>
+            {latestActivity ? (
+              <div className="text-center text-gray-600">
+                <Camera className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm font-medium">{latestActivity.subject || 'กิจกรรมล่าสุด'}</p>
+                <p className="text-xs">{latestActivityDateLabel || '-'}</p>
+                <p className="text-xs mt-2">{latestActivity.notes || 'ไม่มีหมายเหตุเพิ่มเติม'}</p>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500">
+                <Camera className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">ยังไม่มีข้อมูลกิจกรรมล่าสุด</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -503,43 +549,55 @@ const Dashboard = () => {
         {/* Payment Method */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">ยอดขายแบ่งตามการชำระเงิน</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={paymentMethodData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {paymentMethodData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {paymentMethodData.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-sm text-gray-500">
+              ยังไม่มีข้อมูลการชำระเงิน
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={paymentMethodData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {paymentMethodData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Product Groups */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">ยอดขายแบ่งตามกลุ่มสินค้า</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productGroupData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} style={{ fontSize: '10px' }} />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#3b82f6">
-                {productGroupData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={`hsl(${index * 30}, 70%, 50%)`} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {productGroupData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-sm text-gray-500">
+              ยังไม่มีข้อมูลกลุ่มสินค้า
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={productGroupData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} style={{ fontSize: '10px' }} />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6">
+                  {productGroupData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={`hsl(${index * 30}, 70%, 50%)`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

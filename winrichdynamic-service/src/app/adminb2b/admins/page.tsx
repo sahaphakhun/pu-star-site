@@ -44,7 +44,7 @@ const AdminsPage: React.FC = () => {
   const loadData = async () => {
     try {
       // ดึงข้อมูลบทบาทจาก API
-      const rolesResponse = await fetch('/api/adminb2b/roles');
+      const rolesResponse = await fetch('/api/adminb2b/roles', { credentials: 'include' });
       const rolesResult = await rolesResponse.json();
       
       if (rolesResult.success) {
@@ -55,7 +55,7 @@ const AdminsPage: React.FC = () => {
       }
       
       // ดึงข้อมูลผู้ดูแลระบบจาก API
-      const adminsResponse = await fetch('/api/adminb2b/admins');
+      const adminsResponse = await fetch('/api/adminb2b/admins', { credentials: 'include' });
       const adminsResult = await adminsResponse.json();
       
       if (adminsResult.success) {
@@ -87,6 +87,7 @@ const AdminsPage: React.FC = () => {
       const res = await fetch('/api/adminb2b/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData)
       });
       const data = await res.json();
@@ -110,8 +111,9 @@ const AdminsPage: React.FC = () => {
     try {
       setSaving(true);
       const res = await fetch(`/api/adminb2b/admins/${editingAdmin._id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData)
       });
       const data = await res.json();
@@ -145,8 +147,9 @@ const AdminsPage: React.FC = () => {
       const admin = admins.find(a => a._id === adminId);
       if (!admin) return;
       const res = await fetch(`/api/adminb2b/admins/${adminId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ isActive: !admin.isActive })
       });
       const data = await res.json();
@@ -171,7 +174,10 @@ const AdminsPage: React.FC = () => {
     if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบสมาชิก "${admin?.name}" (${roleName})?`)) return;
     
     try {
-      const res = await fetch(`/api/adminb2b/admins/${adminId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/adminb2b/admins/${adminId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
       const data = await res.json();
       if (!data?.success) throw new Error(data?.error || 'ลบไม่สำเร็จ');
       toast.success('ลบสมาชิกเรียบร้อยแล้ว');

@@ -7,6 +7,14 @@ export interface ICustomer extends Document {
   taxId?: string;
   companyName?: string;
   companyAddress?: string;
+  province?: string;
+  district?: string;
+  subdistrict?: string;
+  zipcode?: string;
+  registeredProvince?: string;
+  registeredDistrict?: string;
+  registeredSubdistrict?: string;
+  registeredZipcode?: string;
   companyPhone?: string;
   companyEmail?: string;
   shippingAddress?: string;
@@ -136,6 +144,54 @@ const customerSchema = new Schema<ICustomer>(
       trim: true,
       maxlength: [500, 'ที่อยู่บริษัทต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
     },
+    province: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    district: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    subdistrict: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    zipcode: {
+      type: String,
+      required: false,
+      trim: true,
+      match: [/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก'],
+    },
+    registeredProvince: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    registeredDistrict: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    registeredSubdistrict: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    registeredZipcode: {
+      type: String,
+      required: false,
+      trim: true,
+      match: [/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก'],
+    },
     companyPhone: {
       type: String,
       required: false,
@@ -169,7 +225,7 @@ const customerSchema = new Schema<ICustomer>(
       unique: true,
       sparse: true,
       trim: true,
-      match: [/^[A-Z]\d[A-Z]\d$/, 'รหัสลูกค้าต้องอยู่ในรูปแบบ A1B2'],
+      match: [/^(C\d{8}|[A-Z]\d[A-Z]\d)$/, 'รหัสลูกค้าต้องอยู่ในรูปแบบ CYYMMXXXX หรือ A1B2'],
     },
     customerType: {
       type: String,
@@ -412,35 +468,50 @@ customerSchema.virtual('hasCompanyInfo').get(function() {
   return !!(this.companyName || this.companyAddress || this.companyPhone || this.companyEmail);
 });
 
-// สร้างรหัสลูกค้าแบบสลับอักษร-ตัวเลข 4 ตัว และตรวจสอบไม่ซ้ำ
-async function generateUniqueCustomerCode(): Promise<string> {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const digits = '0123456789';
+const CUSTOMER_CODE_PREFIX = 'C';
+const CUSTOMER_CODE_SEQUENCE_DIGITS = 4;
 
-  function createCode(): string {
-    const l1 = letters[Math.floor(Math.random() * letters.length)];
-    const d1 = digits[Math.floor(Math.random() * digits.length)];
-    const l2 = letters[Math.floor(Math.random() * letters.length)];
-    const d2 = digits[Math.floor(Math.random() * digits.length)];
-    return `${l1}${d1}${l2}${d2}`;
-  }
+const buildCustomerCodePrefix = (date: Date = new Date()) => {
+  const year = String(date.getFullYear()).slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${CUSTOMER_CODE_PREFIX}${year}${month}`;
+};
 
-  // พยายามสุ่มสูงสุด 20 ครั้งเพื่อหลีกเลี่ยงการชนกัน
+// สร้างรหัสลูกค้าแบบรันต่อรายเดือน (รูปแบบ CYYMMXXXX)
+async function generateUniqueCustomerCode(date: Date = new Date()): Promise<string> {
+  const prefix = buildCustomerCodePrefix(date);
+  const prefixLength = prefix.length;
+  const regex = new RegExp(`^${prefix}\\d{${CUSTOMER_CODE_SEQUENCE_DIGITS}}$`, 'i');
+
+  const latest = await (mongoose.models.Customer as any).aggregate([
+    { $match: { customerCode: { $regex: regex } } },
+    {
+      $addFields: {
+        codeNumber: {
+          $toInt: {
+            $substrBytes: [
+              '$customerCode',
+              prefixLength,
+              CUSTOMER_CODE_SEQUENCE_DIGITS,
+            ],
+          },
+        },
+      },
+    },
+    { $sort: { codeNumber: -1 } },
+    { $limit: 1 },
+    { $project: { customerCode: 1, codeNumber: 1 } },
+  ]);
+
+  const latestNumber = Number(latest?.[0]?.codeNumber || 0);
+  const nextNumber = latestNumber + 1;
+
   for (let attempt = 0; attempt < 20; attempt++) {
-    const code = createCode();
-    // ตรวจสอบซ้ำในฐานข้อมูล
+    const code = `${prefix}${String(nextNumber + attempt).padStart(CUSTOMER_CODE_SEQUENCE_DIGITS, '0')}`;
     const exists = await (mongoose.models.Customer as any).exists({ customerCode: code });
     if (!exists) {
       return code;
     }
-  }
-
-  // หากยังชน ให้เพิ่มกลยุทธ์ fallback เล็กน้อย โดยวนเปลี่ยนตัวท้าย
-  for (let i = 0; i < 100; i++) {
-    const base = createCode().slice(0, 3);
-    const code = `${base}${(i % 10).toString()}`;
-    const exists = await (mongoose.models.Customer as any).exists({ customerCode: code });
-    if (!exists) return code;
   }
 
   throw new Error('ไม่สามารถสร้างรหัสลูกค้าที่ไม่ซ้ำได้');

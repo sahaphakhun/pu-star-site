@@ -2,22 +2,24 @@
 
 import { useCallback } from 'react';
 import { useTokenManager } from '@/utils/tokenManager';
-import { 
-  projectsApi, 
-  quotationsApi, 
-  salesOrdersApi, 
-  activitiesApi, 
-  opportunitiesApi, 
-  customersApi, 
-  dashboardApi, 
-  forecastApi, 
-  settingsApi, 
+import {
+  projectsApi,
+  quotationsApi,
+  salesOrdersApi,
+  activitiesApi,
+  opportunitiesApi,
+  pipelineStagesApi,
+  customersApi,
+  dashboardApi,
+  forecastApi,
+  settingsApi,
   uploadFile,
   Project,
   Quotation,
   SalesOrder,
   Activity,
   Opportunity,
+  PipelineStage,
   Customer,
   DashboardData,
   Settings,
@@ -244,6 +246,13 @@ export const useApiService = () => {
     }, [getValidToken]),
   };
 
+  const pipelineStages = {
+    getPipelineStages: useCallback(async (filters: { team?: string } = {}): Promise<PipelineStage[]> => {
+      const token = await getValidToken();
+      return pipelineStagesApi.getPipelineStages(filters, token);
+    }, [getValidToken]),
+  };
+
   // Customers API with token management
   const customers = {
     getCustomers: useCallback(async (filters: CustomerFilters = {}): Promise<PaginatedResponse<Customer>> => {
@@ -333,6 +342,7 @@ export const useApiService = () => {
     salesOrders,
     activities,
     opportunities,
+    pipelineStages,
     customers,
     dashboard,
     forecast,

@@ -1,11 +1,13 @@
 "use client"
 
-import { useMemo, useState } from 'react';
-import { X, Plus, Trash2, Upload, Star } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { X, Plus, Trash2, Upload, Star, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import { deriveTeamOptions } from '@/utils/teamOptions';
 
 interface CustomerFormNewProps {
   customer?: any;
@@ -40,26 +42,28 @@ const normalizePhone = (input: string) => {
 };
 
 export default function CustomerFormNew({ customer, onClose, onSubmit }: CustomerFormNewProps) {
-  // ฟังก์ชันสร้างรหัสลูกค้าอัตโนมัติ
-  const generateCustomerCode = () => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2); // 2 หลักสุดท้ายของปี
-    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // เดือน 2 หลัก
-    const day = now.getDate().toString().padStart(2, '0'); // วันที่ 2 หลัก
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // สุ่ม 3 หลัก
-    return `C${year}${month}${day}${random}`;
-  };
+  const fetchNextCustomerCode = useCallback(async () => {
+    try {
+      const res = await fetch('/api/customers/next-code', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      return typeof data?.code === 'string' ? data.code : '';
+    } catch {
+      return '';
+    }
+  }, []);
 
   const initialFormData = useMemo(() => {
     if (!customer) {
       return {
         // ข้อมูลลูกค้า
         name: '',
-        customerCode: generateCustomerCode(), // เพิ่มรหัสลูกค้าอัตโนมัติ
+        customerCode: '',
         referenceCode: '',
         country: 'Thailand (ไทย)',
         province: '',
         district: '',
+        subdistrict: '',
+        zipcode: '',
 
         // ข้อมูลผู้ติดต่อ
         contacts: [
@@ -71,6 +75,8 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
         registeredCountry: 'Thailand (ไทย)',
         registeredProvince: '',
         registeredDistrict: '',
+        registeredSubdistrict: '',
+        registeredZipcode: '',
         branches: [],
         companyPhone: '',
         companyPhoneExt: '',
@@ -85,8 +91,8 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
         dataCompleteness: 5,
 
         // ทีมที่รับผิดชอบ
-        team: 'Trade Sales Team',
-        owner: 'PU STAR Office',
+        team: '',
+        owner: '',
 
         // ความสำคัญ
         importance: 3,
@@ -99,7 +105,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
         customerType: 'new',
         assignedTo: '',
         paymentTerms: 'ชำระเงินทันที',
-        
+
         // สถานะการขาย
         status: 'planning',
       };
@@ -110,31 +116,122 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
       contacts: customer.contacts && customer.contacts.length
         ? customer.contacts.map(ensureContact)
         : [ensureContact({
-            name: customer.contactName,
-            phone: customer.phoneNumber,
-            email: customer.email,
-          })],
+          name: customer.contactName,
+          phone: customer.phoneNumber,
+          email: customer.email,
+        })],
       branches: customer.branches || [],
       documents: customer.documents || [],
       importance: customer.priorityStar ?? customer.importance ?? 0,
-      team: customer.team || customer.customerType || 'Trade Sales Team',
+      team: customer.team || customer.customerType || '',
       owner: customer.assignedTo || customer.owner || '',
       registeredAddress: customer.companyAddress || customer.registeredAddress || '',
       taxId: customer.taxId || '',
+      registeredProvince: (customer as any).registeredProvince || '',
+      registeredDistrict: (customer as any).registeredDistrict || '',
+      registeredSubdistrict: (customer as any).registeredSubdistrict || '',
+      registeredZipcode: (customer as any).registeredZipcode || '',
       tags: customer.tags || [],
       notes: customer.notes || '',
       customerType: customer.customerType || 'new',
       paymentTerms: customer.paymentTerms || 'ชำระเงินทันที',
       status: customer.status || 'planning',
+      subdistrict: (customer as any).subdistrict || '',
+      zipcode: (customer as any).zipcode || '',
     };
   }, [customer]);
 
   const [formData, setFormData] = useState(initialFormData);
+  const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string; team?: string }>>([]);
+  const teamOptions = useMemo(() => {
+    const derived = deriveTeamOptions(admins);
+    const selected = formData.team?.trim();
+    if (selected && !derived.includes(selected)) {
+      return [selected, ...derived];
+    }
+    return derived;
+  }, [admins, formData.team]);
 
   const [newTag, setNewTag] = useState('');
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [taxIdWarning, setTaxIdWarning] = useState<string | null>(null);
+  const [checkingTaxId, setCheckingTaxId] = useState(false);
+
+  useEffect(() => {
+    if (customer || formData.customerCode) return;
+    let active = true;
+    fetchNextCustomerCode().then((code) => {
+      if (active && code) {
+        setFormData((prev) => ({ ...prev, customerCode: code }));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [customer, formData.customerCode, fetchNextCustomerCode]);
+
+  useEffect(() => {
+    if (!formData.team && teamOptions.length > 0) {
+      setFormData((prev) => ({ ...prev, team: teamOptions[0] }));
+    }
+  }, [formData.team, teamOptions]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAdmins = async () => {
+      try {
+      const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const data = await res.json();
+        if (!active) return;
+        if (data?.success && Array.isArray(data.data)) {
+          setAdmins(data.data);
+        } else {
+          setAdmins([]);
+        }
+      } catch {
+        if (active) setAdmins([]);
+      }
+    };
+    loadAdmins();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // ตรวจสอบเลขผู้เสียภาษีซ้ำ
+  const checkTaxIdDuplicate = useCallback(async (taxId: string) => {
+    if (!taxId || taxId.length !== 13) {
+      setTaxIdWarning(null);
+      return;
+    }
+    setCheckingTaxId(true);
+    try {
+      const excludeId = customer?._id || customer?.id || '';
+      const res = await fetch(
+        `/api/customers/check-tax-id?taxId=${taxId}&excludeId=${excludeId}`,
+        { credentials: 'include' }
+      );
+      const data = await res.json();
+      if (data.exists) {
+        setTaxIdWarning(`⚠️ พบลูกค้าที่ใช้เลขนี้แล้ว: ${data.customerName}`);
+      } else {
+        setTaxIdWarning(null);
+      }
+    } catch {
+      setTaxIdWarning(null);
+    } finally {
+      setCheckingTaxId(false);
+    }
+  }, [customer]);
+
+  // Handle tax ID blur
+  const handleTaxIdBlur = () => {
+    if (formData.taxId) {
+      checkTaxIdDuplicate(formData.taxId);
+    }
+  };
 
   // แท็กที่มีอยู่แล้วในระบบ (ตัวอย่าง)
   const availableTags = [
@@ -258,12 +355,20 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
 
     const payload: Record<string, any> = {
       name: formData.name,
-      customerCode: formData.customerCode || generateCustomerCode(), // เพิ่มรหัสลูกค้า
+      customerCode: formData.customerCode?.trim() || undefined,
       phoneNumber,
       email: primaryContact.email || '',
       taxId: formData.taxId || '',
       companyName: formData.companyName || formData.name,
       companyAddress: formData.registeredAddress || '',
+      province: formData.province || '',
+      district: formData.district || '',
+      subdistrict: formData.subdistrict || '',
+      zipcode: formData.zipcode || '',
+      registeredProvince: formData.registeredProvince || '',
+      registeredDistrict: formData.registeredDistrict || '',
+      registeredSubdistrict: formData.registeredSubdistrict || '',
+      registeredZipcode: formData.registeredZipcode || '',
       companyPhone: formData.companyPhone ? normalizePhone(formData.companyPhone) : '',
       companyEmail: formData.companyEmail || '',
       shippingAddress: formData.deliveryAddress || '',
@@ -308,7 +413,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
   const calculateCompleteness = () => {
     let completed = 0;
     let total = 0;
-    
+
     // ตรวจสอบฟิลด์สำคัญ
     const fields = [
       formData.name,
@@ -321,12 +426,12 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
       formData.team,
       formData.owner,
     ];
-    
+
     fields.forEach(field => {
       total++;
       if (field) completed++;
     });
-    
+
     return Math.round((completed / total) * 100);
   };
 
@@ -359,7 +464,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">👤</span> ข้อมูลลูกค้า
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -386,7 +491,12 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                         />
                         <Button
                           type="button"
-                          onClick={() => handleChange('customerCode', generateCustomerCode())}
+                          onClick={async () => {
+                            const code = await fetchNextCustomerCode();
+                            if (code) {
+                              handleChange('customerCode', code);
+                            }
+                          }}
                           className="bg-gray-500 hover:bg-gray-600 text-white px-3"
                         >
                           สร้างอัตโนมัติ
@@ -418,36 +528,23 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        จังหวัด <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.province}
-                        onChange={(e) => handleChange('province', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">โปรดเลือกจังหวัด</option>
-                        <option>กรุงเทพมหานคร</option>
-                        <option>นนทบุรี</option>
-                        <option>ปทุมธานี</option>
-                        <option>สมุทรปราการ</option>
-                        <option>นครราชสีมา</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        อำเภอ
-                      </label>
-                      <select
-                        value={formData.district}
-                        onChange={(e) => handleChange('district', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Please select district</option>
-                      </select>
-                    </div>
+                    {/* Address Autocomplete */}
+                    <AddressAutocomplete
+                      value={{
+                        province: formData.province,
+                        district: formData.district,
+                        subdistrict: formData.subdistrict,
+                        zipcode: formData.zipcode,
+                      }}
+                      onChange={(address) => {
+                        handleChange('province', address.province);
+                        handleChange('district', address.district);
+                        handleChange('subdistrict', address.subdistrict);
+                        handleChange('zipcode', address.zipcode);
+                      }}
+                      showSubdistrict={true}
+                      showZipcode={true}
+                    />
                   </div>
                 </div>
 
@@ -582,33 +679,22 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        จังหวัด
-                      </label>
-                      <select
-                        value={formData.registeredProvince}
-                        onChange={(e) => handleChange('registeredProvince', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">โปรดเลือกจังหวัด</option>
-                        <option>กรุงเทพมหานคร</option>
-                        <option>นนทบุรี</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        อำเภอ
-                      </label>
-                      <select
-                        value={formData.registeredDistrict}
-                        onChange={(e) => handleChange('registeredDistrict', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Please select district</option>
-                      </select>
-                    </div>
+                    <AddressAutocomplete
+                      value={{
+                        province: formData.registeredProvince,
+                        district: formData.registeredDistrict,
+                        subdistrict: formData.registeredSubdistrict,
+                        zipcode: formData.registeredZipcode,
+                      }}
+                      onChange={(address) => {
+                        handleChange('registeredProvince', address.province);
+                        handleChange('registeredDistrict', address.district);
+                        handleChange('registeredSubdistrict', address.subdistrict);
+                        handleChange('registeredZipcode', address.zipcode);
+                      }}
+                      showSubdistrict={true}
+                      showZipcode={true}
+                    />
 
                     <div>
                       <Button
@@ -674,8 +760,19 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                       <Input
                         value={formData.taxId}
                         onChange={(e) => handleChange('taxId', e.target.value)}
+                        onBlur={handleTaxIdBlur}
                         placeholder="ระบุเลขประจำตัวผู้เสียภาษี"
+                        maxLength={13}
                       />
+                      {checkingTaxId && (
+                        <p className="text-sm text-gray-500 mt-1">กำลังตรวจสอบ...</p>
+                      )}
+                      {taxIdWarning && (
+                        <p className="text-sm text-orange-600 mt-1 flex items-center gap-1">
+                          <AlertTriangle size={14} />
+                          {taxIdWarning}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -803,14 +900,27 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                       <label className="block text-sm font-medium mb-1">
                         ทีม
                       </label>
-                      <select
-                        value={formData.team}
-                        onChange={(e) => handleChange('team', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option>Trade Sales Team</option>
-                        <option>Project Sales Team</option>
-                      </select>
+                      {teamOptions.length > 0 ? (
+                        <select
+                          value={formData.team}
+                          onChange={(e) => handleChange('team', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">ไม่ระบุ</option>
+                          {teamOptions.map((team) => (
+                            <option key={team} value={team}>
+                              {team}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          value={formData.team}
+                          onChange={(e) => handleChange('team', e.target.value)}
+                          placeholder="ระบุทีม"
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      )}
                     </div>
 
                     <div>
@@ -822,9 +932,12 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                         onChange={(e) => handleChange('owner', e.target.value)}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
-                        <option>PU STAR Office</option>
-                        <option>Saletrades 1 Kitti</option>
-                        <option>Saleprojects 1 Sunisa</option>
+                        <option value="">ไม่ระบุ</option>
+                        {admins.map((admin) => (
+                          <option key={admin._id} value={admin._id}>
+                            {admin.name || admin.phone || admin._id}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -844,11 +957,10 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                       >
                         <Star
                           size={32}
-                          className={`${
-                            star <= formData.importance
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-300'
-                          } transition-colors`}
+                          className={`${star <= formData.importance
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
+                            } transition-colors`}
                         />
                       </button>
                     ))}
@@ -872,7 +984,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                     {showTagSuggestions && newTag && (
                       <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {availableTags
-                          .filter(tag => 
+                          .filter(tag =>
                             tag.toLowerCase().includes(newTag.toLowerCase()) &&
                             !formData.tags.includes(tag)
                           )
@@ -947,11 +1059,10 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
                     key={status.value}
                     type="button"
                     onClick={() => handleChange('status', status.value)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      formData.status === status.value
-                        ? `${status.color} ring-2 ring-offset-2 ring-blue-500`
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${formData.status === status.value
+                      ? `${status.color} ring-2 ring-offset-2 ring-blue-500`
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     {status.label}
                   </button>

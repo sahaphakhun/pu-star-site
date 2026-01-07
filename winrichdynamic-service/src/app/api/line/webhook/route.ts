@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 
           await connectDB();
 
-          // คำสั่งผูกกลุ่มกับลูกค้า: ลูกค้า#AAAA
-          if (/^ลูกค้า#([A-Z]\d[A-Z]\d)$/i.test(text)) {
+          // คำสั่งผูกกลุ่มกับลูกค้า: ลูกค้า#CYYMMXXXX
+          if (/^ลูกค้า#(C\d{8}|[A-Z]\d[A-Z]\d)$/i.test(text)) {
             const code = text.split('#')[1].toUpperCase();
             const customer = await Customer.findOne({ customerCode: code });
             if (!customer) {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             // ตรวจสอบการผูกลูกค้า
             const link = await LineGroupLink.findOne({ groupId });
             if (!link) {
-              await client.replyMessage(event.replyToken, { type: 'text', text: 'ยังไม่ผูกกลุ่มกับลูกค้า ใช้คำสั่ง: ลูกค้า#A1B2' });
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'ยังไม่ผูกกลุ่มกับลูกค้า ใช้คำสั่ง: ลูกค้า#C26010001' });
               return;
             }
 
@@ -116,7 +116,10 @@ export async function POST(request: NextRequest) {
               const sku = m[1];
               const qty = Number(m[2]);
               // หา SKU แบบไม่สนตัวพิมพ์เล็ก/ใหญ่
-              const product = await Product.findOne({ sku: { $regex: new RegExp(`^${escapeRegex(sku)}$`, 'i') } });
+              const product = await Product.findOne({
+                sku: { $regex: new RegExp(`^${escapeRegex(sku)}$`, 'i') },
+                isDeleted: { $ne: true }
+              });
               if (!product) continue;
               const p: any = product;
               const unitLabel = p.units?.[0]?.label || '';
@@ -195,5 +198,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-
-

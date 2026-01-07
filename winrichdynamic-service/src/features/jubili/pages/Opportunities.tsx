@@ -1,52 +1,99 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Flame, ThumbsUp, Phone, User, Search, Filter, X, AlertCircle, RefreshCw, Eye, Edit } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Plus,
+  Flame,
+  ThumbsUp,
+  Phone,
+  User,
+  Search,
+  Filter,
+  AlertCircle,
+  RefreshCw,
+  Eye,
+  Edit,
+} from 'lucide-react';
 import useApiService from '@/features/jubili/hooks/useApiService';
 import OpportunityForm from '@/components/OpportunityForm';
+import Loading from '@/components/ui/Loading';
+import {
+  Opportunity,
+  OpportunityFilters,
+  PipelineStage,
+} from '@/features/jubili/services/apiService';
 
-const Opportunities = () => {
-  const [opportunities, setOpportunities] = useState([]);
-  const [pipelineStages, setPipelineStages] = useState([]);
+type ActiveTab = 'all' | 'new' | 'contacted' | 'won';
+type ModalMode = 'create' | 'edit';
+
+type OpportunityRow = {
+  id: string;
+  code: string;
+  customer: string;
+  customerId?: string;
+  contact: string;
+  phone: string;
+  owner: string;
+  importance: number;
+  products: string[];
+  date: string;
+  value: number;
+  status: Opportunity['status'];
+  stageName?: string;
+  likes: number;
+  probability: number;
+  expectedCloseDate?: string;
+  tags: string[];
+  source: Opportunity;
+};
+
+type FiltersState = {
+  status: string;
+  stageId: string;
+  customerId: string;
+  ownerId: string;
+  team: string;
+};
+
+type StatusInfo = {
+  label: string;
+  color: string;
+  icon: string;
+};
+
+const initialFilters: FiltersState = {
+  status: '',
+  stageId: '',
+  customerId: '',
+  ownerId: '',
+  team: '',
+};
+
+const Opportunities: React.FC = () => {
+  const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPagesState, setTotalPagesState] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '',
-    stageId: '',
-    customerId: '',
-    ownerId: '',
-    team: ''
-  });
+  const [filters, setFilters] = useState<FiltersState>(initialFilters);
   const itemsPerPage = 10;
-  
+
   // Modal state management
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
-  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>('create');
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
-  const { opportunities: opportunitiesApi } = useApiService();
-
-  // สีสำหรับไอคอนและแถบ
-  const iconShapes = ['●', '■', '▲', '◆'];
-  const iconColors = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#FFC107', '#F44336'];
-  const leftBarColors = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4'];
-  const columnBgColors = [
-    '#E8F5E9', '#E3F2FD', '#FFF3E0', '#FCE4EC', '#F3E5F5', 
-    '#E0F2F1', '#FFF9C4', '#FFEBEE', '#E1F5FE', '#F1F8E9',
-    '#FBE9E7', '#EDE7F6', '#E0F7FA'
-  ];
+  const { opportunities: opportunitiesApi, pipelineStages: pipelineStagesApi } = useApiService();
 
   // ฟังก์ชันแปลงสถานะ
-  const getStatusInfo = (status, stageName) => {
+  const getStatusInfo = (status: Opportunity['status'], stageName?: string): StatusInfo => {
     // Map Deal status to UI status
-    let uiStatus = status;
+    let uiStatus: string = status;
     if (status === 'open') {
       // Use stage name for more specific status when deal is open
       if (stageName?.toLowerCase().includes('new') || stageName?.toLowerCase().includes('ใหม่')) {
@@ -60,15 +107,15 @@ const Opportunities = () => {
       }
     }
 
-    const statusMap = {
-      'new': { label: 'ใหม่', color: 'bg-blue-100 text-blue-800', icon: '🆕' },
-      'contacted': { label: 'ติดต่อแล้ว', color: 'bg-yellow-100 text-yellow-800', icon: '📞' },
-      'quotation_sent': { label: 'ส่งใบเสนอราคา', color: 'bg-purple-100 text-purple-800', icon: '📄' },
-      'negotiating': { label: 'เจรจา', color: 'bg-orange-100 text-orange-800', icon: '💬' },
-      'won': { label: 'ชนะ', color: 'bg-green-100 text-green-800', icon: '✅' },
-      'lost': { label: 'แพ้', color: 'bg-red-100 text-red-800', icon: '❌' }
+    const statusMap: Record<string, StatusInfo> = {
+      new: { label: 'ใหม่', color: 'bg-blue-100 text-blue-800', icon: '🆕' },
+      contacted: { label: 'ติดต่อแล้ว', color: 'bg-yellow-100 text-yellow-800', icon: '📞' },
+      quotation_sent: { label: 'ส่งใบเสนอราคา', color: 'bg-purple-100 text-purple-800', icon: '📄' },
+      negotiating: { label: 'เจรจา', color: 'bg-orange-100 text-orange-800', icon: '💬' },
+      won: { label: 'ชนะ', color: 'bg-green-100 text-green-800', icon: '✅' },
+      lost: { label: 'แพ้', color: 'bg-red-100 text-red-800', icon: '❌' },
     };
-    return statusMap[uiStatus] || statusMap['new'];
+    return statusMap[uiStatus] || statusMap.new;
   };
 
   // ฟังก์ชันดึงข้อมูลจาก API
@@ -76,45 +123,63 @@ const Opportunities = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Build filters object
-      const apiFilters = {
+
+      const apiFilters: OpportunityFilters = {
         page: currentPage,
         limit: itemsPerPage,
         q: searchQuery || undefined,
         status: activeTab !== 'all' ? activeTab : undefined,
-        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value))
       };
 
+      if (filters.status) apiFilters.status = filters.status;
+      if (filters.stageId) apiFilters.stageId = filters.stageId;
+      if (filters.customerId) apiFilters.customerId = filters.customerId;
+      if (filters.ownerId) apiFilters.ownerId = filters.ownerId;
+      if (filters.team) apiFilters.team = filters.team;
+
       const response = await opportunitiesApi.getOpportunities(apiFilters);
-      
+      const rows = Array.isArray(response.data) ? response.data : [];
+
       // Map API response to match UI expectations
-      const mappedOpportunities = response.data.map(deal => ({
-        id: deal._id,
-        code: `LD#${new Date(deal.createdAt).getFullYear().toString().slice(-2)}${String(new Date(deal.createdAt).getMonth() + 1).padStart(2, '0')}${String(new Date(deal.createdAt).getDate()).padStart(2, '0')}-${String(Math.random()).substring(2, 6)}`,
-        customer: deal.customerName || 'ไม่ระบุลูกค้า',
-        customerId: deal.customerId,
-        contact: '-', // API doesn't provide contact info
-        phone: '-', // API doesn't provide phone info
-        owner: deal.ownerId || 'ไม่ระบุ',
-        importance: Math.floor(Math.random() * 5) + 1, // Random importance since API doesn't provide it
-        products: deal.description ? [deal.description] : ['ไม่ระบุสินค้า'],
-        date: deal.createdAt,
-        value: deal.amount || 0,
-        status: deal.status,
-        stageName: deal.stageName,
-        likes: Math.floor(Math.random() * 10), // Random likes since API doesn't provide it
-        probability: deal.probability || 0,
-        expectedCloseDate: deal.expectedCloseDate,
-        tags: deal.tags || []
-      }));
+      const mappedOpportunities: OpportunityRow[] = rows.map((deal: Opportunity) => {
+        const createdAt = deal.createdAt ? new Date(deal.createdAt) : new Date();
+        const year = createdAt.getFullYear().toString().slice(-2);
+        const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+        const day = String(createdAt.getDate()).padStart(2, '0');
+        const idSuffix = deal._id ? String(deal._id).slice(-4).toUpperCase() : '0000';
+        const probability = typeof deal.probability === 'number' ? deal.probability : undefined;
+        const importance = probability !== undefined
+          ? Math.min(5, Math.max(1, Math.round(probability / 20)))
+          : 3;
+
+        return {
+          id: deal._id,
+          code: `LD#${year}${month}${day}-${idSuffix}`,
+          customer: deal.customerName || 'ไม่ระบุลูกค้า',
+          customerId: deal.customerId,
+          contact: '-',
+          phone: '-',
+          owner: deal.ownerId || 'ไม่ระบุ',
+          importance,
+          products: deal.description ? [deal.description] : ['ไม่ระบุสินค้า'],
+          date: deal.createdAt,
+          value: deal.amount || 0,
+          status: deal.status,
+          stageName: deal.stageName,
+          likes: Array.isArray(deal.quotationIds) ? deal.quotationIds.length : 0,
+          probability: deal.probability || 0,
+          expectedCloseDate: deal.expectedCloseDate,
+          tags: deal.tags || [],
+          source: deal,
+        };
+      });
 
       setOpportunities(mappedOpportunities);
       setTotalItems(response.total || 0);
       setTotalPagesState(response.totalPages || 1);
     } catch (err) {
       console.error('Error fetching opportunities:', err);
-      setError(err.message || 'ไม่สามารถดึงข้อมูลโอกาสได้');
+      setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลโอกาสได้');
     } finally {
       setLoading(false);
     }
@@ -123,17 +188,8 @@ const Opportunities = () => {
   // ฟังก์ชันดึงข้อมูล Pipeline Stages
   const fetchPipelineStages = async () => {
     try {
-      // Since there's no specific API for pipeline stages, we'll use mock data
-      // In a real implementation, you would fetch this from the API
-      const mockStages = [
-        { _id: '1', name: 'ใหม่', order: 1, color: '#3B82F6' },
-        { _id: '2', name: 'ติดต่อแล้ว', order: 2, color: '#F59E0B' },
-        { _id: '3', name: 'ส่งใบเสนอราคา', order: 3, color: '#8B5CF6' },
-        { _id: '4', name: 'เจรจา', order: 4, color: '#F97316' },
-        { _id: '5', name: 'ชนะ', order: 5, color: '#10B981' },
-        { _id: '6', name: 'แพ้', order: 6, color: '#EF4444' }
-      ];
-      setPipelineStages(mockStages);
+      const stages = await pipelineStagesApi.getPipelineStages();
+      setPipelineStages(Array.isArray(stages) ? stages : []);
     } catch (err) {
       console.error('Error fetching pipeline stages:', err);
     }
@@ -152,17 +208,17 @@ const Opportunities = () => {
   };
 
   // ฟังก์ชันเปิด modal แก้ไขโอกาส
-  const handleEditOpportunity = (opportunity) => {
+  const handleEditOpportunity = (opportunity: OpportunityRow) => {
     setModalMode('edit');
-    setSelectedOpportunity(opportunity);
+    setSelectedOpportunity(opportunity.source);
     setIsModalOpen(true);
   };
 
   // ฟังก์ชันดูรายละเอียดโอกาส
-  const handleViewOpportunity = (opportunity) => {
+  const handleViewOpportunity = (opportunity: OpportunityRow) => {
     // For now, just open in edit mode as view-only
     setModalMode('edit');
-    setSelectedOpportunity(opportunity);
+    setSelectedOpportunity(opportunity.source);
     setIsModalOpen(true);
   };
 
@@ -173,45 +229,39 @@ const Opportunities = () => {
   };
 
   // ฟังก์ชันหลังบันทึกสำเร็จ
-  const handleOpportunitySuccess = (opportunity) => {
+  const handleOpportunitySuccess = (_opportunity: Opportunity) => {
     setSuccessMessage(
       modalMode === 'create'
         ? 'สร้างโอกาสเรียบร้อยแล้ว'
         : 'แก้ไขโอกาสเรียบร้อยแล้ว'
     );
     fetchOpportunities(); // รีเฟรชข้อมูล
-    
+
     // ซ่อนข้อความสำเร็จหลัง 3 วินาที
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   // ฟังก์ชันค้นหา
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCurrentPage(1);
     fetchOpportunities();
   };
 
   // ฟังก์ชันเปลี่ยน Tab
-  const handleTabChange = (tab) => {
+  const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
     setCurrentPage(1);
   };
 
   // ฟังก์ชันเปลี่ยนหน้า
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   // ฟังก์ชันรีเซ็ตฟิลเตอร์
   const handleResetFilters = () => {
-    setFilters({
-      status: '',
-      stageId: '',
-      customerId: '',
-      ownerId: '',
-      team: ''
-    });
+    setFilters(initialFilters);
     setCurrentPage(1);
     setSearchQuery('');
   };
@@ -237,7 +287,7 @@ const Opportunities = () => {
               THB {totalValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
-          <button 
+          <button
             onClick={handleRefresh}
             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-md"
             disabled={loading}
@@ -305,7 +355,7 @@ const Opportunities = () => {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">สเตจทั้งหมด</option>
-                {pipelineStages.map(stage => (
+                {pipelineStages.map((stage) => (
                   <option key={stage._id} value={stage._id}>{stage.name}</option>
                 ))}
               </select>
@@ -388,12 +438,7 @@ const Opportunities = () => {
       </div>
 
       {/* Loading State */}
-      {loading && (
-        <div className="flex justify-center items-center py-12">
-          <RefreshCw className="animate-spin text-blue-500" size={40} />
-          <span className="ml-3 text-gray-600">กำลังโหลดข้อมูล...</span>
-        </div>
-      )}
+      {loading && <Loading size="lg" label="กำลังโหลดข้อมูล..." className="py-12" />}
 
       {/* Error State */}
       {error && (
@@ -453,31 +498,26 @@ const Opportunities = () => {
 
           {/* Table Body */}
           <div>
-            {opportunities.map((opp, index) => {
+            {opportunities.map((opp) => {
               const statusInfo = getStatusInfo(opp.status, opp.stageName);
-              const globalIndex = (currentPage - 1) * itemsPerPage + index;
-              
+
               return (
                 <div
                   key={opp.id}
-                  className="grid grid-cols-12 gap-4 p-4 border-l-4 hover:bg-gray-50 transition-all"
-                  style={{ borderLeftColor: leftBarColors[globalIndex % leftBarColors.length] }}
+                  className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   {/* หมายเลข */}
-                  <div className="col-span-2 flex items-center gap-2" style={{ backgroundColor: columnBgColors[0 % columnBgColors.length] }}>
-                    <span style={{ color: iconColors[globalIndex % iconColors.length], fontSize: '20px' }}>
-                      {iconShapes[globalIndex % iconShapes.length]}
-                    </span>
+                  <div className="col-span-2 flex items-center">
                     <span className="font-semibold text-gray-800">{opp.code}</span>
                   </div>
 
                   {/* ลูกค้า */}
-                  <div className="col-span-2" style={{ backgroundColor: columnBgColors[1 % columnBgColors.length] }}>
+                  <div className="col-span-2">
                     <div className="font-semibold text-gray-800">{opp.customer}</div>
                   </div>
 
                   {/* ผู้ติดต่อ */}
-                  <div className="col-span-2" style={{ backgroundColor: columnBgColors[2 % columnBgColors.length] }}>
+                  <div className="col-span-2">
                     <div className="flex items-center gap-2">
                       <User size={16} className="text-gray-500" />
                       <span>{opp.contact}</span>
@@ -489,14 +529,14 @@ const Opportunities = () => {
                   </div>
 
                   {/* ความสำคัญ */}
-                  <div className="col-span-1 flex items-center gap-1" style={{ backgroundColor: columnBgColors[3 % columnBgColors.length] }}>
+                  <div className="col-span-1 flex items-center gap-1">
                     {Array.from({ length: opp.importance }).map((_, i) => (
                       <Flame key={i} size={16} className="text-orange-500 fill-orange-500" />
                     ))}
                   </div>
 
                   {/* สินค้า */}
-                  <div className="col-span-2 text-sm" style={{ backgroundColor: columnBgColors[4 % columnBgColors.length] }}>
+                  <div className="col-span-2 text-sm">
                     {opp.products.slice(0, 2).map((product, i) => (
                       <div key={i} className="text-gray-600 truncate">{product}</div>
                     ))}
@@ -506,21 +546,23 @@ const Opportunities = () => {
                   </div>
 
                   {/* วันที่ */}
-                  <div className="col-span-1" style={{ backgroundColor: columnBgColors[5 % columnBgColors.length] }}>
-                    {new Date(opp.date).toLocaleDateString('th-TH', { 
-                      day: '2-digit', 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
+                  <div className="col-span-1">
+                    {opp.date
+                      ? new Date(opp.date).toLocaleDateString('th-TH', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                      : '-'}
                   </div>
 
                   {/* มูลค่า */}
-                  <div className="col-span-1 font-semibold text-green-600" style={{ backgroundColor: columnBgColors[6 % columnBgColors.length] }}>
+                  <div className="col-span-1 font-semibold text-green-600">
                     {opp.value > 0 ? `฿${opp.value.toLocaleString()}` : '-'}
                   </div>
 
                   {/* สถานะและ Actions */}
-                  <div className="col-span-1 flex items-center gap-2" style={{ backgroundColor: columnBgColors[7 % columnBgColors.length] }}>
+                  <div className="col-span-1 flex items-center gap-2">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color} flex items-center gap-1`}>
                       <span>{statusInfo.icon}</span>
                       {statusInfo.label}
@@ -569,7 +611,7 @@ const Opportunities = () => {
           >
             ก่อนหน้า
           </button>
-          {Array.from({ length: totalPagesState }, (_, i) => i + 1).map(page => (
+          {Array.from({ length: totalPagesState }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
               onClick={() => handlePageChange(page)}

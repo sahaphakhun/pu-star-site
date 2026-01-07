@@ -18,6 +18,10 @@ export interface QuotationData {
   customerTaxId?: string;
   customerAddress?: string;
   shippingAddress?: string;
+  deliveryProvince?: string;
+  deliveryDistrict?: string;
+  deliverySubdistrict?: string;
+  deliveryZipcode?: string;
   shipToSameAsCustomer?: boolean;
   customerPhone?: string;
   subject: string;

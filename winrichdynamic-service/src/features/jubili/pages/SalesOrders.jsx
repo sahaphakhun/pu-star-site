@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Package, Star, TrendingUp, Clock, CheckCircle, XCircle, Circle, Truck, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Search, Filter, Edit, Trash2, Package, Star, TrendingUp, Clock, CheckCircle, XCircle, Circle, Truck, CreditCard, AlertCircle, RefreshCw, Eye, Printer } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import SalesOrderForm from '@/components/SalesOrderForm';
 import useApiService from '@/features/jubili/hooks/useApiService';
@@ -28,6 +29,7 @@ const paymentStatusConfig = {
 };
 
 export default function SalesOrders() {
+  const router = useRouter();
   const [salesOrders, setSalesOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,11 +52,12 @@ export default function SalesOrders() {
     setError(null);
     
     try {
-      const apiFilters = {
-        page,
-        limit: pagination.limit,
-        ...newFilters
-      };
+    const apiFilters = {
+      page,
+      limit: pagination.limit,
+      orderType: 'sales_order',
+      ...newFilters
+    };
 
       // Add search term if provided
       if (searchTerm) {
@@ -69,13 +72,13 @@ export default function SalesOrders() {
       }
 
       const response = await salesOrdersApi.getSalesOrders(apiFilters);
-      
-      setSalesOrders(response.data || []);
+      const list = Array.isArray(response) ? response : response.data || [];
+      setSalesOrders(list);
       setPagination({
-        page: response.page || 1,
-        limit: response.limit || 10,
-        total: response.total || 0,
-        totalPages: response.totalPages || 0
+        page: response.page || page,
+        limit: response.limit || pagination.limit,
+        total: response.total || list.length,
+        totalPages: response.totalPages || 1
       });
     } catch (err) {
       console.error('Error fetching sales orders:', err);
@@ -122,27 +125,68 @@ export default function SalesOrders() {
     fetchSalesOrders(pagination.page, filters);
   };
 
+  const handlePrint = async (order) => {
+    try {
+      const res = await fetch(`/api/orders/${order.id}/pdf`, { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error('ไม่สามารถดาวน์โหลด PDF ได้');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ใบสั่งขาย_${order.salesOrderNumber || order.id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading PDF:', err);
+      setError('ไม่สามารถดาวน์โหลดใบสั่งขายได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
+
   // Transform order data for UI
   const transformOrderData = (order) => {
+    const mapStatus = (status) => {
+      const map = {
+        pending: 'draft',
+        confirmed: 'confirmed',
+        ready: 'processing',
+        shipped: 'processing',
+        delivered: 'completed',
+        cancelled: 'cancelled',
+      };
+      return map[status] || 'draft';
+    };
+
+    const resolveDeliveryStatus = () => {
+      if (order.deliveryStatus) return order.deliveryStatus;
+      if (order.status === 'delivered') return 'delivered';
+      if (order.status === 'shipped') return 'shipped';
+      if (order.status === 'ready') return 'preparing';
+      return 'pending';
+    };
+
+    const paidAmount = order.paidAmount ?? (order.slipVerification?.verified ? order.totalAmount || 0 : 0);
+    const totalAmount = order.totalAmount || 0;
+
     // Map API fields to UI expected fields
     return {
       ...order,
+      raw: order,
       id: order._id,
-      salesOrderNumber: order._id.substring(0, 8).toUpperCase(), // Generate a short ID for display
+      salesOrderNumber: order.salesOrderNumber || order._id.substring(0, 8).toUpperCase(),
       customerName: order.customerName || '-',
-      owner: 'Admin', // Default owner since it's not in the model
+      owner: order.ownerName || order.ownerId || '-',
       projectName: '-', // Not in the model
-      importance: 3, // Default importance
+      importance: order.importance ?? 3,
       orderDate: order.orderDate || order.createdAt,
       deliveryDate: order.deliveryDate || null,
-      deliveryStatus: order.status === 'delivered' ? 'delivered' :
-                     order.status === 'shipped' ? 'shipped' :
-                     order.status === 'ready' ? 'preparing' : 'pending',
-      paymentStatus: order.slipVerification?.verified ? 'paid' : 'unpaid',
-      total: order.totalAmount || 0,
-      paidAmount: order.slipVerification?.verified ? order.totalAmount || 0 : 0,
-      remainingAmount: order.slipVerification?.verified ? 0 : order.totalAmount || 0,
-      status: order.status || 'draft'
+      deliveryStatus: resolveDeliveryStatus(),
+      paymentStatus: order.paymentStatus || (order.slipVerification?.verified ? 'paid' : 'unpaid'),
+      total: totalAmount,
+      paidAmount: paidAmount || 0,
+      remainingAmount: Math.max(totalAmount - (paidAmount || 0), 0),
+      status: mapStatus(order.status)
     };
   };
 
@@ -481,8 +525,24 @@ export default function SalesOrders() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => router.push(`/adminb2b/sales-orders/${order.id}/view`)}
+                            className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrint(order)}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => {
-                              setEditingSalesOrder(order);
+                              setEditingSalesOrder(order.raw || order);
                               setShowForm(true);
                             }}
                             className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"

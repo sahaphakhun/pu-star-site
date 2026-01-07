@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useTokenManager } from '@/utils/tokenManager';
 import AdminModal from '@/components/AdminModal';
 import ProductForm from '@/components/ProductForm';
+import Loading from '@/components/ui/Loading';
 import { Product, CreateProduct } from '@/schemas/product';
 
 interface Category {
@@ -16,6 +17,8 @@ interface Category {
 // Extended Product interface with _id for database
 interface ProductWithId extends Product {
   _id: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 
 const ProductsPage: React.FC = () => {
@@ -28,6 +31,7 @@ const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [selectedLifecycle, setSelectedLifecycle] = useState<'active' | 'archived' | 'all'>('active');
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
@@ -52,7 +56,7 @@ const ProductsPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('/api/products', {
+      const response = await fetch('/api/products?includeDeleted=true', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -205,7 +209,7 @@ const ProductsPage: React.FC = () => {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?')) return;
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบสินค้านี้? (ลบแบบเก็บประวัติ)')) return;
     
     try {
       const token = await getValidToken();
@@ -231,7 +235,7 @@ const ProductsPage: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        toast.success('ลบสินค้าเรียบร้อยแล้ว');
+        toast.success('ลบสินค้าเรียบร้อยแล้ว (เก็บประวัติ)');
         loadProducts();
       } else {
         toast.error(result.error || 'เกิดข้อผิดพลาดในการลบสินค้า');
@@ -242,22 +246,53 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleEditProduct = (product: ProductWithId) => {
-    setEditingProduct(product);
+  const handleRestoreProduct = async (productId: string) => {
+    if (!confirm('คุณต้องการกู้คืนสินค้านี้หรือไม่?')) return;
+
+    try {
+      const token = await getValidToken();
+      if (!token) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        logout();
+        return;
+      }
+
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 401) {
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        logout();
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('กู้คืนสินค้าเรียบร้อยแล้ว');
+        loadProducts();
+      } else {
+        toast.error(result.error || 'เกิดข้อผิดพลาดในการกู้คืนสินค้า');
+      }
+    } catch (error) {
+      console.error('Error restoring product:', error);
+      toast.error('เกิดข้อผิดพลาดในการกู้คืนสินค้า');
+    }
   };
 
-  const handleLogout = async () => {
-    logout();
+  const handleEditProduct = (product: ProductWithId) => {
+    setEditingProduct(product);
   };
 
   // แสดง loading ถ้ายังไม่เสร็จการตรวจสอบ authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">กำลังตรวจสอบการเข้าสู่ระบบ...</p>
-        </div>
+        <Loading size="lg" label="กำลังตรวจสอบการเข้าสู่ระบบ..." />
       </div>
     );
   }
@@ -273,11 +308,17 @@ const ProductsPage: React.FC = () => {
                          (product as any).sku?.toLowerCase().includes(term || '') ||
                          (product.skuConfig?.prefix && product.skuConfig.prefix.toLowerCase().includes(term));
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'available' && product.isAvailable) ||
-                         (selectedStatus === 'unavailable' && !product.isAvailable);
+    const matchesLifecycle =
+      selectedLifecycle === 'all' ||
+      (selectedLifecycle === 'active' && !product.isDeleted) ||
+      (selectedLifecycle === 'archived' && product.isDeleted);
+    const matchesStatus =
+      selectedLifecycle === 'archived' ||
+      selectedStatus === 'all' ||
+      (selectedStatus === 'available' && product.isAvailable) ||
+      (selectedStatus === 'unavailable' && !product.isAvailable);
     
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory && matchesLifecycle && matchesStatus;
   });
 
   const formatCurrency = (amount: number) => {
@@ -287,9 +328,13 @@ const ProductsPage: React.FC = () => {
     }).format(amount);
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+  const getStatusColor = (status: 'available' | 'unavailable' | 'archived') => {
+    if (status === 'archived') return 'bg-gray-100 text-gray-600';
+    return status === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
+
+  const totalActive = products.filter(product => !product.isDeleted).length;
+  const totalArchived = products.filter(product => product.isDeleted).length;
 
   return (
     <div className="space-y-6">
@@ -297,7 +342,10 @@ const ProductsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">จัดการสินค้า</h1>
-          <p className="text-gray-600">สร้าง แก้ไข และลบสินค้าในระบบ</p>
+          <p className="text-gray-600">สร้าง แก้ไข และลบสินค้าในระบบ (ลบแบบเก็บประวัติ)</p>
+          <p className="text-sm text-gray-500">
+            ใช้งานอยู่ {totalActive} รายการ • ลบแล้ว {totalArchived} รายการ
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -305,12 +353,6 @@ const ProductsPage: React.FC = () => {
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             + สร้างสินค้าใหม่
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-          >
-            ออกจากระบบ
           </button>
         </div>
       </div>
@@ -346,6 +388,15 @@ const ProductsPage: React.FC = () => {
             <option value="available">พร้อมขาย</option>
             <option value="unavailable">สินค้าหมด</option>
           </select>
+          <select
+            value={selectedLifecycle}
+            onChange={(e) => setSelectedLifecycle(e.target.value as 'active' | 'archived' | 'all')}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="active">ใช้งานอยู่</option>
+            <option value="archived">ลบแล้ว</option>
+            <option value="all">ทั้งหมด</option>
+          </select>
         </div>
       </div>
 
@@ -353,8 +404,7 @@ const ProductsPage: React.FC = () => {
       <div className="bg-white rounded-lg border shadow-sm">
         {loadingProducts ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">กำลังโหลดข้อมูลสินค้า...</p>
+            <Loading label="กำลังโหลดข้อมูลสินค้า..." />
           </div>
         ) : products.length === 0 ? (
           <div className="p-8 text-center">
@@ -365,6 +415,10 @@ const ProductsPage: React.FC = () => {
             >
               สร้างสินค้าแรก
             </button>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-gray-500">ไม่พบสินค้าที่ตรงกับเงื่อนไข</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -395,8 +449,14 @@ const ProductsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProducts.map((product) => (
-                  <tr key={product._id} className="hover:bg-gray-50">
+                {filteredProducts.map((product) => {
+                  const isArchived = Boolean(product.isDeleted);
+                  const statusLabel = isArchived ? 'ถูกลบ' : product.isAvailable ? 'พร้อมขาย' : 'สินค้าหมด';
+                  const statusColor = getStatusColor(
+                    isArchived ? 'archived' : product.isAvailable ? 'available' : 'unavailable'
+                  );
+                  return (
+                  <tr key={product._id} className={`hover:bg-gray-50 ${isArchived ? 'opacity-60' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -431,26 +491,38 @@ const ProductsPage: React.FC = () => {
                       {product.units && product.units.length > 0 ? `${product.units.length} หน่วย` : 'ไม่มีหน่วย'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.isAvailable ? 'available' : 'unavailable')}`}>
-                        {product.isAvailable ? 'พร้อมขาย' : 'สินค้าหมด'}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor}`}>
+                        {statusLabel}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        ลบ
-                      </button>
+                      {isArchived ? (
+                        <button
+                          onClick={() => handleRestoreProduct(product._id)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          กู้คืน
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            ลบ
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
@@ -493,5 +565,3 @@ const ProductsPage: React.FC = () => {
 };
 
 export default ProductsPage;
-
-

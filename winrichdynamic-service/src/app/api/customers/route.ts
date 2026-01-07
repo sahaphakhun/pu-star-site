@@ -153,6 +153,20 @@ export async function POST(request: Request) {
 
     const customerData = { ...parsed.data } as any;
 
+    const optionalFields = [
+      'taxId',
+      'companyPhone',
+      'companyEmail',
+      'zipcode',
+      'registeredZipcode',
+      'email',
+    ];
+    optionalFields.forEach((field) => {
+      if (!customerData[field]) {
+        delete customerData[field];
+      }
+    });
+
     if (customerData.shippingSameAsCompany) {
       customerData.shippingAddress = customerData.companyAddress || customerData.shippingAddress || '';
     }
@@ -163,6 +177,7 @@ export async function POST(request: Request) {
         { phoneNumber: customerData.phoneNumber },
         ...(customerData.taxId ? [{ taxId: customerData.taxId }] : []),
         ...(customerData.email ? [{ email: customerData.email }] : []),
+        ...(customerData.customerCode ? [{ customerCode: customerData.customerCode }] : []),
       ]
     });
 
@@ -174,6 +189,8 @@ export async function POST(request: Request) {
         errorMessage = 'เลขประจำตัวผู้เสียภาษีนี้มีลูกค้าใช้งานอยู่แล้ว';
       } else if (existingCustomer.email === customerData.email) {
         errorMessage = 'อีเมลนี้มีลูกค้าใช้งานอยู่แล้ว';
+      } else if (existingCustomer.customerCode === customerData.customerCode) {
+        errorMessage = 'รหัสลูกค้านี้มีใช้งานอยู่แล้ว';
       }
       
       return NextResponse.json(
@@ -192,8 +209,13 @@ export async function POST(request: Request) {
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
+        const roleName = String(payload.role || '').toLowerCase();
         if (payload?.adminId) {
-          (customerData as any).assignedTo = payload.adminId; // เก็บ owner เป็น adminId
+          if (roleName === 'seller') {
+            (customerData as any).assignedTo = payload.adminId;
+          } else if (!(customerData as any).assignedTo) {
+            (customerData as any).assignedTo = payload.adminId;
+          }
         }
       }
     } catch {}

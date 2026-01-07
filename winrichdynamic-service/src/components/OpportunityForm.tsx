@@ -79,16 +79,6 @@ const currencyOptions = [
   { value: 'JPY', label: 'JPY - Japanese Yen' },
 ];
 
-// Pipeline stage options (mock data - should be fetched from API)
-const pipelineStageOptions = [
-  { value: '1', label: 'ใหม่', probability: 10 },
-  { value: '2', label: 'ติดต่อแล้ว', probability: 25 },
-  { value: '3', label: 'ส่งใบเสนอราคา', probability: 50 },
-  { value: '4', label: 'เจรจา', probability: 75 },
-  { value: '5', label: 'ชนะ', probability: 100 },
-  { value: '6', label: 'แพ้', probability: 0 },
-];
-
 // Team options
 const teamOptions = [
   'ทีมขาย 1',
@@ -122,6 +112,26 @@ export default function OpportunityForm({
   const [error, setError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [showExpectedCloseDatePicker, setShowExpectedCloseDatePicker] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const loadStages = async () => {
+      try {
+        const stages = await apiService.pipelineStages.getPipelineStages();
+        if (active) {
+          setPipelineStages(Array.isArray(stages) ? stages : []);
+        }
+      } catch (err) {
+        console.error('Error fetching pipeline stages:', err);
+        if (active) setPipelineStages([]);
+      }
+    };
+    loadStages();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Initialize form with default values or opportunity data
   const form = useForm({
@@ -248,9 +258,9 @@ export default function OpportunityForm({
   // Handle stage change to update probability
   const handleStageChange = (stageId: string) => {
     form.setValue('stageId', stageId);
-    const stage = pipelineStageOptions.find(s => s.value === stageId);
+    const stage = pipelineStages.find(s => s._id === stageId);
     if (stage) {
-      form.setValue('stageName', stage.label);
+      form.setValue('stageName', stage.name);
       // Auto-set probability based on stage
       if (!form.getValues('probability')) {
         form.setValue('probability', stage.probability);
@@ -300,9 +310,9 @@ export default function OpportunityForm({
                   <SelectValue placeholder="เลือกสเตจ" />
                 </SelectTrigger>
                 <SelectContent>
-                  {pipelineStageOptions.map((stage) => (
-                    <SelectItem key={stage.value} value={stage.value}>
-                      {stage.label}
+                  {pipelineStages.map((stage) => (
+                    <SelectItem key={stage._id} value={stage._id}>
+                      {stage.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

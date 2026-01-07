@@ -30,6 +30,8 @@ export async function GET(
     }
 
     // RBAC: ถ้าเป็น Seller ต้องเป็นเจ้าของเท่านั้น
+    let requesterAdminId: string | undefined;
+    let requesterRoleName: string | undefined;
     try {
       const authHeader = request.headers.get('authorization');
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -38,6 +40,8 @@ export async function GET(
       if (token) {
         const payload: any = jose.decodeJwt(token);
         const roleName = String(payload.role || '').toLowerCase();
+        requesterRoleName = roleName;
+        requesterAdminId = payload?.adminId ? String(payload.adminId) : undefined;
         if (roleName === 'seller' && String((quotation as any).assignedTo) !== String(payload.adminId)) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -80,6 +84,7 @@ export async function GET(
 
     // แนบข้อมูลฝ่ายขายจาก assignedTo (ถ้ามี)
     let salesInfo: any = {};
+    let signatureInfo: any = {};
     try {
       const ownerId = (quotation as any).assignedTo;
       if (ownerId) {
@@ -90,6 +95,38 @@ export async function GET(
             salesPhone: admin.phone || undefined,
             salesEmail: admin.email || undefined,
           };
+          if (admin.signatureUrl || admin.name) {
+            signatureInfo = {
+              ...signatureInfo,
+              quoterName: admin.name || undefined,
+              quoterSignatureUrl: admin.signatureUrl || undefined,
+              quoterPosition: admin.position || undefined,
+            };
+          }
+        }
+      }
+    } catch {}
+
+    // เติมลายเซ็นจากผู้ที่เรียกพิมพ์ (ตามบทบาท)
+    try {
+      if (requesterAdminId) {
+        const requester: any = await Admin.findById(requesterAdminId).lean();
+        if (requester && (requester.signatureUrl || requester.name)) {
+          if (requesterRoleName === 'seller' && !signatureInfo?.quoterSignatureUrl) {
+            signatureInfo = {
+              ...signatureInfo,
+              quoterName: requester.name || signatureInfo.quoterName,
+              quoterSignatureUrl: requester.signatureUrl || signatureInfo.quoterSignatureUrl,
+              quoterPosition: requester.position || signatureInfo.quoterPosition,
+            };
+          } else if (requesterRoleName && requesterRoleName !== 'seller') {
+            signatureInfo = {
+              ...signatureInfo,
+              approverName: requester.name || undefined,
+              approverSignatureUrl: requester.signatureUrl || undefined,
+              approverPosition: requester.position || undefined,
+            };
+          }
         }
       }
     } catch {}
@@ -109,7 +146,7 @@ export async function GET(
     };
 
     // สร้าง HTML สำหรับ PDF
-    const html = generateQuotationHTML(quotationWithSettings as any);
+    const html = generateQuotationHTML(quotationWithSettings as any, signatureInfo);
     
     // สร้าง PDF ด้วย Puppeteer
     const pdfBuffer = await generatePDFFromHTML(html);

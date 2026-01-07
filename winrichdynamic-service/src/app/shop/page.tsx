@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import { IProduct } from '@/models/Product';
+import Loading from '@/components/ui/Loading';
 import ProductList from './components/ProductList';
 import CartDrawer from './components/CartDrawer';
 
@@ -242,11 +243,7 @@ const ShopPage = () => {
 				</div>
 
 				{/* Loading State */}
-				{loading && (
-					<div className="flex justify-center items-center py-12">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-					</div>
-				)}
+				{loading && <Loading size="lg" label="กำลังโหลดสินค้า..." className="py-12" />}
 
 				{/* Product List */}
 				{!loading && (

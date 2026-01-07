@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import React from 'react';
 import { toast } from 'react-hot-toast';
 import { IProduct } from '@/models/Product';
@@ -51,33 +50,27 @@ const ProductList: React.FC<ProductListProps> = ({
 			<div className="sticky top-16 bg-gray-50 z-10 py-4 mb-6 -mx-4 px-4 shadow-sm border-b">
 				<div className="flex overflow-x-auto space-x-3 scrollbar-hide pb-2">
 					{categories.map((cat) => (
-						<motion.button
+						<button
 							key={cat}
 							onClick={() => setSelectedCategory(cat)}
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
-							className={`flex-shrink-0 px-6 py-3 sm:px-4 sm:py-2 rounded-full border text-base sm:text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+							className={`flex-shrink-0 px-6 py-3 sm:px-4 sm:py-2 rounded-full border text-base sm:text-sm font-medium whitespace-nowrap transition-all duration-200 hover:scale-105 active:scale-95 ${
 								selectedCategory === cat
 									? 'bg-blue-600 text-white border-blue-600 shadow-lg'
 									: 'bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50'
 							}`}
 						>
 							{cat}
-						</motion.button>
+						</button>
 					))}
 				</div>
 			</div>
 
 			{/* Products Grid */}
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-				{filtered.map((product, index) => (
-					<motion.div
+				{filtered.map((product) => (
+					<div
 						key={product._id}
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.3, delay: index * 0.1 }}
-						whileHover={{ y: -8, scale: 1.02 }}
-						className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100"
+						className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:-translate-y-2 hover:scale-[1.01]"
 					>
 						{/* Product Image */}
 						<div
@@ -137,46 +130,40 @@ const ProductList: React.FC<ProductListProps> = ({
 							{/* Quantity Controls */}
 							<div className="flex items-center justify-between mb-4">
 								<div className="flex items-center space-x-2">
-									<motion.button
-										whileHover={{ scale: 1.1 }}
-										whileTap={{ scale: 0.9 }}
+									<button
 										onClick={() =>
 											setQuantityForProduct(
 												product._id,
 												getQuantityForProduct(product._id) - 1
 											)
 										}
-										className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors"
+										className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors active:scale-95"
 									>
 										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
 										</svg>
-									</motion.button>
+									</button>
 									<span className="w-8 text-center text-sm font-medium">
 										{getQuantityForProduct(product._id)}
 									</span>
-									<motion.button
-										whileHover={{ scale: 1.1 }}
-										whileTap={{ scale: 0.9 }}
+									<button
 										onClick={() =>
 											setQuantityForProduct(
 												product._id,
 												getQuantityForProduct(product._id) + 1
 											)
 										}
-										className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors"
+										className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors active:scale-95"
 									>
 										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
 										</svg>
-									</motion.button>
+									</button>
 								</div>
 							</div>
 
 							{/* Add to Cart Button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => {
                 if (requiresSelection(product)) {
                   toast.error('สินค้านี้มีตัวเลือกหรือหลายหน่วย โปรดเลือกตัวเลือกก่อนเพิ่มลงตะกร้า');
@@ -191,15 +178,15 @@ const ProductList: React.FC<ProductListProps> = ({
                   getQuantityForProduct(product._id)
                 );
               }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 active:scale-[0.99]"
             >
 								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5m6.5-5v5a2 2 0 01-2 2H9a2 2 0 01-2-2v-5m6.5-5H9" />
 								</svg>
 								<span>เพิ่มลงตะกร้า</span>
-							</motion.button>
+							</button>
 						</div>
-					</motion.div>
+					</div>
 				))}
 			</div>
 

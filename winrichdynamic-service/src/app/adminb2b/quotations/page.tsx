@@ -1,9 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import QuotationForm from '@/components/QuotationForm'
 import AdminModal from '@/components/AdminModal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { useTokenManager } from '@/utils/tokenManager'
 
 interface Quotation {
   _id: string
@@ -28,6 +31,22 @@ interface Customer {
   shippingSameAsCompany?: boolean
 }
 
+interface PromptField {
+  name: string
+  label: string
+  placeholder?: string
+  required?: boolean
+  multiline?: boolean
+}
+
+interface PromptConfig {
+  title: string
+  description?: string
+  fields: PromptField[]
+  confirmLabel?: string
+  cancelLabel?: string
+}
+
 export default function AdminB2BQuotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -39,11 +58,68 @@ export default function AdminB2BQuotations() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [changingStatusId, setChangingStatusId] = useState<string>('')
   const [sendingId, setSendingId] = useState<string>('')
+  const { getValidToken } = useTokenManager()
+  const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
+  const [promptValues, setPromptValues] = useState<Record<string, string>>({})
+  const [promptError, setPromptError] = useState<string | null>(null)
+  const [promptSubmitting, setPromptSubmitting] = useState(false)
+  const promptActionRef = useRef<((values: Record<string, string>) => Promise<void> | void) | null>(null)
+
+  const openPrompt = (
+    config: PromptConfig,
+    onConfirm: (values: Record<string, string>) => Promise<void> | void
+  ) => {
+    const initialValues = config.fields.reduce((acc, field) => {
+      acc[field.name] = ''
+      return acc
+    }, {} as Record<string, string>)
+    setPromptValues(initialValues)
+    setPromptConfig(config)
+    setPromptError(null)
+    promptActionRef.current = onConfirm
+  }
+
+  const closePrompt = () => {
+    setPromptConfig(null)
+    setPromptValues({})
+    setPromptError(null)
+    setPromptSubmitting(false)
+    promptActionRef.current = null
+  }
+
+  const handlePromptSubmit = async (event?: React.FormEvent) => {
+    if (event) event.preventDefault()
+    if (!promptConfig) return
+
+    const missing = promptConfig.fields.find(
+      (field) => field.required && !promptValues[field.name]?.trim()
+    )
+    if (missing) {
+      setPromptError(`กรุณาระบุ${missing.label}`)
+      return
+    }
+
+    setPromptSubmitting(true)
+    try {
+      await promptActionRef.current?.(promptValues)
+      closePrompt()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูล'
+      setPromptError(message)
+    } finally {
+      setPromptSubmitting(false)
+    }
+  }
+
+  const handlePromptValueChange = (name: string, value: string) => {
+    setPromptValues((prev) => ({ ...prev, [name]: value }))
+    if (promptError) setPromptError(null)
+  }
 
   // ดึงข้อมูลลูกค้าทั้งหมด
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers')
+      const response = await fetch('/api/customers', { credentials: 'include' })
       if (!response.ok) {
         throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูลลูกค้า')
       }
@@ -61,7 +137,10 @@ export default function AdminB2BQuotations() {
       setLoading(true)
       const query = new URLSearchParams()
       if (statusFilter) query.set('status', statusFilter)
-      const response = await fetch(`/api/quotations${query.toString() ? `?${query.toString()}` : ''}`)
+      const response = await fetch(
+        `/api/quotations${query.toString() ? `?${query.toString()}` : ''}`,
+        { credentials: 'include' }
+      )
       if (!response.ok) {
         throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูลใบเสนอราคา')
       }
@@ -78,7 +157,7 @@ export default function AdminB2BQuotations() {
   // ดึงรายชื่อผู้ใช้ (สำหรับแปลง assignedTo id -> name)
   const fetchAdmins = async () => {
     try {
-      const res = await fetch('/api/adminb2b/admins')
+      const res = await fetch('/api/adminb2b/admins', { credentials: 'include' })
       const data = await res.json()
       const map: Record<string, string> = {}
       if (data?.success && Array.isArray(data.data)) {
@@ -99,6 +178,7 @@ export default function AdminB2BQuotations() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(quotationData),
       })
 
@@ -126,9 +206,12 @@ export default function AdminB2BQuotations() {
       // ลองดึงชื่อผู้ส่งจากโปรไฟล์แอดมิน
       let sentBy = 'ระบบ'
       try {
-        const token = localStorage.getItem('b2b_auth_token')
+        const token = await getValidToken()
         if (token) {
-          const res = await fetch('/api/adminb2b/profile', { headers: { Authorization: `Bearer ${token}` } })
+          const res = await fetch('/api/adminb2b/profile', {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          })
           const data = await res.json()
           if (data?.success && data?.data?.name) sentBy = String(data.data.name)
         }
@@ -137,6 +220,7 @@ export default function AdminB2BQuotations() {
       const res = await fetch(`/api/quotations/${quotation._id}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ method: 'line', sentBy })
       })
       if (!res.ok) {
@@ -153,23 +237,17 @@ export default function AdminB2BQuotations() {
     }
   }
 
-  // อัพเดทใบเสนอราคา
-  const handleUpdateQuotation = async (quotationData: any) => {
+  const submitUpdateQuotation = async (quotationData: any, remark: string) => {
     if (!editingQuotation) return
 
     try {
       setFormLoading(true)
-      // ขอหมายเหตุการแก้ไข
-      const remark = window.prompt('กรุณาระบุหมายเหตุการแก้ไข (บังคับ)') || ''
-      if (!remark.trim()) {
-        toast.error('กรุณาระบุหมายเหตุการแก้ไข')
-        return
-      }
       const response = await fetch(`/api/quotations/${editingQuotation._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ ...quotationData, remark }),
       })
 
@@ -190,11 +268,41 @@ export default function AdminB2BQuotations() {
     }
   }
 
+  // อัพเดทใบเสนอราคา
+  const handleUpdateQuotation = async (quotationData: any) => {
+    if (!editingQuotation) return
+
+    openPrompt(
+      {
+        title: 'หมายเหตุการแก้ไข',
+        description: 'กรุณาระบุหมายเหตุก่อนบันทึกการแก้ไข',
+        confirmLabel: 'ยืนยันการแก้ไข',
+        fields: [
+          {
+            name: 'remark',
+            label: 'หมายเหตุการแก้ไข',
+            placeholder: 'ระบุเหตุผลในการแก้ไข',
+            required: true,
+            multiline: true,
+          },
+        ],
+      },
+      async (values) => {
+        const remark = values.remark?.trim()
+        if (!remark) {
+          throw new Error('กรุณาระบุหมายเหตุการแก้ไข')
+        }
+        await submitUpdateQuotation(quotationData, remark)
+      }
+    )
+  }
+
   // ลบใบเสนอราคา
   const handleDeleteQuotation = async (quotationId: string) => {
     try {
       const response = await fetch(`/api/quotations/${quotationId}`, {
         method: 'DELETE',
+        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -221,6 +329,7 @@ export default function AdminB2BQuotations() {
     try {
       const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
         method: 'GET',
+        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -244,24 +353,17 @@ export default function AdminB2BQuotations() {
     }
   }
 
-  // ออกใบสั่งขายจากใบเสนอราคา (ดาวน์โหลด PDF และทำเครื่องหมายว่าออกแล้ว)
-  const handleIssueSalesOrder = async (quotation: Quotation) => {
+  const submitIssueSalesOrder = async (
+    quotation: Quotation,
+    salesOrderNumber: string,
+    remark: string
+  ) => {
     try {
-      const salesOrderNumber = window.prompt('กรุณาระบุเลขที่ใบสั่งขาย') || ''
-      if (!salesOrderNumber.trim()) {
-        toast.error('กรุณาระบุเลขที่ใบสั่งขาย')
-        return
-      }
-      const remark = window.prompt('กรุณาระบุหมายเหตุการออกใบสั่งขาย') || ''
-      if (!remark.trim()) {
-        toast.error('กรุณาระบุหมายเหตุการออกใบสั่งขาย')
-        return
-      }
-
       const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salesOrderNumber, remark })
+        credentials: 'include',
+        body: JSON.stringify({ salesOrderNumber, remark }),
       })
       if (!response.ok) {
         const err = await response.json().catch(() => ({} as any))
@@ -282,7 +384,42 @@ export default function AdminB2BQuotations() {
     } catch (error) {
       console.error('Error issuing sales order:', error)
       toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการออกใบสั่งขาย')
+      throw error
     }
+  }
+
+  // ออกใบสั่งขายจากใบเสนอราคา (ดาวน์โหลด PDF และทำเครื่องหมายว่าออกแล้ว)
+  const handleIssueSalesOrder = async (quotation: Quotation) => {
+    openPrompt(
+      {
+        title: 'ออกใบสั่งขาย',
+        description: 'กรุณาระบุเลขที่ใบสั่งขายและหมายเหตุ',
+        confirmLabel: 'ออกใบสั่งขาย',
+        fields: [
+          {
+            name: 'salesOrderNumber',
+            label: 'เลขที่ใบสั่งขาย',
+            placeholder: 'เช่น SO-2024-001',
+            required: true,
+          },
+          {
+            name: 'remark',
+            label: 'หมายเหตุการออกใบสั่งขาย',
+            placeholder: 'ระบุหมายเหตุเพิ่มเติม',
+            required: true,
+            multiline: true,
+          },
+        ],
+      },
+      async (values) => {
+        const salesOrderNumber = values.salesOrderNumber?.trim()
+        const remark = values.remark?.trim()
+        if (!salesOrderNumber || !remark) {
+          throw new Error('กรุณากรอกข้อมูลให้ครบถ้วน')
+        }
+        await submitIssueSalesOrder(quotation, salesOrderNumber, remark)
+      }
+    )
   }
 
   // แก้ไขใบเสนอราคา
@@ -331,18 +468,17 @@ export default function AdminB2BQuotations() {
     }
   }
 
-  // เปลี่ยนสถานะใบเสนอราคา
-  const handleChangeStatus = async (quotation: Quotation, newStatus: Quotation['status']) => {
-    if (quotation.status === newStatus) return
+  const submitChangeStatus = async (
+    quotation: Quotation,
+    newStatus: Quotation['status'],
+    notes?: string
+  ) => {
     try {
-      let notes: string | undefined
-      if (newStatus === 'accepted' || newStatus === 'rejected') {
-        notes = window.prompt(`กรุณาระบุหมายเหตุสำหรับสถานะ "${getStatusLabel(newStatus)}"`) || undefined
-      }
       setChangingStatusId(quotation._id)
       const res = await fetch(`/api/quotations/${quotation._id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus, ...(notes ? { notes } : {}) }),
       })
       if (!res.ok) {
@@ -354,9 +490,44 @@ export default function AdminB2BQuotations() {
     } catch (e) {
       console.error('Error changing quotation status:', e)
       toast.error(e instanceof Error ? e.message : 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ')
+      throw e
     } finally {
       setChangingStatusId('')
     }
+  }
+
+  // เปลี่ยนสถานะใบเสนอราคา
+  const handleChangeStatus = async (quotation: Quotation, newStatus: Quotation['status']) => {
+    if (quotation.status === newStatus) return
+
+    if (newStatus === 'accepted' || newStatus === 'rejected') {
+      openPrompt(
+        {
+          title: `หมายเหตุสถานะ: ${getStatusLabel(newStatus)}`,
+          description: 'กรุณาระบุหมายเหตุก่อนเปลี่ยนสถานะ',
+          confirmLabel: 'ยืนยันการเปลี่ยนสถานะ',
+          fields: [
+            {
+              name: 'notes',
+              label: 'หมายเหตุ',
+              placeholder: 'ระบุเหตุผลหรือรายละเอียดเพิ่มเติม',
+              required: true,
+              multiline: true,
+            },
+          ],
+        },
+        async (values) => {
+          const notes = values.notes?.trim()
+          if (!notes) {
+            throw new Error('กรุณาระบุหมายเหตุ')
+          }
+          await submitChangeStatus(quotation, newStatus, notes)
+        }
+      )
+      return
+    }
+
+    await submitChangeStatus(quotation, newStatus)
   }
 
   const formatDate = (dateString: string) => {
@@ -429,10 +600,82 @@ export default function AdminB2BQuotations() {
             customers={customers}
             onSubmit={editingQuotation ? handleUpdateQuotation : handleCreateQuotation}
             onCancel={editingQuotation ? handleCancelEdit : handleCancelCreate}
+            onClose={editingQuotation ? handleCancelEdit : handleCancelCreate}
             isEditing={!!editingQuotation}
             loading={formLoading}
+            embedded
           />
         </AdminModal>
+
+        {promptConfig && (
+          <AdminModal
+            isOpen={!!promptConfig}
+            onClose={closePrompt}
+            maxWidth="max-w-lg"
+            maxHeight="max-h-[90vh]"
+          >
+            <form onSubmit={handlePromptSubmit} className="p-6 space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{promptConfig.title}</h2>
+                {promptConfig.description && (
+                  <p className="text-sm text-gray-600 mt-1">{promptConfig.description}</p>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {promptConfig.fields.map((field) => (
+                  <div key={field.name} className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {field.label}
+                      {field.required && <span className="text-red-500"> *</span>}
+                    </label>
+                    {field.multiline ? (
+                      <Textarea
+                        value={promptValues[field.name] || ''}
+                        onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
+                        placeholder={field.placeholder}
+                        rows={4}
+                        className="w-full"
+                      />
+                    ) : (
+                      <Input
+                        value={promptValues[field.name] || ''}
+                        onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {promptError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {promptError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closePrompt}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  {promptConfig.cancelLabel || 'ยกเลิก'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={promptSubmitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {promptSubmitting
+                    ? 'กำลังบันทึก...'
+                    : promptConfig.confirmLabel || 'ยืนยัน'}
+                </button>
+              </div>
+            </form>
+          </AdminModal>
+        )}
 
         {/* Quotations List */}
         <div className="bg-white rounded-lg border shadow-sm">

@@ -5,6 +5,8 @@ export interface IAdmin extends Document {
   phone: string;
   email?: string;
   company?: string;
+  position?: string;
+  signatureUrl?: string;
   role: mongoose.Types.ObjectId;
   team?: string;
   zone?: string;
@@ -33,6 +35,16 @@ const AdminSchema: Schema = new Schema({
     lowercase: true
   },
   company: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  position: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  signatureUrl: {
     type: String,
     required: false,
     trim: true

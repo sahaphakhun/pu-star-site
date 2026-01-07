@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import Loading from '@/components/ui/Loading';
 
 interface WMSStats {
   totalProducts: number;
@@ -85,7 +86,7 @@ const ReportsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <Loading size="lg" label="กำลังโหลดรายงาน..." />
       </div>
     );
   }

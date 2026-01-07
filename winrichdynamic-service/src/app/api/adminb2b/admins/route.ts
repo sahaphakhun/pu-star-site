@@ -138,6 +138,8 @@ export async function POST(request: NextRequest) {
         phone: normalized,
         email: body.email,
         company: body.company,
+        position: body.position,
+        signatureUrl: body.signatureUrl,
         role: role._id,
         team: body.team,
         zone: body.zone
@@ -148,6 +150,8 @@ export async function POST(request: NextRequest) {
         phone: normalized,
         email: body.email || undefined,
         company: body.company || undefined,
+        position: body.position || undefined,
+        signatureUrl: body.signatureUrl || undefined,
         role: role._id,
         team: body.team || undefined,
         zone: body.zone || undefined,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTokenManager } from '@/utils/tokenManager';
 
 type Order = {
   _id: string;
@@ -26,6 +27,7 @@ export default function AdminB2BOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { getValidToken } = useTokenManager();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -138,12 +140,16 @@ export default function AdminB2BOrdersPage() {
     if (order.status === status) return;
     try {
       setChangingId(order._id);
-      const token = typeof window !== 'undefined' ? localStorage.getItem('b2b_auth_token') : '';
+      const token = await getValidToken();
+      if (!token) {
+        alert('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
       const res = await fetch(`/api/orders/${order._id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status }),
       });

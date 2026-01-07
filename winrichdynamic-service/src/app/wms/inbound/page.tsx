@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import Loading from '@/components/ui/Loading';
 
 interface PurchaseOrder {
   id: string;
@@ -47,55 +48,14 @@ const InboundPage: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // TODO: แทนที่ด้วย API จริง
-      const mockPOs: PurchaseOrder[] = [
-        {
-          id: '1',
-          poNumber: 'PO-2024-001',
-          supplier: 'บริษัท ABC จำกัด',
-          orderDate: '2024-01-15',
-          expectedDelivery: '2024-01-20',
-          status: 'partial',
-          totalItems: 10,
-          receivedItems: 6,
-          totalValue: 50000
-        },
-        {
-          id: '2',
-          poNumber: 'PO-2024-002',
-          supplier: 'บริษัท XYZ จำกัด',
-          orderDate: '2024-01-16',
-          expectedDelivery: '2024-01-25',
-          status: 'pending',
-          totalItems: 15,
-          receivedItems: 0,
-          totalValue: 75000
-        }
-      ];
-
-      const mockASNs: ASN[] = [
-        {
-          id: '1',
-          asnNumber: 'ASN-2024-001',
-          poNumber: 'PO-2024-001',
-          supplier: 'บริษัท ABC จำกัด',
-          deliveryDate: '2024-01-20',
-          status: 'receiving',
-          items: [
-            {
-              productId: '1',
-              productName: 'สินค้า A',
-              sku: 'SKU001',
-              expectedQty: 100,
-              receivedQty: 0,
-              unit: 'ชิ้น'
-            }
-          ]
-        }
-      ];
-
-      setPurchaseOrders(mockPOs);
-      setAsns(mockASNs);
+      setLoading(true);
+      const response = await fetch('/api/wms/inbound', { credentials: 'include' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'ไม่สามารถโหลดข้อมูลได้');
+      }
+      setPurchaseOrders(Array.isArray(data?.purchaseOrders) ? data.purchaseOrders : []);
+      setAsns(Array.isArray(data?.asns) ? data.asns : []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -140,7 +100,7 @@ const InboundPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <Loading size="lg" label="กำลังโหลดข้อมูลรับสินค้า..." />
       </div>
     );
   }

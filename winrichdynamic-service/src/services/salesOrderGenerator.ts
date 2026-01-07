@@ -51,6 +51,7 @@ export async function generateSalesOrderFromQuotation(
   const salesOrderData: any = {
     customerName: quotation.customerName,
     customerPhone: quotation.customerPhone,
+    customerId: quotation.customerId || undefined,
     items: quotation.items.map((item: any) => ({
       productId: item.productId,
       name: item.productName,
@@ -64,13 +65,25 @@ export async function generateSalesOrderFromQuotation(
     shippingFee: options.customShippingFee || 0,
     discount: quotation.totalDiscount,
     paymentMethod: options.customPaymentMethod || 'cod',
+    paymentTerms: quotation.paymentTerms || undefined,
     status: 'confirmed',
     orderType: 'sales_order',
+    ownerId: quotation.assignedTo || undefined,
     // Link back to quotation
     sourceQuotationId: quotation._id.toString(),
     sourceOrderId: quotation.sourceOrderId || undefined,
     notes: options.notes || `สร้างจากใบเสนอราคา ${quotation.quotationNumber}`
   };
+
+  const shipSame = quotation.shipToSameAsCustomer ?? true;
+  const shippingAddress = shipSame
+    ? quotation.customerAddress || quotation.shippingAddress || ''
+    : quotation.shippingAddress || quotation.customerAddress || '';
+  salesOrderData.deliveryAddress = shippingAddress || undefined;
+  salesOrderData.deliveryProvince = quotation.deliveryProvince || undefined;
+  salesOrderData.deliveryDistrict = quotation.deliveryDistrict || undefined;
+  salesOrderData.deliverySubdistrict = quotation.deliverySubdistrict || undefined;
+  salesOrderData.deliveryPostalCode = quotation.deliveryZipcode || undefined;
 
   // Handle tax invoice information if available
   if (quotation.customerTaxId) {

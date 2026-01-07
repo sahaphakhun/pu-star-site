@@ -38,6 +38,11 @@ function sanitizeQuotationData(quotation: any): any {
     customerName: sanitizeString(quotation.customerName),
     customerTaxId: sanitizeString(quotation.customerTaxId),
     customerAddress: sanitizeString(quotation.customerAddress),
+    shippingAddress: sanitizeString(quotation.shippingAddress),
+    deliveryProvince: sanitizeString((quotation as any).deliveryProvince),
+    deliveryDistrict: sanitizeString((quotation as any).deliveryDistrict),
+    deliverySubdistrict: sanitizeString((quotation as any).deliverySubdistrict),
+    deliveryZipcode: sanitizeString((quotation as any).deliveryZipcode),
     customerPhone: sanitizeString(quotation.customerPhone),
     subject: sanitizeString(quotation.subject),
     paymentTerms: sanitizeString(quotation.paymentTerms),
@@ -60,8 +65,8 @@ function sanitizeQuotationData(quotation: any): any {
 }
 
 function bahtText(amount: number): string {
-  const thNum = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
-  const thUnit = ['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  const thNum = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+  const thUnit = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
   const toText = (n: number): string => {
     if (n === 0) return '';
     let s = '';
@@ -92,7 +97,20 @@ function bahtText(amount: number): string {
   return `${bahtStr}บาท${satangStr}`;
 }
 
-export function generateQuotationHTML(quotation: QuotationData): string {
+// Signature data interface
+export interface SignatureData {
+  quoterName?: string;
+  quoterSignatureUrl?: string;
+  quoterPosition?: string;
+  approverName?: string;
+  approverSignatureUrl?: string;
+  approverPosition?: string;
+  confirmerName?: string;
+  confirmerSignatureUrl?: string;
+  confirmerPosition?: string;
+}
+
+export function generateQuotationHTML(quotation: QuotationData, signatures?: SignatureData): string {
   try {
     const q = sanitizeQuotationData(quotation);
     const logoUrl = q.logoUrl || '';
@@ -106,6 +124,30 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     const salesName = (quotation as any).salesName || '';
     const salesPhone = (quotation as any).salesPhone || '';
     const salesEmail = (quotation as any).salesEmail || '';
+    const joinAddress = (base: string | undefined, parts: string[]) => {
+      const cleaned = parts.map((part) => part?.trim()).filter(Boolean) as string[];
+      const suffix = cleaned.length ? ` ${cleaned.join(' ')}` : '';
+      return `${base || ''}${suffix}`.trim();
+    };
+    const shippingAddress = q.shipToSameAsCustomer
+      ? joinAddress(q.customerAddress, [
+          q.deliverySubdistrict ? `ต.${q.deliverySubdistrict}` : '',
+          q.deliveryDistrict ? `อ.${q.deliveryDistrict}` : '',
+          q.deliveryProvince ? `จ.${q.deliveryProvince}` : '',
+          q.deliveryZipcode || '',
+        ])
+      : joinAddress(q.shippingAddress, [
+          q.deliverySubdistrict ? `ต.${q.deliverySubdistrict}` : '',
+          q.deliveryDistrict ? `อ.${q.deliveryDistrict}` : '',
+          q.deliveryProvince ? `จ.${q.deliveryProvince}` : '',
+          q.deliveryZipcode || '',
+        ]);
+
+    // Signature data
+    const sig = signatures || {};
+    const quoterSig = sig.quoterSignatureUrl ? `<img src="${sig.quoterSignatureUrl}" style="max-height:40px;max-width:120px;"/>` : '';
+    const approverSig = sig.approverSignatureUrl ? `<img src="${sig.approverSignatureUrl}" style="max-height:40px;max-width:120px;"/>` : '';
+    const confirmerSig = sig.confirmerSignatureUrl ? `<img src="${sig.confirmerSignatureUrl}" style="max-height:40px;max-width:120px;"/>` : '';
 
     const showUnitDiscount = Array.isArray(q.items) && q.items.some((it: any) => Number(it.discount) > 0);
 
@@ -124,7 +166,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
     const totalPages = Math.max(1, pages.length);
 
     const fmt = (n: number) => (Number(n || 0)).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const thDate = (d: string | Date) => new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+    const thDate = (d: string | Date) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
     const amountInWords = bahtText(Number(q.grandTotal) || 0);
 
     return `
@@ -193,7 +235,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
   <div class="doc">
     ${pages.map((chunk, pi) => {
       const isLast = (pi === totalPages - 1);
-      const beforeCount = pi > 0 ? pages.slice(0, pi).reduce((s,a)=>s+a.length,0) : 0;
+      const beforeCount = pi > 0 ? pages.slice(0, pi).reduce((s, a) => s + a.length, 0) : 0;
       return `
       <section class="page">
         <div class="content">
@@ -216,15 +258,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               <div class="row"><div class="k">ชื่อลูกค้า</div><div class="v">${q.customerName}</div></div>
               ${q.customerTaxId ? `<div class="row"><div class="k">เลขผู้เสียภาษี</div><div class="v">${q.customerTaxId}</div></div>` : ''}
               ${q.customerAddress ? `<div class="row"><div class="k">ที่อยู่</div><div class="v">${q.customerAddress}</div></div>` : ''}
-              ${(() => {
-                if (q.shipToSameAsCustomer && q.customerAddress) {
-                  return `<div class="row"><div class="k">ที่อยู่จัดส่ง</div><div class="v">ใช้ที่อยู่ลูกค้า</div></div>`;
-                }
-                if (!q.shipToSameAsCustomer && q.shippingAddress) {
-                  return `<div class="row"><div class="k">ที่อยู่จัดส่ง</div><div class="v">${q.shippingAddress}</div></div>`;
-                }
-                return '';
-              })()}
+              ${shippingAddress ? `<div class="row"><div class="k">ที่อยู่จัดส่ง</div><div class="v">${shippingAddress}</div></div>` : ''}
               ${q.customerPhone ? `<div class="row"><div class="k">โทร</div><div class="v">${q.customerPhone}</div></div>` : ''}
             </div>
             <div class="ibox">
@@ -253,27 +287,27 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               </tr>
             </thead>
             <tbody>
-              ${chunk.map((item:any, i:number) => `
+              ${chunk.map((item: any, i: number) => `
                 <tr>
                   <td class=\"no\">${beforeCount + i + 1}</td>
                   <td class=\"desc\">
                     <div>${item.productName || '-'}</div>
                     ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}
                     ${(() => {
-                      const opts = item.selectedOptions && typeof item.selectedOptions === 'object'
-                        ? Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value))
-                        : [];
-                      if (!opts.length) return '';
-                      const text = opts.map(([name, value]) => `${sanitizeString(name)}: ${sanitizeString(value)}`).join(' · ');
-                      return `<div class=\"note\">${text}</div>`;
-                    })()}
+            const opts = item.selectedOptions && typeof item.selectedOptions === 'object'
+              ? Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value))
+              : [];
+            if (!opts.length) return '';
+            const text = opts.map(([name, value]) => `${sanitizeString(name)}: ${sanitizeString(value)}`).join(' · ');
+            return `<div class=\"note\">${text}</div>`;
+          })()}
                   </td>
                   <td class=\"sku\">${sanitizeString((item as any).sku) || sanitizeString(item.productId) || '-'}</td>
-                  <td class=\"qty\">${Number(item.quantity||0).toLocaleString()}</td>
-                  <td class=\"unit\">${sanitizeString(item.unit)||'-'}</td>
-                  <td class=\"price\">${fmt(item.unitPrice||0)}</td>
-                  ${showUnitDiscount ? `<td class=\"disc\">${Number(item.discount||0).toFixed(0)}%</td>` : ''}
-                  <td class=\"amount\">${fmt(item.totalPrice||0)}</td>
+                  <td class=\"qty\">${Number(item.quantity || 0).toLocaleString()}</td>
+                  <td class=\"unit\">${sanitizeString(item.unit) || '-'}</td>
+                  <td class=\"price\">${fmt(item.unitPrice || 0)}</td>
+                  ${showUnitDiscount ? `<td class=\"disc\">${Number(item.discount || 0).toFixed(0)}%</td>` : ''}
+                  <td class=\"amount\">${fmt(item.totalPrice || 0)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -284,7 +318,7 @@ export function generateQuotationHTML(quotation: QuotationData): string {
               <div class=\"tline\"><div>รวมเป็นเงิน</div><div>${fmt(q.subtotal)}</div></div>
               <div class=\"tline\"><div>หักส่วนลด</div><div>${fmt(q.totalDiscount)}</div></div>
               <div class=\"tline\"><div>ราคาหลังหักส่วนลด</div><div>${fmt(q.totalAmount)}</div></div>
-              <div class=\"tline\"><div>VAT ${Number(q.vatRate||0).toFixed(0)}%</div><div>${fmt(q.vatAmount)}</div></div>
+              <div class=\"tline\"><div>VAT ${Number(q.vatRate || 0).toFixed(0)}%</div><div>${fmt(q.vatAmount)}</div></div>
               <div class=\"tline grand\"><div>จำนวนเงินรวมทั้งสิ้น (THB)</div><div>${fmt(q.grandTotal)}</div></div>
               <div class=\"amountText\">${amountInWords}</div>
             </div>
@@ -296,21 +330,36 @@ export function generateQuotationHTML(quotation: QuotationData): string {
             </div>
             <div class=\"nbox\">
               <h5>ข้อมูลบัญชีสำหรับชำระเงิน</h5>
-              <p>ธนาคาร: ${sanitizeString(bank.bankName)||'-'}</p>
-              <p>ชื่อบัญชี: ${sanitizeString(bank.accountName)||'-'}</p>
-              <p>เลขที่บัญชี: ${sanitizeString(bank.accountNumber)||'-'}</p>
-              <p>สาขา: ${sanitizeString(bank.branch)||'-'}</p>
+              <p>ธนาคาร: ${sanitizeString(bank.bankName) || '-'}</p>
+              <p>ชื่อบัญชี: ${sanitizeString(bank.accountName) || '-'}</p>
+              <p>เลขที่บัญชี: ${sanitizeString(bank.accountNumber) || '-'}</p>
+              <p>สาขา: ${sanitizeString(bank.branch) || '-'}</p>
             </div>
           </div>
           <div class=\"sigs\">
-            <div class=\"sigBox\"><div class=\"sigName\">ผู้เสนอราคา</div><div class=\"sigRole\">...........................................................</div><div class=\"sigDate\">วันที่: ........../........../..........</div></div>
-            <div class=\"sigBox\"><div class=\"sigName\">ผู้อนุมัติใบเสนอราคา</div><div class=\"sigRole\">...........................................................</div><div class=\"sigDate\">วันที่: ........../........../..........</div></div>
-            <div class=\"sigBox\"><div class=\"sigName\">ผู้ยืนยันการสั่งซื้อ</div><div class=\"sigRole\">...........................................................</div><div class=\"sigDate\">วันที่: ........../........../..........</div></div>
+            <div class=\"sigBox\">
+              <div class=\"sigName\">ผู้เสนอราคา</div>
+              ${quoterSig ? `<div class=\"sigImage\">${quoterSig}</div>` : ''}
+              <div class=\"sigRole\">${sig.quoterName || '...........................................................'}${sig.quoterPosition ? ` (${sig.quoterPosition})` : ''}</div>
+              <div class=\"sigDate\">วันที่: ${sig.quoterName ? new Date().toLocaleDateString('th-TH') : '........../........../..........'}</div>
+            </div>
+            <div class=\"sigBox\">
+              <div class=\"sigName\">ผู้อนุมัติใบเสนอราคา</div>
+              ${approverSig ? `<div class=\"sigImage\">${approverSig}</div>` : ''}
+              <div class=\"sigRole\">${sig.approverName || '...........................................................'}${sig.approverPosition ? ` (${sig.approverPosition})` : ''}</div>
+              <div class=\"sigDate\">วันที่: ${sig.approverName ? new Date().toLocaleDateString('th-TH') : '........../........../..........'}</div>
+            </div>
+            <div class=\"sigBox\">
+              <div class=\"sigName\">ผู้ยืนยันการสั่งซื้อ</div>
+              ${confirmerSig ? `<div class=\"sigImage\">${confirmerSig}</div>` : ''}
+              <div class=\"sigRole\">${sig.confirmerName || '...........................................................'}${sig.confirmerPosition ? ` (${sig.confirmerPosition})` : ''}</div>
+              <div class=\"sigDate\">วันที่: ${sig.confirmerName ? new Date().toLocaleDateString('th-TH') : '........../........../..........'}</div>
+            </div>
           </div>
           ` : ''}
           <div class=\"footer\">
             <div>สร้างโดยระบบ · ${companyWebsite}</div>
-            <div>หน้า ${pi+1}/${totalPages}</div>
+            <div>หน้า ${pi + 1}/${totalPages}</div>
           </div>
         </div>
       </section>`

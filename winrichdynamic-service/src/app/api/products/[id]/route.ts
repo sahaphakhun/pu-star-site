@@ -12,10 +12,29 @@ export async function GET(
   try {
     await connectDB();
 
+    const url = new URL(request.url);
+    const includeDeleted = url.searchParams.get('includeDeleted') === 'true';
+    if (includeDeleted) {
+      const auth = verifyToken(request);
+      if (!auth.valid) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
+
     const resolvedParams = await params;
     const product = await Product.findById(resolvedParams.id).lean();
     
     if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบสินค้า' },
+        { status: 404 }
+      );
+    }
+
+    if ((product as any).isDeleted && !includeDeleted) {
       return NextResponse.json(
         { success: false, error: 'ไม่พบสินค้า' },
         { status: 404 }
@@ -77,6 +96,13 @@ export async function PUT(
       return NextResponse.json(
         { success: false, error: 'ไม่พบสินค้า' },
         { status: 404 }
+      );
+    }
+
+    if ((existingProduct as any).isDeleted) {
+      return NextResponse.json(
+        { success: false, error: 'สินค้าถูกลบแล้ว กรุณากู้คืนก่อนแก้ไข' },
+        { status: 409 }
       );
     }
 
@@ -143,12 +169,24 @@ export async function DELETE(
       );
     }
 
-    // Delete product
-    await Product.findByIdAndDelete(resolvedParams.id);
+    if ((product as any).isDeleted) {
+      return NextResponse.json({
+        success: true,
+        message: 'สินค้านี้ถูกลบแล้ว'
+      });
+    }
+
+    // Soft delete product
+    await Product.findByIdAndUpdate(resolvedParams.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: auth.adminId || undefined,
+      isAvailable: false
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'ลบสินค้าสำเร็จ'
+      message: 'ลบสินค้าเรียบร้อยแล้ว'
     });
 
   } catch (error) {
@@ -160,4 +198,58 @@ export async function DELETE(
   }
 }
 
+// PATCH /api/products/[id] - กู้คืนสินค้า
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = verifyToken(request);
+    if (!auth.valid) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+    const resolvedParams = await params;
+
+    const product = await Product.findById(resolvedParams.id);
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบสินค้า' },
+        { status: 404 }
+      );
+    }
+
+    if (!(product as any).isDeleted) {
+      return NextResponse.json({
+        success: true,
+        message: 'สินค้าอยู่ในสถานะปกติแล้ว'
+      });
+    }
+
+    const restored = await Product.findByIdAndUpdate(
+      resolvedParams.id,
+      {
+        isDeleted: false,
+        $unset: { deletedAt: '', deletedBy: '' }
+      },
+      { new: true }
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: restored,
+      message: 'กู้คืนสินค้าเรียบร้อยแล้ว'
+    });
+  } catch (error) {
+    console.error('Error restoring product:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
 

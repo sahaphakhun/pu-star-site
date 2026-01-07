@@ -41,7 +41,21 @@ export async function PUT(
     const body = await request.json();
     
     // ตรวจสอบและแปลงข้อมูล
-    const validatedData = updateCustomerSchema.parse(body);
+    const validatedData = updateCustomerSchema.parse(body) as any;
+
+    const optionalFields = [
+      'taxId',
+      'companyPhone',
+      'companyEmail',
+      'zipcode',
+      'registeredZipcode',
+      'email',
+    ];
+    optionalFields.forEach((field) => {
+      if (!validatedData[field]) {
+        delete validatedData[field];
+      }
+    });
     
     // ค้นหาลูกค้า
     const { id } = await params;

@@ -12,18 +12,26 @@ interface Permission {
 }
 
 interface Role {
-  id: string;
+  _id: string;
   name: string;
-  description: string;
+  description?: string;
   permissions: string[];
   level: number; // 1: SuperAdmin, 2: SalesAdmin
+  isActive?: boolean;
+}
+
+interface AdminRoleRef {
+  _id: string;
+  name: string;
+  level?: number;
 }
 
 interface Admin {
-  id: string;
+  _id: string;
   name: string;
-  email: string;
-  role: string;
+  email?: string;
+  phone?: string;
+  role?: string | AdminRoleRef;
   isActive: boolean;
   createdAt: string;
 }
@@ -35,227 +43,232 @@ const PermissionsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'roles' | 'admins'>('roles');
 
-  // ข้อมูลสิทธิ์พื้นฐาน
-  const basePermissions: Permission[] = [
-    // ภาพรวม
-    { id: 'dashboard_view', name: 'ดูภาพรวม', description: 'เข้าถึงแดชบอร์ดและสถิติ', category: 'ภาพรวม' },
-    
-    // ลูกค้า
-    { id: 'customers_view', name: 'ดูลูกค้า', description: 'ดูรายการลูกค้า', category: 'ลูกค้า' },
-    { id: 'customers_create', name: 'สร้างลูกค้า', description: 'เพิ่มลูกค้าใหม่', category: 'ลูกค้า' },
-    { id: 'customers_edit', name: 'แก้ไขลูกค้า', description: 'แก้ไขข้อมูลลูกค้า', category: 'ลูกค้า' },
-    { id: 'customers_delete', name: 'ลบลูกค้า', description: 'ลบลูกค้าออกจากระบบ', category: 'ลูกค้า' },
-    
-    // ใบเสนอราคา
-    { id: 'quotations_view', name: 'ดูใบเสนอราคา', description: 'ดูรายการใบเสนอราคา', category: 'ใบเสนอราคา' },
-    { id: 'quotations_create', name: 'สร้างใบเสนอราคา', description: 'สร้างใบเสนอราคาใหม่', category: 'ใบเสนอราคา' },
-    { id: 'quotations_edit', name: 'แก้ไขใบเสนอราคา', description: 'แก้ไขใบเสนอราคา', category: 'ใบเสนอราคา' },
-    { id: 'quotations_delete', name: 'ลบใบเสนอราคา', description: 'ลบใบเสนอราคา', category: 'ใบเสนอราคา' },
-    { id: 'quotations_send', name: 'ส่งใบเสนอราคา', description: 'ส่งใบเสนอราคาให้ลูกค้า', category: 'ใบเสนอราคา' },
-    { id: 'quotations_convert', name: 'แปลงเป็นออเดอร์', description: 'แปลงใบเสนอราคาเป็นออเดอร์', category: 'ใบเสนอราคา' },
-    
-    // สินค้า
-    { id: 'products_view', name: 'ดูสินค้า', description: 'ดูรายการสินค้า', category: 'สินค้า' },
-    { id: 'products_create', name: 'สร้างสินค้า', description: 'เพิ่มสินค้าใหม่', category: 'สินค้า' },
-    { id: 'products_edit', name: 'แก้ไขสินค้า', description: 'แก้ไขข้อมูลสินค้า', category: 'สินค้า' },
-    { id: 'products_delete', name: 'ลบสินค้า', description: 'ลบสินค้าออกจากระบบ', category: 'สินค้า' },
-    
-    // หมวดหมู่
-    { id: 'categories_view', name: 'ดูหมวดหมู่', description: 'ดูรายการหมวดหมู่', category: 'หมวดหมู่' },
-    { id: 'categories_create', name: 'สร้างหมวดหมู่', description: 'เพิ่มหมวดหมู่ใหม่', category: 'หมวดหมู่' },
-    { id: 'categories_edit', name: 'แก้ไขหมวดหมู่', description: 'แก้ไขหมวดหมู่', category: 'หมวดหมู่' },
-    { id: 'categories_delete', name: 'ลบหมวดหมู่', description: 'ลบหมวดหมู่', category: 'หมวดหมู่' },
-    
-    // ออเดอร์
-    { id: 'orders_view', name: 'ดูออเดอร์', description: 'ดูรายการออเดอร์', category: 'ออเดอร์' },
-    { id: 'orders_create', name: 'สร้างออเดอร์', description: 'สร้างออเดอร์ใหม่', category: 'ออเดอร์' },
-    { id: 'orders_edit', name: 'แก้ไขออเดอร์', description: 'แก้ไขออเดอร์', category: 'ออเดอร์' },
-    { id: 'orders_delete', name: 'ลบออเดอร์', description: 'ลบออเดอร์', category: 'ออเดอร์' },
-    { id: 'orders_status', name: 'เปลี่ยนสถานะออเดอร์', description: 'อัพเดทสถานะออเดอร์', category: 'ออเดอร์' },
-    
-    // การตั้งค่า
-    { id: 'settings_general', name: 'ตั้งค่าทั่วไป', description: 'แก้ไขการตั้งค่าทั่วไป', category: 'การตั้งค่า' },
-    { id: 'settings_permissions', name: 'จัดการสิทธิ์', description: 'จัดการสิทธิ์และบทบาท', category: 'การตั้งค่า' },
-    { id: 'settings_admins', name: 'จัดการแอดมิน', description: 'จัดการผู้ดูแลระบบ', category: 'การตั้งค่า' },
-  ];
-
-  // ข้อมูลบทบาทพื้นฐาน
-  const baseRoles: Role[] = [
-    {
-      id: 'super_admin',
-      name: 'Super Admin',
-      description: 'ผู้ดูแลระบบสูงสุด - เข้าถึงทุกฟีเจอร์',
-      permissions: basePermissions.map(p => p.id),
-      level: 1
-    },
-    {
-      id: 'sales_admin',
-      name: 'Sales Admin',
-      description: 'ผู้ดูแลฝ่ายขาย - จัดการลูกค้า, ใบเสนอราคา, ออเดอร์',
-      permissions: [
-        'dashboard_view',
-        'customers_view', 'customers_create', 'customers_edit',
-        'quotations_view', 'quotations_create', 'quotations_edit', 'quotations_send', 'quotations_convert',
-        'products_view',
-        'categories_view',
-        'orders_view', 'orders_create', 'orders_edit', 'orders_status'
-      ],
-      level: 2
-    }
-  ];
-
   useEffect(() => {
-    // โหลดข้อมูลจาก localStorage หรือ API
-      const loadData = async () => {
-    try {
-      // ดึงข้อมูลบทบาทและสิทธิ์จาก API
-      const rolesResponse = await fetch('/api/adminb2b/roles');
-      const rolesResult = await rolesResponse.json();
-      
-      if (rolesResult.success) {
-        setRoles(rolesResult.data.roles);
-        setPermissions(rolesResult.data.permissions);
-      } else {
-        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลบทบาท');
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const rolesResponse = await fetch('/api/adminb2b/roles', { credentials: 'include' });
+        const rolesResult = await rolesResponse.json();
+
+        if (rolesResult.success) {
+          setRoles(rolesResult.data.roles || []);
+          setPermissions(rolesResult.data.permissions || []);
+        } else {
+          toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลบทบาท');
+        }
+
+        const adminsResponse = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const adminsResult = await adminsResponse.json();
+
+        if (adminsResult.success) {
+          setAdmins(adminsResult.data || []);
+        } else {
+          toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      } finally {
+        setLoading(false);
       }
-      
-      // ดึงข้อมูลผู้ดูแลระบบจาก API
-      const adminsResponse = await fetch('/api/adminb2b/admins');
-      const adminsResult = await adminsResponse.json();
-      
-      if (adminsResult.success) {
-        setAdmins(adminsResult.data);
-      } else {
-        toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ดูแลระบบ');
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
     loadData();
   }, []);
 
-  const handleRolePermissionToggle = (roleId: string, permissionId: string) => {
-    setRoles(prevRoles => {
-      const updatedRoles = prevRoles.map(role => {
-        if (role.id === roleId) {
-          const hasPermission = role.permissions.includes(permissionId);
-          const updatedPermissions = hasPermission
-            ? role.permissions.filter(p => p !== permissionId)
-            : [...role.permissions, permissionId];
-          
-          return { ...role, permissions: updatedPermissions };
-        }
-        return role;
+  const handleRolePermissionToggle = async (roleId: string, permissionId: string) => {
+    const targetRole = roles.find(role => role._id === roleId);
+    if (!targetRole) return;
+
+    const hasPermission = targetRole.permissions.includes(permissionId);
+    const updatedPermissions = hasPermission
+      ? targetRole.permissions.filter(p => p !== permissionId)
+      : [...targetRole.permissions, permissionId];
+
+    try {
+      const response = await fetch(`/api/adminb2b/roles/${roleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ permissions: updatedPermissions }),
       });
-      
-      localStorage.setItem('b2b_roles', JSON.stringify(updatedRoles));
-      return updatedRoles;
-    });
-    
-    toast.success('อัพเดทสิทธิ์เรียบร้อยแล้ว');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถอัปเดตสิทธิ์ได้');
+      }
+
+      setRoles(prevRoles =>
+        prevRoles.map(role =>
+          role._id === roleId ? { ...role, permissions: updatedPermissions } : role
+        )
+      );
+      toast.success('อัพเดทสิทธิ์เรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error updating role permissions:', error);
+      toast.error('เกิดข้อผิดพลาดในการอัปเดตสิทธิ์');
+    }
   };
 
-  const handleCreateRole = () => {
+  const handleCreateRole = async () => {
     const name = prompt('ชื่อบทบาท:');
     if (!name) return;
-    
+
     const description = prompt('คำอธิบาย:');
     if (!description) return;
-    
-    const newRole: Role = {
-      id: `role_${Date.now()}`,
-      name,
-      description,
-      permissions: [],
-      level: 4 // Custom role
-    };
-    
-    setRoles(prev => {
-      const updated = [...prev, newRole];
-      localStorage.setItem('b2b_roles', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('สร้างบทบาทใหม่เรียบร้อยแล้ว');
+
+    try {
+      const response = await fetch('/api/adminb2b/roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          description,
+          permissions: [],
+          level: 4,
+          isActive: true,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถสร้างบทบาทได้');
+      }
+
+      setRoles(prev => [...prev, result.data]);
+      toast.success('สร้างบทบาทใหม่เรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error creating role:', error);
+      toast.error('เกิดข้อผิดพลาดในการสร้างบทบาท');
+    }
   };
 
-  const handleDeleteRole = (roleId: string) => {
+  const handleDeleteRole = async (roleId: string) => {
     if (!confirm('คุณแน่ใจหรือไม่ที่จะลบบทบาทนี้?')) return;
     
     // ตรวจสอบว่ามีแอดมินใช้บทบาทนี้อยู่หรือไม่
-    const adminsUsingRole = admins.filter(admin => admin.role === roleId);
+    const adminsUsingRole = admins.filter(admin => {
+      if (typeof admin.role === 'string') {
+        return admin.role === roleId;
+      }
+      return admin.role?._id === roleId;
+    });
     if (adminsUsingRole.length > 0) {
       toast.error('ไม่สามารถลบบทบาทได้ เนื่องจากมีแอดมินใช้งานอยู่');
       return;
     }
     
-    setRoles(prev => {
-      const updated = prev.filter(role => role.id !== roleId);
-      localStorage.setItem('b2b_roles', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('ลบบทบาทเรียบร้อยแล้ว');
+    try {
+      const response = await fetch(`/api/adminb2b/roles/${roleId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถลบบทบาทได้');
+      }
+      setRoles(prev => prev.filter(role => role._id !== roleId));
+      toast.success('ลบบทบาทเรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error deleting role:', error);
+      toast.error('เกิดข้อผิดพลาดในการลบบทบาท');
+    }
   };
 
-  const handleCreateAdmin = () => {
+  const handleCreateAdmin = async () => {
     const name = prompt('ชื่อแอดมิน:');
     if (!name) return;
-    
-    const email = prompt('อีเมล:');
-    if (!email) return;
-    
-    const roleId = prompt('เลือกบทบาท (super_admin, sales_admin):');
-    if (!roleId || !roles.find(r => r.id === roleId)) {
+
+    const phone = prompt('เบอร์โทรศัพท์:');
+    if (!phone) return;
+
+    const email = prompt('อีเมล (ถ้าไม่มีเว้นว่าง):') || '';
+
+    const roleHint = roles.map(role => `${role.name} (${role._id})`).join('\n');
+    const roleInput = prompt(`เลือกบทบาทโดยระบุ Role ID หรือชื่อบทบาท:\n${roleHint}`);
+    if (!roleInput) return;
+
+    const matchedRole = roles.find(
+      role =>
+        role._id === roleInput.trim() ||
+        role.name.toLowerCase() === roleInput.trim().toLowerCase()
+    );
+    if (!matchedRole) {
       toast.error('บทบาทไม่ถูกต้อง');
       return;
     }
-    
-    const newAdmin: Admin = {
-      id: `admin_${Date.now()}`,
-      name,
-      email,
-      role: roleId,
-      isActive: true,
-      createdAt: new Date().toISOString()
-    };
-    
-    setAdmins(prev => {
-      const updated = [...prev, newAdmin];
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('สร้างแอดมินใหม่เรียบร้อยแล้ว');
+
+    try {
+      const response = await fetch('/api/adminb2b/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          phone,
+          email: email || undefined,
+          role: matchedRole._id,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถสร้างแอดมินได้');
+      }
+
+      setAdmins(prev => [result.data, ...prev]);
+      toast.success('สร้างแอดมินใหม่เรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      toast.error('เกิดข้อผิดพลาดในการสร้างแอดมิน');
+    }
   };
 
-  const handleToggleAdminStatus = (adminId: string) => {
-    setAdmins(prev => {
-      const updated = prev.map(admin => 
-        admin.id === adminId ? { ...admin, isActive: !admin.isActive } : admin
+  const handleToggleAdminStatus = async (adminId: string) => {
+    const target = admins.find(admin => admin._id === adminId);
+    if (!target) return;
+
+    try {
+      const response = await fetch(`/api/adminb2b/admins/${adminId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !target.isActive }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถอัปเดตสถานะได้');
+      }
+
+      setAdmins(prev =>
+        prev.map(admin =>
+          admin._id === adminId ? { ...admin, isActive: !admin.isActive } : admin
+        )
       );
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('อัพเดทสถานะแอดมินเรียบร้อยแล้ว');
+      toast.success('อัพเดทสถานะแอดมินเรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error updating admin status:', error);
+      toast.error('เกิดข้อผิดพลาดในการอัปเดตสถานะแอดมิน');
+    }
   };
 
-  const handleDeleteAdmin = (adminId: string) => {
+  const handleDeleteAdmin = async (adminId: string) => {
     if (!confirm('คุณแน่ใจหรือไม่ที่จะลบแอดมินนี้?')) return;
-    
-    setAdmins(prev => {
-      const updated = prev.filter(admin => admin.id !== adminId);
-      localStorage.setItem('b2b_admins', JSON.stringify(updated));
-      return updated;
-    });
-    
-    toast.success('ลบแอดมินเรียบร้อยแล้ว');
+
+    try {
+      const response = await fetch(`/api/adminb2b/admins/${adminId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'ไม่สามารถลบแอดมินได้');
+      }
+      setAdmins(prev => prev.filter(admin => admin._id !== adminId));
+      toast.success('ลบแอดมินเรียบร้อยแล้ว');
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      toast.error('เกิดข้อผิดพลาดในการลบแอดมิน');
+    }
   };
 
   const getPermissionsByCategory = () => {
@@ -328,7 +341,7 @@ const PermissionsPage: React.FC = () => {
 
           <div className="grid gap-6">
             {roles.map((role) => (
-              <div key={role.id} className="bg-white rounded-lg border shadow-sm">
+              <div key={role._id} className="bg-white rounded-lg border shadow-sm">
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex justify-between items-start">
                     <div>
@@ -350,7 +363,7 @@ const PermissionsPage: React.FC = () => {
                     </div>
                     {role.level === 4 && (
                       <button
-                        onClick={() => handleDeleteRole(role.id)}
+                        onClick={() => handleDeleteRole(role._id)}
                         className="text-red-600 hover:text-red-800"
                       >
                         ลบ
@@ -371,7 +384,7 @@ const PermissionsPage: React.FC = () => {
                               <input
                                 type="checkbox"
                                 checked={role.permissions.includes(permission.id)}
-                                onChange={() => handleRolePermissionToggle(role.id, permission.id)}
+                                onChange={() => handleRolePermissionToggle(role._id, permission.id)}
                                 disabled={role.level === 1} // Super Admin มีทุกสิทธิ์
                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                               />
@@ -436,9 +449,12 @@ const PermissionsPage: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {admins.map((admin) => {
-                  const role = roles.find(r => r.id === admin.role);
+                  const roleId = typeof admin.role === 'string' ? admin.role : admin.role?._id;
+                  const role = roles.find(r => r._id === roleId);
+                  const roleName = role?.name || (typeof admin.role === 'string' ? undefined : admin.role?.name);
+                  const roleLevel = role?.level ?? (typeof admin.role === 'string' ? undefined : admin.role?.level);
                   return (
-                    <tr key={admin.id}>
+                    <tr key={admin._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{admin.name}</div>
@@ -447,11 +463,11 @@ const PermissionsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          role?.level === 1 ? 'bg-red-100 text-red-800' :
-                          role?.level === 2 ? 'bg-blue-100 text-blue-800' :
+                          roleLevel === 1 ? 'bg-red-100 text-red-800' :
+                          roleLevel === 2 ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {role?.name || 'ไม่ระบุ'}
+                          {roleName || 'ไม่ระบุ'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -469,16 +485,16 @@ const PermissionsPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
-                            onClick={() => handleToggleAdminStatus(admin.id)}
+                            onClick={() => handleToggleAdminStatus(admin._id)}
                             className={`text-sm ${
                               admin.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
                             }`}
                           >
                             {admin.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                           </button>
-                          {admin.role !== 'super_admin' && (
+                          {roleName !== 'Super Admin' && (
                             <button
-                              onClick={() => handleDeleteAdmin(admin.id)}
+                              onClick={() => handleDeleteAdmin(admin._id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               ลบ

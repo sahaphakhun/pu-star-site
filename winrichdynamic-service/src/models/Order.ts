@@ -1,23 +1,53 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IOrderItem {
-	productId: Schema.Types.ObjectId;
+	productId?: Schema.Types.ObjectId;
 	name: string;
+	description?: string;
 	price: number;
 	quantity: number;
+	discount?: number;
+	amount?: number;
+	sku?: string;
 	selectedOptions?: Record<string, string>;
 	unitLabel?: string;
 	unitPrice?: number;
 }
 
 export interface IOrder extends Document {
+	customerId?: Schema.Types.ObjectId;
+	salesOrderNumber?: string;
+	quotationId?: string;
 	customerName: string;
 	customerPhone: string;
+	contactName?: string;
+	contactEmail?: string;
+	contactPhone?: string;
 	items: IOrderItem[];
+	subtotal?: number;
+	vatRate?: number;
+	vatAmount?: number;
 	totalAmount: number;
 	shippingFee: number;
 	discount?: number;
 	orderDate: Date;
+	deliveryDate?: Date;
+	deliveryStatus?: 'pending' | 'preparing' | 'shipped' | 'delivered';
+	deliveryAddress?: string;
+	deliveryProvince?: string;
+	deliveryDistrict?: string;
+	deliverySubdistrict?: string;
+	deliveryPostalCode?: string;
+	ownerId?: Schema.Types.ObjectId;
+	team?: string;
+	importance?: number;
+	paymentStatus?: 'unpaid' | 'partial' | 'paid';
+	paidAmount?: number;
+	remainingAmount?: number;
+	paymentTerms?: string;
+	paymentDueDate?: Date;
+	notes?: string;
+	internalNotes?: string;
 	createdAt: Date;
 	updatedAt: Date;
   orderType?: 'online' | 'sales_order';
@@ -25,7 +55,7 @@ export interface IOrder extends Document {
   status?: 'pending' | 'confirmed' | 'ready' | 'shipped' | 'delivered' | 'cancelled';
   trackingNumber?: string;
   shippingProvider?: string;
-  deliveryMethod?: 'standard' | 'lalamove';
+  deliveryMethod?: string;
   // COD specific fields
   codPaymentStatus?: 'pending' | 'collected' | 'failed';
   codPaymentDueDate?: Date;
@@ -79,10 +109,14 @@ export interface IOrder extends Document {
 }
 
 const orderItemSchema = new Schema<IOrderItem>({
-	productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+	productId: { type: Schema.Types.ObjectId, ref: 'Product' },
 	name: { type: String, required: true },
+	description: { type: String },
 	price: { type: Number, required: true },
 	quantity: { type: Number, required: true, min: 1 },
+	discount: { type: Number, default: 0 },
+	amount: { type: Number },
+	sku: { type: String },
 	selectedOptions: { type: Schema.Types.Mixed, default: {} },
 	unitLabel: { type: String },
 	unitPrice: { type: Number },
@@ -90,19 +124,45 @@ const orderItemSchema = new Schema<IOrderItem>({
 
 const orderSchema = new Schema<IOrder>(
 	{
+		customerId: { type: Schema.Types.ObjectId, ref: 'Customer', index: true },
+		salesOrderNumber: { type: String, trim: true, index: true },
+		quotationId: { type: String, trim: true, index: true },
 		customerName: { type: String, required: true, trim: true },
 		customerPhone: { type: String, required: true, trim: true },
+		contactName: { type: String, trim: true },
+		contactEmail: { type: String, trim: true },
+		contactPhone: { type: String, trim: true },
 		items: [orderItemSchema],
+		subtotal: { type: Number },
+		vatRate: { type: Number },
+		vatAmount: { type: Number },
 		totalAmount: { type: Number, required: true },
 		shippingFee: { type: Number, required: true, default: 0 },
 		discount: { type: Number, default: 0 },
 		orderDate: { type: Date, default: Date.now },
+		deliveryDate: { type: Date },
+		deliveryStatus: { type: String, enum: ['pending', 'preparing', 'shipped', 'delivered'], default: 'pending' },
+		deliveryAddress: { type: String },
+		deliveryProvince: { type: String },
+		deliveryDistrict: { type: String },
+		deliverySubdistrict: { type: String },
+		deliveryPostalCode: { type: String },
+		ownerId: { type: Schema.Types.ObjectId, ref: 'Admin', index: true },
+		team: { type: String, trim: true, index: true },
+		importance: { type: Number, default: 3 },
+		paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid' },
+		paidAmount: { type: Number, default: 0 },
+		remainingAmount: { type: Number, default: 0 },
+		paymentTerms: { type: String },
+		paymentDueDate: { type: Date },
+		notes: { type: String },
+		internalNotes: { type: String },
     orderType: { type: String, enum: ['online', 'sales_order'], default: 'online', index: true },
 		paymentMethod: { type: String, enum: ['cod', 'transfer', 'credit'], default: 'cod' },
     status: { type: String, enum: ['pending', 'confirmed', 'ready', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
     trackingNumber: { type: String },
     shippingProvider: { type: String },
-    deliveryMethod: { type: String, enum: ['standard', 'lalamove'], default: 'standard' },
+    deliveryMethod: { type: String, default: 'standard' },
     // COD specific fields
     codPaymentStatus: { type: String, enum: ['pending', 'collected', 'failed'], default: 'pending' },
     codPaymentDueDate: { type: Date },
@@ -165,4 +225,3 @@ orderSchema.index({ orderDate: -1 });
 orderSchema.index({ customerPhone: 1 });
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema);
-

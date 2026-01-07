@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Plus, Trash2, Upload, Star, Calendar, Package } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -9,14 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/components/ui/Modal'
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-
-// TODO: Replace with actual data context when available
-const useData = () => ({
-  customers: [],
-  quotations: [],
-  addSalesOrder: (order: any) => console.log('Add sales order:', order),
-  updateSalesOrder: (id: string, order: any) => console.log('Update sales order:', id, order),
-})
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete'
+import useApiService from '@/features/jubili/hooks/useApiService'
 
 interface OrderItem {
   description: string
@@ -47,7 +41,9 @@ interface SalesOrder {
   deliveryAddress: string
   deliveryProvince: string
   deliveryDistrict: string
+  deliverySubdistrict: string
   deliveryPostalCode: string
+  shipToSameAsCustomer: boolean
   items: OrderItem[]
   subtotal: number
   vat: number
@@ -72,100 +68,304 @@ interface SalesOrderFormProps {
 }
 
 export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrderFormProps) {
-  const { customers, quotations, addSalesOrder, updateSalesOrder } = useData()
+  const { customers: customersApi, quotations: quotationsApi, salesOrders: salesOrdersApi } = useApiService()
+  const [customers, setCustomers] = useState<any[]>([])
+  const [quotations, setQuotations] = useState<any[]>([])
+  const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string }>>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   
-  const [formData, setFormData] = useState<SalesOrder>(salesOrder || {
+  const mapApiStatusToUi = (status?: string) => {
+    const map: Record<string, SalesOrder['status']> = {
+      pending: 'draft',
+      confirmed: 'confirmed',
+      ready: 'processing',
+      shipped: 'processing',
+      delivered: 'completed',
+      cancelled: 'cancelled',
+    }
+    return map[String(status || '')] || 'draft'
+  }
+
+  const resolveDeliveryStatus = (order: any) => {
+    if (order?.deliveryStatus) return order.deliveryStatus
+    if (order?.status === 'delivered') return 'delivered'
+    if (order?.status === 'shipped') return 'shipped'
+    if (order?.status === 'ready') return 'preparing'
+    return 'pending'
+  }
+
+  const buildEmptyForm = (): SalesOrder => ({
     // ข้อมูลพื้นฐาน
     salesOrderNumber: '',
     quotationId: '',
     customerId: '',
     customerName: '',
-    
+
     // วันที่
     orderDate: new Date().toISOString().split('T')[0],
     deliveryDate: '',
-    
+
     // ผู้รับผิดชอบ
     importance: 3,
-    owner: 'PU STAR Office',
+    owner: '',
     team: 'PU STAR Office',
-    
+
     // ข้อมูลผู้ติดต่อ
     contactName: '',
     contactEmail: '',
     contactPhone: '',
-    
+
     // ข้อมูลการจัดส่ง
     deliveryMethod: 'รับเอง',
     deliveryStatus: 'pending', // pending, preparing, shipped, delivered
     trackingNumber: '',
-    
+
     // ที่อยู่จัดส่ง
     deliveryAddress: '',
     deliveryProvince: '',
     deliveryDistrict: '',
+    deliverySubdistrict: '',
     deliveryPostalCode: '',
-    
+    shipToSameAsCustomer: true,
+
     // รายการสินค้า
     items: [
       { description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 },
     ],
-    
+
     // สรุปยอด
     subtotal: 0,
     vat: 7,
     vatAmount: 0,
     total: 0,
-    
+
     // การชำระเงิน
     paymentStatus: 'unpaid', // unpaid, partial, paid
     paidAmount: 0,
     remainingAmount: 0,
     paymentTerms: '',
     paymentDueDate: '',
-    
+
     // หมายเหตุ
     notes: '',
     internalNotes: '',
-    
+
     // สถานะ
     status: 'draft', // draft, confirmed, processing, completed, cancelled
   })
 
-  const handleChange = (field: keyof SalesOrder, value: any) => {
-    setFormData({ ...formData, [field]: value })
-    
-    // Auto-fill from quotation
-    if (field === 'quotationId' && value) {
-      const quotation = quotations.find((q: any) => q.id === value) as any
-      if (quotation) {
-        setFormData((prev: any) => ({
-          ...prev,
-          customerId: quotation.customerId,
-          customerName: quotation.customerName,
-          contactName: quotation.contactName,
-          contactEmail: quotation.contactEmail,
-          contactPhone: quotation.contactPhone,
-          items: quotation.items || [],
-          subtotal: quotation.subtotal,
-          vatAmount: quotation.vatAmount,
-          total: quotation.total,
-          remainingAmount: quotation.total,
-          paymentTerms: quotation.paymentTerms,
-        } as SalesOrder))
+  const mapOrderToForm = (order: any): SalesOrder => {
+    const items = Array.isArray(order?.items)
+      ? order.items.map((item: any) => {
+        const pricePerUnit = Number(item.unitPrice ?? item.price ?? 0)
+        const quantity = Number(item.quantity ?? 0)
+        const discount = Number(item.discount ?? 0)
+        const amount = Number(item.amount ?? (pricePerUnit - discount) * quantity)
+        return {
+          description: item.description || item.name || '',
+          quantity,
+          unit: item.unitLabel || '',
+          pricePerUnit,
+          discount,
+          amount,
+        }
+      })
+      : []
+
+    const subtotal = Number(order?.subtotal ?? items.reduce((sum, item) => sum + (item.amount || 0), 0))
+    const vat = Number(order?.vatRate ?? order?.vat ?? 7)
+    const vatAmount = Number(order?.vatAmount ?? (subtotal * vat) / 100)
+    const total = Number(order?.totalAmount ?? subtotal + vatAmount)
+    const paidAmount = Number(order?.paidAmount ?? 0)
+    const remainingAmount = Number(order?.remainingAmount ?? Math.max(total - paidAmount, 0))
+    const hasShipping = Boolean(
+      order?.deliveryAddress ||
+        order?.deliveryProvince ||
+        order?.deliveryDistrict ||
+        order?.deliverySubdistrict ||
+        order?.deliveryPostalCode
+    )
+
+    return {
+      salesOrderNumber: order?.salesOrderNumber || '',
+      quotationId: order?.quotationId || order?.sourceQuotationId || '',
+      customerId: order?.customerId || '',
+      customerName: order?.customerName || '',
+      orderDate: order?.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      deliveryDate: order?.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : '',
+      importance: Number(order?.importance ?? 3),
+      owner: order?.ownerId || '',
+      team: order?.team || 'PU STAR Office',
+      contactName: order?.contactName || '',
+      contactEmail: order?.contactEmail || '',
+      contactPhone: order?.contactPhone || order?.customerPhone || '',
+      deliveryMethod: order?.deliveryMethod || 'รับเอง',
+      deliveryStatus: resolveDeliveryStatus(order),
+      trackingNumber: order?.trackingNumber || '',
+      deliveryAddress: order?.deliveryAddress || '',
+      deliveryProvince: order?.deliveryProvince || '',
+      deliveryDistrict: order?.deliveryDistrict || '',
+      deliverySubdistrict: order?.deliverySubdistrict || '',
+      deliveryPostalCode: order?.deliveryPostalCode || '',
+      shipToSameAsCustomer: order?.shipToSameAsCustomer ?? !hasShipping,
+      items: items.length ? items : [{ description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 }],
+      subtotal,
+      vat,
+      vatAmount,
+      total,
+      paymentStatus: order?.paymentStatus || (order?.slipVerification?.verified ? 'paid' : 'unpaid'),
+      paidAmount,
+      remainingAmount,
+      paymentTerms: order?.paymentTerms || '',
+      paymentDueDate: order?.paymentDueDate ? new Date(order.paymentDueDate).toISOString().split('T')[0] : '',
+      notes: order?.notes || '',
+      internalNotes: order?.internalNotes || '',
+      status: mapApiStatusToUi(order?.status),
+      createdAt: order?.createdAt,
+      updatedAt: order?.updatedAt,
+    }
+  }
+
+  const [formData, setFormData] = useState<SalesOrder>(() => (
+    salesOrder ? mapOrderToForm(salesOrder) : buildEmptyForm()
+  ))
+
+  useEffect(() => {
+    setFormData(salesOrder ? mapOrderToForm(salesOrder) : buildEmptyForm())
+  }, [salesOrder])
+
+  useEffect(() => {
+    let active = true
+    const loadLookups = async () => {
+      try {
+        const [customersRes, quotationsRes] = await Promise.all([
+          customersApi.getCustomers({ page: 1, limit: 200 }),
+          quotationsApi.getQuotations({ page: 1, limit: 200 }),
+        ])
+        if (!active) return
+        const customerList = Array.isArray(customersRes) ? customersRes : customersRes.data || []
+        const quotationList = Array.isArray(quotationsRes) ? quotationsRes : quotationsRes.data || []
+        setCustomers(customerList)
+        setQuotations(quotationList)
+      } catch {
+        if (active) {
+          setCustomers([])
+          setQuotations([])
+        }
       }
     }
-    
-    // Calculate remaining amount when paid amount changes
-    if (field === 'paidAmount') {
-      const remaining = formData.total - value
-      const status = remaining <= 0 ? 'paid' : value > 0 ? 'partial' : 'unpaid'
-      setFormData((prev: any) => ({
-        ...prev,
-        remainingAmount: remaining,
-        paymentStatus: status,
-      }))
+
+    const loadAdmins = async () => {
+      try {
+        const res = await fetch('/api/adminb2b/admins', { credentials: 'include' })
+        const data = await res.json()
+        if (!active) return
+        if (data?.success && Array.isArray(data.data)) {
+          setAdmins(data.data)
+        } else {
+          setAdmins([])
+        }
+      } catch {
+        if (active) setAdmins([])
+      }
     }
+
+    loadLookups()
+    loadAdmins()
+    return () => {
+      active = false
+    }
+  }, [customersApi, quotationsApi])
+
+  const applyCustomerShipping = (next: SalesOrder, customer?: any) => {
+    if (!customer) return
+    next.deliveryAddress = customer.companyAddress || customer.shippingAddress || ''
+    next.deliveryProvince = customer.province || ''
+    next.deliveryDistrict = customer.district || ''
+    next.deliverySubdistrict = customer.subdistrict || ''
+    next.deliveryPostalCode = customer.zipcode || ''
+  }
+
+  const applyQuotationShipping = (next: SalesOrder, quotation?: any) => {
+    if (!quotation) return
+    const shipSame = quotation.shipToSameAsCustomer ?? next.shipToSameAsCustomer
+    next.shipToSameAsCustomer = Boolean(shipSame)
+    next.deliveryAddress = shipSame
+      ? quotation.customerAddress || quotation.shippingAddress || ''
+      : quotation.shippingAddress || quotation.customerAddress || ''
+    next.deliveryProvince = quotation.deliveryProvince || ''
+    next.deliveryDistrict = quotation.deliveryDistrict || ''
+    next.deliverySubdistrict = quotation.deliverySubdistrict || ''
+    next.deliveryPostalCode = quotation.deliveryZipcode || quotation.deliveryPostalCode || ''
+  }
+
+  const handleChange = (field: keyof SalesOrder, value: any) => {
+    setFormData((prev: SalesOrder) => {
+      const next: SalesOrder = { ...prev, [field]: value }
+
+      if (field === 'quotationId' && value) {
+        const quotation = quotations.find((q: any) => String(q._id || q.id) === String(value)) as any
+        if (quotation) {
+          const mappedItems = (quotation.items || []).map((item: any) => {
+            const pricePerUnit = Number(item.unitPrice ?? 0)
+            const quantity = Number(item.quantity ?? 0)
+            const discount = Number(item.discount ? (pricePerUnit * item.discount) / 100 : 0)
+            return {
+              description: item.productName || item.description || '',
+              quantity,
+              unit: item.unit || '',
+              pricePerUnit,
+              discount,
+              amount: (pricePerUnit - discount) * quantity,
+            }
+          })
+          const subtotal = Number(quotation.totalAmount ?? 0)
+          const vatRate = Number(quotation.vatRate ?? 7)
+          const vatAmount = Number(quotation.vatAmount ?? (subtotal * vatRate) / 100)
+          const total = Number(quotation.grandTotal ?? subtotal + vatAmount)
+
+          next.customerId = quotation.customerId || ''
+          next.customerName = quotation.customerName || ''
+          next.contactPhone = quotation.customerPhone || ''
+          next.items = mappedItems.length ? mappedItems : next.items
+          next.subtotal = subtotal
+          next.vat = vatRate
+          next.vatAmount = vatAmount
+          next.total = total
+          next.remainingAmount = Math.max(total - Number(next.paidAmount || 0), 0)
+          next.paymentTerms = quotation.paymentTerms || next.paymentTerms
+          applyQuotationShipping(next, quotation)
+        }
+      }
+
+      if (field === 'customerId' && value) {
+        const customer = customers.find((c: any) => String(c._id || c.id) === String(value))
+        if (customer) {
+          next.customerName = customer.name || ''
+          next.contactPhone = customer.phoneNumber || ''
+          if (next.shipToSameAsCustomer) {
+            applyCustomerShipping(next, customer)
+          }
+        }
+      }
+
+      if (field === 'shipToSameAsCustomer') {
+        if (value) {
+          const customer = customers.find((c: any) => String(c._id || c.id) === String(next.customerId))
+          applyCustomerShipping(next, customer)
+        }
+      }
+
+      if (field === 'paidAmount') {
+        const remaining = Number(next.total || 0) - Number(value || 0)
+        const status = remaining <= 0 ? 'paid' : Number(value || 0) > 0 ? 'partial' : 'unpaid'
+        next.remainingAmount = Math.max(remaining, 0)
+        next.paymentStatus = status
+      }
+
+      return next
+    })
   }
 
   const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
@@ -210,26 +410,105 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     calculateTotals(newItems)
   }
 
-  const handleSubmit = (e: React.FormEvent, action = 'draft') => {
+  const mapUiStatusToApi = (status: SalesOrder['status']) => {
+    const map: Record<string, string> = {
+      draft: 'pending',
+      confirmed: 'confirmed',
+      processing: 'ready',
+      completed: 'delivered',
+      cancelled: 'cancelled',
+    }
+    return map[status] || 'pending'
+  }
+
+  const handleSubmit = async (e: React.FormEvent, action = 'draft') => {
     e.preventDefault()
-    
-    const salesOrderData: SalesOrder = {
-      ...formData,
-      status: action === 'confirm' ? 'confirmed' : 'draft',
-      salesOrderNumber: salesOrder?.salesOrderNumber || `SO${Date.now()}`,
-      id: salesOrder?.id || Date.now().toString(),
-      createdAt: salesOrder?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    setSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const status: SalesOrder['status'] = action === 'confirm' ? 'confirmed' : 'draft'
+      const selectedCustomer = customers.find((c: any) => String(c._id || c.id) === String(formData.customerId))
+      const customerPhone = formData.contactPhone || selectedCustomer?.phoneNumber || ''
+
+      if (!formData.customerName || !customerPhone) {
+        throw new Error('กรุณาระบุชื่อลูกค้าและเบอร์ติดต่อให้ครบถ้วน')
+      }
+
+      const items = (formData.items || [])
+        .filter((item) => item.description && Number(item.quantity || 0) > 0)
+        .map((item) => ({
+          productId: (item as any).productId || undefined,
+          name: item.description,
+          description: item.description,
+          quantity: Number(item.quantity || 0),
+          unitLabel: item.unit || undefined,
+          unitPrice: Number(item.pricePerUnit || 0),
+          price: Number(item.pricePerUnit || 0),
+          discount: Number(item.discount || 0),
+          amount: Number(item.amount || 0),
+        }))
+
+      if (!items.length) {
+        throw new Error('กรุณาระบุรายการสินค้าอย่างน้อย 1 รายการ')
+      }
+
+      const payload: any = {
+        orderType: 'sales_order',
+        salesOrderNumber: formData.salesOrderNumber || `SO${Date.now()}`,
+        quotationId: formData.quotationId || undefined,
+        customerId: formData.customerId || undefined,
+        customerName: formData.customerName,
+        customerPhone,
+        contactName: formData.contactName || undefined,
+        contactEmail: formData.contactEmail || undefined,
+        contactPhone: formData.contactPhone || undefined,
+        orderDate: formData.orderDate || undefined,
+        deliveryDate: formData.deliveryDate || undefined,
+        deliveryStatus: formData.deliveryStatus || undefined,
+        deliveryMethod: formData.deliveryMethod || undefined,
+        trackingNumber: formData.trackingNumber || undefined,
+        deliveryAddress: formData.deliveryAddress || undefined,
+        deliveryProvince: formData.deliveryProvince || undefined,
+        deliveryDistrict: formData.deliveryDistrict || undefined,
+        deliverySubdistrict: formData.deliverySubdistrict || undefined,
+        deliveryPostalCode: formData.deliveryPostalCode || undefined,
+        importance: Number(formData.importance || 0),
+        ownerId: formData.owner || undefined,
+        team: formData.team || undefined,
+        paymentStatus: formData.paymentStatus || undefined,
+        paidAmount: Number(formData.paidAmount || 0),
+        remainingAmount: Number(formData.remainingAmount || 0),
+        paymentTerms: formData.paymentTerms || undefined,
+        paymentDueDate: formData.paymentDueDate || undefined,
+        notes: formData.notes || undefined,
+        internalNotes: formData.internalNotes || undefined,
+        subtotal: Number(formData.subtotal || 0),
+        vatRate: Number(formData.vat || 0),
+        vatAmount: Number(formData.vatAmount || 0),
+        totalAmount: Number(formData.total || 0),
+        status: mapUiStatusToApi(status),
+        items,
+      }
+
+      const orderId = (salesOrder as any)?._id || salesOrder?.id
+      if (orderId) {
+        await salesOrdersApi.updateSalesOrder(String(orderId), payload)
+      } else {
+        await salesOrdersApi.createSalesOrder(payload)
+      }
+
+      if (onSave) onSave()
+      onClose()
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message)
+      } else {
+        setErrorMessage('เกิดข้อผิดพลาดในการบันทึกใบสั่งขาย')
+      }
+    } finally {
+      setSubmitting(false)
     }
-    
-    if (salesOrder) {
-      updateSalesOrder(salesOrder.id!, salesOrderData)
-    } else {
-      addSalesOrder(salesOrderData)
-    }
-    
-    if (onSave) onSave()
-    onClose()
   }
 
   const deliveryStatusConfig = {
@@ -244,6 +523,16 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     partial: { label: 'ชำระบางส่วน', color: 'bg-orange-100 text-orange-800' },
     paid: { label: 'ชำระแล้ว', color: 'bg-green-100 text-green-800' },
   }
+
+  const shippingSummary = [
+    formData.deliveryAddress,
+    formData.deliverySubdistrict ? `ต.${formData.deliverySubdistrict}` : '',
+    formData.deliveryDistrict ? `อ.${formData.deliveryDistrict}` : '',
+    formData.deliveryProvince ? `จ.${formData.deliveryProvince}` : '',
+    formData.deliveryPostalCode || '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -274,6 +563,11 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
         {/* Form Content */}
         <form className="flex-1 overflow-y-auto">
           <div className="p-6">
+            {errorMessage && (
+              <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             {/* Status Badges */}
             <div className="flex gap-4 mb-6">
               <div>
@@ -307,9 +601,9 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">เลือกใบเสนอราคา (ถ้ามี)</SelectItem>
-                          {quotations.filter((q: any) => q.status === 'approved').map((quotation: any) => (
-                            <SelectItem key={quotation.id} value={quotation.id}>
-                              {quotation.quotationNumber} - {quotation.customerName}
+                          {quotations.map((quotation: any) => (
+                            <SelectItem key={quotation._id || quotation.id} value={quotation._id || quotation.id}>
+                              {quotation.quotationNumber || quotation._id} - {quotation.customerName || '-'}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -327,7 +621,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                         <SelectContent>
                           <SelectItem value="">โปรดเลือกลูกค้า</SelectItem>
                           {customers.map((customer: any) => (
-                            <SelectItem key={customer.id} value={customer.id}>
+                            <SelectItem key={customer._id || customer.id} value={customer._id || customer.id}>
                               {customer.name}
                             </SelectItem>
                           ))}
@@ -391,8 +685,12 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="PU STAR Office">PU STAR Office</SelectItem>
-                          <SelectItem value="Saletrades 1 Kitti">Saletrades 1 Kitti</SelectItem>
+                          <SelectItem value="">ไม่ระบุ</SelectItem>
+                          {admins.map((admin) => (
+                            <SelectItem key={admin._id} value={admin._id}>
+                              {admin.name || admin.phone || admin._id}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -453,27 +751,50 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        ที่อยู่จัดส่ง
+                      <label className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.shipToSameAsCustomer}
+                          onChange={(e) => handleChange('shipToSameAsCustomer', e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm font-medium">ที่อยู่เดียวกับลูกค้า</span>
                       </label>
-                      <Textarea
-                        value={formData.deliveryAddress}
-                        onChange={(e) => handleChange('deliveryAddress', e.target.value)}
-                        rows={3}
-                        placeholder="ที่อยู่จัดส่ง"
-                      />
+                      <div className="rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                        {shippingSummary || 'ยังไม่มีที่อยู่ลูกค้า'}
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        จังหวัด
-                      </label>
-                      <Input
-                        value={formData.deliveryProvince}
-                        onChange={(e) => handleChange('deliveryProvince', e.target.value)}
-                        placeholder="จังหวัด"
-                      />
-                    </div>
+                    {!formData.shipToSameAsCustomer && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            ที่อยู่จัดส่ง
+                          </label>
+                          <Textarea
+                            value={formData.deliveryAddress}
+                            onChange={(e) => handleChange('deliveryAddress', e.target.value)}
+                            rows={3}
+                            placeholder="ที่อยู่จัดส่ง"
+                          />
+                        </div>
+
+                        <AddressAutocomplete
+                          value={{
+                            province: formData.deliveryProvince,
+                            district: formData.deliveryDistrict,
+                            subdistrict: formData.deliverySubdistrict,
+                            zipcode: formData.deliveryPostalCode,
+                          }}
+                          onChange={(address) => {
+                            handleChange('deliveryProvince', address.province)
+                            handleChange('deliveryDistrict', address.district)
+                            handleChange('deliverySubdistrict', address.subdistrict)
+                            handleChange('deliveryPostalCode', address.zipcode)
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -668,6 +989,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               type="button"
               variant="outline"
               onClick={onClose}
+              disabled={submitting}
             >
               ยกเลิก
             </Button>
@@ -675,6 +997,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               type="button"
               onClick={(e) => handleSubmit(e, 'draft')}
               variant="secondary"
+              disabled={submitting}
             >
               บันทึกร่าง
             </Button>
@@ -682,6 +1005,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               type="button"
               onClick={(e) => handleSubmit(e, 'confirm')}
               variant="primary"
+              disabled={submitting}
             >
               ยืนยันคำสั่งซื้อ
             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Eye, Edit, Trash2, FileText, Star, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, FileText, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import QuotationForm from '@/components/QuotationForm';
 import useApiService from '@/features/jubili/hooks/useApiService';
@@ -34,7 +34,8 @@ export default function Quotations() {
     dateFrom: '',
     dateTo: ''
   });
-  const { quotations: quotationsApi } = useApiService();
+  const { quotations: quotationsApi, customers: customersApi } = useApiService();
+  const [customers, setCustomers] = useState([]);
 
   // Fetch quotations from API
   const fetchQuotations = async (page = 1, searchTerm = '', filters = {}) => {
@@ -63,6 +64,40 @@ export default function Quotations() {
       setQuotations([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await customersApi.getCustomers({ page: 1, limit: 200 });
+      const list = Array.isArray(response) ? response : response.data || [];
+      setCustomers(list);
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setCustomers([]);
+    }
+  };
+
+  const handleSubmitQuotation = async (quotationData) => {
+    if (editingQuotation?._id) {
+      const remark = window.prompt('กรุณาระบุหมายเหตุการแก้ไข (บังคับ)') || '';
+      if (!remark.trim()) {
+        throw new Error('กรุณาระบุหมายเหตุการแก้ไข');
+      }
+      await quotationsApi.updateQuotation(editingQuotation._id, { ...quotationData, remark });
+    } else {
+      await quotationsApi.createQuotation(quotationData);
+    }
+  };
+
+  const handleEditQuotation = async (quotation) => {
+    try {
+      const detail = await quotationsApi.getQuotation(quotation._id);
+      setEditingQuotation(detail);
+      setShowForm(true);
+    } catch (err) {
+      console.error('Error fetching quotation detail:', err);
+      alert('ไม่สามารถโหลดข้อมูลใบเสนอราคาได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -103,6 +138,7 @@ export default function Quotations() {
   // Initial load
   useEffect(() => {
     fetchQuotations();
+    fetchCustomers();
   }, []);
 
   const formatCurrency = (amount) => {
@@ -143,7 +179,10 @@ export default function Quotations() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">ใบเสนอราคา</h1>
           <Button 
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingQuotation(null);
+              setShowForm(true);
+            }}
             className="bg-green-500 hover:bg-green-600 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -286,10 +325,7 @@ export default function Quotations() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setEditingQuotation(quotation);
-                            setShowForm(true);
-                          }}
+                          onClick={() => handleEditQuotation(quotation)}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           <Edit className="h-4 w-4" />
@@ -316,6 +352,8 @@ export default function Quotations() {
       {showForm && (
         <QuotationForm
           quotation={editingQuotation}
+          customers={customers}
+          onSubmit={handleSubmitQuotation}
           onClose={() => {
             setShowForm(false);
             setEditingQuotation(null);

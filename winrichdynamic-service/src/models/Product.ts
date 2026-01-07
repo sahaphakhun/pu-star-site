@@ -15,6 +15,16 @@ export interface IProduct extends Document {
   category: string;
   imageUrl: string;
   isAvailable: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: Schema.Types.ObjectId;
+  stock?: number;
+  minStock?: number;
+  maxStock?: number;
+  unit?: string;
+  cost?: number;
+  location?: string;
+  lastUpdated?: Date;
   options?: Array<{
     name: string;
     values: Array<{
@@ -104,6 +114,57 @@ const ProductSchema: Schema = new Schema({
     type: Boolean,
     default: true
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    required: false
+  },
+  deletedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'Admin',
+    required: false
+  },
+  stock: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  minStock: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  maxStock: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  unit: {
+    type: String,
+    required: false,
+    trim: true,
+    default: 'pcs'
+  },
+  cost: {
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  },
+  location: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
+  lastUpdated: {
+    type: Date,
+    required: false
+  },
   options: [{
     name: {
       type: String,
@@ -184,6 +245,7 @@ const ProductSchema: Schema = new Schema({
 ProductSchema.index({ name: 1 });
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ isAvailable: 1 });
+ProductSchema.index({ isDeleted: 1 });
 ProductSchema.index({ 'skuVariants.sku': 1 }); // index สำหรับ sku variants
 
 // Text search index

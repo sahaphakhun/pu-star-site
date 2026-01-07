@@ -5,6 +5,7 @@ import { X, Plus, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import ProductAutocomplete from '@/components/ui/ProductAutocomplete';
 
 interface QuotationFormProps {
   customer?: any;
@@ -18,6 +19,7 @@ interface QuotationItem {
   quantity: number;
   price: number;
   total: number;
+  product?: any;
 }
 
 interface QuotationHistory {
@@ -40,6 +42,7 @@ export default function QuotationForm({ customer, onClose, onSubmit }: Quotation
         quantity: 1,
         price: 0,
         total: 0,
+        product: null,
       }
     ] as QuotationItem[],
   });
@@ -80,6 +83,34 @@ export default function QuotationForm({ customer, onClose, onSubmit }: Quotation
       newItems[index].total = newItems[index].quantity * newItems[index].price;
     }
     
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const handleProductSelect = (index: number, product: any | null) => {
+    const newItems = [...formData.items];
+    const current = newItems[index];
+
+    if (!product) {
+      newItems[index] = {
+        ...current,
+        product: null,
+        productId: '',
+        productName: '',
+      };
+      setFormData({ ...formData, items: newItems });
+      return;
+    }
+
+    const resolvedPrice = product.price ?? product.units?.[0]?.price ?? current.price ?? 0;
+    newItems[index] = {
+      ...current,
+      product,
+      productId: product.sku || product._id || current.productId,
+      productName: product.name || current.productName,
+      price: resolvedPrice,
+      total: (current.quantity || 0) * resolvedPrice,
+    };
+
     setFormData({ ...formData, items: newItems });
   };
 
@@ -230,12 +261,11 @@ export default function QuotationForm({ customer, onClose, onSubmit }: Quotation
                     {formData.items.map((item, index) => (
                       <tr key={index}>
                         <td className="border border-gray-300 px-4 py-2">
-                          <Input
-                            value={item.productName}
-                            onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                            placeholder="ชื่อสินค้า"
+                          <ProductAutocomplete
+                            value={item.product || null}
+                            onChange={(product) => handleProductSelect(index, product)}
+                            placeholder="พิมพ์ชื่อสินค้าหรือรหัสสินค้า"
                             className="w-full"
-                            required
                           />
                         </td>
                         <td className="border border-gray-300 px-4 py-2">

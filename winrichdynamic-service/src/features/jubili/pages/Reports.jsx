@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useData } from '@/features/jubili/context/DataContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTokenManager } from '@/utils/tokenManager';
 import { 
   FileText, 
   Database, 
@@ -31,7 +31,6 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
 const Reports = () => {
-  const { reports } = useData();
   const [activeTab, setActiveTab] = useState('generate');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReports, setGeneratedReports] = useState([]);
@@ -41,10 +40,12 @@ const Reports = () => {
   // Report form state
   const [reportType, setReportType] = useState('');
   const [dateRange, setDateRange] = useState({ from: null, to: null });
-  const [format, setFormat] = useState('pdf');
+  const [fileFormat, setFileFormat] = useState('pdf');
   const [reportParams, setReportParams] = useState({});
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [teamOptions, setTeamOptions] = useState([{ value: '', label: 'ทั้งหมด' }]);
+  const { getValidToken } = useTokenManager();
 
   // Report types configuration
   const reportTypes = [
@@ -99,21 +100,43 @@ const Reports = () => {
     { value: 'csv', label: 'CSV' }
   ];
 
-  // Team options (mock data)
-  const teamOptions = [
-    { value: 'all', label: 'ทั้งหมด' },
-    { value: 'Trade Sales Team', label: 'Trade Sales Team' },
-    { value: 'Project Sales Team', label: 'Project Sales Team' },
-    { value: 'PU STAR Office', label: 'PU STAR Office' }
-  ];
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
+    const token = await getValidToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(headers || {}),
+        ...(options.headers || {}),
+      },
+    });
+  }, [getValidToken]);
 
-  // Get auth token
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('b2b_token') || '';
-    }
-    return '';
-  };
+  useEffect(() => {
+    let active = true;
+    const loadTeams = async () => {
+      try {
+        const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok || !data?.success) return;
+        const teams = Array.from(
+          new Set(
+            (data.data || [])
+              .map((admin) => admin?.team)
+              .filter((team) => typeof team === 'string' && team.trim().length > 0)
+          )
+        ).sort((a, b) => a.localeCompare(b));
+        if (active) {
+          setTeamOptions([{ value: '', label: 'ทั้งหมด' }, ...teams.map((team) => ({ value: team, label: team }))]);
+        }
+      } catch {}
+    };
+    loadTeams();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Handle report generation
   const handleGenerateReport = async () => {
@@ -146,12 +169,8 @@ const Reports = () => {
         }
       });
 
-      const response = await fetch(`${selectedReport.endpoint}?${params.toString()}`, {
+      const response = await fetchWithAuth(`${selectedReport.endpoint}?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json'
-        }
       });
 
       if (!response.ok) {
@@ -161,7 +180,7 @@ const Reports = () => {
       const data = await response.json();
       
       // Handle different formats
-      if (format === 'csv') {
+      if (fileFormat === 'csv') {
         // For CSV, use the export endpoint
         await handleCSVExport();
       } else {
@@ -170,7 +189,7 @@ const Reports = () => {
           id: Date.now(),
           type: reportType,
           typeName: selectedReport.name,
-          format: format,
+          format: fileFormat,
           dateRange: {
             from: format(dateRange.from, 'dd MMM yyyy', { locale: th }),
             to: format(dateRange.to, 'dd MMM yyyy', { locale: th })
@@ -194,6 +213,12 @@ const Reports = () => {
   // Handle CSV export
   const handleCSVExport = async () => {
     try {
+      const selectedReport = reportTypes.find(r => r.id === reportType);
+      if (!selectedReport) {
+        setError('กรุณาเลือกประเภทรายงาน');
+        return;
+      }
+
       const params = new URLSearchParams();
       params.append('start', dateRange.from.toISOString());
       params.append('end', dateRange.to.toISOString());
@@ -205,18 +230,29 @@ const Reports = () => {
         }
       });
 
-      const response = await fetch(`/api/reports/export.csv?${params.toString()}`, {
+      const response = await fetchWithAuth(`${selectedReport.endpoint}?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
       });
 
       if (!response.ok) {
         throw new Error('ไม่สามารถส่งออก CSV ได้');
       }
 
-      const blob = await response.blob();
+      const data = await response.json();
+      const rows = Array.isArray(data) ? data : [data];
+      if (rows.length === 0) {
+        throw new Error('ไม่มีข้อมูลสำหรับส่งออก');
+      }
+      const header = Object.keys(rows[0]);
+      const escapeCSV = (value) => {
+        if (value === null || value === undefined) return '';
+        const str = typeof value === 'string' ? value : JSON.stringify(value);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/\"/g, '""')}"`
+          : str;
+      };
+      const csv = [header.join(','), ...rows.map(row => header.map(key => escapeCSV(row[key])).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -258,7 +294,7 @@ const Reports = () => {
   const resetForm = () => {
     setReportType('');
     setDateRange({ from: null, to: null });
-    setFormat('pdf');
+    setFileFormat('pdf');
     setReportParams({});
     setError('');
     setSuccess('');
@@ -354,7 +390,7 @@ const Reports = () => {
               <Label htmlFor="format" className="block text-sm font-medium text-gray-700 mb-2">
                 รูปแบบไฟล์
               </Label>
-              <Select value={format} onValueChange={setFormat}>
+              <Select value={fileFormat} onValueChange={setFileFormat}>
                 <SelectTrigger>
                   <SelectValue placeholder="เลือกรูปแบบไฟล์" />
                 </SelectTrigger>

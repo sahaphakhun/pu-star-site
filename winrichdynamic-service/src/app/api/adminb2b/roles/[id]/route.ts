@@ -1,108 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Role from '@/models/Role';
+import Admin from '@/models/Admin';
 
-export async function GET(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const { id } = await params;
-    
-    const role = await Role.findById(id);
-    
-    if (!role) {
-      return NextResponse.json(
-        { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json({
-      success: true,
-      data: role
-    });
-  } catch (error) {
-    console.error('Error fetching role:', error);
-    return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูลบทบาท' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectDB();
-    const { id } = await params;
+    const resolvedParams = await params;
     const body = await request.json();
-    
+
+    const update: Record<string, any> = {};
+    if (body.name !== undefined) update.name = body.name;
+    if (body.description !== undefined) update.description = body.description;
+    if (body.permissions !== undefined) update.permissions = body.permissions;
+    if (body.level !== undefined) update.level = body.level;
+    if (body.isActive !== undefined) update.isActive = body.isActive;
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No fields to update' },
+        { status: 400 }
+      );
+    }
+
     const role = await Role.findByIdAndUpdate(
-      id,
-      body,
-      { new: true, runValidators: true }
+      resolvedParams.id,
+      { $set: update },
+      { new: true }
     );
-    
+
     if (!role) {
       return NextResponse.json(
-        { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
+        { success: false, error: 'Role not found' },
         { status: 404 }
       );
     }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'อัปเดตบทบาทเรียบร้อยแล้ว',
-      data: role
-    });
+
+    return NextResponse.json({ success: true, data: role });
   } catch (error) {
-    console.error('Error updating role:', error);
+    console.error('[B2B] PATCH /adminb2b/roles/:id error', error);
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการอัปเดตบทบาท' },
+      { success: false, error: 'Unable to update role' },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const { id } = await params;
-    
-    const role = await Role.findById(id);
-    
-    if (!role) {
+    const resolvedParams = await params;
+
+    const adminUsingRole = await Admin.findOne({ role: resolvedParams.id }).lean();
+    if (adminUsingRole) {
       return NextResponse.json(
-        { success: false, error: 'ไม่พบบทบาทที่ระบุ' },
-        { status: 404 }
-      );
-    }
-    
-    // ตรวจสอบว่าเป็น system role หรือไม่
-    if (role.isSystem) {
-      return NextResponse.json(
-        { success: false, error: 'ไม่สามารถลบบทบาทระบบได้' },
+        { success: false, error: 'Role is assigned to an admin' },
         { status: 400 }
       );
     }
-    
-    await Role.findByIdAndDelete(id);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'ลบบทบาทเรียบร้อยแล้ว'
-    });
+
+    const deleted = await Role.findByIdAndDelete(resolvedParams.id);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: 'Role not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting role:', error);
+    console.error('[B2B] DELETE /adminb2b/roles/:id error', error);
     return NextResponse.json(
-      { success: false, error: 'เกิดข้อผิดพลาดในการลบบทบาท' },
+      { success: false, error: 'Unable to delete role' },
       { status: 500 }
     );
   }

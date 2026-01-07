@@ -91,6 +91,22 @@ export const createQuotationSchema = z.object({
     .max(500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร')
     .optional()
     .or(z.literal('')),
+  deliveryProvince: z.string()
+    .max(100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  deliveryDistrict: z.string()
+    .max(100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  deliverySubdistrict: z.string()
+    .max(100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร')
+    .optional()
+    .or(z.literal('')),
+  deliveryZipcode: z.string()
+    .regex(/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก')
+    .optional()
+    .or(z.literal('')),
   // ใช้ที่อยู่ลูกค้าเป็นที่อยู่จัดส่งหรือไม่
   shipToSameAsCustomer: z.boolean().optional().default(true),
   customerPhone: z.string()
@@ -105,6 +121,8 @@ export const createQuotationSchema = z.object({
     .trim()
     .optional()
     .or(z.literal('')),
+  projectId: z.string().optional().or(z.literal('')),
+  opportunityId: z.string().optional().or(z.literal('')),
   // วันหมดอายุไม่บังคับ หากไม่ส่งมา จะตั้งเป็น 7 วันโดยค่าเริ่มต้นที่ API
   validUntil: z.string()
     .optional()

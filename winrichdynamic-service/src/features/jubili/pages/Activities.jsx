@@ -32,15 +32,9 @@ const Activities = () => {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [formMode, setFormMode] = useState('create'); // 'create' or 'edit'
-  const { activities: activitiesApi } = useApiService();
-
-  // สถิติ
-  const stats = [
-    { label: 'ลูกค้าใหม่', value: '0/74075', percent: '0.00%', icon: Users, bgColor: 'bg-blue-50', borderColor: 'border-blue-300', badgeColor: 'bg-blue-500' },
-    { label: 'โอกาส', value: '2/1', percent: '200.00%', icon: Target, bgColor: 'bg-pink-50', borderColor: 'border-pink-300', badgeColor: 'bg-pink-500' },
-    { label: 'ยอดขาย', value: '14.1 K/0', percent: '', icon: DollarSign, bgColor: 'bg-green-50', borderColor: 'border-green-300', badgeColor: 'bg-green-500' },
-    { label: 'กำไร', value: '14.1 K/0', percent: '', icon: Briefcase, bgColor: 'bg-purple-50', borderColor: 'border-purple-300', badgeColor: 'bg-purple-500' }
-  ];
+  const { activities: activitiesApi, dashboard: dashboardApi } = useApiService();
+  const { getDashboardData } = dashboardApi;
+  const [dashboardData, setDashboardData] = useState(null);
 
   // Tab
   const [tabs, setTabs] = useState([
@@ -48,6 +42,54 @@ const Activities = () => {
     { id: 'upcoming', label: 'งานติดตาม เร็วๆนี้', count: 0, total: 0, color: 'bg-blue-500' },
     { id: 'overdue', label: 'งานติดตาม เกินกำหนด', count: 0, total: 0, color: 'bg-red-500' }
   ]);
+
+  useEffect(() => {
+    let active = true;
+    const loadDashboardData = async () => {
+      try {
+        const data = await getDashboardData();
+        if (active) setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard stats:', err);
+        if (active) setDashboardData(null);
+      }
+    };
+    loadDashboardData();
+    return () => {
+      active = false;
+    };
+  }, [getDashboardData]);
+
+  const customerTotal = dashboardData?.kpis?.customers?.total || 0;
+  const customerNew = dashboardData?.kpis?.customers?.newThisMonth || 0;
+  const customerPercent = customerTotal > 0
+    ? ((customerNew / customerTotal) * 100).toFixed(2)
+    : '0.00';
+
+  const dealTotal = dashboardData?.kpis?.deals?.total || 0;
+  const dealOpen = dashboardData?.kpis?.deals?.open || 0;
+  const dealPercent = dealTotal > 0
+    ? ((dealOpen / dealTotal) * 100).toFixed(2)
+    : '0.00';
+
+  const ordersValue = dashboardData?.kpis?.orders?.totalValue || 0;
+  const ordersGrowthRaw = typeof dashboardData?.kpis?.orders?.growthRate === 'number'
+    ? dashboardData.kpis.orders.growthRate
+    : 0;
+  const ordersGrowth = Math.max(ordersGrowthRaw, 0).toFixed(2);
+
+  const quotationsTotal = dashboardData?.kpis?.quotations?.total || 0;
+  const quotationsSent = dashboardData?.kpis?.quotations?.sent || 0;
+  const quotationsPercent = quotationsTotal > 0
+    ? ((quotationsSent / quotationsTotal) * 100).toFixed(2)
+    : '0.00';
+
+  const stats = [
+    { label: 'ลูกค้าใหม่', value: `${customerNew}/${customerTotal}`, percent: `${customerPercent}%`, icon: Users, bgColor: 'bg-blue-50', borderColor: 'border-blue-300', badgeColor: 'bg-blue-500' },
+    { label: 'โอกาส', value: `${dealOpen}/${dealTotal}`, percent: `${dealPercent}%`, icon: Target, bgColor: 'bg-pink-50', borderColor: 'border-pink-300', badgeColor: 'bg-pink-500' },
+    { label: 'ยอดขาย', value: `THB ${ordersValue.toLocaleString('th-TH')}`, percent: `${ordersGrowth}%`, icon: DollarSign, bgColor: 'bg-green-50', borderColor: 'border-green-300', badgeColor: 'bg-green-500' },
+    { label: 'ใบเสนอราคา', value: `${quotationsSent}/${quotationsTotal}`, percent: `${quotationsPercent}%`, icon: Briefcase, bgColor: 'bg-purple-50', borderColor: 'border-purple-300', badgeColor: 'bg-purple-500' }
+  ];
 
   // ไอคอนตามประเภท
   const getActivityIcon = (type) => {

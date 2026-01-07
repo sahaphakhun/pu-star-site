@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const rawSearch = searchParams.get('search') || '';
     const rawCategory = searchParams.get('category') || '';
     const rawIsAvailable = searchParams.get('isAvailable');
+    const rawIncludeDeleted = searchParams.get('includeDeleted');
     const rawPage = parseInt(searchParams.get('page') || '1');
     const rawLimit = parseInt(searchParams.get('limit') || '20');
 
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       search: rawSearch,
       category: rawCategory || undefined,
       isAvailable: rawIsAvailable ? rawIsAvailable === 'true' : undefined,
+      includeDeleted: rawIncludeDeleted ? rawIncludeDeleted === 'true' : undefined,
       page: rawPage,
       limit: rawLimit
     });
@@ -45,10 +47,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { search, category, isAvailable, page, limit } = queryValidation.data;
+    const { search, category, isAvailable, includeDeleted, page, limit } = queryValidation.data;
+
+    if (includeDeleted) {
+      const auth = verifyToken(request);
+      if (!auth.valid) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
 
     // Build filter
     const filter: any = {};
+
+    if (!includeDeleted) {
+      filter.isDeleted = { $ne: true };
+    }
 
     if (search) {
       filter.$or = [
@@ -197,5 +213,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 

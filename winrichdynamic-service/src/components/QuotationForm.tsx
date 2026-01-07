@@ -1,75 +1,79 @@
 "use client"
 
-import { useState } from 'react';
-import { X, Plus, Trash2, Upload, Star, Calendar } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, Plus, Trash2, Upload, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Badge } from '@/components/ui/Badge';
-
-// TODO: Replace with actual data context when available
-const mockData = {
-  customers: [],
-  addQuotation: (quotation: any) => console.log('Add quotation:', quotation),
-  updateQuotation: (id: string, quotation: any) => console.log('Update quotation:', id, quotation),
-};
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import ProductAutocomplete from '@/components/ui/ProductAutocomplete';
+import { deriveTeamOptions } from '@/utils/teamOptions';
 
 const defaultFormData = {
   // ข้อมูลลูกค้า
   customerId: '',
   customerName: '',
+  customerTaxId: '',
+  customerAddress: '',
+  customerPhone: '',
+  customerProvince: '',
+  customerDistrict: '',
+  customerSubdistrict: '',
+  customerZipcode: '',
   projectId: '',
   opportunityId: '',
-  
+
   // วันที่
   issueDate: new Date().toISOString().split('T')[0],
   validUntilDate: '',
-  
+
   // ผู้รับผิดชอบ
   importance: 3,
-  owner: 'PU STAR Office',
-  team: 'PU STAR Office',
-  
+  owner: '',
+  team: '',
+
   // ข้อมูลผู้ติดต่อ
   contactName: '',
   contactEmail: '',
   contactPhone: '',
-  
+
   // ข้อมูลการจัดส่ง
   deliveryMethod: 'รับเอง',
   deliveryMethodNote: '',
   deliveryDate: '',
   hideDeliveryDate: false,
-  
+
   // ที่อยู่จัดส่ง
-  sameAsCompanyAddress: true,
+  shipToSameAsCustomer: true,
   deliveryLocationName: '',
-  deliveryAddress: '',
+  shippingAddress: '',
   deliveryCountry: 'Thailand (ไทย)',
   deliveryProvince: '',
   deliveryDistrict: '',
-  
+  deliverySubdistrict: '',
+  deliveryZipcode: '',
+
   // รายการสินค้า
   showProductCode: false,
   items: [
-    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-    { description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
   ],
-  
+
   // สรุปยอด
   subtotal: 0,
   vat: 7,
   vatAmount: 0,
   total: 0,
-  
+
   // เงื่อนไข
   paymentTerms: '',
   paymentDays: 0,
-  
+
   // เอกสารแนบ
   attachments: [],
-  
+
   // สถานะ
   status: 'draft',
 
@@ -93,6 +97,7 @@ interface QuotationFormProps {
   onSave?: () => void;
   isEditing?: boolean;
   loading?: boolean;
+  embedded?: boolean;
 }
 
 export default function QuotationForm({
@@ -103,60 +108,211 @@ export default function QuotationForm({
   onCancel,
   onClose,
   onSave,
+  embedded = false,
 }: QuotationFormProps) {
-  const dataSource = mockData;
-  const customersList = customers ?? dataSource.customers;
-  const addQuotation = dataSource.addQuotation;
-  const updateQuotation = dataSource.updateQuotation;
-  
+  const customersList = customers ?? [];
+  const normalizeItem = (item: any = {}) => {
+    const pricePerUnit = Number(item.pricePerUnit ?? item.unitPrice ?? 0);
+    const discountPercent = Number(item.discountPercent ?? item.discount ?? 0);
+    const discountPerUnit = Number(
+      item.discountPerUnit ?? (pricePerUnit ? (pricePerUnit * discountPercent) / 100 : 0)
+    );
+    const quantity = Number(item.quantity ?? 0);
+    const amount = Number(
+      item.amount ?? item.totalPrice ?? (pricePerUnit - discountPerUnit) * quantity ?? 0
+    );
+    const productId = item.productId || item._id || '';
+    const productName = item.productName || item.name || '';
+    const sku = item.sku || productId || '';
+    const product = item.product || (productId ? {
+      _id: productId,
+      name: productName || sku,
+      sku: sku || productId,
+      price: item.unitPrice ?? item.pricePerUnit,
+      units: item.units,
+    } : null);
+
+    return {
+      ...item,
+      productId,
+      productName,
+      sku,
+      product,
+      description: item.description || '',
+      quantity,
+      unit: item.unit || '',
+      pricePerUnit,
+      discountPerUnit,
+      discountPercent,
+      amount,
+      productGroup: item.productGroup || '',
+    };
+  };
+
   const [formData, setFormData] = useState(() => {
     const base = initialData || quotation;
     if (base) {
       const mappedBatches = Array.isArray(base.deliveryBatches)
         ? base.deliveryBatches.map((batch: any, index: number) => ({
-            batchId: batch.batchId || `รอบที่ ${index + 1}`,
-            deliveryDate: batch.deliveryDate
-              ? new Date(batch.deliveryDate).toISOString().split('T')[0]
-              : '',
-            quantity: Number(batch.deliveredQuantity ?? batch.quantity ?? 0),
-            notes: batch.notes || '',
-          }))
+          batchId: batch.batchId || `รอบที่ ${index + 1}`,
+          deliveryDate: batch.deliveryDate
+            ? new Date(batch.deliveryDate).toISOString().split('T')[0]
+            : '',
+          quantity: Number(batch.deliveredQuantity ?? batch.quantity ?? 0),
+          notes: batch.notes || '',
+        }))
         : [];
 
       return {
         ...defaultFormData,
         ...base,
+        owner: base.assignedTo || base.owner || defaultFormData.owner,
+        items: (base.items && base.items.length ? base.items : defaultFormData.items).map(normalizeItem),
         deliveryBatches: mappedBatches,
         isSplitDelivery: mappedBatches.length > 0,
       };
     }
 
-    return { ...defaultFormData };
+    return { ...defaultFormData, items: defaultFormData.items.map(normalizeItem) };
   });
+  const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string }>>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const teamOptions = useMemo(() => {
+    const derived = deriveTeamOptions(admins);
+    const selected = formData.team?.trim();
+    if (selected && !derived.includes(selected)) {
+      return [selected, ...derived];
+    }
+    return derived;
+  }, [admins, formData.team]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAdmins = async () => {
+      try {
+        const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const data = await res.json();
+        if (!active) return;
+        if (data?.success && Array.isArray(data.data)) {
+          setAdmins(data.data);
+        } else {
+          setAdmins([]);
+        }
+      } catch {
+        if (active) setAdmins([]);
+      }
+    };
+    loadAdmins();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!formData.team && teamOptions.length > 0) {
+      setFormData((prev: any) => ({ ...prev, team: teamOptions[0] }));
+    }
+  }, [formData.team, teamOptions]);
+
+  useEffect(() => {
+    let active = true;
+    const loadOptions = async () => {
+      try {
+        const [projectsRes, opportunitiesRes] = await Promise.all([
+          fetch('/api/projects?page=1&limit=200', { credentials: 'include' }),
+          fetch('/api/deals?page=1&limit=200', { credentials: 'include' }),
+        ]);
+
+        const projectsData = await projectsRes.json().catch(() => ({}));
+        const opportunitiesData = await opportunitiesRes.json().catch(() => ({}));
+
+        if (!active) return;
+        const projectList = Array.isArray(projectsData)
+          ? projectsData
+          : Array.isArray(projectsData?.data)
+            ? projectsData.data
+            : [];
+        const opportunityList = Array.isArray(opportunitiesData)
+          ? opportunitiesData
+          : Array.isArray(opportunitiesData?.data)
+            ? opportunitiesData.data
+            : [];
+
+        setProjects(projectList);
+        setOpportunities(opportunityList);
+      } catch {
+        if (active) {
+          setProjects([]);
+          setOpportunities([]);
+        }
+      }
+    };
+
+    loadOptions();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
-    
-    // Auto-fill contact info when customer is selected
-    if (field === 'customerId' && value) {
-      const customer = customersList.find((c: any) => c.id === value);
-      if (customer) {
-        const primaryContact = customer.contacts?.[0];
-        setFormData((prev: any) => ({
-          ...prev,
-          customerName: customer.name,
-          contactName: primaryContact?.name || '',
-          contactEmail: primaryContact?.email || '',
-          contactPhone: primaryContact?.phone || '',
-        }));
+    setFormData((prev: any) => {
+      let next = { ...prev, [field]: value };
+
+      if (field === 'customerId' && value) {
+        const customer = customersList.find((c: any) => String(c._id || c.id) === String(value));
+        if (customer) {
+          const primaryContact = customer.contacts?.[0];
+          const customerAddress = customer.companyAddress || customer.shippingAddress || '';
+          const shippingAddress = customer.shippingAddress || customer.companyAddress || '';
+          const shipToSameAsCustomer = customer.shippingSameAsCompany ?? true;
+          const customerProvince = customer.province || '';
+          const customerDistrict = customer.district || '';
+          const customerSubdistrict = customer.subdistrict || '';
+          const customerZipcode = customer.zipcode || '';
+
+          next = {
+            ...next,
+            customerName: customer.name,
+            customerTaxId: customer.taxId || '',
+            customerAddress,
+            customerPhone: customer.phoneNumber || customer.companyPhone || '',
+            customerProvince,
+            customerDistrict,
+            customerSubdistrict,
+            customerZipcode,
+            contactName: primaryContact?.name || '',
+            contactEmail: primaryContact?.email || '',
+            contactPhone: primaryContact?.phone || '',
+            shipToSameAsCustomer,
+            shippingAddress: shipToSameAsCustomer ? customerAddress : shippingAddress,
+            deliveryProvince: shipToSameAsCustomer ? customerProvince : next.deliveryProvince,
+            deliveryDistrict: shipToSameAsCustomer ? customerDistrict : next.deliveryDistrict,
+            deliverySubdistrict: shipToSameAsCustomer ? customerSubdistrict : next.deliverySubdistrict,
+            deliveryZipcode: shipToSameAsCustomer ? customerZipcode : next.deliveryZipcode,
+          };
+        }
       }
-    }
+
+      if (field === 'shipToSameAsCustomer' && value) {
+        next = {
+          ...next,
+          shippingAddress: prev.customerAddress || '',
+          deliveryProvince: prev.customerProvince || '',
+          deliveryDistrict: prev.customerDistrict || '',
+          deliverySubdistrict: prev.customerSubdistrict || '',
+          deliveryZipcode: prev.customerZipcode || '',
+        };
+      }
+
+      return next;
+    });
   };
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
     newItems[index][field] = value;
-    
+
     // Auto calculate
     const item = newItems[index];
     if (field === 'quantity' || field === 'pricePerUnit' || field === 'discountPerUnit' || field === 'discountPercent') {
@@ -171,7 +327,43 @@ export default function QuotationForm({
       // Calculate total amount
       item.amount = (item.pricePerUnit - item.discountPerUnit) * item.quantity;
     }
-    
+
+    setFormData({ ...formData, items: newItems });
+    calculateTotals(newItems);
+  };
+
+  const handleProductSelect = (index: number, product: any | null) => {
+    const newItems = [...formData.items];
+    const existing = newItems[index];
+
+    if (!product) {
+      newItems[index] = {
+        ...existing,
+        product: null,
+        productId: '',
+        productName: '',
+        sku: '',
+      };
+      setFormData({ ...formData, items: newItems });
+      calculateTotals(newItems);
+      return;
+    }
+
+    const resolvedUnit = product.units?.[0]?.label || existing.unit || '';
+    const resolvedPrice = product.price ?? product.units?.[0]?.price ?? existing.pricePerUnit ?? 0;
+    const nextItem = {
+      ...existing,
+      product,
+      productId: product._id,
+      productName: product.name || '',
+      sku: product.sku || '',
+      unit: resolvedUnit,
+      pricePerUnit: resolvedPrice,
+      description: existing.description || product.description || '',
+    };
+    nextItem.amount = (Number(nextItem.pricePerUnit || 0) - Number(nextItem.discountPerUnit || 0)) * Number(nextItem.quantity || 0);
+    newItems[index] = nextItem;
+
     setFormData({ ...formData, items: newItems });
     calculateTotals(newItems);
   };
@@ -180,7 +372,7 @@ export default function QuotationForm({
     const subtotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
     const vatAmount = (subtotal * formData.vat) / 100;
     const total = subtotal + vatAmount;
-    
+
     setFormData((prev: any) => ({
       ...prev,
       subtotal,
@@ -262,11 +454,11 @@ export default function QuotationForm({
       const existingBatches = prev.deliveryBatches && prev.deliveryBatches.length > 0
         ? prev.deliveryBatches
         : [{
-            batchId: 'รอบที่ 1',
-            deliveryDate: '',
-            quantity: existingTotalQuantity || 0,
-            notes: '',
-          }];
+          batchId: 'รอบที่ 1',
+          deliveryDate: '',
+          quantity: existingTotalQuantity || 0,
+          notes: '',
+        }];
 
       return {
         ...prev,
@@ -280,6 +472,10 @@ export default function QuotationForm({
     const newItems = [...formData.items];
     for (let i = 0; i < count; i++) {
       newItems.push({
+        productId: '',
+        productName: '',
+        sku: '',
+        product: null,
         description: '',
         quantity: 0,
         unit: '',
@@ -327,33 +523,89 @@ export default function QuotationForm({
 
     const preparedDeliveryBatches = isSplitDelivery
       ? (deliveryBatches || []).map((batch: any, index: number) => ({
-          batchId: batch.batchId || `BATCH-${index + 1}`,
-          deliveredQuantity: Number(batch.quantity || 0),
-          deliveryDate: new Date(batch.deliveryDate).toISOString(),
-          deliveryStatus: 'pending',
-          notes: batch.notes || '',
-        }))
+        batchId: batch.batchId || `BATCH-${index + 1}`,
+        deliveredQuantity: Number(batch.quantity || 0),
+        deliveryDate: new Date(batch.deliveryDate).toISOString(),
+        deliveryStatus: 'pending',
+        notes: batch.notes || '',
+      }))
       : [];
+
+    const mappedItems = (formData.items || []).map((item: any) => {
+      const unitPrice = Number(item.pricePerUnit || 0);
+      const quantity = Number(item.quantity || 0);
+      const discountPercent = Number(item.discountPercent || 0);
+      const discountPerUnit = Number(item.discountPerUnit || (unitPrice * discountPercent) / 100 || 0);
+      const totalPrice = Number(item.amount || (unitPrice - discountPerUnit) * quantity || 0);
+      return {
+        productId: item.productId || item.sku || '',
+        productName: item.productName || item.description || '',
+        description: item.description || '',
+        quantity,
+        unit: item.unit || '',
+        sku: item.sku || undefined,
+        unitPrice,
+        discount: discountPercent,
+        totalPrice,
+      };
+    });
+
+    const subtotalBeforeDiscount = mappedItems.reduce(
+      (sum: number, item: any) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = mappedItems.reduce(
+      (sum: number, item: any) => sum + Number(item.totalPrice || 0),
+      0
+    );
+    const totalDiscount = Math.max(subtotalBeforeDiscount - totalAmount, 0);
+    const vatRate = Number(formData.vat || 0);
+    const vatAmount = (totalAmount * vatRate) / 100;
+    const grandTotal = totalAmount + vatAmount;
+
+    const selectedProject = projects.find(
+      (project: any) => String(project._id || project.id) === String(formData.projectId)
+    );
+    const subject =
+      selectedProject?.name ||
+      selectedProject?.projectCode ||
+      (formData as any).subject ||
+      formData.customerName ||
+      'ใบเสนอราคา';
 
     const quotationData = {
       ...rest,
+      customerTaxId: formData.customerTaxId || '',
+      customerAddress: formData.customerAddress || '',
+      customerPhone: formData.customerPhone || '',
+      shipToSameAsCustomer: formData.shipToSameAsCustomer,
+      shippingAddress: formData.shipToSameAsCustomer
+        ? formData.customerAddress || ''
+        : formData.shippingAddress || '',
+      subject,
+      validUntil: formData.validUntilDate || '',
+      deliveryTerms: formData.deliveryMethodNote || formData.deliveryMethod || '',
+      items: mappedItems,
+      subtotal: subtotalBeforeDiscount,
+      totalDiscount,
+      totalAmount,
+      vatRate,
+      vatAmount,
+      grandTotal,
+      status: action === 'submit' ? 'sent' : 'draft',
+      approvalStatus: action === 'submit' ? 'pending' : 'none',
       deliveryBatches: preparedDeliveryBatches,
-      status: action === 'submit' ? 'pending' : 'draft',
+      assignedTo: formData.owner || '',
       quotationNumber: quotation?.quotationNumber || `Q${Date.now()}`,
       id: quotation?.id || (initialData as any)?.id || Date.now().toString(),
       createdAt: quotation?.createdAt || (initialData as any)?.createdAt || new Date().toISOString(),
     };
-    
-    if (onSubmit) {
-      await onSubmit(quotationData);
-    } else if (quotation?.id) {
-      updateQuotation(quotation.id, quotationData);
-    } else if ((initialData as any)?.id) {
-      updateQuotation((initialData as any).id, quotationData);
-    } else {
-      addQuotation(quotationData);
+
+    if (!onSubmit) {
+      throw new Error('ระบบบันทึกใบเสนอราคายังไม่ได้เชื่อมต่อ');
     }
-    
+    await onSubmit(quotationData);
+
     if (onSave) onSave();
     onClose?.();
   };
@@ -363,9 +615,15 @@ export default function QuotationForm({
     onClose?.();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+  const filteredProjects = formData.customerId
+    ? projects.filter((project: any) => String(project.customerId) === String(formData.customerId))
+    : projects;
+  const filteredOpportunities = formData.customerId
+    ? opportunities.filter((deal: any) => String(deal.customerId) === String(formData.customerId))
+    : opportunities;
+
+  const formBody = (
+    <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">
@@ -375,7 +633,7 @@ export default function QuotationForm({
             <span className="text-lg font-bold">
               จำนวนเงินรวมทั้งหมด THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
             </span>
-            <button onClick={() => onClose?.()} className="text-white hover:text-gray-200">
+            <button type="button" onClick={() => onClose?.()} className="text-white hover:text-gray-200">
               <X size={24} />
             </button>
           </div>
@@ -391,7 +649,7 @@ export default function QuotationForm({
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">👤</span> ข้อมูลลูกค้า
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -405,7 +663,7 @@ export default function QuotationForm({
                       >
                         <option value="">โปรดเลือกชื่อกิจการ</option>
                         {customersList.map((customer: any) => (
-                          <option key={customer.id} value={customer.id}>
+                          <option key={customer._id || customer.id} value={customer._id || customer.id}>
                             {customer.name}
                           </option>
                         ))}
@@ -422,6 +680,11 @@ export default function QuotationForm({
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">โปรดเลือกโครงการ</option>
+                        {filteredProjects.map((project: any) => (
+                          <option key={project._id || project.id} value={project._id || project.id}>
+                            {project.projectCode ? `${project.projectCode} - ${project.name}` : project.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -435,6 +698,11 @@ export default function QuotationForm({
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">โปรดเลือกโอกาส</option>
+                        {filteredOpportunities.map((deal: any) => (
+                          <option key={deal._id || deal.id} value={deal._id || deal.id}>
+                            {deal.title || deal.customerName || deal._id}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -476,11 +744,10 @@ export default function QuotationForm({
                           >
                             <Star
                               size={24}
-                              className={`${
-                                star <= formData.importance
+                              className={`${star <= formData.importance
                                   ? 'fill-yellow-400 text-yellow-400'
                                   : 'text-gray-300'
-                              } transition-colors`}
+                                } transition-colors`}
                             />
                           </button>
                         ))}
@@ -496,9 +763,12 @@ export default function QuotationForm({
                         onChange={(e) => handleChange('owner', e.target.value)}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
-                        <option>PU STAR Office</option>
-                        <option>Sales 1 Kitti</option>
-                        <option>Salesprojects 1 Sunisa</option>
+                        <option value="">ไม่ระบุ</option>
+                        {admins.map((admin) => (
+                          <option key={admin._id} value={admin._id}>
+                            {admin.name || admin.phone || admin._id}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -506,16 +776,29 @@ export default function QuotationForm({
                       <label className="block text-sm font-medium mb-1">
                         ทีมที่รับผิดชอบ <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        required
-                        value={formData.team}
-                        onChange={(e) => handleChange('team', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option>PU STAR Office</option>
-                        <option>Trade Sales Team</option>
-                        <option>Project Sales Team</option>
-                      </select>
+                      {teamOptions.length > 0 ? (
+                        <select
+                          required
+                          value={formData.team}
+                          onChange={(e) => handleChange('team', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">โปรดเลือกทีม</option>
+                          {teamOptions.map((team) => (
+                            <option key={team} value={team}>
+                              {team}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          required
+                          value={formData.team}
+                          onChange={(e) => handleChange('team', e.target.value)}
+                          placeholder="ระบุทีม"
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -525,7 +808,7 @@ export default function QuotationForm({
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">📞</span> ข้อมูลผู้ติดต่อ
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -573,7 +856,7 @@ export default function QuotationForm({
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">🚚</span> ข้อมูลการจัดส่ง
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">
@@ -644,15 +927,19 @@ export default function QuotationForm({
                       <label className="flex items-center mb-2">
                         <input
                           type="checkbox"
-                          checked={formData.sameAsCompanyAddress}
-                          onChange={(e) => handleChange('sameAsCompanyAddress', e.target.checked)}
+                          checked={formData.shipToSameAsCustomer}
+                          onChange={(e) => handleChange('shipToSameAsCustomer', e.target.checked)}
                           className="mr-2"
                         />
-                        <span className="text-sm font-medium">ที่อยู่เดียวกับบริษัท</span>
+                        <span className="text-sm font-medium">ที่อยู่เดียวกับลูกค้า</span>
                       </label>
                     </div>
 
-                    {!formData.sameAsCompanyAddress && (
+                    <div className="rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                      {formData.customerAddress || 'ยังไม่มีที่อยู่ลูกค้า'}
+                    </div>
+
+                    {!formData.shipToSameAsCustomer && (
                       <>
                         <div>
                           <label className="block text-sm font-medium mb-1">
@@ -670,8 +957,8 @@ export default function QuotationForm({
                             ที่อยู่
                           </label>
                           <Textarea
-                            value={formData.deliveryAddress}
-                            onChange={(e) => handleChange('deliveryAddress', e.target.value)}
+                            value={formData.shippingAddress}
+                            onChange={(e) => handleChange('shippingAddress', e.target.value)}
                             rows={3}
                             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                           />
@@ -690,33 +977,22 @@ export default function QuotationForm({
                           </select>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            จังหวัด <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={formData.deliveryProvince}
-                            onChange={(e) => handleChange('deliveryProvince', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">โปรดเลือกจังหวัด</option>
-                            <option>กรุงเทพมหานคร</option>
-                            <option>นนทบุรี</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            อำเภอ
-                          </label>
-                          <select
-                            value={formData.deliveryDistrict}
-                            onChange={(e) => handleChange('deliveryDistrict', e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Please select district</option>
-                          </select>
-                        </div>
+                        <AddressAutocomplete
+                          value={{
+                            province: formData.deliveryProvince,
+                            district: formData.deliveryDistrict,
+                            subdistrict: formData.deliverySubdistrict,
+                            zipcode: formData.deliveryZipcode,
+                          }}
+                          onChange={(address) => {
+                            handleChange('deliveryProvince', address.province);
+                            handleChange('deliveryDistrict', address.district);
+                            handleChange('deliverySubdistrict', address.subdistrict);
+                            handleChange('deliveryZipcode', address.zipcode);
+                          }}
+                          showSubdistrict={true}
+                          showZipcode={true}
+                        />
                       </>
                     )}
                   </div>
@@ -844,7 +1120,7 @@ export default function QuotationForm({
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">💰</span> เงื่อนไขการชำระเงิน
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -907,7 +1183,7 @@ export default function QuotationForm({
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <span className="mr-2">📎</span> แนบเอกสาร
                   </h3>
-                  
+
                   <Button
                     type="button"
                     className="w-full bg-blue-500 hover:bg-blue-600 text-white"
@@ -959,12 +1235,20 @@ export default function QuotationForm({
                       <tr key={index}>
                         <td className="border p-2 text-center">{index + 1}</td>
                         <td className="border p-2">
-                          <Textarea
-                            value={item.description}
-                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                            className="w-full px-2 py-1 border rounded text-sm"
-                            rows={2}
-                          />
+                          <div className="space-y-2">
+                            <ProductAutocomplete
+                              value={item.product || null}
+                              onChange={(product) => handleProductSelect(index, product)}
+                              placeholder="พิมพ์ชื่อสินค้า หรือรหัสสินค้า"
+                            />
+                            <Textarea
+                              value={item.description}
+                              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-sm"
+                              rows={2}
+                              placeholder="รายละเอียดเพิ่มเติม"
+                            />
+                          </div>
                         </td>
                         <td className="border p-2">
                           <Input
@@ -1088,6 +1372,15 @@ export default function QuotationForm({
           </div>
         </form>
       </div>
+    );
+
+  if (embedded) {
+    return formBody;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      {formBody}
     </div>
   );
 }

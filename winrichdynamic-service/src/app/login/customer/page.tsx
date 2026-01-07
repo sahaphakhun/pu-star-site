@@ -87,8 +87,8 @@ export default function CustomerLoginWithCodePage() {
                 value={customerCode}
                 onChange={(e) => setCustomerCode(e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="เช่น A1B2"
-                maxLength={4}
+                placeholder="เช่น C26010001"
+                maxLength={9}
                 required
               />
             </div>
@@ -139,4 +139,3 @@ export default function CustomerLoginWithCodePage() {
     </div>
   );
 }
-

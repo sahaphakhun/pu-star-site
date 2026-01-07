@@ -5,6 +5,8 @@ export interface IUser extends Document {
   phoneNumber: string;
   email?: string;
   role: string;
+  position?: string; // ตำแหน่ง เช่น "พนักงานขาย", "ผู้จัดการ"
+  signatureUrl?: string; // URL รูปลายเซ็น
   isVerified: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -40,6 +42,14 @@ const UserSchema: Schema = new Schema({
     type: String,
     default: 'customer',
     enum: ['customer', 'admin', 'manager'],
+  },
+  position: {
+    type: String,
+    trim: true,
+  },
+  signatureUrl: {
+    type: String,
+    trim: true,
   },
   isVerified: {
     type: Boolean,

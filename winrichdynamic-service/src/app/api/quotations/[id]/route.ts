@@ -70,6 +70,9 @@ export async function PUT(
     if (body.shipToSameAsCustomer) {
       body.shippingAddress = body.customerAddress;
     }
+    if (body.deliveryZipcode === '') {
+      delete body.deliveryZipcode;
+    }
     
     const resolvedParams = await params;
     const existingBeforeUpdate = await Quotation.findById(resolvedParams.id).lean();

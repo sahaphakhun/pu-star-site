@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,20 +9,20 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
 import { apiService, APIError, Project } from '@/features/jubili/services/apiService';
-import { 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalTitle, 
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
   ModalFooter,
   ModalTrigger,
-  ModalClose 
+  ModalClose
 } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/Select';
 import { Calendar } from '@/components/ui/Calendar';
 import { cn } from '@/components/ui/cn';
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import { deriveTeamOptions } from '@/utils/teamOptions';
 
 // Form validation schema
 const projectFormSchema = z.object({
@@ -92,15 +94,6 @@ const projectTypes = [
   'อื่นๆ'
 ];
 
-// Team options
-const teamOptions = [
-  'ทีมขาย 1',
-  'ทีมขาย 2',
-  'ทีมขาย 3',
-  'ทีมโปรเจคพิเศษ',
-  'ทีมลูกค้าองค์กร'
-];
-
 // Status options with Thai labels
 const statusOptions = [
   { value: 'planning', label: 'วางแผน' },
@@ -111,24 +104,10 @@ const statusOptions = [
   { value: 'closed', label: 'ปิดใบเสนอราคา' },
 ];
 
-// Province options (simplified)
-const provinceOptions = [
-  'กรุงเทพมหานคร',
-  'สมุทรปราการ',
-  'นนทบุรี',
-  'ปทุมธานี',
-  'ชลบุรี',
-  'ภูเก็ต',
-  'เชียงใหม่',
-  'สุราษฎร์ธานี',
-  'ขอนแก่น',
-  'อื่นๆ'
-];
-
-export default function ProjectForm({ 
-  isOpen, 
-  onClose, 
-  project, 
+export default function ProjectForm({
+  isOpen,
+  onClose,
+  project,
   onSuccess,
   mode = 'create' // 'create' or 'edit'
 }: {
@@ -143,6 +122,7 @@ export default function ProjectForm({
   const [tagInput, setTagInput] = useState('');
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [teamOptions, setTeamOptions] = useState<string[]>([]);
 
   // Initialize form with default values or project data
   const form = useForm({
@@ -169,6 +149,44 @@ export default function ProjectForm({
       },
     },
   });
+
+  const watchedTeam = form.watch('team');
+  const resolvedTeamOptions = useMemo(() => {
+    if (watchedTeam && !teamOptions.includes(watchedTeam)) {
+      return [watchedTeam, ...teamOptions];
+    }
+    return teamOptions;
+  }, [teamOptions, watchedTeam]);
+
+  useEffect(() => {
+    let active = true;
+    const loadTeams = async () => {
+      try {
+        const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const data = await res.json();
+        if (!active) return;
+        if (data?.success && Array.isArray(data.data)) {
+          setTeamOptions(deriveTeamOptions(data.data));
+        } else {
+          setTeamOptions([]);
+        }
+      } catch {
+        if (active) setTeamOptions([]);
+      }
+    };
+
+    loadTeams();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const currentTeam = form.getValues('team');
+    if (!currentTeam && teamOptions.length > 0) {
+      form.setValue('team', teamOptions[0]);
+    }
+  }, [form, teamOptions]);
 
   // Reset form when project changes
   useEffect(() => {
@@ -246,8 +264,8 @@ export default function ProjectForm({
       if (err instanceof APIError) {
         setError(err.message);
       } else {
-        setError(mode === 'create' 
-          ? 'เกิดข้อผิดพลาดในการสร้างโปรเจค' 
+        setError(mode === 'create'
+          ? 'เกิดข้อผิดพลาดในการสร้างโปรเจค'
           : 'เกิดข้อผิดพลาดในการแก้ไขโปรเจค');
       }
     } finally {
@@ -328,10 +346,10 @@ export default function ProjectForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">ชื่อโปรเจค *</Label>
-              <Input 
+              <Input
                 id="name"
-                placeholder="ระบุชื่อโปรเจค" 
-                {...form.register('name')} 
+                placeholder="ระบุชื่อโปรเจค"
+                {...form.register('name')}
               />
               {form.formState.errors.name && (
                 <p className="text-red-500 text-sm">{form.formState.errors.name.message}</p>
@@ -340,8 +358,8 @@ export default function ProjectForm({
 
             <div className="space-y-2">
               <Label htmlFor="type">ประเภทโปรเจค *</Label>
-              <Select 
-                value={form.watch('type')} 
+              <Select
+                value={form.watch('type')}
                 onValueChange={(value) => form.setValue('type', value)}
               >
                 <SelectTrigger>
@@ -365,10 +383,10 @@ export default function ProjectForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerId">รหัสลูกค้า *</Label>
-              <Input 
+              <Input
                 id="customerId"
-                placeholder="ระบุรหัสลูกค้า" 
-                {...form.register('customerId')} 
+                placeholder="ระบุรหัสลูกค้า"
+                {...form.register('customerId')}
               />
               {form.formState.errors.customerId && (
                 <p className="text-red-500 text-sm">{form.formState.errors.customerId.message}</p>
@@ -377,10 +395,10 @@ export default function ProjectForm({
 
             <div className="space-y-2">
               <Label htmlFor="customerName">ชื่อลูกค้า *</Label>
-              <Input 
+              <Input
                 id="customerName"
-                placeholder="ระบุชื่อลูกค้า" 
-                {...form.register('customerName')} 
+                placeholder="ระบุชื่อลูกค้า"
+                {...form.register('customerName')}
               />
               {form.formState.errors.customerName && (
                 <p className="text-red-500 text-sm">{form.formState.errors.customerName.message}</p>
@@ -440,21 +458,29 @@ export default function ProjectForm({
 
             <div className="space-y-2">
               <Label htmlFor="team">ทีม *</Label>
-              <Select 
-                value={form.watch('team')} 
-                onValueChange={(value) => form.setValue('team', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือกทีม" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamOptions.map((team) => (
-                    <SelectItem key={team} value={team}>
-                      {team}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {resolvedTeamOptions.length > 0 ? (
+                <Select
+                  value={form.watch('team')}
+                  onValueChange={(value) => form.setValue('team', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกทีม" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resolvedTeamOptions.map((team) => (
+                      <SelectItem key={team} value={team}>
+                        {team}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="team"
+                  placeholder="ระบุทีม"
+                  {...form.register('team')}
+                />
+              )}
               {form.formState.errors.team && (
                 <p className="text-red-500 text-sm">{form.formState.errors.team.message}</p>
               )}
@@ -537,8 +563,8 @@ export default function ProjectForm({
 
             <div className="space-y-2">
               <Label htmlFor="status">สถานะ *</Label>
-              <Select 
-                value={form.watch('status')} 
+              <Select
+                value={form.watch('status')}
                 onValueChange={(value) => form.setValue('status', value as any)}
               >
                 <SelectTrigger>
@@ -575,7 +601,7 @@ export default function ProjectForm({
           {/* Location */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">สถานที่</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="address">ที่อยู่</Label>
               <Input
@@ -588,67 +614,34 @@ export default function ProjectForm({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="province">จังหวัด</Label>
-                <Select 
-                  value={form.watch('location.province')} 
-                  onValueChange={(value) => form.setValue('location.province', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกจังหวัด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provinceOptions.map((province) => (
-                      <SelectItem key={province} value={province}>
-                        {province}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.location?.province && (
-                  <p className="text-red-500 text-sm">{form.formState.errors.location.province.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="district">อำเภอ/เขต</Label>
-                <Input
-                  id="district"
-                  placeholder="ระบุอำเภอ/เขต"
-                  {...form.register('location.district')}
-                />
-                {form.formState.errors.location?.district && (
-                  <p className="text-red-500 text-sm">{form.formState.errors.location.district.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="subdistrict">ตำบล/แขวง</Label>
-                <Input
-                  id="subdistrict"
-                  placeholder="ระบุตำบล/แขวง"
-                  {...form.register('location.subdistrict')}
-                />
-                {form.formState.errors.location?.subdistrict && (
-                  <p className="text-red-500 text-sm">{form.formState.errors.location.subdistrict.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="zipcode">รหัสไปรษณีย์</Label>
-                <Input
-                  id="zipcode"
-                  placeholder="10500"
-                  {...form.register('location.zipcode')}
-                />
-                {form.formState.errors.location?.zipcode && (
-                  <p className="text-red-500 text-sm">{form.formState.errors.location.zipcode.message}</p>
-                )}
-              </div>
-            </div>
+            <AddressAutocomplete
+              value={{
+                province: form.watch('location.province') || '',
+                district: form.watch('location.district') || '',
+                subdistrict: form.watch('location.subdistrict') || '',
+                zipcode: form.watch('location.zipcode') || '',
+              }}
+              onChange={(address) => {
+                form.setValue('location.province', address.province);
+                form.setValue('location.district', address.district);
+                form.setValue('location.subdistrict', address.subdistrict);
+                form.setValue('location.zipcode', address.zipcode);
+              }}
+              showSubdistrict={true}
+              showZipcode={true}
+            />
+            {form.formState.errors.location?.province && (
+              <p className="text-red-500 text-sm">{form.formState.errors.location.province.message}</p>
+            )}
+            {form.formState.errors.location?.district && (
+              <p className="text-red-500 text-sm">{form.formState.errors.location.district.message}</p>
+            )}
+            {form.formState.errors.location?.subdistrict && (
+              <p className="text-red-500 text-sm">{form.formState.errors.location.subdistrict.message}</p>
+            )}
+            {form.formState.errors.location?.zipcode && (
+              <p className="text-red-500 text-sm">{form.formState.errors.location.zipcode.message}</p>
+            )}
           </div>
 
           <ModalFooter>

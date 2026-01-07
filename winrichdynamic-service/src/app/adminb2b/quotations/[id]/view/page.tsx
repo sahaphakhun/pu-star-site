@@ -24,6 +24,10 @@ interface Quotation {
   customerTaxId?: string
   customerAddress?: string
   shippingAddress?: string
+  deliveryProvince?: string
+  deliveryDistrict?: string
+  deliverySubdistrict?: string
+  deliveryZipcode?: string
   shipToSameAsCustomer?: boolean
   customerPhone?: string
   subject: string
@@ -48,22 +52,58 @@ export default function QuotationView() {
   const quotationId = params.id as string
   
   const [quotation, setQuotation] = useState<Quotation | null>(null)
+  const [companyInfo, setCompanyInfo] = useState<any | null>(null)
+  const [assigneeSignature, setAssigneeSignature] = useState<{
+    name?: string
+    position?: string
+    signatureUrl?: string
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // ดึงข้อมูลใบเสนอราคา
   useEffect(() => {
+    let active = true
+
+    const fetchAssigneeSignature = async (userId: string) => {
+      try {
+        const response = await fetch(`/api/users/signature?userId=${userId}`, {
+          credentials: 'include'
+        })
+        if (!response.ok) return
+        const data = await response.json()
+        if (active && data?.success && data?.user) {
+          setAssigneeSignature({
+            name: data.user.name,
+            position: data.user.position,
+            signatureUrl: data.user.signatureUrl
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching assignee signature:', error)
+      }
+    }
+
     const fetchQuotation = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/quotations/${quotationId}`)
+        const response = await fetch(`/api/quotations/${quotationId}`, {
+          credentials: 'include'
+        })
         
         if (!response.ok) {
           throw new Error('ไม่พบใบเสนอราคา')
         }
         
         const data = await response.json()
-        setQuotation(data)
+        if (active) {
+          setQuotation(data)
+          if (data?.assignedTo) {
+            fetchAssigneeSignature(data.assignedTo)
+          } else {
+            setAssigneeSignature(null)
+          }
+        }
       } catch (error) {
         console.error('Error fetching quotation:', error)
         setError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด')
@@ -73,8 +113,24 @@ export default function QuotationView() {
       }
     }
 
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' })
+        if (!response.ok) return
+        const data = await response.json()
+        if (active) setCompanyInfo(data)
+      } catch (error) {
+        console.error('Error fetching settings:', error)
+      }
+    }
+
     if (quotationId) {
       fetchQuotation()
+      fetchSettings()
+    }
+
+    return () => {
+      active = false
     }
   }, [quotationId])
 
@@ -101,6 +157,7 @@ export default function QuotationView() {
     try {
       const response = await fetch(`/api/quotations/${quotationId}/pdf`, {
         method: 'GET',
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -151,6 +208,31 @@ export default function QuotationView() {
     )
   }
 
+  const formatAddressParts = (base: string | undefined, parts: string[]) => {
+    const cleaned = parts.map((part) => part?.trim()).filter(Boolean) as string[]
+    const suffix = cleaned.length ? ` ${cleaned.join(' ')}` : ''
+    return `${base || ''}${suffix}`.trim()
+  }
+
+  const shippingAddress = quotation.shipToSameAsCustomer
+    ? formatAddressParts(quotation.customerAddress, [
+        quotation.deliverySubdistrict ? `ต.${quotation.deliverySubdistrict}` : '',
+        quotation.deliveryDistrict ? `อ.${quotation.deliveryDistrict}` : '',
+        quotation.deliveryProvince ? `จ.${quotation.deliveryProvince}` : '',
+        quotation.deliveryZipcode || '',
+      ])
+    : formatAddressParts(quotation.shippingAddress, [
+        quotation.deliverySubdistrict ? `ต.${quotation.deliverySubdistrict}` : '',
+        quotation.deliveryDistrict ? `อ.${quotation.deliveryDistrict}` : '',
+        quotation.deliveryProvince ? `จ.${quotation.deliveryProvince}` : '',
+        quotation.deliveryZipcode || '',
+      ])
+
+  const companyName = companyInfo?.companyName || 'บริษัท วินริช ไดนามิก จำกัด'
+  const companyAddress = companyInfo?.companyAddress || '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110'
+  const companyPhone = companyInfo?.companyPhone || '02-123-4567'
+  const companyEmail = companyInfo?.companyEmail || 'info@winrichdynamic.com'
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 print:bg-white print:py-0">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 print:max-w-none print:px-0">
@@ -198,11 +280,10 @@ export default function QuotationView() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">ข้อมูลบริษัท</h3>
               <div className="space-y-2 text-gray-700">
-                <p className="font-medium">บริษัท วินริช ไดนามิก จำกัด</p>
-                <p>123 ถนนสุขุมวิท แขวงคลองเตย</p>
-                <p>เขตคลองเตย กรุงเทพฯ 10110</p>
-                <p>โทร: 02-123-4567</p>
-                <p>อีเมล: info@winrichdynamic.com</p>
+                <p className="font-medium">{companyName}</p>
+                <p>{companyAddress}</p>
+                <p>โทร: {companyPhone}</p>
+                <p>อีเมล: {companyEmail}</p>
               </div>
             </div>
 
@@ -217,13 +298,9 @@ export default function QuotationView() {
                 {quotation.customerAddress && (
                   <p>ที่อยู่: {quotation.customerAddress}</p>
                 )}
-                {quotation.shipToSameAsCustomer ? (
-                  quotation.customerAddress ? (
-                    <p>ที่อยู่จัดส่ง: ใช้ที่อยู่ลูกค้า</p>
-                  ) : null
-                ) : quotation.shippingAddress ? (
-                  <p>ที่อยู่จัดส่ง: {quotation.shippingAddress}</p>
-                ) : null}
+                {shippingAddress && (
+                  <p>ที่อยู่จัดส่ง: {shippingAddress}</p>
+                )}
                 {quotation.customerPhone && (
                   <p>โทร: {quotation.customerPhone}</p>
                 )}
@@ -382,7 +459,7 @@ export default function QuotationView() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div>
               <p className="text-sm text-gray-600">ผู้รับผิดชอบ</p>
-              <p className="font-medium text-gray-900">{quotation.assignedTo || '-'}</p>
+              <p className="font-medium text-gray-900">{assigneeSignature?.name || quotation.assignedTo || '-'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">สถานะ</p>
@@ -397,8 +474,22 @@ export default function QuotationView() {
               <p className="text-sm text-gray-600">ลายเซ็นลูกค้า</p>
             </div>
             <div className="text-center">
+              {assigneeSignature?.signatureUrl ? (
+                <img
+                  src={assigneeSignature.signatureUrl}
+                  alt="signature"
+                  className="h-10 mx-auto mb-2"
+                />
+              ) : (
               <div className="w-32 h-0.5 bg-gray-400 mb-2"></div>
+              )}
               <p className="text-sm text-gray-600">ลายเซ็นผู้เสนอราคา</p>
+              {assigneeSignature?.name && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {assigneeSignature.name}
+                  {assigneeSignature.position ? ` (${assigneeSignature.position})` : ''}
+                </p>
+              )}
             </div>
           </div>
         </motion.div>

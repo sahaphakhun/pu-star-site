@@ -8,6 +8,8 @@ import Order from '@/models/Order';
 import Customer from '@/models/Customer';
 import Activity from '@/models/Activity';
 import Quotation from '@/models/Quotation';
+import Admin from '@/models/Admin';
+import mongoose from 'mongoose';
 
 // GET: ดึงข้อมูลสำหรับ Dashboard (KPIs, charts, statistics)
 export async function GET(request: Request) {
@@ -184,6 +186,163 @@ export async function GET(request: Request) {
       count: item.count
     }));
 
+    const paymentMethodLabels: Record<string, string> = {
+      cod: 'เงินสด',
+      transfer: 'โอนเงิน',
+      credit: 'เครดิต',
+    };
+    const paymentMethods = await Order.aggregate([
+      { $group: { _id: '$paymentMethod', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    const paymentMethodDistribution = paymentMethods.map((item) => ({
+      name: paymentMethodLabels[item._id as string] || 'ไม่ระบุ',
+      value: item.count || 0,
+    }));
+
+    const productGroupDistribution = await Order.aggregate([
+      { $unwind: '$items' },
+      {
+        $addFields: {
+          productObjectId: {
+            $cond: [
+              { $eq: [{ $type: '$items.productId' }, 'objectId'] },
+              '$items.productId',
+              { $convert: { input: '$items.productId', to: 'objectId', onError: null, onNull: null } },
+            ],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productObjectId',
+          foreignField: '_id',
+          as: 'productInfo',
+        },
+      },
+      {
+        $addFields: {
+          productCategory: {
+            $ifNull: [{ $arrayElemAt: ['$productInfo.category', 0] }, 'ไม่ระบุ'],
+          },
+          itemTotal: {
+            $ifNull: [
+              '$items.amount',
+              { $multiply: ['$items.price', '$items.quantity'] },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$productCategory',
+          totalValue: { $sum: '$itemTotal' },
+        },
+      },
+      { $sort: { totalValue: -1 } },
+      { $limit: 10 },
+      {
+        $project: {
+          _id: 0,
+          name: '$_id',
+          value: '$totalValue',
+        },
+      },
+    ]);
+
+    const ownerFilterId = (userFilter as any)?.ownerId;
+    const activityMatch = ownerFilterId ? { ownerId: ownerFilterId } : {};
+    const projectMatch = ownerFilterId
+      ? { ownerId: ownerFilterId, createdAt: { $gte: startOfMonth } }
+      : { createdAt: { $gte: startOfMonth } };
+    const quotationMatch = ownerFilterId ? { assignedTo: ownerFilterId } : {};
+    const dealMatch = ownerFilterId ? { ownerId: ownerFilterId } : {};
+
+    const [
+      activityCounts,
+      projectCounts,
+      quotationCounts,
+      negotiationCounts,
+      lostCounts,
+      winCounts,
+    ] = await Promise.all([
+      Activity.aggregate([
+        { $match: activityMatch },
+        { $group: { _id: '$ownerId', count: { $sum: 1 } } },
+      ]),
+      Project.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$ownerId', count: { $sum: 1 } } },
+      ]),
+      Quotation.aggregate([
+        { $match: quotationMatch },
+        { $group: { _id: '$assignedTo', count: { $sum: 1 } } },
+      ]),
+      Deal.aggregate([
+        { $match: { ...dealMatch, stageName: { $regex: /(negotiat|ต่อรอง)/i } } },
+        { $group: { _id: '$ownerId', count: { $sum: 1 } } },
+      ]),
+      Deal.aggregate([
+        { $match: { ...dealMatch, status: 'lost' } },
+        { $group: { _id: '$ownerId', count: { $sum: 1 } } },
+      ]),
+      Deal.aggregate([
+        { $match: { ...dealMatch, status: 'won' } },
+        { $group: { _id: '$ownerId', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const buildCountMap = (rows: any[]) => {
+      const map = new Map<string, number>();
+      rows.forEach((row) => {
+        if (!row?._id) return;
+        map.set(String(row._id), Number(row.count || 0));
+      });
+      return map;
+    };
+
+    const activityMap = buildCountMap(activityCounts);
+    const projectMap = buildCountMap(projectCounts);
+    const quotationMap = buildCountMap(quotationCounts);
+    const negotiationMap = buildCountMap(negotiationCounts);
+    const lostMap = buildCountMap(lostCounts);
+    const winMap = buildCountMap(winCounts);
+
+    const ownerIds = Array.from(
+      new Set([
+        ...activityMap.keys(),
+        ...projectMap.keys(),
+        ...quotationMap.keys(),
+        ...negotiationMap.keys(),
+        ...lostMap.keys(),
+        ...winMap.keys(),
+      ])
+    );
+
+    const adminMap = new Map<string, string>();
+    const validOwnerIds = ownerIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (validOwnerIds.length > 0) {
+      const admins = await Admin.find({ _id: { $in: validOwnerIds } })
+        .select('name')
+        .lean();
+      admins.forEach((admin: any) => {
+        const id = String(admin._id);
+        adminMap.set(id, admin.name || 'ไม่ระบุชื่อ');
+      });
+    }
+
+    const salesTeam = ownerIds.map((ownerId) => ({
+      id: ownerId,
+      name: adminMap.get(ownerId) || ownerId,
+      total: activityMap.get(ownerId) || 0,
+      new: projectMap.get(ownerId) || 0,
+      quotation: quotationMap.get(ownerId) || 0,
+      negotiation: negotiationMap.get(ownerId) || 0,
+      lost: lostMap.get(ownerId) || 0,
+      win: winMap.get(ownerId) || 0,
+    })).sort((a, b) => b.total - a.total);
+
     // Calculate growth rates
     const ordersGrowthRate = ordersLastMonth > 0 
       ? ((ordersThisMonth - ordersLastMonth) / ordersLastMonth * 100).toFixed(1)
@@ -234,7 +393,10 @@ export async function GET(request: Request) {
         customerTypes: customerTypes.reduce((acc, item) => {
           acc[item._id] = item.count;
           return acc;
-        }, {})
+        }, {}),
+        paymentMethods: paymentMethodDistribution,
+        productGroups: productGroupDistribution,
+        salesTeam,
       },
       recentActivities,
       lastUpdated: new Date().toISOString()

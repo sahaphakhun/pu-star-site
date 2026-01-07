@@ -22,11 +22,17 @@ export interface IQuotation extends Document {
   customerTaxId?: string; // เลขประจำตัวผู้เสียภาษี
   customerAddress?: string; // ที่อยู่ลูกค้า
   shippingAddress?: string; // ที่อยู่จัดส่ง (ถ้าไม่ใช่ที่อยู่บริษัท)
+  deliveryProvince?: string;
+  deliveryDistrict?: string;
+  deliverySubdistrict?: string;
+  deliveryZipcode?: string;
   shipToSameAsCustomer?: boolean; // ใช้ที่อยู่ลูกค้าเป็นที่อยู่จัดส่ง
   customerPhone?: string; // เบอร์โทรลูกค้า
   
   // ข้อมูลใบเสนอราคา
   subject: string; // หัวข้อใบเสนอราคา
+  projectId?: string;
+  opportunityId?: string;
   validUntil: Date; // วันหมดอายุ
   paymentTerms: string; // เงื่อนไขการชำระเงิน
   deliveryTerms?: string; // เงื่อนไขการส่งมอบ
@@ -206,6 +212,26 @@ const quotationSchema = new Schema<IQuotation>(
       trim: true,
       maxlength: [500, 'ที่อยู่จัดส่งต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
     },
+    deliveryProvince: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'จังหวัดต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    deliveryDistrict: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'อำเภอ/เขตต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    deliverySubdistrict: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'ตำบล/แขวงต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+    },
+    deliveryZipcode: {
+      type: String,
+      trim: true,
+      match: [/^\d{5}$/, 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก'],
+    },
     shipToSameAsCustomer: {
       type: Boolean,
       default: true,
@@ -224,6 +250,16 @@ const quotationSchema = new Schema<IQuotation>(
       required: [true, 'กรุณาระบุหัวข้อใบเสนอราคา'],
       trim: true,
       maxlength: [200, 'หัวข้อใบเสนอราคาต้องมีความยาวไม่เกิน 200 ตัวอักษร'],
+    },
+    projectId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    opportunityId: {
+      type: String,
+      trim: true,
+      index: true,
     },
     validUntil: {
       type: Date,

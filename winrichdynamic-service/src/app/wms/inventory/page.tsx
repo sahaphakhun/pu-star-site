@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import Link from 'next/link';
+import Loading from '@/components/ui/Loading';
 
 interface Product {
   _id: string;
@@ -30,7 +32,7 @@ const InventoryPage: React.FC = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/wms/products');
+      const response = await fetch('/api/wms/products', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setProducts(data.products || []);
@@ -68,16 +70,24 @@ const InventoryPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <Loading size="lg" label="กำลังโหลดข้อมูลสต็อก..." />
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการสินค้าคงคลัง</h1>
-        <p className="text-gray-600">ดูและจัดการสินค้าทั้งหมดในคลังสินค้า</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการสินค้าคงคลัง</h1>
+          <p className="text-gray-600">ดูและจัดการสินค้าทั้งหมดในคลังสินค้า</p>
+        </div>
+        <Link
+          href="/adminb2b/products"
+          className="inline-flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          ไปที่จัดการสินค้า
+        </Link>
       </div>
 
       {/* Filters */}

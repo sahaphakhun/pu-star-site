@@ -4,91 +4,42 @@ import React, { useState, useEffect } from 'react';
 import PaymentStatusTracker from '@/components/PaymentStatusTracker';
 import type { IOrder } from '@/models/Order';
 
-// Mock order data for testing
-const mockOrders = [
-  {
-    _id: '507f1f77bcf86cd799439011',
-    customerName: 'สมชาย ใจดี',
-    customerPhone: '0812345678',
-    items: [
-      {
-        productId: '507f1f77bcf86cd799439012',
-        name: 'สินค้าตัวอย่าง A',
-        price: 1500,
-        quantity: 2,
-      }
-    ],
-    totalAmount: 3000,
-    shippingFee: 100,
-    discount: 0,
-    orderDate: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    paymentMethod: 'cod' as const,
-    status: 'delivered' as const,
-    codPaymentStatus: 'pending' as const,
-    codPaymentDueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day from now
-    codReminderSent: false,
-    paymentConfirmationRequired: true,
-  },
-  {
-    _id: '507f1f77bcf86cd799439013',
-    customerName: 'สมศรี รักดี',
-    customerPhone: '0823456789',
-    items: [
-      {
-        productId: '507f1f77bcf86cd799439014',
-        name: 'สินค้าตัวอย่าง B',
-        price: 2500,
-        quantity: 1,
-      }
-    ],
-    totalAmount: 2500,
-    shippingFee: 50,
-    discount: 100,
-    orderDate: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    paymentMethod: 'transfer' as const,
-    status: 'confirmed' as const,
-    slipVerification: {
-      verified: false,
-      status: 'pending_verification',
-      slipUrl: 'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Slip+Example',
-      slipUploadedAt: new Date(),
-    },
-  },
-  {
-    _id: '507f1f77bcf86cd799439015',
-    customerName: 'บริษัท ตัวอย่าง จำกัด',
-    customerPhone: '0834567890',
-    items: [
-      {
-        productId: '507f1f77bcf86cd799439016',
-        name: 'สินค้าองค์กร',
-        price: 10000,
-        quantity: 5,
-      }
-    ],
-    totalAmount: 50000,
-    shippingFee: 0,
-    discount: 2000,
-    orderDate: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    paymentMethod: 'credit' as const,
-    status: 'confirmed' as const,
-    creditPaymentDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-    creditReminderSent: false,
-  },
-];
-
 export default function TestPaymentPage() {
-  const [selectedOrder, setSelectedOrder] = useState(mockOrders[0]);
+  const [orders, setOrders] = useState<IOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<IOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(true);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch('/api/orders?limit=50', { credentials: 'include' });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'ไม่สามารถโหลดรายการออเดอร์ได้');
+      }
+      const list = Array.isArray(data) ? data : data.data || [];
+      setOrders(list);
+      setSelectedOrder(list[0] || null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการโหลดออเดอร์';
+      setError(message);
+      setOrders([]);
+      setSelectedOrder(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
   const handleOrderUpdate = (updatedOrder: any) => {
     setSelectedOrder(updatedOrder);
+    setOrders(prev => prev.map(order => (order._id === updatedOrder._id ? updatedOrder : order)));
   };
 
   const testNotificationAPI = async (type: string) => {
@@ -139,6 +90,13 @@ export default function TestPaymentPage() {
       });
 
       const result = await response.json();
+      const created = result?.data || result?.order;
+      if (created) {
+        setOrders(prev => [created, ...prev]);
+        setSelectedOrder(created);
+      } else {
+        await loadOrders();
+      }
       alert(`สร้างออเดอร์สำเร็จ: ${JSON.stringify(result, null, 2)}`);
     } catch (error) {
       console.error('Error creating test order:', error);
@@ -160,24 +118,29 @@ export default function TestPaymentPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">เลือกออเดอร์ทดสอบ</h2>
               <div className="space-y-2">
-                {mockOrders.map((order, index) => (
+                {loading && <div className="text-sm text-gray-500">กำลังโหลดออเดอร์...</div>}
+                {!loading && error && <div className="text-sm text-red-600">{error}</div>}
+                {!loading && !error && orders.length === 0 && (
+                  <div className="text-sm text-gray-500">ไม่พบออเดอร์ในระบบ</div>
+                )}
+                {!loading && !error && orders.map((order) => (
                   <button
-                    key={order._id}
+                    key={(order._id as any).toString()}
                     onClick={() => setSelectedOrder(order)}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedOrder._id === order._id
+                      (selectedOrder as any)?._id === order._id
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="font-medium text-gray-900">
-                      ออเดอร์ #{order._id.slice(-6)}
+                      ออเดอร์ #{String(order._id).slice(-6)}
                     </div>
                     <div className="text-sm text-gray-600">
                       {order.customerName} • {order.paymentMethod}
                     </div>
                     <div className="text-sm font-medium text-gray-900">
-                      ฿{order.totalAmount.toLocaleString()}
+                      ฿{Number(order.totalAmount || 0).toLocaleString()}
                     </div>
                   </button>
                 ))}
@@ -250,11 +213,17 @@ export default function TestPaymentPage() {
 
           {/* Payment Status Tracker */}
           <div className="lg:col-span-2">
-            <PaymentStatusTracker
-              order={selectedOrder as any}
-              onUpdate={handleOrderUpdate}
-              isAdmin={isAdmin}
-            />
+            {selectedOrder ? (
+              <PaymentStatusTracker
+                order={selectedOrder}
+                onUpdate={handleOrderUpdate}
+                isAdmin={isAdmin}
+              />
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-gray-500">
+                ไม่มีออเดอร์สำหรับแสดงผล
+              </div>
+            )}
           </div>
         </div>
       </div>
