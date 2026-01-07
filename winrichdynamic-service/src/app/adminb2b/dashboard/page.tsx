@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Target, Camera, Users, Activity, DollarSign, Package, CreditCard, Star, AlertCircle, RefreshCw } from 'lucide-react';
-import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieLabelRenderProps } from 'recharts';
 import Loading from '@/components/ui/Loading';
 
 const Dashboard = () => {
@@ -161,7 +161,7 @@ const Dashboard = () => {
   const statusChartData = formatProjectStatusData();
 
   // Add colors to status chart data
-  const statusChartDataWithColors = statusChartData.map((item, index) => {
+  const statusChartDataWithColors = statusChartData.map((item: { name: string; value: number }, index: number) => {
     const colors = ['#84cc16', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
     return {
       ...item,
@@ -340,12 +340,12 @@ const Dashboard = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
+                label={(props: PieLabelRenderProps) => `${(Number(props.percent ?? 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {statusChartDataWithColors.map((entry, index) => (
+                {statusChartDataWithColors.map((entry: { name: string; value: number; color: string }, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -353,7 +353,7 @@ const Dashboard = () => {
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-2 justify-center mt-2">
-            {statusChartDataWithColors.map((item, index) => (
+            {statusChartDataWithColors.map((item: { name: string; value: number; color: string }, index: number) => (
               <div key={index} className="flex items-center gap-1 text-xs">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }}></div>
                 <span>{item.name}</span>
@@ -450,12 +450,12 @@ const Dashboard = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                label={(props: PieLabelRenderProps) => `${props.name ?? ''} ${(Number(props.percent ?? 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {paymentMethodData.map((entry, index) => (
+                {paymentMethodData.map((entry: { name: string; value: number; color: string }, index: number) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -474,7 +474,7 @@ const Dashboard = () => {
               <YAxis />
               <Tooltip />
               <Bar dataKey="value" fill="#3b82f6">
-                {productGroupData.map((entry, index) => (
+                {productGroupData.map((entry: { name: string; value: number }, index: number) => (
                   <Cell key={`cell-${index}`} fill={`hsl(${index * 30}, 70%, 50%)`} />
                 ))}
               </Bar>
