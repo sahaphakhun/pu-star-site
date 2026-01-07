@@ -74,7 +74,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
   const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  
+
   const mapApiStatusToUi = (status?: string) => {
     const map: Record<string, SalesOrder['status']> = {
       pending: 'draft',
@@ -173,7 +173,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
       })
       : []
 
-    const subtotal = Number(order?.subtotal ?? items.reduce((sum, item) => sum + (item.amount || 0), 0))
+    const subtotal = Number(order?.subtotal ?? items.reduce((sum: number, item: OrderItem) => sum + (item.amount || 0), 0))
     const vat = Number(order?.vatRate ?? order?.vat ?? 7)
     const vatAmount = Number(order?.vatAmount ?? (subtotal * vat) / 100)
     const total = Number(order?.totalAmount ?? subtotal + vatAmount)
@@ -181,10 +181,10 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     const remainingAmount = Number(order?.remainingAmount ?? Math.max(total - paidAmount, 0))
     const hasShipping = Boolean(
       order?.deliveryAddress ||
-        order?.deliveryProvince ||
-        order?.deliveryDistrict ||
-        order?.deliverySubdistrict ||
-        order?.deliveryPostalCode
+      order?.deliveryProvince ||
+      order?.deliveryDistrict ||
+      order?.deliverySubdistrict ||
+      order?.deliveryPostalCode
     )
 
     return {
@@ -370,14 +370,14 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
 
   const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
     const newItems = [...formData.items]
-    ;(newItems[index] as any)[field] = value
-    
+      ; (newItems[index] as any)[field] = value
+
     // Auto calculate
     const item = newItems[index]
     if (field === 'quantity' || field === 'pricePerUnit' || field === 'discount') {
       item.amount = (item.pricePerUnit - item.discount) * item.quantity
     }
-    
+
     setFormData({ ...formData, items: newItems })
     calculateTotals(newItems)
   }
@@ -387,7 +387,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     const vatAmount = (subtotal * formData.vat) / 100
     const total = subtotal + vatAmount
     const remaining = total - formData.paidAmount
-    
+
     setFormData((prev: any) => ({
       ...prev,
       subtotal,
@@ -589,7 +589,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               <div className="col-span-12 lg:col-span-4 space-y-6">
                 <div className="border rounded-lg p-4">
                   <h3 className="text-lg font-semibold mb-4">ข้อมูลคำสั่งซื้อ</h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -665,11 +665,10 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                           >
                             <Star
                               size={24}
-                              className={`${
-                                star <= formData.importance
+                              className={`${star <= formData.importance
                                   ? 'fill-yellow-400 text-yellow-400'
                                   : 'text-gray-300'
-                              }`}
+                                }`}
                             />
                           </button>
                         ))}
@@ -702,7 +701,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               <div className="col-span-12 lg:col-span-4 space-y-6">
                 <div className="border rounded-lg p-4">
                   <h3 className="text-lg font-semibold mb-4">ข้อมูลการจัดส่ง</h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -803,7 +802,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               <div className="col-span-12 lg:col-span-4 space-y-6">
                 <div className="border rounded-lg p-4">
                   <h3 className="text-lg font-semibold mb-4">ข้อมูลการชำระเงิน</h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">
@@ -813,15 +812,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                         <SelectTrigger>
                           <SelectValue placeholder="โปรดเลือก" />
                         </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">โปรดเลือก</SelectItem>
-                            <SelectItem value="เงินสด">เงินสด</SelectItem>
-                            <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
-                            <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
-                            <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
-                            <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <SelectContent>
+                          <SelectItem value="">โปรดเลือก</SelectItem>
+                          <SelectItem value="เงินสด">เงินสด</SelectItem>
+                          <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
+                          <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
+                          <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
+                          <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>

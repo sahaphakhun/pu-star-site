@@ -21,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'ไม่พบใบสั่งขาย' }, { status: 404 });
     }
 
-    const settings = await Settings.findOne().lean();
+    const settings: any = await Settings.findOne().lean();
 
     let signatureInfo: any = {};
     if (order.ownerId) {
@@ -56,7 +56,7 @@ export async function GET(
           }
         }
       }
-    } catch {}
+    } catch { }
 
     const orderWithSettings = {
       ...order,

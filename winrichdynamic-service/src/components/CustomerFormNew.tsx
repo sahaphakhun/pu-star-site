@@ -164,7 +164,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
     let active = true;
     fetchNextCustomerCode().then((code) => {
       if (active && code) {
-        setFormData((prev) => ({ ...prev, customerCode: code }));
+        setFormData((prev: typeof initialFormData) => ({ ...prev, customerCode: code }));
       }
     });
     return () => {
@@ -174,7 +174,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
 
   useEffect(() => {
     if (!formData.team && teamOptions.length > 0) {
-      setFormData((prev) => ({ ...prev, team: teamOptions[0] }));
+      setFormData((prev: typeof initialFormData) => ({ ...prev, team: teamOptions[0] }));
     }
   }, [formData.team, teamOptions]);
 
@@ -182,7 +182,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
     let active = true;
     const loadAdmins = async () => {
       try {
-      const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
+        const res = await fetch('/api/adminb2b/admins', { credentials: 'include' });
         const data = await res.json();
         if (!active) return;
         if (data?.success && Array.isArray(data.data)) {

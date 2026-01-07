@@ -8,9 +8,10 @@ const toNumber = (value: unknown, fallback = 0) => {
 };
 
 const resolvePriority = (importance?: number) => {
-  if (importance >= 5) return 'urgent';
-  if (importance === 4) return 'high';
-  if (importance === 3) return 'medium';
+  const imp = importance ?? 0;
+  if (imp >= 5) return 'urgent';
+  if (imp === 4) return 'high';
+  if (imp === 3) return 'medium';
   return 'low';
 };
 
