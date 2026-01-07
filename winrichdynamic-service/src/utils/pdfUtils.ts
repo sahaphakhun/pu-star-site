@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
 
 export interface PDFOptions {
   format?: 'A4' | 'A3' | 'Letter' | 'Legal';
@@ -10,6 +11,25 @@ export interface PDFOptions {
     left?: string;
   };
   landscape?: boolean;
+}
+
+function resolveExecutablePath(): string | undefined {
+  const candidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/opt/google/chrome/chrome',
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
 }
 
 export interface QuotationData {
@@ -203,7 +223,7 @@ export async function generatePDFFromHTML(
   html: string,
   options: PDFOptions = {}
 ): Promise<Buffer> {
-  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const executablePath = resolveExecutablePath();
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -230,8 +250,13 @@ export async function generatePDFFromHTML(
 
     // ตั้งค่า content
     await page.setContent(html, {
-      waitUntil: 'networkidle0'
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
     });
+
+    try {
+      await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 });
+    } catch { }
 
     // รอให้ font โหลดเสร็จ
     await new Promise(resolve => setTimeout(resolve, 3000));
