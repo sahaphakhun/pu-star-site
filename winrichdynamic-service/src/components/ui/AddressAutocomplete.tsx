@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import * as ReactDOM from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
 import {
     provinces,
@@ -277,7 +277,7 @@ export default function AddressAutocomplete({
             }
         };
 
-        const dropdownContent = state.isOpen && !disabled && isMounted ? createPortal(
+        const dropdownContent = state.isOpen && !disabled && isMounted ? ReactDOM.createPortal(
             <div
                 style={dropdownStyle}
                 className="bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden"
