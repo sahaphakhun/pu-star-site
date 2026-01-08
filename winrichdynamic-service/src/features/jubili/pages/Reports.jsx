@@ -27,6 +27,14 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Calendar as CalendarComponent } from '@/components/ui/Calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -599,37 +607,28 @@ const Reports = () => {
 
       {/* Preview Modal */}
       {showPreview && previewData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">ตัวอย่างรายงาน: {previewData.typeName}</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPreview(false)}
-              >
-                ✕
-              </Button>
-            </div>
-            
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600">
+        <AppModal open onOpenChange={(open) => !open && setShowPreview(false)}>
+          <AppModalContent size="xl">
+            <AppModalHeader>
+              <AppModalTitle>ตัวอย่างรายงาน: {previewData.typeName}</AppModalTitle>
+            </AppModalHeader>
+            <AppModalBody>
+              <div className="mb-4 text-sm text-slate-600">
+                <p>
                   ช่วงวันที่: {previewData.dateRange.from} - {previewData.dateRange.to}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p>
                   รูปแบบ: {previewData.format.toUpperCase()}
                 </p>
               </div>
-              
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <pre className="text-sm overflow-x-auto">
                   {JSON.stringify(previewData.data, null, 2)}
                 </pre>
               </div>
-            </div>
-            
-            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+            </AppModalBody>
+            <AppModalFooter>
               <Button
                 variant="outline"
                 onClick={() => setShowPreview(false)}
@@ -643,9 +642,9 @@ const Reports = () => {
                 <Download size={16} />
                 ดาวน์โหลด
               </Button>
-            </div>
-          </div>
-        </div>
+            </AppModalFooter>
+          </AppModalContent>
+        </AppModal>
       )}
     </div>
   );

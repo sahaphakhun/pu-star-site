@@ -24,6 +24,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --admin-sidebar-width: 16rem;
   }
 
   .dark {
@@ -56,6 +57,32 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .admin-shell {
+    @apply bg-slate-50 text-slate-900;
+  }
+
+  .admin-main {
+    @apply bg-slate-50;
+  }
+
+  .admin-page {
+    @apply mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .admin-card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .admin-card-title {
+    @apply text-base font-semibold text-slate-800;
+  }
+
+  .admin-muted {
+    @apply text-sm text-slate-500;
   }
 }
 
@@ -167,31 +194,6 @@ html {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Admin B2B Modal Fixes */
-@media (min-width: 768px) {
-  .adminb2b-modal {
-    margin-left: 14rem; /* 56 = 14rem */
-  }
-  
-  .adminb2b-modal .fixed.inset-0 {
-    margin-left: 14rem;
-  }
-}
-
-/* Ensure modals don't overlap with sidebar */
-.adminb2b-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 50;
-}
-
-@media (min-width: 768px) {
-  .adminb2b-modal-overlay {
-    margin-left: 14rem;
   }
 }
 

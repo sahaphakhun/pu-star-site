@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 
 interface QuickNoteModalProps {
   isOpen: boolean;
@@ -44,58 +51,56 @@ export default function QuickNoteModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">จดโน้ต/ติดตามแบบด่วน</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ประเภทกิจกรรม
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="call">โทร</option>
-                <option value="meeting">นัด</option>
-                <option value="email">อีเมล</option>
-                <option value="task">งาน</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                หมายเหตุ
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="จดบันทึกการติดต่อ..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 mt-6">
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              disabled={loading}
+    <AppModal open onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="sm">
+        <AppModalHeader>
+          <AppModalTitle>จดโน้ต/ติดตามแบบด่วน</AppModalTitle>
+        </AppModalHeader>
+        <AppModalBody className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              ประเภทกิจกรรม
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as any)}
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
             >
-              ยกเลิก
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={loading || !note.trim()}
-            >
-              {loading ? 'กำลังบันทึก...' : 'บันทึก'}
-            </Button>
+              <option value="call">โทร</option>
+              <option value="meeting">นัด</option>
+              <option value="email">อีเมล</option>
+              <option value="task">งาน</option>
+            </select>
           </div>
-        </div>
-      </Card>
-    </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              หมายเหตุ
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="จดบันทึกการติดต่อ..."
+              className="h-24 w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+            />
+          </div>
+        </AppModalBody>
+        <AppModalFooter>
+          <Button
+            onClick={onClose}
+            variant="secondary"
+            disabled={loading}
+          >
+            ยกเลิก
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={loading || !note.trim()}
+          >
+            {loading ? 'กำลังบันทึก...' : 'บันทึก'}
+          </Button>
+        </AppModalFooter>
+      </AppModalContent>
+    </AppModal>
   );
 }

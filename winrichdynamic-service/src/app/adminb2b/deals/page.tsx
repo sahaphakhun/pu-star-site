@@ -6,6 +6,14 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import QuickNoteModal from '@/components/QuickNoteModal';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 
 type PipelineStage = {
   _id: string;
@@ -339,32 +347,34 @@ export default function DealsPage() {
       
       {/* Save Filter Modal */}
       {showSaveFilter && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="p-4">
-              <h3 className="text-lg font-semibold mb-4">บันทึกมุมมอง</h3>
+        <AppModal open onOpenChange={(open) => !open && setShowSaveFilter(false)}>
+          <AppModalContent size="sm">
+            <AppModalHeader>
+              <AppModalTitle>บันทึกมุมมอง</AppModalTitle>
+            </AppModalHeader>
+            <AppModalBody>
               <Input
                 placeholder="ชื่อมุมมอง..."
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
-                className="mb-4"
               />
-              <div className="flex justify-end space-x-2">
-                <Button
-                  onClick={() => setShowSaveFilter(false)}
-                >
-                  ยกเลิก
-                </Button>
-                <Button
-                  onClick={handleSaveFilter}
-                  disabled={!filterName.trim()}
-                >
-                  บันทึก
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </AppModalBody>
+            <AppModalFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveFilter(false)}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleSaveFilter}
+                disabled={!filterName.trim()}
+              >
+                บันทึก
+              </Button>
+            </AppModalFooter>
+          </AppModalContent>
+        </AppModal>
       )}
       
       <QuickNoteModal
@@ -380,4 +390,3 @@ export default function DealsPage() {
     </div>
   );
 }
-

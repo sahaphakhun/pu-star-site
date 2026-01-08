@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from 'react';
-import { X, Plus, Trash2, FileText } from 'lucide-react';
+import { Plus, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import ProductAutocomplete from '@/components/ui/ProductAutocomplete';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 
 interface QuotationFormProps {
   customer?: any;
@@ -150,19 +158,13 @@ export default function QuotationForm({ customer, onClose, onSubmit }: Quotation
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold">เสนอราคา</h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6">
+    <AppModal open onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="xl">
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+          <AppModalHeader>
+            <AppModalTitle>เสนอราคา</AppModalTitle>
+          </AppModalHeader>
+          <AppModalBody>
             {errorMessage && (
               <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {errorMessage}
@@ -348,25 +350,17 @@ export default function QuotationForm({ customer, onClose, onSubmit }: Quotation
             </div>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-orange-500 text-orange-500 hover:bg-orange-50"
-            >
+          </AppModalBody>
+          <AppModalFooter>
+            <Button type="button" onClick={onClose} variant="outline">
               ยกเลิก
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-60"
-            >
+            <Button type="submit" disabled={submitting}>
               {submitting ? 'กำลังบันทึก...' : 'บันทึก'}
             </Button>
-          </div>
+          </AppModalFooter>
         </form>
-      </div>
-    </div>
+      </AppModalContent>
+    </AppModal>
   );
 }

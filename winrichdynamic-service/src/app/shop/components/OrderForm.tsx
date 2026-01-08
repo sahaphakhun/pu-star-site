@@ -1,8 +1,15 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import type { IProduct } from '@/models/Product';
+import {
+	AppModal,
+	AppModalBody,
+	AppModalContent,
+	AppModalFooter,
+	AppModalHeader,
+	AppModalTitle,
+} from '@/components/ui/AppModal';
 
 interface ProductWithId extends IProduct { _id: string; }
 interface CartItem { product: ProductWithId; quantity: number; }
@@ -26,6 +33,7 @@ interface OrderFormProps {
 }
 
 export default function OrderForm({
+	showOrderForm,
 	setShowOrderForm,
 	handleSubmitOrder,
 	customerName,
@@ -44,43 +52,15 @@ export default function OrderForm({
 	const cartItems = Object.values(cart);
 
 	return (
-		<motion.div
-	className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
-			onClick={() => setShowOrderForm(false)}
-		>
-			<motion.div
-				className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-				initial={{ scale: 0.9, opacity: 0, y: 20 }}
-				animate={{ scale: 1, opacity: 1, y: 0 }}
-				exit={{ scale: 0.9, opacity: 0, y: 20 }}
-				onClick={(e) => e.stopPropagation()}
-			>
-				{/* Header */}
-				<div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
-					<div className="flex justify-between items-center">
-						<div>
-							<h3 className="text-2xl font-bold">ข้อมูลการสั่งซื้อ</h3>
-							<p className="text-blue-100 text-sm mt-1">กรอกข้อมูลเพื่อดำเนินการสั่งซื้อ</p>
-						</div>
-						<motion.button 
-							onClick={() => setShowOrderForm(false)}
-							whileHover={{ scale: 1.1 }}
-							whileTap={{ scale: 0.9 }}
-						className="p-2 hover:bg-white/20 rounded-full transition-colors"
-						>
-							<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-							</svg>
-						</motion.button>
-					</div>
-				</div>
-
-				{/* Form Content */}
-				<div className="p-6">
-					<form onSubmit={handleSubmitOrder} className="space-y-6">
+		<AppModal open={showOrderForm} onOpenChange={(open) => !open && setShowOrderForm(false)}>
+			<AppModalContent size="xl" align="screen">
+				<form onSubmit={handleSubmitOrder} className="flex h-full flex-col">
+					<AppModalHeader>
+						<AppModalTitle>ข้อมูลการสั่งซื้อ</AppModalTitle>
+						<p className="text-sm text-slate-500">กรอกข้อมูลเพื่อดำเนินการสั่งซื้อ</p>
+					</AppModalHeader>
+					<AppModalBody>
+						<div className="space-y-6">
 						{/* Customer Information */}
 						<div className="bg-gray-50 rounded-xl p-6">
 							<h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -279,32 +259,30 @@ export default function OrderForm({
 							</div>
 						</div>
 
-						{/* Action Buttons */}
-						<div className="flex space-x-4 pt-4">
-							<motion.button 
-								type="button" 
-								onClick={() => setShowOrderForm(false)} 
-								whileHover={{ scale: 1.02 }}
-								whileTap={{ scale: 0.98 }}
-								className="flex-1 bg-white text-gray-700 border-2 border-gray-300 py-4 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-							>
-								ยกเลิก
-							</motion.button>
-							<motion.button 
-								type="submit" 
-								whileHover={{ scale: 1.02 }}
-								whileTap={{ scale: 0.98 }}
-								className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2"
-							>
+						</div>
+					</AppModalBody>
+					<AppModalFooter>
+						<button
+							type="button"
+							onClick={() => setShowOrderForm(false)}
+							className="rounded-xl border-2 border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+						>
+							ยกเลิก
+						</button>
+						<button
+							type="submit"
+							className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+						>
+							<div className="flex items-center gap-2">
 								<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 								</svg>
 								<span>ยืนยันการสั่งซื้อ</span>
-							</motion.button>
-						</div>
-					</form>
-				</div>
-			</motion.div>
-		</motion.div>
+							</div>
+						</button>
+					</AppModalFooter>
+				</form>
+			</AppModalContent>
+		</AppModal>
 	);
 }

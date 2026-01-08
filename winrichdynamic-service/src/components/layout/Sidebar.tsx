@@ -2,62 +2,38 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BarChart3,
-  Users,
-  Building2,
-  Target,
-  FileText,
-  ShoppingCart,
-  CheckSquare,
-  PieChart,
-  Settings,
-  TrendingUp,
-  UserPlus,
-  Package,
-  Handshake,
-} from 'lucide-react';
-
-const menuItems = [
-  { id: 'dashboard', label: 'แผงบริหาร', icon: BarChart3, path: '/adminb2b/dashboard', color: 'bg-blue-500', badge: null },
-  { id: 'leads', label: 'Leads', icon: UserPlus, path: '/adminb2b/leads', color: 'bg-yellow-500', badge: null },
-  { id: 'customers', label: 'ลูกค้า', icon: Users, path: '/adminb2b/customers', color: 'bg-orange-500', badge: null },
-  { id: 'deals', label: 'ดีล', icon: Handshake, path: '/adminb2b/deals', color: 'bg-cyan-500', badge: null },
-  { id: 'opportunities', label: 'โอกาส', icon: Target, path: '/adminb2b/opportunities', color: 'bg-purple-500', badge: null },
-  { id: 'quotations', label: 'ใบเสนอราคา', icon: FileText, path: '/adminb2b/quotations', color: 'bg-red-500', badge: null },
-  { id: 'sales-orders', label: 'ใบสั่งขาย', icon: ShoppingCart, path: '/adminb2b/sales-orders', color: 'bg-blue-600', badge: null },
-  { id: 'products', label: 'สินค้า', icon: Package, path: '/adminb2b/products', color: 'bg-emerald-500', badge: null },
-  { id: 'projects', label: 'โครงการ', icon: Building2, path: '/adminb2b/projects', color: 'bg-green-500', badge: null },
-  { id: 'tasks', label: 'งานติดตาม', icon: CheckSquare, path: '/adminb2b/tasks', color: 'bg-pink-500', badge: null },
-  { id: 'forecast', label: 'คาดการณ์', icon: TrendingUp, path: '/adminb2b/forecast', color: 'bg-teal-500', badge: null },
-  { id: 'reports', label: 'รายงาน', icon: PieChart, path: '/adminb2b/reports', color: 'bg-indigo-500', badge: null },
-  { id: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/adminb2b/settings', color: 'bg-gray-500', badge: null },
-];
+import { adminB2BMenuItems } from './adminB2BMenu';
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex w-16 bg-gradient-to-b from-blue-100 to-blue-200 flex-col shadow-lg">
-      <nav className="flex-1 py-2">
-        {menuItems.map((item) => {
+    <aside className="hidden md:flex w-[var(--admin-sidebar-width)] min-h-0 flex-col border-r border-slate-200 bg-white/90 backdrop-blur">
+      <div className="px-4 pt-5 pb-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          เมนูหลัก
+        </div>
+      </div>
+      <nav className="flex-1 min-h-0 space-y-1 overflow-y-auto px-3 pb-4 custom-scrollbar">
+        {adminB2BMenuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.path;
+          const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
           
           return (
             <Link
               key={item.id}
               href={item.path}
-              className={`flex flex-col items-center justify-center gap-1 py-3 transition-all relative ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all relative ${
                 isActive
-                  ? 'bg-blue-300 text-gray-800 shadow-md'
-                  : 'text-gray-800 hover:bg-blue-300/50'
+                  ? 'bg-slate-100 text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
               }`}
             >
-              <div className={`${item.color} p-1.5 rounded-lg shadow-sm`}>
+              <div className={`${item.color} flex h-9 w-9 items-center justify-center rounded-lg shadow-sm`}>
                 <Icon className="h-4 w-4 text-white" />
               </div>
-              <span className="text-xs font-medium text-center w-full px-1">{item.label}</span>
+              <span className="truncate">{item.label}</span>
               {item.badge && (
                 <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-full">
                   {item.badge}

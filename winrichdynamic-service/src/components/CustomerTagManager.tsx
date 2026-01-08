@@ -5,6 +5,14 @@ import { X, Plus, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 
 interface CustomerTagManagerProps {
   customer?: any;
@@ -126,22 +134,16 @@ export default function CustomerTagManager({ customer, onClose, onSubmit }: Cust
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold flex items-center">
-            <Tag size={24} className="mr-2" />
-            จัดการแท็กลูกค้า
-          </h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6">
+    <AppModal open onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="xl">
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+          <AppModalHeader>
+            <AppModalTitle className="flex items-center gap-2">
+              <Tag size={20} className="text-slate-500" />
+              จัดการแท็กลูกค้า
+            </AppModalTitle>
+          </AppModalHeader>
+          <AppModalBody>
             {errorMessage && (
               <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {errorMessage}
@@ -333,25 +335,24 @@ export default function CustomerTagManager({ customer, onClose, onSubmit }: Cust
             </div>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
+          </AppModalBody>
+          <AppModalFooter>
             <Button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-indigo-500 text-indigo-500 hover:bg-indigo-50"
+              variant="outline"
             >
               ยกเลิก
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-60"
             >
               {submitting ? 'กำลังบันทึก...' : 'บันทึก'}
             </Button>
-          </div>
+          </AppModalFooter>
         </form>
-      </div>
-    </div>
+      </AppModalContent>
+    </AppModal>
   );
 }

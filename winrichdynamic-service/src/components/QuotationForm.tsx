@@ -1,12 +1,20 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react';
-import { X, Plus, Trash2, Upload, Star } from 'lucide-react';
+import { Plus, Trash2, Upload, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import ProductAutocomplete from '@/components/ui/ProductAutocomplete';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 import { deriveTeamOptions } from '@/utils/teamOptions';
 
 const defaultFormData = {
@@ -623,26 +631,19 @@ export default function QuotationForm({
     : opportunities;
 
   const formBody = (
-    <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">
-          {quotation ? 'แก้ไขใบเสนอราคา' : 'สร้างใบเสนอราคา'}
-        </h2>
-        <div className="flex items-center gap-4">
-          <span className="text-lg font-bold">
-            จำนวนเงินรวมทั้งหมด THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-          </span>
-          <button type="button" onClick={() => onClose?.()} className="text-white hover:text-gray-200">
-            <X size={24} />
-          </button>
+    <form className="flex h-full flex-col" onSubmit={(e) => handleSubmit(e, 'submit')}>
+      <AppModalHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <AppModalTitle>
+            {quotation ? 'แก้ไขใบเสนอราคา' : 'สร้างใบเสนอราคา'}
+          </AppModalTitle>
+          <div className="text-sm font-semibold text-slate-700">
+            รวมทั้งสิ้น THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </div>
         </div>
-      </div>
-
-      {/* Form Content */}
-      <form className="flex-1 overflow-y-auto" onSubmit={(e) => handleSubmit(e, 'submit')}>
-        <div className="p-6">
-          <div className="grid grid-cols-12 gap-6">
+      </AppModalHeader>
+      <AppModalBody>
+        <div className="grid grid-cols-12 gap-6">
             {/* Left Column - ข้อมูลลูกค้า */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
               <div className="border rounded-lg p-4">
@@ -1347,33 +1348,30 @@ export default function QuotationForm({
             </div>
           </div>
         </div>
-
-        {/* Footer Buttons */}
-        <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
-          <Button
-            type="button"
-            onClick={handleCancel}
-            className="px-6 py-2 border border-blue-500 text-blue-500 hover:bg-blue-50"
-          >
-            ยกเลิก
-          </Button>
-          <Button
-            type="button"
-            onClick={(e) => handleSubmit(e, 'draft')}
-            className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white"
-          >
-            บันทึกร่าง
-          </Button>
-          <Button
-            type="button"
-            onClick={(e) => handleSubmit(e, 'submit')}
-            className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white"
-          >
-            บันทึกและส่งอนุมัติ
-          </Button>
-        </div>
-      </form>
-    </div>
+      </AppModalBody>
+      <AppModalFooter>
+        <Button
+          type="button"
+          onClick={handleCancel}
+          variant="outline"
+        >
+          ยกเลิก
+        </Button>
+        <Button
+          type="button"
+          onClick={(e) => handleSubmit(e, 'draft')}
+          variant="secondary"
+        >
+          บันทึกร่าง
+        </Button>
+        <Button
+          type="button"
+          onClick={(e) => handleSubmit(e, 'submit')}
+        >
+          บันทึกและส่งอนุมัติ
+        </Button>
+      </AppModalFooter>
+    </form>
   );
 
   if (embedded) {
@@ -1381,8 +1379,10 @@ export default function QuotationForm({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      {formBody}
-    </div>
+    <AppModal open onOpenChange={(open) => !open && onClose?.()}>
+      <AppModalContent size="2xl">
+        {formBody}
+      </AppModalContent>
+    </AppModal>
   );
 }

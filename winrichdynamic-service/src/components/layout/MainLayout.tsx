@@ -13,9 +13,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="admin-shell flex min-h-screen flex-col">
       <Header onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Desktop Sidebar */}
         <Sidebar />
 
@@ -25,7 +25,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="flex-1 overflow-auto bg-muted/20">{children}</main>
+        <main className="admin-main flex-1 min-h-0 overflow-auto">
+          <div className="admin-page">{children}</div>
+        </main>
       </div>
     </div>
   );

@@ -28,7 +28,7 @@ export default function AdminB2BLayout({ children }: { children: ReactNode }) {
       <Toaster position="top-right" />
       <AdminB2BGuard>
         <MainLayout>
-          <div className="p-4 md:p-8">{children}</div>
+          {children}
         </MainLayout>
       </AdminB2BGuard>
     </>

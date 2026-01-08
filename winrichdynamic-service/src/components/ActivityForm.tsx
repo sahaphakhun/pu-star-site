@@ -6,14 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { activitiesApi, customersApi, opportunitiesApi, quotationsApi, Activity, Customer, Opportunity, Quotation } from '@/features/jubili/services/apiService';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalFooter,
-  ModalTrigger,
-  ModalClose
-} from '@/components/ui/Modal';
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -212,16 +211,17 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
   ];
 
   return (
-    <Modal open={isOpen} onOpenChange={onClose}>
-      <ModalContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <ModalHeader>
-          <ModalTitle className="flex items-center gap-2">
+    <AppModal open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="lg">
+        <AppModalHeader>
+          <AppModalTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
             {mode === 'edit' ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรมใหม่'}
-          </ModalTitle>
-        </ModalHeader>
+          </AppModalTitle>
+        </AppModalHeader>
 
-        <form onSubmit={mode === 'view' ? (e) => { e.preventDefault(); } : form.handleSubmit(onSubmit as any)} className="space-y-4">
+        <form onSubmit={mode === 'view' ? (e) => { e.preventDefault(); } : form.handleSubmit(onSubmit as any)} className="flex h-full flex-col">
+          <AppModalBody className="space-y-4">
           {/* Activity Type */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -485,8 +485,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
             </div>
           )}
 
-          {/* Form Actions */}
-          <ModalFooter>
+          </AppModalBody>
+          <AppModalFooter>
             {mode === 'view' ? (
               <Button
                 type="button"
@@ -521,10 +521,10 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
                 </Button>
               </>
             )}
-          </ModalFooter>
+          </AppModalFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </AppModalContent>
+    </AppModal>
   );
 };
 

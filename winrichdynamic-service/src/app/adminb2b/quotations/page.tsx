@@ -3,7 +3,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import QuotationForm from '@/components/QuotationForm'
-import AdminModal from '@/components/AdminModal'
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { useTokenManager } from '@/utils/tokenManager'
@@ -587,12 +594,8 @@ export default function AdminB2BQuotations() {
         </div>
 
         {/* Quotation Form Modal */}
-        <AdminModal
-          isOpen={showForm}
-          onClose={() => setShowForm(false)}
-          maxWidth="max-w-6xl"
-          maxHeight="max-h-[90vh]"
-        >
+        <AppModal open={showForm} onOpenChange={(open) => !open && setShowForm(false)}>
+          <AppModalContent size="2xl" showClose={false}>
           <QuotationForm
             initialData={editingQuotation || undefined}
             customers={customers}
@@ -603,76 +606,72 @@ export default function AdminB2BQuotations() {
             loading={formLoading}
             embedded
           />
-        </AdminModal>
+          </AppModalContent>
+        </AppModal>
 
         {promptConfig && (
-          <AdminModal
-            isOpen={!!promptConfig}
-            onClose={closePrompt}
-            maxWidth="max-w-lg"
-            maxHeight="max-h-[90vh]"
-          >
-            <form onSubmit={handlePromptSubmit} className="p-6 space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">{promptConfig.title}</h2>
-                {promptConfig.description && (
-                  <p className="text-sm text-gray-600 mt-1">{promptConfig.description}</p>
-                )}
-              </div>
+          <AppModal open={!!promptConfig} onOpenChange={(open) => !open && closePrompt()}>
+            <AppModalContent size="md">
+              <form onSubmit={handlePromptSubmit}>
+                <AppModalHeader>
+                  <AppModalTitle>{promptConfig.title}</AppModalTitle>
+                  {promptConfig.description && (
+                    <p className="mt-1 text-sm text-slate-500">{promptConfig.description}</p>
+                  )}
+                </AppModalHeader>
+                <AppModalBody className="space-y-4">
+                  {promptConfig.fields.map((field) => (
+                    <div key={field.name} className="space-y-1">
+                      <label className="block text-sm font-medium text-slate-700">
+                        {field.label}
+                        {field.required && <span className="text-red-500"> *</span>}
+                      </label>
+                      {field.multiline ? (
+                        <Textarea
+                          value={promptValues[field.name] || ''}
+                          onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
+                          placeholder={field.placeholder}
+                          rows={4}
+                          className="w-full"
+                        />
+                      ) : (
+                        <Input
+                          value={promptValues[field.name] || ''}
+                          onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
+                          placeholder={field.placeholder}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                  ))}
 
-              <div className="space-y-4">
-                {promptConfig.fields.map((field) => (
-                  <div key={field.name} className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {field.label}
-                      {field.required && <span className="text-red-500"> *</span>}
-                    </label>
-                    {field.multiline ? (
-                      <Textarea
-                        value={promptValues[field.name] || ''}
-                        onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
-                        placeholder={field.placeholder}
-                        rows={4}
-                        className="w-full"
-                      />
-                    ) : (
-                      <Input
-                        value={promptValues[field.name] || ''}
-                        onChange={(e) => handlePromptValueChange(field.name, e.target.value)}
-                        placeholder={field.placeholder}
-                        className="w-full"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {promptError && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-                  {promptError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closePrompt}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                >
-                  {promptConfig.cancelLabel || 'ยกเลิก'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={promptSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {promptSubmitting
-                    ? 'กำลังบันทึก...'
-                    : promptConfig.confirmLabel || 'ยืนยัน'}
-                </button>
-              </div>
-            </form>
-          </AdminModal>
+                  {promptError && (
+                    <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                      {promptError}
+                    </div>
+                  )}
+                </AppModalBody>
+                <AppModalFooter>
+                  <button
+                    type="button"
+                    onClick={closePrompt}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50"
+                  >
+                    {promptConfig.cancelLabel || 'ยกเลิก'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={promptSubmitting}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {promptSubmitting
+                      ? 'กำลังบันทึก...'
+                      : promptConfig.confirmLabel || 'ยืนยัน'}
+                  </button>
+                </AppModalFooter>
+              </form>
+            </AppModalContent>
+          </AppModal>
         )}
 
         {/* Quotations List */}

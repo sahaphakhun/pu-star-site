@@ -10,14 +10,13 @@ import { th } from 'date-fns/locale';
 
 import { apiService, APIError, Opportunity } from '@/features/jubili/services/apiService';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalFooter,
-  ModalTrigger,
-  ModalClose
-} from '@/components/ui/Modal';
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -269,22 +268,23 @@ export default function OpportunityForm({
   };
 
   return (
-    <Modal open={isOpen} onOpenChange={onClose}>
-      <ModalContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <ModalHeader>
-          <ModalTitle>
+    <AppModal open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="xl">
+        <AppModalHeader>
+          <AppModalTitle>
             {mode === 'create' ? 'สร้างโอกาสใหม่' : 'แก้ไขโอกาส'}
-          </ModalTitle>
-        </ModalHeader>
+          </AppModalTitle>
+        </AppModalHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 px-6">
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <X className="h-5 w-5 text-red-500" />
-              <span className="text-red-700">{error}</span>
-            </div>
-          )}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full flex-col">
+          <AppModalBody className="space-y-6">
+            {/* Error Display */}
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <X className="h-5 w-5 text-red-500" />
+                <span className="text-red-700">{error}</span>
+              </div>
+            )}
 
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -534,7 +534,8 @@ export default function OpportunityForm({
             )}
           </div>
 
-          <ModalFooter>
+          </AppModalBody>
+          <AppModalFooter>
             <Button
               type="button"
               variant="outline"
@@ -553,9 +554,9 @@ export default function OpportunityForm({
                 mode === 'create' ? 'สร้างโอกาส' : 'บันทึกการแก้ไข'
               )}
             </Button>
-          </ModalFooter>
+          </AppModalFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </AppModalContent>
+    </AppModal>
   );
 }

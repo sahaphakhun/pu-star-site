@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { X, Plus, Trash2, Upload, Camera, FileText, Download } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal';
 
 interface SampleTestingFormProps {
   customer?: any;
@@ -189,19 +197,13 @@ _________________________
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold">ทดสอบตัวอย่างสินค้า</h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6">
+    <AppModal open onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="xl">
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+          <AppModalHeader>
+            <AppModalTitle>ทดสอบตัวอย่างสินค้า</AppModalTitle>
+          </AppModalHeader>
+          <AppModalBody>
             {errorMessage && (
               <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {errorMessage}
@@ -431,25 +433,17 @@ _________________________
             </div>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-purple-500 text-purple-500 hover:bg-purple-50"
-            >
+          </AppModalBody>
+          <AppModalFooter>
+            <Button type="button" onClick={onClose} variant="outline">
               ยกเลิก
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white disabled:opacity-60"
-            >
+            <Button type="submit" disabled={submitting}>
               {submitting ? 'กำลังบันทึก...' : 'บันทึก'}
             </Button>
-          </div>
+          </AppModalFooter>
         </form>
-      </div>
-    </div>
+      </AppModalContent>
+    </AppModal>
   );
 }

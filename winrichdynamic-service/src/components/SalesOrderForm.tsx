@@ -1,13 +1,20 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { X, Plus, Trash2, Upload, Star, Calendar, Package } from 'lucide-react'
+import { Plus, Trash2, Upload, Star, Calendar, Package } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import SearchableSelect from '@/components/ui/SearchableSelect'
-import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/components/ui/Modal'
+import {
+  AppModal,
+  AppModalBody,
+  AppModalContent,
+  AppModalFooter,
+  AppModalHeader,
+  AppModalTitle,
+} from '@/components/ui/AppModal'
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete'
@@ -635,34 +642,29 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     .join(' ')
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Package size={28} />
-            <div>
-              <h2 className="text-xl font-semibold">
-                {salesOrder ? 'แก้ไขใบสั่งขาย' : 'สร้างใบสั่งขาย'}
-              </h2>
-              {formData.salesOrderNumber && (
-                <p className="text-sm opacity-90">{formData.salesOrderNumber}</p>
-              )}
+    <AppModal open onOpenChange={(open) => !open && onClose()}>
+      <AppModalContent size="full">
+        <form className="flex h-full flex-col">
+          <AppModalHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Package size={24} className="text-slate-600" />
+                <div>
+                  <AppModalTitle>
+                    {salesOrder ? 'แก้ไขใบสั่งขาย' : 'สร้างใบสั่งขาย'}
+                  </AppModalTitle>
+                  {formData.salesOrderNumber && (
+                    <p className="text-xs text-slate-500">{formData.salesOrderNumber}</p>
+                  )}
+                </div>
+              </div>
+              <div className="text-sm font-semibold text-slate-700">
+                THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-lg font-bold">
-              THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-            </span>
-            <Button variant="ghost" onClick={onClose} className="text-white hover:text-gray-200">
-              <X size={24} />
-            </Button>
-          </div>
-        </div>
-
-        {/* Form Content */}
-        <form className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          </AppModalHeader>
+          <AppModalBody>
+            <div className="space-y-6">
             {errorMessage && (
               <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {errorMessage}
@@ -1111,9 +1113,9 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               </Button>
             </div>
           </div>
-
-          {/* Footer */}
-          <div className="border-t px-6 py-4 bg-gray-50 flex justify-end gap-3">
+        </div>
+        </AppModalBody>
+        <AppModalFooter>
             <Button
               type="button"
               variant="outline"
@@ -1133,14 +1135,13 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
             <Button
               type="button"
               onClick={(e) => handleSubmit(e, 'confirm')}
-              variant="primary"
               disabled={submitting}
             >
               ยืนยันคำสั่งซื้อ
             </Button>
-          </div>
+          </AppModalFooter>
         </form>
-      </div>
-    </div>
+      </AppModalContent>
+    </AppModal>
   )
 }

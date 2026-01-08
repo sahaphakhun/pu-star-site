@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useTokenManager } from '@/utils/tokenManager';
-import AdminModal from '@/components/AdminModal';
+import {
+  AppModal,
+  AppModalContent,
+} from '@/components/ui/AppModal';
 import ProductForm from '@/components/ProductForm';
 import Loading from '@/components/ui/Loading';
 import { Product, CreateProduct } from '@/schemas/product';
@@ -530,12 +533,8 @@ const ProductsPage: React.FC = () => {
       </div>
 
       {/* Create/Edit Product Modal */}
-      <AdminModal
-        isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        maxWidth="max-w-2xl"
-        maxHeight="max-h-[90vh]"
-      >
+      <AppModal open={showCreateForm} onOpenChange={(open) => !open && setShowCreateForm(false)}>
+        <AppModalContent size="lg" showClose={false}>
         <ProductForm
           initialData={editingProduct ? {
             name: editingProduct.name,
@@ -559,7 +558,8 @@ const ProductsPage: React.FC = () => {
           loading={formLoading}
           categories={categories}
         />
-      </AdminModal>
+        </AppModalContent>
+      </AppModal>
     </div>
   );
 };
