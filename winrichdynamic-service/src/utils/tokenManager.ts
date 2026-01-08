@@ -14,10 +14,17 @@ export const useTokenManager = (): TokenManagerReturn => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ฟังก์ชันสำหรับดึง token จาก cookie
+  const getTokenFromStorage = (): string | null => {
+    if (typeof window === 'undefined') return null;
+
+    const storedToken = window.localStorage.getItem('b2b_token');
+    return storedToken && storedToken.length > 0 ? storedToken : null;
+  };
+
+  // ฟังก์ชันสำหรับดึง token จาก cookie (fallback)
   const getTokenFromCookie = (): string | null => {
     if (typeof document === 'undefined') return null;
-    
+
     const cookies = document.cookie.split(';');
     for (const cookie of cookies) {
       const [name, value] = cookie.trim().split('=');
@@ -28,10 +35,14 @@ export const useTokenManager = (): TokenManagerReturn => {
     return null;
   };
 
+  const getToken = (): string | null => {
+    return getTokenFromStorage() || getTokenFromCookie();
+  };
+
   // ตรวจสอบ token เมื่อโหลด component
   useEffect(() => {
     const checkAuth = async () => {
-      const token = getTokenFromCookie();
+      const token = getToken();
       if (token) {
         try {
           // ตรวจสอบว่า token ยังใช้งานได้หรือไม่
@@ -78,7 +89,7 @@ export const useTokenManager = (): TokenManagerReturn => {
 
   // ดึง token ที่ใช้งานได้
   const getValidToken = useCallback(async (): Promise<string | null> => {
-    const token = getTokenFromCookie();
+    const token = getToken();
     if (!token) {
       return null;
     }
@@ -102,7 +113,7 @@ export const useTokenManager = (): TokenManagerReturn => {
   // ออกจากระบบ
   const logout = useCallback(async () => {
     try {
-      const token = getTokenFromCookie();
+      const token = getToken();
       if (token) {
         // เรียก API logout
         await fetch('/api/adminb2b/logout', {
@@ -118,6 +129,9 @@ export const useTokenManager = (): TokenManagerReturn => {
       // ลบ cookie และ redirect
       if (typeof document !== 'undefined') {
         document.cookie = 'b2b_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('b2b_token');
       }
       setIsAuthenticated(false);
       

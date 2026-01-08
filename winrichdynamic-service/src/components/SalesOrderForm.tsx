@@ -67,6 +67,8 @@ interface SalesOrderFormProps {
   onSave?: () => void
 }
 
+const CLEAR_SELECT_VALUE = '__clear__'
+
 export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrderFormProps) {
   const { customers: customersApi, quotations: quotationsApi, salesOrders: salesOrdersApi } = useApiService()
   const [customers, setCustomers] = useState<any[]>([])
@@ -595,12 +597,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       <label className="block text-sm font-medium mb-1">
                         ใบเสนอราคาอ้างอิง
                       </label>
-                      <Select value={formData.quotationId} onValueChange={(value) => handleChange('quotationId', value)}>
+                      <Select
+                        value={formData.quotationId}
+                        onValueChange={(value) => handleChange('quotationId', value === CLEAR_SELECT_VALUE ? '' : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="เลือกใบเสนอราคา (ถ้ามี)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">เลือกใบเสนอราคา (ถ้ามี)</SelectItem>
+                          <SelectItem value={CLEAR_SELECT_VALUE}>เลือกใบเสนอราคา (ถ้ามี)</SelectItem>
                           {quotations.map((quotation: any) => (
                             <SelectItem key={quotation._id || quotation.id} value={quotation._id || quotation.id}>
                               {quotation.quotationNumber || quotation._id} - {quotation.customerName || '-'}
@@ -614,12 +619,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       <label className="block text-sm font-medium mb-1">
                         ชื่อลูกค้า <span className="text-red-500">*</span>
                       </label>
-                      <Select value={formData.customerId} onValueChange={(value) => handleChange('customerId', value)}>
+                      <Select
+                        value={formData.customerId}
+                        onValueChange={(value) => handleChange('customerId', value === CLEAR_SELECT_VALUE ? '' : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="โปรดเลือกลูกค้า" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">โปรดเลือกลูกค้า</SelectItem>
+                          <SelectItem value={CLEAR_SELECT_VALUE}>โปรดเลือกลูกค้า</SelectItem>
                           {customers.map((customer: any) => (
                             <SelectItem key={customer._id || customer.id} value={customer._id || customer.id}>
                               {customer.name}
@@ -679,12 +687,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       <label className="block text-sm font-medium mb-1">
                         ผู้รับผิดชอบ
                       </label>
-                      <Select value={formData.owner} onValueChange={(value) => handleChange('owner', value)}>
+                      <Select
+                        value={formData.owner}
+                        onValueChange={(value) => handleChange('owner', value === CLEAR_SELECT_VALUE ? '' : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">ไม่ระบุ</SelectItem>
+                          <SelectItem value={CLEAR_SELECT_VALUE}>ไม่ระบุ</SelectItem>
                           {admins.map((admin) => (
                             <SelectItem key={admin._id} value={admin._id}>
                               {admin.name || admin.phone || admin._id}
@@ -808,12 +819,15 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       <label className="block text-sm font-medium mb-1">
                         เงื่อนไขการชำระเงิน
                       </label>
-                      <Select value={formData.paymentTerms} onValueChange={(value) => handleChange('paymentTerms', value)}>
+                      <Select
+                        value={formData.paymentTerms}
+                        onValueChange={(value) => handleChange('paymentTerms', value === CLEAR_SELECT_VALUE ? '' : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="โปรดเลือก" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">โปรดเลือก</SelectItem>
+                          <SelectItem value={CLEAR_SELECT_VALUE}>โปรดเลือก</SelectItem>
                           <SelectItem value="เงินสด">เงินสด</SelectItem>
                           <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
                           <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>

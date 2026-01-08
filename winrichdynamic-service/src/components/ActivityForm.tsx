@@ -20,6 +20,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Calendar, Clock, User, Target, FileText, AlertCircle } from 'lucide-react';
 
+const CLEAR_SELECT_VALUE = '__clear__';
+
 // Form validation schema based on activity schema
 const activityFormSchema = z.object({
   type: z.enum(['call', 'meeting', 'email', 'task']),
@@ -284,14 +286,16 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
               </label>
               <Select
                 value={form.watch('customerId')}
-                onValueChange={(value) => form.setValue('customerId', value as any)}
+                onValueChange={(value) =>
+                  form.setValue('customerId', value === CLEAR_SELECT_VALUE ? '' : (value as any))
+                }
                 disabled={loadingCustomers || mode === 'view'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="เลือกลูกค้า" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">ไม่เลือก</SelectItem>
+                  <SelectItem value={CLEAR_SELECT_VALUE}>ไม่เลือก</SelectItem>
                   {customers.map((customer) => (
                     <SelectItem key={customer._id} value={customer._id}>
                       {customer.name}
@@ -312,14 +316,16 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
               </label>
               <Select
                 value={form.watch('dealId')}
-                onValueChange={(value) => form.setValue('dealId', value as any)}
+                onValueChange={(value) =>
+                  form.setValue('dealId', value === CLEAR_SELECT_VALUE ? '' : (value as any))
+                }
                 disabled={loadingOpportunities || mode === 'view'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="เลือกโอกาส" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">ไม่เลือก</SelectItem>
+                  <SelectItem value={CLEAR_SELECT_VALUE}>ไม่เลือก</SelectItem>
                   {opportunities.map((opportunity) => (
                     <SelectItem key={opportunity._id} value={opportunity._id}>
                       {opportunity.title}
@@ -340,14 +346,16 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
               </label>
               <Select
                 value={form.watch('quotationId')}
-                onValueChange={(value) => form.setValue('quotationId', value as any)}
+                onValueChange={(value) =>
+                  form.setValue('quotationId', value === CLEAR_SELECT_VALUE ? '' : (value as any))
+                }
                 disabled={loadingQuotations || mode === 'view'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="เลือกใบเสนอราคา" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">ไม่เลือก</SelectItem>
+                  <SelectItem value={CLEAR_SELECT_VALUE}>ไม่เลือก</SelectItem>
                   {quotations.map((quotation) => (
                     <SelectItem key={quotation._id} value={quotation._id}>
                       {quotation.quotationNumber} - {quotation.subject}

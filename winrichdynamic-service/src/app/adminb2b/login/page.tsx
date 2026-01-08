@@ -71,9 +71,11 @@ export default function AdminB2BLoginPage() {
       
       if (result.success) {
         toast.success('เข้าสู่ระบบสำเร็จ');
-        
-        // Token is now stored in a cookie by the API endpoint
-        // No need to store in localStorage anymore
+
+        // Cookie ถูกตั้งโดย API แล้ว เก็บ token ไว้ฝั่ง client สำหรับเรียก API
+        if (result.data?.token) {
+          localStorage.setItem('b2b_token', result.data.token);
+        }
         
         // รอสักครู่แล้ว redirect เพื่อให้ cookie ถูกตั้งค่า
         setTimeout(() => {
@@ -197,5 +199,3 @@ export default function AdminB2BLoginPage() {
     </div>
   );
 }
-
-
