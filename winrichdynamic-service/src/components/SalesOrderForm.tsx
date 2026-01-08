@@ -255,11 +255,24 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
           quotationsApi.getQuotations({ page: 1, limit: 200 }),
         ])
         if (!active) return
-        const customerList = Array.isArray(customersRes) ? customersRes : customersRes.data || []
-        const quotationList = Array.isArray(quotationsRes) ? quotationsRes : quotationsRes.data || []
+
+        // Handle multiple response formats
+        const extractData = (res: any): any[] => {
+          if (Array.isArray(res)) return res
+          if (res?.data && Array.isArray(res.data)) return res.data
+          if (res?.success && res?.data && Array.isArray(res.data)) return res.data
+          return []
+        }
+
+        const customerList = extractData(customersRes)
+        const quotationList = extractData(quotationsRes)
+
+        console.log('[SalesOrderForm] Loaded customers:', customerList.length, 'quotations:', quotationList.length)
+
         setCustomers(customerList)
         setQuotations(quotationList)
-      } catch {
+      } catch (err) {
+        console.error('[SalesOrderForm] Failed to load lookups:', err)
         if (active) {
           setCustomers([])
           setQuotations([])
@@ -779,8 +792,8 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                             <Star
                               size={24}
                               className={`${star <= formData.importance
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-gray-300'
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
                                 }`}
                             />
                           </button>
