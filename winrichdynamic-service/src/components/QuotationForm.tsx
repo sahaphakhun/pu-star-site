@@ -1198,9 +1198,7 @@ export default function QuotationForm({
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* รายการสินค้า */}
+            {/* รายการสินค้า */}
           <div className="mt-6 border rounded-lg p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold flex items-center">
@@ -1346,7 +1344,6 @@ export default function QuotationForm({
                 10 รายการสินค้า
               </Button>
             </div>
-          </div>
         </div>
       </AppModalBody>
       <AppModalFooter>

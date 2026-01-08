@@ -175,3 +175,12 @@
   - ลบสไตล์ `adminb2b-modal` และ `adminb2b-modal-overlay` ที่ไม่ถูกใช้งานแล้ว
 - ตรวจสอบ overlay ที่เหลือ: พบเฉพาะ backdrop ของ `MobileSidebar` (ยังคงไว้)
 - ผลกระทบ: ลดโค้ดเก่า, ลดความสับสนของ style ที่ไม่ถูกใช้งาน
+
+### 5.8 แก้ไข syntax error หลัง build (โครง JSX)
+- ตรวจไฟล์: `src/components/CreditApprovalForm.tsx`
+  - ลบ `</div>` ที่เกินออกก่อน `</AppModalBody>` (ทำให้ JSX สมบูรณ์)
+- ตรวจไฟล์: `src/components/QuotationForm.tsx`
+  - ลบ `</div>` ที่เกินก่อนส่วนรายการสินค้า และจัดโครงปิดแท็กให้ครบ
+- ตรวจไฟล์: `src/components/SalesOrderForm.tsx`
+  - ลบ `</div>` ที่เกินก่อนส่วนรายการสินค้า และจัดโครงปิดแท็กให้ครบ
+- ผลกระทบ: แก้ compile error “Expected '</', got 'jsx text'” ให้ JSX ถูกต้อง

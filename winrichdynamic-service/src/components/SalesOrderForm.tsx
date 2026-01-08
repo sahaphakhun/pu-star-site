@@ -1010,8 +1010,6 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                   </div>
                 </div>
               </div>
-            </div>
-
             {/* Items Table */}
             <div className="mt-6 border rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">รายการสินค้า</h3>
@@ -1113,7 +1111,6 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               </Button>
             </div>
           </div>
-        </div>
         </AppModalBody>
         <AppModalFooter>
             <Button

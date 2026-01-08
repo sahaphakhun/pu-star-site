@@ -344,8 +344,6 @@ export default function CreditApprovalForm({ customer, onClose, onSubmit }: Cred
                 </div>
               </div>
             </div>
-          </div>
-
           </AppModalBody>
           <AppModalFooter>
             <Button
