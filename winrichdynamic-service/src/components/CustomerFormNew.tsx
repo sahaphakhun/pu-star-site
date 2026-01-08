@@ -264,7 +264,7 @@ export default function CustomerFormNew({ customer, onClose, onSubmit }: Custome
   };
 
   const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev: typeof initialFormData) => ({ ...prev, [field]: value }));
   };
 
   const handleContactChange = (index: number, field: string, value: any) => {
