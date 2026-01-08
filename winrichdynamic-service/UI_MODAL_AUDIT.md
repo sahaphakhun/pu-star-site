@@ -184,3 +184,8 @@
 - ตรวจไฟล์: `src/components/SalesOrderForm.tsx`
   - ลบ `</div>` ที่เกินก่อนส่วนรายการสินค้า และจัดโครงปิดแท็กให้ครบ
 - ผลกระทบ: แก้ compile error “Expected '</', got 'jsx text'” ให้ JSX ถูกต้อง
+
+### 5.9 ผลการ build
+- รันทดสอบ: `npm run build -- --no-lint`
+- ผลลัพธ์: Build ผ่านสำเร็จ
+- หมายเหตุ: มีข้อความเตือนเรื่อง Cloudinary env ไม่ครบ (`[B2B] Cloudinary env not fully set. Upload API will be disabled.`) ซึ่งเป็น warning เดิมของระบบ ไม่ใช่ error จากการแก้ modal
