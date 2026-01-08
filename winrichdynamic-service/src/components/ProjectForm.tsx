@@ -502,7 +502,7 @@ export default function ProjectForm({
                   {form.watch('startDate') ? format(form.watch('startDate'), "PPP", { locale: th }) : <span>เลือกวันที่</span>}
                 </Button>
                 {showStartDatePicker && (
-                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border rounded-md shadow-lg">
+                  <div className="absolute top-full left-0 z-[9999] mt-1 bg-white border rounded-md shadow-lg">
                     <Calendar
                       mode="single"
                       selected={form.watch('startDate')}
@@ -530,7 +530,7 @@ export default function ProjectForm({
                   {form.watch('endDate') ? format(form.watch('endDate') as Date, "PPP", { locale: th }) : <span>เลือกวันที่</span>}
                 </Button>
                 {showEndDatePicker && (
-                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border rounded-md shadow-lg">
+                  <div className="absolute top-full left-0 z-[9999] mt-1 bg-white border rounded-md shadow-lg">
                     <Calendar
                       mode="single"
                       selected={form.watch('endDate')}

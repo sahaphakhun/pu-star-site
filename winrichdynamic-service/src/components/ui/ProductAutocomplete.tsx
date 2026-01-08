@@ -173,7 +173,7 @@ export default function ProductAutocomplete({
 
             {/* Dropdown */}
             {isOpen && !value && (
-                <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                <div className="absolute z-[9999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
                     {loading ? (
                         <div className="px-4 py-3 text-sm text-gray-500 text-center">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mx-auto mb-2"></div>

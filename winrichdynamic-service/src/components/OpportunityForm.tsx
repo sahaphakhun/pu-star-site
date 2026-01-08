@@ -9,20 +9,20 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
 import { apiService, APIError, Opportunity } from '@/features/jubili/services/apiService';
-import { 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalTitle, 
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
   ModalFooter,
   ModalTrigger,
-  ModalClose 
+  ModalClose
 } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -95,10 +95,10 @@ const statusOptions = [
   { value: 'lost', label: 'แพ้' },
 ];
 
-export default function OpportunityForm({ 
-  isOpen, 
-  onClose, 
-  opportunity, 
+export default function OpportunityForm({
+  isOpen,
+  onClose,
+  opportunity,
   onSuccess,
   mode = 'create' // 'create' or 'edit'
 }: {
@@ -222,8 +222,8 @@ export default function OpportunityForm({
       if (err instanceof APIError) {
         setError(err.message);
       } else {
-        setError(mode === 'create' 
-          ? 'เกิดข้อผิดพลาดในการสร้างโอกาส' 
+        setError(mode === 'create'
+          ? 'เกิดข้อผิดพลาดในการสร้างโอกาส'
           : 'เกิดข้อผิดพลาดในการแก้ไขโอกาส');
       }
     } finally {
@@ -290,10 +290,10 @@ export default function OpportunityForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">ชื่อโอกาส *</Label>
-              <Input 
+              <Input
                 id="title"
-                placeholder="ระบุชื่อโอกาส" 
-                {...form.register('title')} 
+                placeholder="ระบุชื่อโอกาส"
+                {...form.register('title')}
               />
               {form.formState.errors.title && (
                 <p className="text-red-500 text-sm">{form.formState.errors.title.message}</p>
@@ -302,8 +302,8 @@ export default function OpportunityForm({
 
             <div className="space-y-2">
               <Label htmlFor="stageId">สเตจ *</Label>
-              <Select 
-                value={form.watch('stageId')} 
+              <Select
+                value={form.watch('stageId')}
                 onValueChange={handleStageChange}
               >
                 <SelectTrigger>
@@ -327,10 +327,10 @@ export default function OpportunityForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerId">รหัสลูกค้า *</Label>
-              <Input 
+              <Input
                 id="customerId"
-                placeholder="ระบุรหัสลูกค้า" 
-                {...form.register('customerId')} 
+                placeholder="ระบุรหัสลูกค้า"
+                {...form.register('customerId')}
               />
               {form.formState.errors.customerId && (
                 <p className="text-red-500 text-sm">{form.formState.errors.customerId.message}</p>
@@ -339,10 +339,10 @@ export default function OpportunityForm({
 
             <div className="space-y-2">
               <Label htmlFor="customerName">ชื่อลูกค้า *</Label>
-              <Input 
+              <Input
                 id="customerName"
-                placeholder="ระบุชื่อลูกค้า" 
-                {...form.register('customerName')} 
+                placeholder="ระบุชื่อลูกค้า"
+                {...form.register('customerName')}
               />
               {form.formState.errors.customerName && (
                 <p className="text-red-500 text-sm">{form.formState.errors.customerName.message}</p>
@@ -367,8 +367,8 @@ export default function OpportunityForm({
 
             <div className="space-y-2">
               <Label htmlFor="currency">สกุลเงิน *</Label>
-              <Select 
-                value={form.watch('currency')} 
+              <Select
+                value={form.watch('currency')}
                 onValueChange={(value) => form.setValue('currency', value)}
               >
                 <SelectTrigger>
@@ -392,8 +392,8 @@ export default function OpportunityForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">สถานะ *</Label>
-              <Select 
-                value={form.watch('status')} 
+              <Select
+                value={form.watch('status')}
                 onValueChange={(value) => form.setValue('status', value as any)}
               >
                 <SelectTrigger>
@@ -443,7 +443,7 @@ export default function OpportunityForm({
                   {form.watch('expectedCloseDate') ? format(form.watch('expectedCloseDate') as Date, "PPP", { locale: th }) : <span>เลือกวันที่</span>}
                 </Button>
                 {showExpectedCloseDatePicker && (
-                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border rounded-md shadow-lg">
+                  <div className="absolute top-full left-0 z-[9999] mt-1 bg-white border rounded-md shadow-lg">
                     <Calendar
                       mode="single"
                       selected={form.watch('expectedCloseDate')}
@@ -460,8 +460,8 @@ export default function OpportunityForm({
 
             <div className="space-y-2">
               <Label htmlFor="team">ทีม</Label>
-              <Select 
-                value={form.watch('team')} 
+              <Select
+                value={form.watch('team')}
                 onValueChange={(value) => form.setValue('team', value)}
               >
                 <SelectTrigger>
