@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import SearchableSelect from '@/components/ui/SearchableSelect'
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/components/ui/Modal'
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -704,22 +705,17 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                           ดึงข้อมูลอัตโนมัติ
                         </label>
                       </div>
-                      <Select
+                      <SearchableSelect
+                        placeholder="เลือกใบเสนอราคา (ถ้ามี)"
                         value={formData.quotationId}
-                        onValueChange={handleQuotationChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกใบเสนอราคา (ถ้ามี)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={CLEAR_SELECT_VALUE}>เลือกใบเสนอราคา (ถ้ามี)</SelectItem>
-                          {quotations.map((quotation: any) => (
-                            <SelectItem key={quotation._id || quotation.id} value={quotation._id || quotation.id}>
-                              {quotation.quotationNumber || quotation._id} - {quotation.customerName || '-'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={handleQuotationChange}
+                        options={quotations.map((q: any) => ({
+                          value: q._id || q.id,
+                          label: `${q.quotationNumber || q._id}`,
+                          sublabel: q.customerName || '-',
+                        }))}
+                        emptyMessage="ไม่พบใบเสนอราคา"
+                      />
                       <div className="mt-2">
                         <Button
                           type="button"
@@ -733,27 +729,19 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        ชื่อลูกค้า <span className="text-red-500">*</span>
-                      </label>
-                      <Select
-                        value={formData.customerId}
-                        onValueChange={(value) => handleChange('customerId', value === CLEAR_SELECT_VALUE ? '' : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="โปรดเลือกลูกค้า" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={CLEAR_SELECT_VALUE}>โปรดเลือกลูกค้า</SelectItem>
-                          {customers.map((customer: any) => (
-                            <SelectItem key={customer._id || customer.id} value={customer._id || customer.id}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <SearchableSelect
+                      label="ชื่อลูกค้า"
+                      required
+                      placeholder="โปรดเลือกลูกค้า"
+                      value={formData.customerId}
+                      onChange={(value) => handleChange('customerId', value)}
+                      options={customers.map((c: any) => ({
+                        value: c._id || c.id,
+                        label: c.name,
+                        sublabel: c.phoneNumber || c.customerCode || '',
+                      }))}
+                      emptyMessage="ไม่พบลูกค้า"
+                    />
 
                     <div>
                       <label className="block text-sm font-medium mb-1">
