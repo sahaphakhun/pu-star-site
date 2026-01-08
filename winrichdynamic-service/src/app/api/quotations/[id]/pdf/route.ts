@@ -190,7 +190,7 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง', details: parsed.error.issues }, { status: 400 });
     }
-    const { salesOrderNumber, remark } = parsed.data;
+    const { remark } = parsed.data;
 
     const resolvedParams = await params;
     const quotation = await Quotation.findById(resolvedParams.id);
@@ -198,12 +198,11 @@ export async function POST(
       return NextResponse.json({ error: 'ไม่พบใบเสนอราคา' }, { status: 404 });
     }
 
-    const inputSalesOrderNumber = typeof salesOrderNumber === 'string' ? salesOrderNumber.trim() : '';
     const existingSalesOrderNumber = typeof (quotation as any).salesOrderNumber === 'string'
       ? String((quotation as any).salesOrderNumber).trim()
       : '';
     const resolvedSalesOrderNumber =
-      inputSalesOrderNumber || existingSalesOrderNumber || buildSalesOrderNumber(quotation._id);
+      existingSalesOrderNumber || buildSalesOrderNumber(quotation._id);
 
     // อัพเดทสถานะออกใบสั่งขาย
     quotation.salesOrderIssued = true;

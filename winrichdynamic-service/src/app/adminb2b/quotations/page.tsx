@@ -39,7 +39,6 @@ interface PromptField {
   placeholder?: string
   required?: boolean
   multiline?: boolean
-  initialValue?: string
 }
 
 interface PromptConfig {
@@ -73,7 +72,7 @@ export default function AdminB2BQuotations() {
     onConfirm: (values: Record<string, string>) => Promise<void> | void
   ) => {
     const initialValues = config.fields.reduce((acc, field) => {
-      acc[field.name] = field.initialValue ?? ''
+      acc[field.name] = ''
       return acc
     }, {} as Record<string, string>)
     setPromptValues(initialValues)
@@ -358,15 +357,16 @@ export default function AdminB2BQuotations() {
 
   const submitIssueSalesOrder = async (
     quotation: Quotation,
-    salesOrderNumber: string,
     remark: string
   ) => {
+    const resolvedSalesOrderNumber =
+      quotation.salesOrderNumber?.trim() || buildSalesOrderNumber(quotation._id)
     try {
       const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ salesOrderNumber, remark }),
+        body: JSON.stringify({ remark }),
       })
       if (!response.ok) {
         const err = await response.json().catch(() => ({} as any))
@@ -376,7 +376,7 @@ export default function AdminB2BQuotations() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `ใบสั่งขาย_${salesOrderNumber}.pdf`
+      a.download = `ใบสั่งขาย_${resolvedSalesOrderNumber}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -393,20 +393,14 @@ export default function AdminB2BQuotations() {
 
   // ออกใบสั่งขายจากใบเสนอราคา (ดาวน์โหลด PDF และทำเครื่องหมายว่าออกแล้ว)
   const handleIssueSalesOrder = async (quotation: Quotation) => {
-    const suggestedSalesOrderNumber =
+    const resolvedSalesOrderNumber =
       quotation.salesOrderNumber?.trim() || buildSalesOrderNumber(quotation._id)
     openPrompt(
       {
         title: 'ออกใบสั่งขาย',
-        description: 'ระบบจะสร้างเลขที่ใบสั่งขายอัตโนมัติ หากเว้นว่าง',
+        description: `ระบบจะสร้างเลขที่ใบสั่งขายอัตโนมัติ: ${resolvedSalesOrderNumber}`,
         confirmLabel: 'ออกใบสั่งขาย',
         fields: [
-          {
-            name: 'salesOrderNumber',
-            label: 'เลขที่ใบสั่งขาย',
-            placeholder: 'ระบบจะสร้างให้อัตโนมัติ',
-            initialValue: suggestedSalesOrderNumber,
-          },
           {
             name: 'remark',
             label: 'หมายเหตุการออกใบสั่งขาย',
@@ -417,13 +411,11 @@ export default function AdminB2BQuotations() {
         ],
       },
       async (values) => {
-        const salesOrderNumber = values.salesOrderNumber?.trim()
         const remark = values.remark?.trim()
         if (!remark) {
           throw new Error('กรุณาระบุหมายเหตุการออกใบสั่งขาย')
         }
-        const resolvedSalesOrderNumber = salesOrderNumber || suggestedSalesOrderNumber
-        await submitIssueSalesOrder(quotation, resolvedSalesOrderNumber, remark)
+        await submitIssueSalesOrder(quotation, remark)
       }
     )
   }
