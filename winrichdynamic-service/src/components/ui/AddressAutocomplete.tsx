@@ -10,6 +10,8 @@ import {
     searchDistricts,
     searchSubdistricts,
     getProvinceByName,
+    getDistrictById,
+    getProvinceById,
     Province,
     District,
     Subdistrict
@@ -50,11 +52,13 @@ export default function AddressAutocomplete({
     const [provinceState, setProvinceState] = useState<DropdownState>({ isOpen: false, search: '' });
     const [districtState, setDistrictState] = useState<DropdownState>({ isOpen: false, search: '' });
     const [subdistrictState, setSubdistrictState] = useState<DropdownState>({ isOpen: false, search: '' });
+    const [zipcodeState, setZipcodeState] = useState<DropdownState>({ isOpen: false, search: '' });
 
     // Refs for click outside
     const provinceRef = useRef<HTMLDivElement>(null);
     const districtRef = useRef<HTMLDivElement>(null);
     const subdistrictRef = useRef<HTMLDivElement>(null);
+    const zipcodeRef = useRef<HTMLDivElement>(null);
 
     // Get selected province ID
     const selectedProvince = useMemo(() => {
@@ -99,6 +103,17 @@ export default function AddressAutocomplete({
         return availableSubdistricts;
     }, [subdistrictState.search, availableSubdistricts, selectedDistrict?.id]);
 
+    const filteredZipResults = useMemo(() => {
+        if (!zipcodeState.search || zipcodeState.search.length < 2) return [];
+        return searchSubdistricts(zipcodeState.search).slice(0, 50);
+    }, [zipcodeState.search]);
+
+    useEffect(() => {
+        if (value.zipcode !== undefined && value.zipcode !== zipcodeState.search) {
+            setZipcodeState(prev => ({ ...prev, search: value.zipcode || '' }));
+        }
+    }, [value.zipcode, zipcodeState.search]);
+
     // Handle click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -110,6 +125,9 @@ export default function AddressAutocomplete({
             }
             if (subdistrictRef.current && !subdistrictRef.current.contains(event.target as Node)) {
                 setSubdistrictState(prev => ({ ...prev, isOpen: false }));
+            }
+            if (zipcodeRef.current && !zipcodeRef.current.contains(event.target as Node)) {
+                setZipcodeState(prev => ({ ...prev, isOpen: false }));
             }
         };
 
@@ -126,6 +144,9 @@ export default function AddressAutocomplete({
             zipcode: '',
         });
         setProvinceState({ isOpen: false, search: '' });
+        setDistrictState({ isOpen: true, search: '' });
+        setSubdistrictState({ isOpen: false, search: '' });
+        setZipcodeState(prev => ({ ...prev, search: '', isOpen: false }));
     };
 
     // Handle district selection
@@ -137,6 +158,10 @@ export default function AddressAutocomplete({
             zipcode: '',
         });
         setDistrictState({ isOpen: false, search: '' });
+        if (showSubdistrict) {
+            setSubdistrictState({ isOpen: true, search: '' });
+        }
+        setZipcodeState(prev => ({ ...prev, search: '', isOpen: false }));
     };
 
     // Handle subdistrict selection
@@ -148,6 +173,55 @@ export default function AddressAutocomplete({
             zipcode: subdistrict.zipcode,
         });
         setSubdistrictState({ isOpen: false, search: '' });
+        setProvinceState(prev => ({ ...prev, isOpen: false, search: '' }));
+        setDistrictState(prev => ({ ...prev, isOpen: false, search: '' }));
+        setSubdistrictState(prev => ({ ...prev, isOpen: false, search: '' }));
+        setZipcodeState(prev => ({ ...prev, search: subdistrict.zipcode, isOpen: false }));
+    };
+
+    const applySubdistrictSelection = (subdistrict: Subdistrict) => {
+        const district = getDistrictById(subdistrict.districtId);
+        const province = district ? getProvinceById(district.provinceId) : undefined;
+
+        onChange({
+            province: province?.name || value.province || '',
+            district: district?.name || value.district || '',
+            subdistrict: subdistrict.name,
+            zipcode: subdistrict.zipcode,
+        });
+        setZipcodeState(prev => ({ ...prev, search: subdistrict.zipcode, isOpen: false }));
+    };
+
+    const handleZipcodeInput = (rawValue: string) => {
+        const nextValue = rawValue.replace(/\D/g, '').slice(0, 5);
+        const shouldOpen = nextValue.length >= 2;
+
+        setZipcodeState({ isOpen: shouldOpen, search: nextValue });
+
+        if (!nextValue) {
+            onChange({
+                province: value.province || '',
+                district: value.district || '',
+                subdistrict: value.subdistrict || '',
+                zipcode: '',
+            });
+            return;
+        }
+
+        if (nextValue.length === 5) {
+            const matches = searchSubdistricts(nextValue);
+            if (matches.length === 1) {
+                applySubdistrictSelection(matches[0]);
+                return;
+            }
+        }
+
+        onChange({
+            province: value.province || '',
+            district: value.district || '',
+            subdistrict: value.subdistrict || '',
+            zipcode: nextValue,
+        });
     };
 
     // Dropdown component
@@ -292,15 +366,65 @@ export default function AddressAutocomplete({
             )}
 
             {/* Zipcode */}
-            {showZipcode && value.zipcode && (
-                <div>
+            {showZipcode && (
+                <div className="relative" ref={zipcodeRef}>
                     <label className="block text-sm font-medium mb-1">รหัสไปรษณีย์</label>
-                    <input
-                        type="text"
-                        value={value.zipcode}
-                        readOnly
-                        className="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700"
-                    />
+                    <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            value={zipcodeState.search}
+                            onChange={(e) => handleZipcodeInput(e.target.value)}
+                            onFocus={() => {
+                                if (zipcodeState.search.length >= 2) {
+                                    setZipcodeState(prev => ({ ...prev, isOpen: true }));
+                                }
+                            }}
+                            placeholder="พิมพ์รหัสไปรษณีย์เพื่อค้นหา"
+                            className="w-full pl-9 pr-8 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        {zipcodeState.search && (
+                            <button
+                                type="button"
+                                onClick={() => handleZipcodeInput('')}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+
+                    {zipcodeState.isOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                            {filteredZipResults.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                                    {zipcodeState.search.length < 2 ? 'พิมพ์อย่างน้อย 2 ตัวอักษร' : 'ไม่พบข้อมูล'}
+                                </div>
+                            ) : (
+                                <div className="overflow-y-auto max-h-60">
+                                    {filteredZipResults.map((subdistrict) => {
+                                        const district = getDistrictById(subdistrict.districtId);
+                                        const province = district ? getProvinceById(district.provinceId) : undefined;
+                                        return (
+                                            <div
+                                                key={subdistrict.id}
+                                                className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition-colors border-b last:border-b-0"
+                                                onClick={() => applySubdistrictSelection(subdistrict)}
+                                            >
+                                                <div className="font-medium text-gray-900">
+                                                    {subdistrict.name}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {district?.name || '-'} • {province?.name || '-'} • {subdistrict.zipcode}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

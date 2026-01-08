@@ -1115,84 +1115,86 @@ export default function QuotationForm({
             </div>
 
             {/* Right Column - เงื่อนไข */}
-            <div className="col-span-12 lg:col-span-4 space-y-6">
-              <div className="border rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <span className="mr-2">💰</span> เงื่อนไขการชำระเงิน
-                </h3>
+            <div className="col-span-12 lg:col-span-4">
+              <div className="space-y-6 lg:sticky lg:top-6 self-start">
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <span className="mr-2">💰</span> เงื่อนไขการชำระเงิน
+                  </h3>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      เงื่อนไขการชำระเงิน <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      value={formData.paymentTerms}
-                      onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">โปรดเลือกเงื่อนไขการชำระเงิน</option>
-                      <option>เงินสด</option>
-                      <option>เก็บเงินปลายทาง (COD)</option>
-                      <option>เครดิต</option>
-                      <option>เช็ค</option>
-                      <option>โอนเงิน</option>
-                    </select>
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        เงื่อนไขการชำระเงิน <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={formData.paymentTerms}
+                        onChange={(e) => handleChange('paymentTerms', e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">โปรดเลือกเงื่อนไขการชำระเงิน</option>
+                        <option>เงินสด</option>
+                        <option>เก็บเงินปลายทาง (COD)</option>
+                        <option>เครดิต</option>
+                        <option>เช็ค</option>
+                        <option>โอนเงิน</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      จำนวนวัน
-                    </label>
-                    <Input
-                      type="number"
-                      value={formData.paymentDays}
-                      onChange={(e) => handleChange('paymentDays', parseInt(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        จำนวนวัน
+                      </label>
+                      <Input
+                        type="number"
+                        value={formData.paymentDays}
+                        onChange={(e) => handleChange('paymentDays', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
 
-                  <div className="border-t pt-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">จำนวนเงินหลังหักส่วนลด:</span>
-                        <span className="font-semibold">
-                          {formData.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">ภาษีมูลค่าเพิ่ม 7%:</span>
-                        <span className="font-semibold">
-                          {formData.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold border-t pt-2">
-                        <span>จำนวนเงินรวมทั้งหมด:</span>
-                        <span className="text-blue-600">
-                          THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
+                    <div className="border-t pt-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm">จำนวนเงินหลังหักส่วนลด:</span>
+                          <span className="font-semibold">
+                            {formData.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm">ภาษีมูลค่าเพิ่ม 7%:</span>
+                          <span className="font-semibold">
+                            {formData.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold border-t pt-2">
+                          <span>จำนวนเงินรวมทั้งหมด:</span>
+                          <span className="text-blue-600">
+                            THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="border rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <span className="mr-2">📎</span> แนบเอกสาร
-                </h3>
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <span className="mr-2">📎</span> แนบเอกสาร
+                  </h3>
 
-                <Button
-                  type="button"
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  <Upload size={16} className="mr-2" /> แนบเอกสารที่เกี่ยวข้อง
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  ไฟล์จะต้องมีขนาดไม่เกิน 20 เมกะไบต์/ไฟล์
-                </p>
+                  <Button
+                    type="button"
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    <Upload size={16} className="mr-2" /> แนบเอกสารที่เกี่ยวข้อง
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    ไฟล์จะต้องมีขนาดไม่เกิน 20 เมกะไบต์/ไฟล์
+                  </p>
+                </div>
               </div>
             </div>
           </div>

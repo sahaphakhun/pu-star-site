@@ -10,9 +10,12 @@ import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/com
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete'
+import ProductAutocomplete from '@/components/ui/ProductAutocomplete'
 import useApiService from '@/features/jubili/hooks/useApiService'
 
 interface OrderItem {
+  productId?: string
+  product?: any
   description: string
   quantity: number
   unit: string
@@ -76,6 +79,8 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
   const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [autoApplyQuotation, setAutoApplyQuotation] = useState(true)
+  const [isApplyingQuotation, setIsApplyingQuotation] = useState(false)
 
   const mapApiStatusToUi = (status?: string) => {
     const map: Record<string, SalesOrder['status']> = {
@@ -133,7 +138,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
 
     // รายการสินค้า
     items: [
-      { description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 },
+      { productId: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 },
     ],
 
     // สรุปยอด
@@ -165,9 +170,11 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
         const discount = Number(item.discount ?? 0)
         const amount = Number(item.amount ?? (pricePerUnit - discount) * quantity)
         return {
+          productId: item.productId || item.product?._id || '',
+          product: item.product || null,
           description: item.description || item.name || '',
           quantity,
-          unit: item.unitLabel || '',
+          unit: item.unitLabel || item.unit || '',
           pricePerUnit,
           discount,
           amount,
@@ -211,7 +218,9 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
       deliverySubdistrict: order?.deliverySubdistrict || '',
       deliveryPostalCode: order?.deliveryPostalCode || '',
       shipToSameAsCustomer: order?.shipToSameAsCustomer ?? !hasShipping,
-      items: items.length ? items : [{ description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 }],
+      items: items.length
+        ? items
+        : [{ productId: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 }],
       subtotal,
       vat,
       vatAmount,
@@ -302,44 +311,82 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     next.deliveryPostalCode = quotation.deliveryZipcode || quotation.deliveryPostalCode || ''
   }
 
+  const mapQuotationItems = (quotation?: any): OrderItem[] => {
+    const items = Array.isArray(quotation?.items) ? quotation.items : []
+    if (!items.length) {
+      return [{ productId: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 }]
+    }
+
+    return items.map((item: any) => {
+      const pricePerUnit = Number(item.unitPrice ?? 0)
+      const quantity = Number(item.quantity ?? 0)
+      const discount = Number(item.discount ? (pricePerUnit * item.discount) / 100 : 0)
+      return {
+        productId: item.productId || '',
+        product: null,
+        description: item.productName || item.description || '',
+        quantity,
+        unit: item.unit || '',
+        pricePerUnit,
+        discount,
+        amount: (pricePerUnit - discount) * quantity,
+      }
+    })
+  }
+
+  const applyQuotationData = (next: SalesOrder, quotation?: any) => {
+    if (!quotation) return
+
+    const mappedItems = mapQuotationItems(quotation)
+    const subtotalFromItems = mappedItems.reduce((sum, item) => sum + (item.amount || 0), 0)
+    const subtotal = Number(quotation.totalAmount ?? quotation.subtotal ?? subtotalFromItems)
+    const vatRate = Number(quotation.vatRate ?? 7)
+    const vatAmount = Number(quotation.vatAmount ?? (subtotal * vatRate) / 100)
+    const total = Number(quotation.grandTotal ?? subtotal + vatAmount)
+
+    next.customerId = quotation.customerId || ''
+    next.customerName = quotation.customerName || ''
+    next.contactPhone = quotation.customerPhone || ''
+    next.items = mappedItems.length ? mappedItems : next.items
+    next.subtotal = subtotal
+    next.vat = vatRate
+    next.vatAmount = vatAmount
+    next.total = total
+    next.remainingAmount = Math.max(total - Number(next.paidAmount || 0), 0)
+    next.paymentTerms = quotation.paymentTerms || next.paymentTerms
+    applyQuotationShipping(next, quotation)
+  }
+
+  const applyQuotationById = async (quotationId: string) => {
+    if (!quotationId) return
+
+    setIsApplyingQuotation(true)
+    setErrorMessage(null)
+    try {
+      const quotation = await quotationsApi.getQuotation(String(quotationId))
+      setFormData((prev) => {
+        const next: SalesOrder = { ...prev, quotationId }
+        applyQuotationData(next, quotation)
+        return next
+      })
+    } catch {
+      setErrorMessage('ไม่สามารถดึงข้อมูลใบเสนอราคาได้')
+    } finally {
+      setIsApplyingQuotation(false)
+    }
+  }
+
+  const handleQuotationChange = (value: string) => {
+    const quotationId = value === CLEAR_SELECT_VALUE ? '' : value
+    setFormData((prev) => ({ ...prev, quotationId }))
+    if (quotationId && autoApplyQuotation) {
+      void applyQuotationById(quotationId)
+    }
+  }
+
   const handleChange = (field: keyof SalesOrder, value: any) => {
     setFormData((prev: SalesOrder) => {
       const next: SalesOrder = { ...prev, [field]: value }
-
-      if (field === 'quotationId' && value) {
-        const quotation = quotations.find((q: any) => String(q._id || q.id) === String(value)) as any
-        if (quotation) {
-          const mappedItems = (quotation.items || []).map((item: any) => {
-            const pricePerUnit = Number(item.unitPrice ?? 0)
-            const quantity = Number(item.quantity ?? 0)
-            const discount = Number(item.discount ? (pricePerUnit * item.discount) / 100 : 0)
-            return {
-              description: item.productName || item.description || '',
-              quantity,
-              unit: item.unit || '',
-              pricePerUnit,
-              discount,
-              amount: (pricePerUnit - discount) * quantity,
-            }
-          })
-          const subtotal = Number(quotation.totalAmount ?? 0)
-          const vatRate = Number(quotation.vatRate ?? 7)
-          const vatAmount = Number(quotation.vatAmount ?? (subtotal * vatRate) / 100)
-          const total = Number(quotation.grandTotal ?? subtotal + vatAmount)
-
-          next.customerId = quotation.customerId || ''
-          next.customerName = quotation.customerName || ''
-          next.contactPhone = quotation.customerPhone || ''
-          next.items = mappedItems.length ? mappedItems : next.items
-          next.subtotal = subtotal
-          next.vat = vatRate
-          next.vatAmount = vatAmount
-          next.total = total
-          next.remainingAmount = Math.max(total - Number(next.paidAmount || 0), 0)
-          next.paymentTerms = quotation.paymentTerms || next.paymentTerms
-          applyQuotationShipping(next, quotation)
-        }
-      }
 
       if (field === 'customerId' && value) {
         const customer = customers.find((c: any) => String(c._id || c.id) === String(value))
@@ -384,6 +431,40 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
     calculateTotals(newItems)
   }
 
+  const handleProductSelect = (index: number, product: any | null) => {
+    const newItems = [...formData.items]
+    const existing = newItems[index]
+
+    if (!product) {
+      newItems[index] = {
+        ...existing,
+        product: null,
+        productId: '',
+      }
+      setFormData({ ...formData, items: newItems })
+      calculateTotals(newItems)
+      return
+    }
+
+    const resolvedUnit = product.units?.[0]?.label || existing.unit || ''
+    const resolvedPrice = product.price ?? product.units?.[0]?.price ?? existing.pricePerUnit ?? 0
+    const resolvedQuantity = existing.quantity > 0 ? existing.quantity : 1
+    const nextItem = {
+      ...existing,
+      product,
+      productId: product._id,
+      unit: resolvedUnit,
+      pricePerUnit: resolvedPrice,
+      quantity: resolvedQuantity,
+      description: existing.description || product.description || product.name || '',
+    }
+    nextItem.amount = (Number(nextItem.pricePerUnit || 0) - Number(nextItem.discount || 0)) * Number(nextItem.quantity || 0)
+    newItems[index] = nextItem
+
+    setFormData({ ...formData, items: newItems })
+    calculateTotals(newItems)
+  }
+
   const calculateTotals = (items: OrderItem[]) => {
     const subtotal = items.reduce((sum, item) => sum + (item.amount || 0), 0)
     const vatAmount = (subtotal * formData.vat) / 100
@@ -402,7 +483,10 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 }],
+      items: [
+        ...formData.items,
+        { productId: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discount: 0, amount: 0 },
+      ],
     })
   }
 
@@ -594,12 +678,22 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        ใบเสนอราคาอ้างอิง
-                      </label>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="block text-sm font-medium">
+                          ใบเสนอราคาอ้างอิง
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-gray-600">
+                          <input
+                            type="checkbox"
+                            checked={autoApplyQuotation}
+                            onChange={(e) => setAutoApplyQuotation(e.target.checked)}
+                          />
+                          ดึงข้อมูลอัตโนมัติ
+                        </label>
+                      </div>
                       <Select
                         value={formData.quotationId}
-                        onValueChange={(value) => handleChange('quotationId', value === CLEAR_SELECT_VALUE ? '' : value)}
+                        onValueChange={handleQuotationChange}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="เลือกใบเสนอราคา (ถ้ามี)" />
@@ -613,6 +707,17 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                           ))}
                         </SelectContent>
                       </Select>
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyQuotationById(formData.quotationId)}
+                          disabled={!formData.quotationId || isApplyingQuotation}
+                        >
+                          {isApplyingQuotation ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลใบเสนอราคา'}
+                        </Button>
+                      </div>
                     </div>
 
                     <div>
@@ -810,94 +915,96 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
               </div>
 
               {/* Right Column */}
-              <div className="col-span-12 lg:col-span-4 space-y-6">
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4">ข้อมูลการชำระเงิน</h3>
+              <div className="col-span-12 lg:col-span-4">
+                <div className="space-y-6 lg:sticky lg:top-6 self-start">
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">ข้อมูลการชำระเงิน</h3>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        เงื่อนไขการชำระเงิน
-                      </label>
-                      <Select
-                        value={formData.paymentTerms}
-                        onValueChange={(value) => handleChange('paymentTerms', value === CLEAR_SELECT_VALUE ? '' : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="โปรดเลือก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={CLEAR_SELECT_VALUE}>โปรดเลือก</SelectItem>
-                          <SelectItem value="เงินสด">เงินสด</SelectItem>
-                          <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
-                          <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
-                          <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
-                          <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        วันครบกำหนดชำระ
-                      </label>
-                      <Input
-                        type="date"
-                        value={formData.paymentDueDate}
-                        onChange={(e) => handleChange('paymentDueDate', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="border-t pt-4 space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span>ยอดรวม</span>
-                        <span className="font-semibold">
-                          {formData.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>VAT 7%</span>
-                        <span className="font-semibold">
-                          {formData.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold border-t pt-2">
-                        <span>ยอดรวมทั้งหมด</span>
-                        <span className="text-blue-600">
-                          THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-
-                      <div className="border-t pt-3">
+                    <div className="space-y-4">
+                      <div>
                         <label className="block text-sm font-medium mb-1">
-                          ยอดที่ชำระแล้ว
+                          เงื่อนไขการชำระเงิน
+                        </label>
+                        <Select
+                          value={formData.paymentTerms}
+                          onValueChange={(value) => handleChange('paymentTerms', value === CLEAR_SELECT_VALUE ? '' : value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="โปรดเลือก" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={CLEAR_SELECT_VALUE}>โปรดเลือก</SelectItem>
+                            <SelectItem value="เงินสด">เงินสด</SelectItem>
+                            <SelectItem value="เก็บเงินปลายทาง (COD)">เก็บเงินปลายทาง (COD)</SelectItem>
+                            <SelectItem value="เครดิต 7 วัน">เครดิต 7 วัน</SelectItem>
+                            <SelectItem value="เครดิต 15 วัน">เครดิต 15 วัน</SelectItem>
+                            <SelectItem value="เครดิต 30 วัน">เครดิต 30 วัน</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          วันครบกำหนดชำระ
                         </label>
                         <Input
-                          type="number"
-                          value={formData.paidAmount}
-                          onChange={(e) => handleChange('paidAmount', parseFloat(e.target.value) || 0)}
-                          step="0.01"
+                          type="date"
+                          value={formData.paymentDueDate}
+                          onChange={(e) => handleChange('paymentDueDate', e.target.value)}
                         />
                       </div>
 
-                      <div className="flex justify-between text-lg font-bold text-red-600">
-                        <span>คงเหลือ</span>
-                        <span>
-                          THB {formData.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                        </span>
+                      <div className="border-t pt-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span>ยอดรวม</span>
+                          <span className="font-semibold">
+                            {formData.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>VAT 7%</span>
+                          <span className="font-semibold">
+                            {formData.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold border-t pt-2">
+                          <span>ยอดรวมทั้งหมด</span>
+                          <span className="text-blue-600">
+                            THB {formData.total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+
+                        <div className="border-t pt-3">
+                          <label className="block text-sm font-medium mb-1">
+                            ยอดที่ชำระแล้ว
+                          </label>
+                          <Input
+                            type="number"
+                            value={formData.paidAmount}
+                            onChange={(e) => handleChange('paidAmount', parseFloat(e.target.value) || 0)}
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="flex justify-between text-lg font-bold text-red-600">
+                          <span>คงเหลือ</span>
+                          <span>
+                            THB {formData.remainingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4">หมายเหตุ</h3>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    rows={4}
-                    placeholder="หมายเหตุสำหรับลูกค้า"
-                  />
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">หมายเหตุ</h3>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
+                      rows={4}
+                      placeholder="หมายเหตุสำหรับลูกค้า"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -911,7 +1018,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-sm">ลำดับ</TableHead>
-                      <TableHead className="text-sm">รายละเอียด</TableHead>
+                      <TableHead className="text-sm">รายละเอียดสินค้า</TableHead>
                       <TableHead className="text-sm">จำนวน</TableHead>
                       <TableHead className="text-sm">หน่วย</TableHead>
                       <TableHead className="text-sm">ราคา/หน่วย</TableHead>
@@ -925,12 +1032,20 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                       <TableRow key={index}>
                         <TableCell className="text-center">{index + 1}</TableCell>
                         <TableCell>
-                          <Textarea
-                            value={item.description}
-                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                            className="w-full px-2 py-1 border rounded text-sm"
-                            rows={2}
-                          />
+                          <div className="space-y-2">
+                            <ProductAutocomplete
+                              value={item.product || null}
+                              onChange={(product) => handleProductSelect(index, product)}
+                              placeholder="พิมพ์ชื่อสินค้า หรือรหัสสินค้า"
+                            />
+                            <Textarea
+                              value={item.description}
+                              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-sm"
+                              rows={2}
+                              placeholder="รายละเอียดเพิ่มเติม"
+                            />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
