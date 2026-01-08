@@ -265,7 +265,7 @@ export default function AddressAutocomplete({
             </div>
 
             {state.isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                <div className="mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
                     {/* Search input */}
                     <div className="p-2 border-b sticky top-0 bg-white">
                         <div className="relative">
@@ -396,7 +396,7 @@ export default function AddressAutocomplete({
                     </div>
 
                     {zipcodeState.isOpen && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                        <div className="mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
                             {filteredZipResults.length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-gray-500 text-center">
                                     {zipcodeState.search.length < 2 ? 'พิมพ์อย่างน้อย 2 ตัวอักษร' : 'ไม่พบข้อมูล'}
