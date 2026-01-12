@@ -425,28 +425,28 @@ const ProductsPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full table-fixed divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[32%]">
                     สินค้า
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%]">
                     SKU
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%]">
                     หมวดหมู่
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%]">
                     ราคา
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%]">
                     สต็อก
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%]">
                     สถานะ
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%]">
                     การจัดการ
                   </th>
                 </tr>
@@ -460,7 +460,7 @@ const ProductsPage: React.FC = () => {
                   );
                   return (
                   <tr key={product._id} className={`hover:bg-gray-50 ${isArchived ? 'opacity-60' : ''}`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 align-top w-[32%]">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           {product.imageUrl ? (
@@ -477,28 +477,43 @@ const ProductsPage: React.FC = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">{product.description}</div>
+                          <div
+                            className="text-sm text-gray-500 leading-snug max-w-[320px]"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                            title={product.description}
+                          >
+                            {product.description || '-'}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.sku || 'ไม่มี SKU'}
+                    <td className="px-6 py-4 w-[14%]">
+                      <div className="text-sm text-gray-900 truncate" title={product.sku || 'ไม่มี SKU'}>
+                        {product.sku || 'ไม่มี SKU'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.category}
+                    <td className="px-6 py-4 w-[14%]">
+                      <div className="text-sm text-gray-900 truncate" title={product.category}>
+                        {product.category}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-[9%]">
                       {formatCurrency(product.price || (product.units && product.units.length > 0 ? product.units[0].price : 0))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-[9%]">
                       {product.units && product.units.length > 0 ? `${product.units.length} หน่วย` : 'ไม่มีหน่วย'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap w-[10%]">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColor}`}>
                         {statusLabel}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium w-[12%]">
                       {isArchived ? (
                         <button
                           onClick={() => handleRestoreProduct(product._id)}
