@@ -3,11 +3,7 @@ import * as jose from 'jose';
 import { cookies } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
-import { Settings } from '@/models/Settings';
-import Approval from '@/models/Approval';
-import { createQuotationSchema, searchQuotationSchema } from '@/schemas/quotation';
-import { checkDiscountGuardrails } from '@/utils/pricing';
-import { round2, computeVatIncluded } from '@/utils/number';
+import { createQuotation, QuotationServiceError } from '@/services/quotationService';
 
 // GET: ดึงใบเสนอราคาทั้งหมด (พร้อมการค้นหาและ pagination)
 export async function GET(request: Request) {
@@ -114,145 +110,8 @@ export async function POST(request: Request) {
   try {
     const raw = await request.json();
     console.log('[Quotation API] Received data:', JSON.stringify(raw, null, 2));
-    
-    // Validate input data
-    const parsed = createQuotationSchema.safeParse(raw);
-    if (!parsed.success) {
-      console.error('[Quotation API] Validation failed:', {
-        raw,
-        errors: parsed.error.issues
-      });
-      return NextResponse.json(
-        { 
-          error: 'รูปแบบข้อมูลไม่ถูกต้อง', 
-          details: parsed.error.issues
-        },
-        { status: 400 }
-      );
-    }
 
-    const quotationData = parsed.data as any;
-    
-    await connectDB();
-    
-    // สร้างเลขที่ใบเสนอราคาอัตโนมัติ
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    
-    // นับจำนวนใบเสนอราคาในเดือนนี้
-    const startOfMonth = new Date(year, today.getMonth(), 1);
-    const endOfMonth = new Date(year, today.getMonth() + 1, 0);
-    
-    const count = await Quotation.countDocuments({
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth }
-    });
-    
-    const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
-    
-    // ตรวจสอบ guardrails ส่วนลดก่อนสร้าง
-    const guard = await checkDiscountGuardrails(
-      (quotationData.items || []).map((i: any) => ({
-        productId: i.productId,
-        quantity: Number(i.quantity),
-        unitPrice: Number(i.unitPrice),
-        discount: Number(i.discount || 0),
-      })),
-      {
-        role: undefined,
-        customerGroup: undefined,
-      }
-    );
-
-    if (!guard.ok) {
-      return NextResponse.json(
-        { error: 'ส่วนลดบางรายการไม่เป็นไปตามนโยบาย', violations: guard.violations, requiresApproval: guard.requiresApproval },
-        { status: 400 }
-      );
-    }
-
-    // ดึงข้อมูลลูกค้าเพื่อเอารหัสลูกค้า
-    let customerCode = '';
-    try {
-      const Customer = (await import('@/models/Customer')).default;
-      const customer = await Customer.findById(quotationData.customerId).lean();
-      customerCode = (customer as any)?.customerCode || '';
-    } catch (error) {
-      console.warn('[Quotation API] Failed to fetch customer code:', error);
-    }
-
-    // แปลงข้อมูลให้ตรงกับ Model
-    const modelData: any = {
-      ...quotationData,
-      quotationNumber,
-      customerCode, // เพิ่มรหัสลูกค้า
-      // หากไม่ได้ส่งวันหมดอายุมา ให้ตั้งค่า +7 วันจากวันนี้
-      validUntil: quotationData.validUntil && quotationData.validUntil !== ''
-        ? new Date(quotationData.validUntil)
-        : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-      // แปลงข้อมูลตัวเลขให้เป็น number
-      items: quotationData.items.map((item: any) => ({
-        ...item,
-        quantity: Number(item.quantity),
-        unitPrice: Number(item.unitPrice),
-        discount: Number(item.discount),
-        totalPrice: Number(item.totalPrice),
-        selectedOptions: (() => {
-          if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
-          const entries = Object.entries(item.selectedOptions).filter(([, value]) =>
-            typeof value === 'string' && value.trim() !== ''
-          );
-          if (!entries.length) return undefined;
-          return Object.fromEntries(entries.map(([key, value]) => [String(key).trim(), String(value).trim()]));
-        })(),
-      })),
-      vatRate: Number(quotationData.vatRate),
-      subtotal: round2(Number(quotationData.subtotal || 0)),
-      totalDiscount: round2(Number(quotationData.totalDiscount || 0)),
-      totalAmount: round2(Number(quotationData.totalAmount || 0)),
-      // คำนวณ VAT แบบรวมภาษีแบบเสถียร
-      ...(() => {
-        const total = Number(quotationData.totalAmount || 0);
-        const rate = Number(quotationData.vatRate || 7);
-      const { vatAmount } = computeVatIncluded(total, rate);
-      return { vatAmount: round2(vatAmount), grandTotal: round2(total) };
-    })(),
-  } as any;
-
-    if (Array.isArray(quotationData.deliveryBatches) && quotationData.deliveryBatches.length > 0) {
-      modelData.deliveryBatches = quotationData.deliveryBatches.map((batch: any, index: number) => ({
-        batchId: (batch.batchId && String(batch.batchId).trim()) || `BATCH-${index + 1}`,
-        deliveredQuantity: Number(batch.deliveredQuantity || 0),
-        deliveryDate: new Date(batch.deliveryDate),
-        deliveryStatus: batch.deliveryStatus || 'pending',
-        trackingNumber: batch.trackingNumber ? String(batch.trackingNumber).trim() : undefined,
-        notes: batch.notes ? String(batch.notes).trim() : undefined,
-        deliveredBy: batch.deliveredBy ? String(batch.deliveredBy).trim() : undefined,
-        createdAt: batch.createdAt ? new Date(batch.createdAt) : new Date(),
-      }));
-
-      const totalItemQuantity = modelData.items.reduce(
-        (sum: number, item: any) => sum + Number(item.quantity || 0),
-        0
-      );
-
-      modelData.totalDeliveredQuantity = 0;
-      modelData.remainingQuantity = totalItemQuantity;
-      modelData.deliveryStatus = 'not_started';
-      modelData.deliveryStartDate = modelData.deliveryBatches.length
-        ? new Date(modelData.deliveryBatches[0].deliveryDate)
-        : undefined;
-    }
-
-    if (modelData.shipToSameAsCustomer) {
-      modelData.shippingAddress = modelData.customerAddress;
-    }
-
-    if (!modelData.deliveryZipcode) {
-      delete modelData.deliveryZipcode;
-    }
-    
-    // ใส่ผู้รับผิดชอบจาก token (ถ้ามี) เพื่อทำ data ownership และ context guardrails
+    let actor;
     try {
       const authHeader = (request.headers as any).get?.('authorization') as string | null;
       const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
@@ -260,90 +119,29 @@ export async function POST(request: Request) {
       const token = bearer || cookieToken;
       if (token) {
         const payload: any = jose.decodeJwt(token);
-        const roleName = String(payload.role || '').toLowerCase();
         if (payload?.adminId) {
-          if (roleName === 'seller') {
-            modelData.assignedTo = payload.adminId;
-          } else if (!modelData.assignedTo) {
-            modelData.assignedTo = payload.adminId;
-          }
-        }
-        // เติม role สำหรับการตรวจ guardrails รอบหน้า (เช่น update)
-        modelData._creatorRole = payload?.role;
-      }
-    } catch {}
-    
-    // สร้างใบเสนอราคาใหม่
-    // Guardrails: ตรวจสอบส่วนลด/threshold จาก Settings + ขั้นบันไดส่วนลดตามยอดรวม
-    let requireApproval = false;
-    try {
-      const settings = (await Settings.findOne({}).lean()) as any;
-      const maxDiscount = settings?.salesPolicy?.maxDiscountPercentWithoutApproval ?? 10;
-      const hasOverDiscount = modelData.items.some((it: any) => Number(it.discount || 0) > maxDiscount);
-      if (hasOverDiscount) requireApproval = true;
-
-      // ขั้นบันไดส่วนลดตามยอดสั่งซื้อรวม (คำนวณเป็นส่วนลดพิเศษแบบจำนวนเงิน)
-      const tiers: Array<{ minTotal: number; discountPercent: number }> = settings?.salesPolicy?.tieredDiscounts || [];
-      if (Array.isArray(tiers) && tiers.length) {
-        const sorted = [...tiers].sort((a, b) => b.minTotal - a.minTotal);
-        const tier = sorted.find(t => modelData.subtotal >= Number(t.minTotal || 0));
-        if (tier && typeof tier.discountPercent === 'number') {
-          const tierDiscountAmt = round2((modelData.subtotal || 0) * (tier.discountPercent / 100));
-          const currentSpecial = Number(modelData.specialDiscount || 0);
-          if (tierDiscountAmt > currentSpecial) {
-            modelData.specialDiscount = tierDiscountAmt;
-          }
+          actor = { adminId: payload.adminId, role: payload.role };
         }
       }
     } catch {}
 
-    // Re-approval policy: หากลูกค้าเดิมและรายละเอียดสินค้า/ราคา/หน่วย/ส่วนลดเหมือนกับใบล่าสุด ให้ไม่ต้องอนุมัติ
-    try {
-      const last = await Quotation.findOne({ customerId: modelData.customerId })
-        .sort({ createdAt: -1 })
-        .lean();
-      if (last && Array.isArray((last as any).items)) {
-        const a = (last as any).items.map((it: any) => ({ p: String(it.productId), u: String(it.unit || ''), up: Number(it.unitPrice), d: Number(it.discount) }))
-          .sort((x: any, y: any) => (x.p + x.u).localeCompare(y.p + y.u));
-        const b = (modelData.items as any[]).map((it: any) => ({ p: String(it.productId), u: String(it.unit || ''), up: Number(it.unitPrice), d: Number(it.discount) }))
-          .sort((x: any, y: any) => (x.p + x.u).localeCompare(y.p + y.u));
-        const sameLength = a.length === b.length;
-        const identical = sameLength && a.every((ai: any, idx: number) => {
-          const bi = b[idx];
-          return ai.p === bi.p && ai.u === bi.u && ai.up === bi.up && ai.d === bi.d;
-        });
-        if (identical) {
-          requireApproval = false;
-        }
-      }
-    } catch {}
+    const quotation = await createQuotation(raw, { actor, source: 'api' });
 
-    if (requireApproval) {
-      modelData.approvalStatus = 'pending';
-      modelData.approvalReason = modelData.approvalReason || 'ส่วนลดเกินนโยบาย';
-    } else {
-      modelData.approvalStatus = modelData.approvalStatus || 'none';
-    }
-
-    const quotation = await Quotation.create(modelData);
-
-    // หากต้องขออนุมัติ ให้สร้างเอนทรี Approval ผูกกับ quotation
-    if (requireApproval) {
-      try {
-        await Approval.create({ targetType: 'quotation', targetId: String(quotation._id), requestedBy: modelData.assignedTo || 'system', reason: modelData.approvalReason, team: undefined });
-      } catch (e) {
-        console.error('[Quotation API] Create approval entry failed', e);
-      }
-    }
-    
     return NextResponse.json(
       quotation.toObject ? quotation.toObject() : quotation,
       { status: 201 }
     );
     
   } catch (error) {
+    if (error instanceof QuotationServiceError) {
+      return NextResponse.json(
+        { error: error.message, details: error.details },
+        { status: error.status }
+      );
+    }
+
     console.error('[Quotation API] POST Error:', error);
-    
+
     // Log detailed error information
     if (error instanceof Error) {
       console.error('[Quotation API] Error details:', {

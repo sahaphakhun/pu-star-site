@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
   UserCog,
   Shield,
+  MessageSquare,
 } from 'lucide-react';
 
 export interface AdminB2BMenuItem {
@@ -47,6 +48,6 @@ export const adminB2BMenuItems: AdminB2BMenuItem[] = [
   { id: 'reports', label: 'รายงาน', icon: PieChart, path: '/adminb2b/reports', color: 'bg-indigo-500', badge: null },
   { id: 'admins', label: 'ผู้ดูแลระบบ', icon: UserCog, path: '/adminb2b/admins', color: 'bg-slate-600', badge: null },
   { id: 'permissions', label: 'สิทธิ์การใช้งาน', icon: Shield, path: '/adminb2b/permissions', color: 'bg-slate-700', badge: null },
+  { id: 'line-bot', label: 'LINE Bot', icon: MessageSquare, path: '/adminb2b/line-bot', color: 'bg-green-600', badge: null },
   { id: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/adminb2b/settings', color: 'bg-gray-500', badge: null },
 ];
-

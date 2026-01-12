@@ -3,11 +3,14 @@ import { Client, validateSignature } from '@line/bot-sdk';
 import connectDB from '@/lib/mongodb';
 import Customer from '@/models/Customer';
 import LineGroupLink from '@/models/LineGroupLink';
-import Quotation from '@/models/Quotation';
-import { generatePDFFromHTML, generateQuotationHTML } from '@/utils/pdfUtils';
+import LineCommand from '@/models/LineCommand';
+import LineUser from '@/models/LineUser';
 import Product from '@/models/Product';
+import { ensureDefaultLineCommands } from '@/services/lineBotConfig';
+import { compileLineCommandPattern } from '@/utils/lineCommand';
+import { createQuotation, QuotationServiceError } from '@/services/quotationService';
 function escapeRegex(str: string) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-import { round2, computeVatIncluded, computeLineTotal } from '@/utils/number';
+import { round2, computeLineTotal } from '@/utils/number';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +41,10 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(bodyText);
     const events: any[] = body.events || [];
 
+    await connectDB();
+    await ensureDefaultLineCommands();
+    const commands = await LineCommand.find({ isActive: true }).sort({ priority: 1 }).lean();
+
     const client = getLineClient();
 
     await Promise.all(
@@ -51,23 +58,77 @@ export async function POST(request: NextRequest) {
 
           const groupId: string = event.source.groupId;
           const text: string = (event.message.text || '').trim();
+          if (!text) return;
 
-          // เคสง่าย: "สวัสดี"
-          if (text === 'สวัสดี' || text === 'สวัสดีครับ' || text === 'สวัสดีค่ะ') {
+          const lines = text.split(/\r?\n/);
+          const firstLine = lines[0]?.trim() || '';
+
+          const matchResult = (() => {
+            for (const command of commands) {
+              try {
+                const regex = compileLineCommandPattern(command.pattern);
+                const target = command.key === 'quotation' ? firstLine : text;
+                const match = target.match(regex);
+                if (match) {
+                  return { command, match };
+                }
+              } catch (error) {
+                console.warn('[LINE Webhook] Invalid command pattern:', command.pattern, error);
+              }
+            }
+            return null;
+          })();
+
+          if (!matchResult) return;
+
+          const userId: string | undefined = event.source?.userId;
+          let lineUser = null;
+          if (userId) {
+            const existing = await LineUser.findOne({ lineUserId: userId }).lean();
+            let displayName = existing?.displayName;
+            let pictureUrl = existing?.pictureUrl;
+
+            if (!displayName || !pictureUrl) {
+              try {
+                const profile = await client.getGroupMemberProfile(groupId, userId);
+                displayName = profile?.displayName || displayName;
+                pictureUrl = profile?.pictureUrl || pictureUrl;
+              } catch (error) {
+                console.warn('[LINE Webhook] Failed to fetch LINE profile:', error);
+              }
+            }
+
+            const updates: any = { lastSeenAt: new Date() };
+            if (displayName) updates.displayName = displayName;
+            if (pictureUrl) updates.pictureUrl = pictureUrl;
+
+            lineUser = await LineUser.findOneAndUpdate(
+              { lineUserId: userId },
+              { $set: updates, $setOnInsert: { canIssueQuotation: false, isActive: true } },
+              { upsert: true, new: true }
+            );
+          }
+
+          const { command, match } = matchResult;
+
+          if (command.key === 'greeting') {
             await client.replyMessage(event.replyToken, { type: 'text', text: 'สวัสดี' });
             return;
           }
 
-          await connectDB();
+          if (command.key === 'link_customer') {
+            const code = (match?.[1] || '').toUpperCase().trim();
+            if (!code) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'รูปแบบคำสั่งไม่ถูกต้อง' });
+              return;
+            }
 
-          // คำสั่งผูกกลุ่มกับลูกค้า: ลูกค้า#CYYMMXXXX
-          if (/^ลูกค้า#(C\d{8}|[A-Z]\d[A-Z]\d)$/i.test(text)) {
-            const code = text.split('#')[1].toUpperCase();
             const customer = await Customer.findOne({ customerCode: code });
             if (!customer) {
               await client.replyMessage(event.replyToken, { type: 'text', text: `ไม่พบลูกค้ารหัส ${code}` });
               return;
             }
+
             await LineGroupLink.findOneAndUpdate(
               { groupId },
               { groupId, customerId: String((customer as any)._id) },
@@ -77,13 +138,17 @@ export async function POST(request: NextRequest) {
             return;
           }
 
-          // คำสั่งออกใบเสนอราคา: บรรทัดแรกขึ้นต้น QT/qt/Qt ตามด้วยชื่อหัวข้อ
-          // ตัวอย่าง:
-          // QT NAME\n#AAAA 10\n#BBBB 20
-          if (/^(QT|qt|Qt)\s+/.test(text)) {
-            const lines = text.split(/\r?\n/);
-            const first = lines[0];
-            const subject = first.replace(/^(QT|qt|Qt)\s+/, '').trim();
+          if (command.key === 'quotation') {
+            if (!userId || !lineUser || !lineUser.isActive || !lineUser.canIssueQuotation) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'ไม่มีสิทธิ์ออกใบเสนอราคา กรุณาติดต่อผู้ดูแลระบบ' });
+              return;
+            }
+
+            const subject = (match?.[1] || '').trim();
+            if (!subject) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'กรุณาระบุหัวข้อใบเสนอราคา' });
+              return;
+            }
 
             // ตรวจสอบการผูกลูกค้า
             const link = await LineGroupLink.findOne({ groupId });
@@ -141,42 +206,43 @@ export async function POST(request: NextRequest) {
               return;
             }
 
-            // คำนวณยอดรวมตามตรรกะ VAT รวมภาษี
-            const subtotal = round2(items.reduce((s, it) => s + (it.quantity * it.unitPrice), 0));
+            const subtotal = round2(items.reduce((s, it) => s + (it.totalPrice || 0), 0));
             const totalDiscount = 0;
             const totalAmount = round2(subtotal - totalDiscount);
             const vatRate = 7;
-            const { vatAmount } = computeVatIncluded(totalAmount, vatRate);
-            const grandTotal = totalAmount;
 
-            // สร้างใบเสนอราคาในฐานข้อมูล
-            const now = new Date();
-            const validUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const startOfMonth = new Date(year, today.getMonth(), 1);
-            const endOfMonth = new Date(year, today.getMonth() + 1, 0);
-            const count = await Quotation.countDocuments({ createdAt: { $gte: startOfMonth, $lte: endOfMonth } });
-            const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
-
-            const quotation = await Quotation.create({
-              quotationNumber,
-              customerId: String(link.customerId),
-              customerName: customer.name,
-              subject,
-              validUntil,
-              paymentTerms: 'ชำระเงินทันที',
-              deliveryTerms: '',
-              items,
-              subtotal,
-              totalDiscount,
-              totalAmount,
-              vatRate,
-              vatAmount,
-              grandTotal,
-              status: 'draft',
-            } as any);
+            let quotation;
+            try {
+              quotation = await createQuotation(
+                {
+                  customerId: String(link.customerId),
+                  customerName: customer.name,
+                  customerPhone: customer.phoneNumber,
+                  subject,
+                  paymentTerms: 'ชำระเงินทันที',
+                  deliveryTerms: '',
+                  items,
+                  subtotal,
+                  totalDiscount,
+                  totalAmount,
+                  vatRate,
+                  status: 'draft',
+                },
+                {
+                  source: 'line',
+                  lineUser: {
+                    lineUserId: lineUser.lineUserId,
+                    displayName: lineUser.displayName,
+                  },
+                }
+              );
+            } catch (error) {
+              if (error instanceof QuotationServiceError) {
+                await client.replyMessage(event.replyToken, { type: 'text', text: `ออกใบเสนอราคาไม่สำเร็จ: ${error.message}` });
+                return;
+              }
+              throw error;
+            }
 
             // สร้างลิงก์ดาวน์โหลด PDF และส่งกลับ
             const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
