@@ -289,6 +289,7 @@ const ProductsPage: React.FC = () => {
 
   const handleEditProduct = (product: ProductWithId) => {
     setEditingProduct(product);
+    setShowCreateForm(true);
   };
 
   // แสดง loading ถ้ายังไม่เสร็จการตรวจสอบ authentication
