@@ -19,6 +19,7 @@ type LineUser = {
   _id: string;
   lineUserId: string;
   displayName?: string;
+  pictureUrl?: string;
   canIssueQuotation: boolean;
   isActive: boolean;
   lastSeenAt?: string;
@@ -353,7 +354,22 @@ export default function LineBotAdminPage() {
               ) : (
                 users.map((user) => (
                   <tr key={user._id} className="border-t">
-                    <td className="p-3">{user.displayName || '-'}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        {user.pictureUrl ? (
+                          <img
+                            src={user.pictureUrl}
+                            alt={user.displayName || 'LINE user'}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold flex items-center justify-center">
+                            LINE
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-gray-900">{user.displayName || '-'}</div>
+                      </div>
+                    </td>
                     <td className="p-3 font-mono text-xs">{user.lineUserId}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">

@@ -25,6 +25,25 @@ function normalizeOptionRecord(options: any): Record<string, string> | undefined
   return Object.keys(normalized).length ? normalized : undefined;
 }
 
+async function fetchLineProfile(
+  client: Client,
+  sourceType: string | undefined,
+  userId: string,
+  groupId?: string,
+  roomId?: string
+) {
+  if (sourceType === 'group' && groupId) {
+    return client.getGroupMemberProfile(groupId, userId);
+  }
+  if (sourceType === 'room' && roomId) {
+    return client.getRoomMemberProfile(roomId, userId);
+  }
+  if (sourceType === 'user') {
+    return client.getProfile(userId);
+  }
+  return null;
+}
+
 export const dynamic = 'force-dynamic';
 
 function getLineClient(): Client {
@@ -63,13 +82,44 @@ export async function POST(request: NextRequest) {
     await Promise.all(
       events.map(async (event: any) => {
         try {
+          const sourceType: string | undefined = event.source?.type;
+          const userId: string | undefined = event.source?.userId;
+          const groupId: string | undefined =
+            sourceType === 'group' ? event.source.groupId : undefined;
+          const roomId: string | undefined =
+            sourceType === 'room' ? event.source.roomId : undefined;
+
+          let lineUser = null;
+          if (userId) {
+            const existing = await LineUser.findOne({ lineUserId: userId }).lean();
+            let displayName = existing?.displayName;
+            let pictureUrl = existing?.pictureUrl;
+
+            if (!displayName || !pictureUrl) {
+              try {
+                const profile = await fetchLineProfile(client, sourceType, userId, groupId, roomId);
+                displayName = profile?.displayName || displayName;
+                pictureUrl = profile?.pictureUrl || pictureUrl;
+              } catch (error) {
+                console.warn('[LINE Webhook] Failed to fetch LINE profile:', error);
+              }
+            }
+
+            const updates: any = { lastSeenAt: new Date() };
+            if (displayName) updates.displayName = displayName;
+            if (pictureUrl) updates.pictureUrl = pictureUrl;
+
+            lineUser = await LineUser.findOneAndUpdate(
+              { lineUserId: userId },
+              { $set: updates, $setOnInsert: { canIssueQuotation: false, isActive: true } },
+              { upsert: true, new: true }
+            );
+          }
+
           if (event.type !== 'message') return;
-          if (!event.message || event.message.type !== 'text') return;
+          if (!event.message) return;
+          if (event.message.type !== 'text') return;
 
-          // เฉพาะในกลุ่มเท่านั้น
-          if (event.source?.type !== 'group') return;
-
-          const groupId: string = event.source.groupId;
           const text: string = (event.message.text || '').trim();
           if (!text) return;
 
@@ -94,34 +144,6 @@ export async function POST(request: NextRequest) {
 
           if (!matchResult) return;
 
-          const userId: string | undefined = event.source?.userId;
-          let lineUser = null;
-          if (userId) {
-            const existing = await LineUser.findOne({ lineUserId: userId }).lean();
-            let displayName = existing?.displayName;
-            let pictureUrl = existing?.pictureUrl;
-
-            if (!displayName || !pictureUrl) {
-              try {
-                const profile = await client.getGroupMemberProfile(groupId, userId);
-                displayName = profile?.displayName || displayName;
-                pictureUrl = profile?.pictureUrl || pictureUrl;
-              } catch (error) {
-                console.warn('[LINE Webhook] Failed to fetch LINE profile:', error);
-              }
-            }
-
-            const updates: any = { lastSeenAt: new Date() };
-            if (displayName) updates.displayName = displayName;
-            if (pictureUrl) updates.pictureUrl = pictureUrl;
-
-            lineUser = await LineUser.findOneAndUpdate(
-              { lineUserId: userId },
-              { $set: updates, $setOnInsert: { canIssueQuotation: false, isActive: true } },
-              { upsert: true, new: true }
-            );
-          }
-
           const { command, match } = matchResult;
 
           if (command.key === 'greeting') {
@@ -130,6 +152,10 @@ export async function POST(request: NextRequest) {
           }
 
           if (command.key === 'link_customer') {
+            if (sourceType !== 'group' || !groupId) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'คำสั่งนี้ใช้ได้เฉพาะในกลุ่ม LINE เท่านั้น' });
+              return;
+            }
             const code = (match?.[1] || '').toUpperCase().trim();
             if (!code) {
               await client.replyMessage(event.replyToken, { type: 'text', text: 'รูปแบบคำสั่งไม่ถูกต้อง' });
@@ -152,6 +178,10 @@ export async function POST(request: NextRequest) {
           }
 
           if (command.key === 'quotation') {
+            if (sourceType !== 'group' || !groupId) {
+              await client.replyMessage(event.replyToken, { type: 'text', text: 'คำสั่งนี้ใช้ได้เฉพาะในกลุ่มที่ผูกลูกค้าแล้ว' });
+              return;
+            }
             if (!userId || !lineUser || !lineUser.isActive || !lineUser.canIssueQuotation) {
               await client.replyMessage(event.replyToken, { type: 'text', text: 'ไม่มีสิทธิ์ออกใบเสนอราคา กรุณาติดต่อผู้ดูแลระบบ' });
               return;
