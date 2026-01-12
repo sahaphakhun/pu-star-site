@@ -9,8 +9,21 @@ import Product from '@/models/Product';
 import { ensureDefaultLineCommands } from '@/services/lineBotConfig';
 import { compileLineCommandPattern } from '@/utils/lineCommand';
 import { createQuotation, QuotationServiceError } from '@/services/quotationService';
-function escapeRegex(str: string) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 import { round2, computeLineTotal } from '@/utils/number';
+function escapeRegex(str: string) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function normalizeOptionRecord(options: any): Record<string, string> | undefined {
+  if (!options || typeof options !== 'object') return undefined;
+  const entries = options instanceof Map ? Array.from(options.entries()) : Object.entries(options);
+  const normalized = entries.reduce<Record<string, string>>((acc, [key, value]) => {
+    const normalizedKey = String(key || '').trim();
+    const normalizedValue = String(value ?? '').trim();
+    if (normalizedKey && normalizedValue) {
+      acc[normalizedKey] = normalizedValue;
+    }
+    return acc;
+  }, {});
+  return Object.keys(normalized).length ? normalized : undefined;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -172,7 +185,7 @@ export async function POST(request: NextRequest) {
               return;
             }
 
-            // หา product จาก sku ตรงๆ (อิงจาก Product.sku)
+            // หา product จาก SKU (รองรับทั้ง Product.sku และ units.sku)
             const items: any[] = [];
             for (const il of itemLines) {
               // รองรับทั้งมี/ไม่มีเครื่องหมาย # นำหน้า SKU
@@ -181,14 +194,43 @@ export async function POST(request: NextRequest) {
               const sku = m[1];
               const qty = Number(m[2]);
               // หา SKU แบบไม่สนตัวพิมพ์เล็ก/ใหญ่
+              const skuRegex = new RegExp(`^${escapeRegex(sku)}$`, 'i');
               const product = await Product.findOne({
-                sku: { $regex: new RegExp(`^${escapeRegex(sku)}$`, 'i') },
+                $or: [
+                  { sku: { $regex: skuRegex } },
+                  { 'units.sku': { $regex: skuRegex } },
+                  { 'skuVariants.sku': { $regex: skuRegex } },
+                ],
                 isDeleted: { $ne: true }
               });
               if (!product) continue;
               const p: any = product;
-              const unitLabel = p.units?.[0]?.label || '';
-              const unitPrice = (p.units?.[0]?.price ?? p.price ?? 0) as number;
+              const normalizedSku = String(sku || '').toLowerCase();
+              const matchedBaseSku =
+                String(p.sku || '').toLowerCase() === normalizedSku;
+              const matchedUnit = Array.isArray(p.units)
+                ? p.units.find((unit: any) =>
+                    String(unit?.sku || '').toLowerCase() === normalizedSku
+                  )
+                : undefined;
+              const matchedVariant = Array.isArray(p.skuVariants)
+                ? p.skuVariants.find((variant: any) =>
+                    String(variant?.sku || '').toLowerCase() === normalizedSku &&
+                    variant?.isActive !== false
+                  )
+                : undefined;
+              const hasMatch = Boolean(matchedBaseSku || matchedUnit || matchedVariant);
+              if (!hasMatch) continue;
+              const variantOptions = normalizeOptionRecord(matchedVariant?.options);
+              const variantUnit = matchedVariant?.unitLabel
+                ? p.units?.find((unit: any) =>
+                    String(unit?.label || '').toLowerCase() === String(matchedVariant?.unitLabel || '').toLowerCase()
+                  )
+                : undefined;
+              const unitLabel =
+                matchedVariant?.unitLabel || matchedUnit?.label || p.units?.[0]?.label || p.unit || '';
+              const unitPrice =
+                (variantUnit?.price ?? matchedUnit?.price ?? p.units?.[0]?.price ?? p.price ?? 0) as number;
               items.push({
                 productId: String(p._id),
                 productName: p.name,
@@ -197,6 +239,8 @@ export async function POST(request: NextRequest) {
                 unit: unitLabel,
                 unitPrice,
                 discount: 0,
+                sku: matchedVariant?.sku || matchedUnit?.sku || p.sku || undefined,
+                selectedOptions: variantOptions,
                 totalPrice: round2(computeLineTotal(qty, unitPrice, 0)),
               });
             }
@@ -248,8 +292,8 @@ export async function POST(request: NextRequest) {
             const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
             const origin = new URL(request.url).origin;
             const baseUrl = configuredBase || origin;
-            const downloadUrl = `${baseUrl}/api/quotations/${quotation._id}/pdf`;
-            await client.replyMessage(event.replyToken, { type: 'text', text: `ดาวน์โหลดใบเสนอราคา: ${downloadUrl}` });
+            const viewUrl = `${baseUrl}/quotation/${quotation._id}`;
+            await client.replyMessage(event.replyToken, { type: 'text', text: `ดูใบเสนอราคา: ${viewUrl}` });
             return;
           }
         } catch (err) {

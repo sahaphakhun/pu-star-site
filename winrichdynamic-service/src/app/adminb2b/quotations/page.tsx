@@ -336,7 +336,7 @@ export default function AdminB2BQuotations() {
   // โหลด PDF
   const handleDownloadPDF = async (quotation: Quotation) => {
     try {
-      const response = await fetch(`/api/quotations/${quotation._id}/pdf`, {
+      const response = await fetch(`/quotation/${quotation._id}/pdf`, {
         method: 'GET',
         credentials: 'include',
       })

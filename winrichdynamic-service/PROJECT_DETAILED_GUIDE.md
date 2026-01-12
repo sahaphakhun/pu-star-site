@@ -116,6 +116,8 @@ winrichdynamic-service/
 ### Misc
 - `/api/ping` health check
 - `/api/line/webhook` LINE Bot webhook สำหรับคำสั่งกลุ่ม
+- `/quotation/[id]` หน้าแสดงใบเสนอราคาแบบสาธารณะพร้อมปุ่มดาวน์โหลด
+- `/quotation/[id]/pdf` ลิงก์ดาวน์โหลด PDF แบบสาธารณะ
 
 ## โมเดลข้อมูลหลัก (MongoDB)
 - Identity/Auth: `Admin`, `Role`, `User`, `OTPVerification`
@@ -179,6 +181,8 @@ winrichdynamic-service/
 
 ### Model ที่เกี่ยวข้อง
 - `src/models/LineGroupLink.ts` เก็บการผูก `groupId` ↔ `customerId`
+- `src/models/LineUser.ts` เก็บผู้ใช้ LINE และสิทธิ์ออกใบเสนอราคา
+- `src/models/LineCommand.ts` เก็บคำสั่ง LINE (regex) ที่ปรับได้จากฐานข้อมูล
 
 ### Environment Variables ที่ใช้กับ LINE
 - `LINE_CHANNEL_SECRET` สำหรับตรวจ signature ของ webhook
@@ -191,6 +195,7 @@ winrichdynamic-service/
 - Webhook รับเฉพาะข้อความจาก “กลุ่ม” ไม่ตอบแชทส่วนตัว
 - ข้อความรายการสินค้าใน webhook ต้องอยู่รูปแบบ `#SKU qty` เท่านั้น
 - `sendDualNotification` (SMS + Messenger) ยังไม่ส่งเข้า LINE group โดยตรง (ถูก skip)
+- มีหน้า admin สำหรับจัดการ LINE Bot ที่ `/adminb2b/line-bot`
 
 ### Workflow (แบบอ่านง่าย)
 Inbound (รับจาก LINE → ตอบกลับ)

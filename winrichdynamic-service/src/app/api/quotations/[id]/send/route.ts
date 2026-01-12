@@ -67,9 +67,9 @@ export async function POST(
         const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
         const origin = new URL(request.url).origin;
         const baseUrl = base || origin;
-        const pdfUrl = `${baseUrl}/api/quotations/${resolvedParams.id}/pdf`;
+        const viewUrl = `${baseUrl}/quotation/${resolvedParams.id}`;
         const qn = (updatedQuotation as any).quotationNumber || resolvedParams.id;
-        const msg = `ส่งใบเสนอราคา ${qn}\nดาวน์โหลด: ${pdfUrl}`;
+        const msg = `ส่งใบเสนอราคา ${qn}\nดูใบเสนอราคา: ${viewUrl}`;
         await sendLineTextToCustomerGroups(String((updatedQuotation as any).customerId), msg);
       }
     } catch (e) {

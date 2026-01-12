@@ -155,7 +155,7 @@ export default function QuotationView() {
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await fetch(`/api/quotations/${quotationId}/pdf`, {
+      const response = await fetch(`/quotation/${quotationId}/pdf`, {
         method: 'GET',
         credentials: 'include'
       })
