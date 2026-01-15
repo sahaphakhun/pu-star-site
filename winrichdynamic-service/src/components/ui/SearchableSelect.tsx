@@ -21,6 +21,7 @@ interface SearchableSelectProps {
     emptyMessage?: string;
     className?: string;
     required?: boolean;
+    usePortal?: boolean;
 }
 
 export default function SearchableSelect({
@@ -33,6 +34,7 @@ export default function SearchableSelect({
     emptyMessage = 'ไม่พบข้อมูล',
     className,
     required = false,
+    usePortal = true,
 }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -40,6 +42,7 @@ export default function SearchableSelect({
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+    const [shouldOpenUpward, setShouldOpenUpward] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
     // Get selected option label
@@ -70,24 +73,27 @@ export default function SearchableSelect({
             const dropdownHeight = 320; // max height estimate
 
             // Determine if dropdown should open upward or downward
-            const shouldOpenUpward = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+            const openUpward = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+            setShouldOpenUpward(openUpward);
 
-            setDropdownStyle({
-                position: 'fixed',
-                ...(shouldOpenUpward
-                    ? { bottom: viewportHeight - rect.top + 4 }
-                    : { top: rect.bottom + 4 }),
-                left: rect.left,
-                width: rect.width,
-                zIndex: 9999,
-            });
+            if (usePortal) {
+                setDropdownStyle({
+                    position: 'fixed',
+                    ...(openUpward
+                        ? { bottom: viewportHeight - rect.top + 4 }
+                        : { top: rect.bottom + 4 }),
+                    left: rect.left,
+                    width: rect.width,
+                    zIndex: 9999,
+                });
+            }
 
             // Focus search input when dropdown opens
             setTimeout(() => {
                 searchInputRef.current?.focus();
             }, 50);
         }
-    }, [isOpen]);
+    }, [isOpen, usePortal]);
 
     // Handle click outside
     useEffect(() => {
@@ -126,10 +132,18 @@ export default function SearchableSelect({
         onChange('');
     };
 
-    const dropdownContent = isOpen && !disabled && isMounted ? ReactDOM.createPortal(
+    const inlineDropdownStyle: React.CSSProperties = {
+        position: 'absolute',
+        ...(shouldOpenUpward ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+        left: 0,
+        width: '100%',
+        zIndex: 50,
+    };
+
+    const dropdownNode = (
         <div
             ref={dropdownRef}
-            style={dropdownStyle}
+            style={usePortal ? dropdownStyle : inlineDropdownStyle}
             className="bg-white border rounded-lg shadow-xl max-h-80 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
         >
             {/* Search input */}
@@ -189,12 +203,17 @@ export default function SearchableSelect({
                     })
                 )}
             </div>
-        </div>,
-        document.body
-    ) : null;
+        </div>
+    );
+
+    const dropdownContent = isOpen && !disabled && isMounted
+        ? usePortal
+            ? ReactDOM.createPortal(dropdownNode, document.body)
+            : dropdownNode
+        : null;
 
     return (
-        <div className={className}>
+        <div className={cn('relative', className)}>
             {label && (
                 <label className="block text-sm font-medium mb-1">
                     {label}

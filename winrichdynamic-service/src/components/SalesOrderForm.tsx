@@ -717,6 +717,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                           sublabel: q.customerName || '-',
                         }))}
                         emptyMessage="ไม่พบใบเสนอราคา"
+                        usePortal={false}
                       />
                       <div className="mt-2">
                         <Button
@@ -743,6 +744,7 @@ export default function SalesOrderForm({ salesOrder, onClose, onSave }: SalesOrd
                         sublabel: c.phoneNumber || c.customerCode || '',
                       }))}
                       emptyMessage="ไม่พบลูกค้า"
+                      usePortal={false}
                     />
 
                     <div>
