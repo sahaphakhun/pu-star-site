@@ -148,6 +148,7 @@ function AddressDropdown<T>({
     const dropdownContent = isOpen && !disabled && isMounted ? ReactDOM.createPortal(
         <div
             ref={dropdownRef}
+            data-address-dropdown
             style={dropdownStyle}
             className="bg-white border rounded-lg shadow-xl max-h-72 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
         >
