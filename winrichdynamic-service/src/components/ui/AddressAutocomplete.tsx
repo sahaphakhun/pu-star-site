@@ -106,7 +106,7 @@ function AddressDropdown<T>({
                     : { top: rect.bottom + 4 }),
                 left: rect.left,
                 width: rect.width,
-                zIndex: 9999,
+                zIndex: 999999,
             });
 
             // Focus search input when dropdown opens
