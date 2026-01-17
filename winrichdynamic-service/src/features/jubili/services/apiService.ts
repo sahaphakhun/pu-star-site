@@ -174,6 +174,7 @@ export interface Quotation {
   paymentTerms: string;
   deliveryTerms?: string;
   items: QuotationItem[];
+  lineItems?: QuotationLineItem[];
   priceBookId?: string;
   subtotal: number;
   totalDiscount: number;
@@ -216,6 +217,22 @@ export interface QuotationItem {
   unitPrice: number;
   discount: number;
   totalPrice: number;
+  selectedOptions?: Record<string, string>;
+}
+
+export interface QuotationLineItem {
+  type: 'product' | 'note';
+  lineId?: string;
+  note?: string;
+  productId?: string;
+  productName?: string;
+  description?: string;
+  quantity?: number;
+  unit?: string;
+  sku?: string;
+  unitPrice?: number;
+  discount?: number;
+  totalPrice?: number;
   selectedOptions?: Record<string, string>;
 }
 

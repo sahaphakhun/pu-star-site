@@ -41,6 +41,25 @@ export const quotationItemSchema = z.object({
   selectedOptions: z.record(z.string(), z.string().min(1, 'กรุณาเลือกตัวเลือกสินค้า')).optional(),
 });
 
+const quotationLineItemProductSchema = quotationItemSchema.extend({
+  type: z.literal('product'),
+  lineId: z.string().optional(),
+});
+
+const quotationLineItemNoteSchema = z.object({
+  type: z.literal('note'),
+  lineId: z.string().optional(),
+  note: z.string()
+    .min(1, 'กรุณาระบุหมายเหตุ')
+    .max(1000, 'หมายเหตุต้องไม่เกิน 1000 ตัวอักษร')
+    .trim(),
+});
+
+export const quotationLineItemSchema = z.union([
+  quotationLineItemProductSchema,
+  quotationLineItemNoteSchema,
+]);
+
 const deliveryBatchSchema = z.object({
   batchId: z.string()
     .min(1, 'กรุณาระบุรหัสรอบการส่ง')
@@ -140,6 +159,7 @@ export const createQuotationSchema = z.object({
     .or(z.literal('')),
   items: z.array(quotationItemSchema)
     .min(1, 'ต้องมีรายการสินค้าอย่างน้อย 1 รายการ'),
+  lineItems: z.array(quotationLineItemSchema).optional(),
   // ส่วนลดพิเศษ (จำนวนเงินเป็นบาท)
   specialDiscount: z.number()
     .min(0, 'ส่วนลดพิเศษต้องไม่ต่ำกว่า 0')
@@ -233,3 +253,4 @@ export type SendQuotationInput = z.infer<typeof sendQuotationSchema>;
 export type ConvertToOrderInput = z.infer<typeof convertToOrderSchema>;
 export type IssueSalesOrderInput = z.infer<typeof issueSalesOrderSchema>;
 export type QuotationItemInput = z.infer<typeof quotationItemSchema>;
+export type QuotationLineItemInput = z.infer<typeof quotationLineItemSchema>;

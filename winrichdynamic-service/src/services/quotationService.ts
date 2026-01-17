@@ -58,8 +58,81 @@ export async function createQuotation(
   });
   const quotationNumber = `QT${year}${month}${String(count + 1).padStart(3, '0')}`;
 
+  let customerCode = '';
+  try {
+    const customer = await Customer.findById(quotationData.customerId).lean();
+    customerCode = (customer as any)?.customerCode || '';
+  } catch (error) {
+    console.warn('[Quotation Service] Failed to fetch customer code:', error);
+  }
+
+  const normalizeProductLine = (item: any) => {
+    const quantity = Number(item.quantity);
+    const unitPrice = Number(item.unitPrice);
+    const discount = Number(item.discount || 0);
+    const totalPrice = Number.isFinite(Number(item.totalPrice))
+      ? Number(item.totalPrice)
+      : round2(computeLineTotal(quantity, unitPrice, discount));
+
+    return {
+      ...item,
+      productId: String(item.productId || '').trim(),
+      productName: String(item.productName || '').trim(),
+      description: item.description ? String(item.description) : '',
+      unit: item.unit ? String(item.unit) : '',
+      sku: item.sku ? String(item.sku) : undefined,
+      quantity,
+      unitPrice,
+      discount,
+      totalPrice,
+      selectedOptions: (() => {
+        if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
+        const entries = Object.entries(item.selectedOptions).filter(([, value]) =>
+          typeof value === 'string' && value.trim() !== ''
+        );
+        if (!entries.length) return undefined;
+        return Object.fromEntries(entries.map(([key, value]) => [String(key).trim(), String(value).trim()]));
+      })(),
+    };
+  };
+
+  const normalizedLineItems = Array.isArray(quotationData.lineItems)
+    ? quotationData.lineItems.map((line: any) => {
+        if (line?.type === 'note') {
+          return {
+            type: 'note',
+            lineId: line.lineId ? String(line.lineId).trim() : undefined,
+            note: String(line.note || '').trim(),
+          };
+        }
+        const normalizedProduct = normalizeProductLine(line || {});
+        return {
+          type: 'product',
+          lineId: line?.lineId ? String(line.lineId).trim() : undefined,
+          ...normalizedProduct,
+        };
+      })
+    : undefined;
+
+  const normalizedItems = normalizedLineItems
+    ? normalizedLineItems
+        .filter((line: any) => line.type === 'product')
+        .map((line: any) => ({
+          productId: line.productId,
+          productName: line.productName,
+          description: line.description,
+          quantity: line.quantity,
+          unit: line.unit,
+          sku: line.sku,
+          unitPrice: line.unitPrice,
+          discount: line.discount,
+          totalPrice: line.totalPrice,
+          selectedOptions: line.selectedOptions,
+        }))
+    : quotationData.items.map(normalizeProductLine);
+
   const guard = await checkDiscountGuardrails(
-    (quotationData.items || []).map((item: any) => ({
+    normalizedItems.map((item: any) => ({
       productId: item.productId,
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
@@ -78,39 +151,6 @@ export async function createQuotation(
       { violations: guard.violations, requiresApproval: guard.requiresApproval }
     );
   }
-
-  let customerCode = '';
-  try {
-    const customer = await Customer.findById(quotationData.customerId).lean();
-    customerCode = (customer as any)?.customerCode || '';
-  } catch (error) {
-    console.warn('[Quotation Service] Failed to fetch customer code:', error);
-  }
-
-  const normalizedItems = quotationData.items.map((item: any) => {
-    const quantity = Number(item.quantity);
-    const unitPrice = Number(item.unitPrice);
-    const discount = Number(item.discount || 0);
-    const totalPrice = Number.isFinite(Number(item.totalPrice))
-      ? Number(item.totalPrice)
-      : round2(computeLineTotal(quantity, unitPrice, discount));
-
-    return {
-      ...item,
-      quantity,
-      unitPrice,
-      discount,
-      totalPrice,
-      selectedOptions: (() => {
-        if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
-        const entries = Object.entries(item.selectedOptions).filter(([, value]) =>
-          typeof value === 'string' && value.trim() !== ''
-        );
-        if (!entries.length) return undefined;
-        return Object.fromEntries(entries.map(([key, value]) => [String(key).trim(), String(value).trim()]));
-      })(),
-    };
-  });
 
   const computedSubtotal = round2(
     normalizedItems.reduce((sum: number, item: any) => sum + Number(item.totalPrice || 0), 0)
@@ -136,6 +176,7 @@ export async function createQuotation(
       ? new Date(quotationData.validUntil)
       : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
     items: normalizedItems,
+    lineItems: normalizedLineItems || normalizedItems.map((item: any) => ({ type: 'product', ...item })),
     vatRate,
     subtotal,
     totalDiscount,

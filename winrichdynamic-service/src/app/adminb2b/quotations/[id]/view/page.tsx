@@ -17,6 +17,21 @@ interface QuotationItem {
   selectedOptions?: Record<string, string>
 }
 
+interface QuotationLineItem {
+  type: 'product' | 'note'
+  lineId?: string
+  note?: string
+  productName?: string
+  description?: string
+  quantity?: number
+  unit?: string
+  unitPrice?: number
+  discount?: number
+  totalPrice?: number
+  sku?: string
+  selectedOptions?: Record<string, string>
+}
+
 interface Quotation {
   _id: string
   quotationNumber: string
@@ -35,6 +50,7 @@ interface Quotation {
   paymentTerms: string
   deliveryTerms?: string
   items: QuotationItem[]
+  lineItems?: QuotationLineItem[]
   vatRate: number
   subtotal: number
   totalDiscount: number
@@ -232,6 +248,9 @@ export default function QuotationView() {
   const companyAddress = companyInfo?.companyAddress || '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110'
   const companyPhone = companyInfo?.companyPhone || '02-123-4567'
   const companyEmail = companyInfo?.companyEmail || 'info@winrichdynamic.com'
+  const lineItems: QuotationLineItem[] = Array.isArray(quotation.lineItems) && quotation.lineItems.length
+    ? quotation.lineItems
+    : quotation.items.map((item) => ({ type: 'product', ...item }))
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 print:bg-white print:py-0">
@@ -361,18 +380,31 @@ export default function QuotationView() {
                 </tr>
               </thead>
               <tbody>
-                {quotation.items.map((item, index) => {
-                  const optionEntries = item.selectedOptions
-                    ? Object.entries(item.selectedOptions).filter(([, value]) => value)
-                    : [];
+                {lineItems.map((line, index) => {
+                  if (line.type === 'note') {
+                    return (
+                      <tr key={line.lineId || `note-${index}`} className="bg-blue-50">
+                        <td
+                          colSpan={8}
+                          className="border border-gray-300 px-4 py-3 text-sm font-medium text-blue-800"
+                        >
+                          หมายเหตุ: {line.note || '-'}
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  const optionEntries = line.selectedOptions
+                    ? Object.entries(line.selectedOptions).filter(([, value]) => value)
+                    : []
 
                   return (
-                    <tr key={index} className="hover:bg-gray-50">
+                    <tr key={line.lineId || `product-${index}`} className="hover:bg-gray-50">
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                        {item.productName}
+                        {line.productName}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
-                        <div>{item.description || '-'}</div>
+                        <div>{line.description || '-'}</div>
                         {optionEntries.length > 0 && (
                           <div className="mt-1 space-y-1">
                             {optionEntries.map(([name, value]) => (
@@ -384,25 +416,25 @@ export default function QuotationView() {
                         )}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
-                        {item.quantity.toLocaleString()}
+                        {Number(line.quantity || 0).toLocaleString()}
                       </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
-                      {item.unit}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                      {item.sku || '-'}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right">
-                      {formatCurrency(item.unitPrice)}
-                    </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
-                        {item.discount > 0 ? `${item.discount}%` : '-'}
+                        {line.unit || '-'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                        {line.sku || '-'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right">
+                        {formatCurrency(Number(line.unitPrice || 0))}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-center">
+                        {Number(line.discount || 0) > 0 ? `${Number(line.discount || 0)}%` : '-'}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(item.totalPrice)}
+                        {formatCurrency(Number(line.totalPrice || 0))}
                       </td>
                     </tr>
-                  );
+                  )
                 })}
               </tbody>
             </table>

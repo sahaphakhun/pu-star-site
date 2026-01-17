@@ -118,6 +118,7 @@ export async function generateQuotationFromOrder(
     paymentTerms: order.paymentMethod === 'cod' ? 'เก็บเงินปลายทาง' : 'ชำระเงินก่อนจัดส่ง',
     deliveryTerms: 'จัดส่งภายใน 3-5 วันทำการ',
     items: quotationItems,
+    lineItems: quotationItems.map((item) => ({ type: 'product', ...item })),
     subtotal: round2(subtotal),
     totalDiscount: round2(order.discount || 0),
     totalAmount: round2(totalAmount),

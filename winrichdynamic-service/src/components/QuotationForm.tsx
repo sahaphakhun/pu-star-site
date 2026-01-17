@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Upload, Star } from 'lucide-react';
+import { Reorder, useDragControls } from 'framer-motion';
+import { GripVertical, Plus, StickyNote, Trash2, Upload, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -16,6 +17,8 @@ import {
   AppModalTitle,
 } from '@/components/ui/AppModal';
 import { deriveTeamOptions } from '@/utils/teamOptions';
+
+const createLineId = () => `line_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const defaultFormData = {
   // ข้อมูลลูกค้า
@@ -63,10 +66,10 @@ const defaultFormData = {
 
   // รายการสินค้า
   showProductCode: false,
-  items: [
-    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
-    { productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+  lineItems: [
+    { type: 'product', productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { type: 'product', productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
+    { type: 'product', productId: '', productName: '', sku: '', product: null, description: '', quantity: 0, unit: '', pricePerUnit: 0, discountPerUnit: 0, discountPercent: 0, amount: 0, productGroup: '' },
   ],
 
   // สรุปยอด
@@ -119,7 +122,15 @@ export default function QuotationForm({
   embedded = false,
 }: QuotationFormProps) {
   const customersList = customers ?? [];
-  const normalizeItem = (item: any = {}) => {
+  const normalizeLineItem = (item: any = {}) => {
+    if (item?.type === 'note' || (item?.note && !item?.productId && !item?.productName)) {
+      return {
+        type: 'note',
+        lineId: item.lineId || createLineId(),
+        note: String(item.note || '').trim(),
+      };
+    }
+
     const pricePerUnit = Number(item.pricePerUnit ?? item.unitPrice ?? 0);
     const discountPercent = Number(item.discountPercent ?? item.discount ?? 0);
     const discountPerUnit = Number(
@@ -142,6 +153,8 @@ export default function QuotationForm({
 
     return {
       ...item,
+      type: 'product',
+      lineId: item.lineId || createLineId(),
       productId,
       productName,
       sku,
@@ -171,17 +184,23 @@ export default function QuotationForm({
         }))
         : [];
 
+      const baseLineItems = Array.isArray((base as any).lineItems) && (base as any).lineItems.length
+        ? (base as any).lineItems
+        : (base.items && base.items.length
+          ? base.items.map((item: any) => ({ type: 'product', ...item }))
+          : defaultFormData.lineItems);
+
       return {
         ...defaultFormData,
         ...base,
         owner: base.assignedTo || base.owner || defaultFormData.owner,
-        items: (base.items && base.items.length ? base.items : defaultFormData.items).map(normalizeItem),
+        lineItems: baseLineItems.map(normalizeLineItem),
         deliveryBatches: mappedBatches,
         isSplitDelivery: mappedBatches.length > 0,
       };
     }
 
-    return { ...defaultFormData, items: defaultFormData.items.map(normalizeItem) };
+    return { ...defaultFormData, lineItems: defaultFormData.lineItems.map(normalizeLineItem) };
   });
   const [admins, setAdmins] = useState<Array<{ _id: string; name?: string; phone?: string; team?: string }>>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -317,79 +336,77 @@ export default function QuotationForm({
     });
   };
 
+  const getProductLines = (lineItems: any[] = []) =>
+    lineItems.filter((line: any) => line?.type === 'product');
+
+  const calculateTotals = (lineItems: any[], vatRate: number) => {
+    const subtotal = getProductLines(lineItems).reduce((sum, item) => sum + (item.amount || 0), 0);
+    const vatAmount = (subtotal * vatRate) / 100;
+    const total = subtotal + vatAmount;
+    return { subtotal, vatAmount, total };
+  };
+
   const handleItemChange = (index: number, field: string, value: any) => {
-    const newItems = [...formData.items];
-    newItems[index][field] = value;
+    setFormData((prev: any) => {
+      const newLineItems = [...(prev.lineItems || [])];
+      const target = newLineItems[index];
+      if (!target || target.type !== 'product') return prev;
 
-    // Auto calculate
-    const item = newItems[index];
-    if (field === 'quantity' || field === 'pricePerUnit' || field === 'discountPerUnit' || field === 'discountPercent') {
-      // Calculate discount from percent
-      if (field === 'discountPercent') {
-        item.discountPerUnit = (item.pricePerUnit * value) / 100;
+      const nextItem = { ...target, [field]: value };
+      if (field === 'quantity' || field === 'pricePerUnit' || field === 'discountPerUnit' || field === 'discountPercent') {
+        if (field === 'discountPercent') {
+          nextItem.discountPerUnit = (nextItem.pricePerUnit * value) / 100;
+        }
+        if (field === 'discountPerUnit' && nextItem.pricePerUnit > 0) {
+          nextItem.discountPercent = (value / nextItem.pricePerUnit) * 100;
+        }
+        nextItem.amount = (nextItem.pricePerUnit - nextItem.discountPerUnit) * nextItem.quantity;
       }
-      // Calculate discount percent from amount
-      if (field === 'discountPerUnit' && item.pricePerUnit > 0) {
-        item.discountPercent = (value / item.pricePerUnit) * 100;
-      }
-      // Calculate total amount
-      item.amount = (item.pricePerUnit - item.discountPerUnit) * item.quantity;
-    }
 
-    setFormData({ ...formData, items: newItems });
-    calculateTotals(newItems);
+      newLineItems[index] = nextItem;
+      const totals = calculateTotals(newLineItems, Number(prev.vat || 0));
+      return { ...prev, lineItems: newLineItems, ...totals };
+    });
   };
 
   const handleProductSelect = (index: number, product: any | null) => {
-    const newItems = [...formData.items];
-    const existing = newItems[index];
+    setFormData((prev: any) => {
+      const newLineItems = [...(prev.lineItems || [])];
+      const existing = newLineItems[index];
+      if (!existing || existing.type !== 'product') return prev;
 
-    if (!product) {
-      newItems[index] = {
+      if (!product) {
+        newLineItems[index] = {
+          ...existing,
+          product: null,
+          productId: '',
+          productName: '',
+          sku: '',
+        };
+        const totals = calculateTotals(newLineItems, Number(prev.vat || 0));
+        return { ...prev, lineItems: newLineItems, ...totals };
+      }
+
+      const resolvedUnit = product.units?.[0]?.label || existing.unit || '';
+      const resolvedPrice = product.price ?? product.units?.[0]?.price ?? existing.pricePerUnit ?? 0;
+      const nextItem = {
         ...existing,
-        product: null,
-        productId: '',
-        productName: '',
-        sku: '',
+        product,
+        productId: product._id,
+        productName: product.name || '',
+        sku: product.sku || '',
+        unit: resolvedUnit,
+        pricePerUnit: resolvedPrice,
+        description: existing.description || product.description || '',
       };
-      setFormData({ ...formData, items: newItems });
-      calculateTotals(newItems);
-      return;
-    }
-
-    const resolvedUnit = product.units?.[0]?.label || existing.unit || '';
-    const resolvedPrice = product.price ?? product.units?.[0]?.price ?? existing.pricePerUnit ?? 0;
-    const nextItem = {
-      ...existing,
-      product,
-      productId: product._id,
-      productName: product.name || '',
-      sku: product.sku || '',
-      unit: resolvedUnit,
-      pricePerUnit: resolvedPrice,
-      description: existing.description || product.description || '',
-    };
-    nextItem.amount = (Number(nextItem.pricePerUnit || 0) - Number(nextItem.discountPerUnit || 0)) * Number(nextItem.quantity || 0);
-    newItems[index] = nextItem;
-
-    setFormData({ ...formData, items: newItems });
-    calculateTotals(newItems);
+      nextItem.amount = (Number(nextItem.pricePerUnit || 0) - Number(nextItem.discountPerUnit || 0)) * Number(nextItem.quantity || 0);
+      newLineItems[index] = nextItem;
+      const totals = calculateTotals(newLineItems, Number(prev.vat || 0));
+      return { ...prev, lineItems: newLineItems, ...totals };
+    });
   };
 
-  const calculateTotals = (items: any[]) => {
-    const subtotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const vatAmount = (subtotal * formData.vat) / 100;
-    const total = subtotal + vatAmount;
-
-    setFormData((prev: any) => ({
-      ...prev,
-      subtotal,
-      vatAmount,
-      total,
-    }));
-  };
-
-  const totalItemQuantity = formData.items.reduce(
+  const totalItemQuantity = getProductLines(formData.lineItems || []).reduce(
     (sum: number, item: any) => sum + Number(item.quantity || 0),
     0
   );
@@ -402,7 +419,7 @@ export default function QuotationForm({
   const addDeliveryBatch = () => {
     setFormData((prev: any) => {
       const nextIndex = (prev.deliveryBatches?.length || 0) + 1;
-      const existingTotalQuantity = prev.items?.reduce(
+      const existingTotalQuantity = getProductLines(prev.lineItems || []).reduce(
         (sum: number, item: any) => sum + Number(item.quantity || 0),
         0
       ) || 0;
@@ -454,7 +471,7 @@ export default function QuotationForm({
         return { ...prev, isSplitDelivery: false, deliveryBatches: [] };
       }
 
-      const existingTotalQuantity = prev.items?.reduce(
+      const existingTotalQuantity = getProductLines(prev.lineItems || []).reduce(
         (sum: number, item: any) => sum + Number(item.quantity || 0),
         0
       ) || 0;
@@ -477,30 +494,64 @@ export default function QuotationForm({
   };
 
   const addItems = (count: number) => {
-    const newItems = [...formData.items];
-    for (let i = 0; i < count; i++) {
-      newItems.push({
-        productId: '',
-        productName: '',
-        sku: '',
-        product: null,
-        description: '',
-        quantity: 0,
-        unit: '',
-        pricePerUnit: 0,
-        discountPerUnit: 0,
-        discountPercent: 0,
-        amount: 0,
-        productGroup: '',
-      });
-    }
-    setFormData({ ...formData, items: newItems });
+    setFormData((prev: any) => {
+      const newLineItems = [...(prev.lineItems || [])];
+      for (let i = 0; i < count; i++) {
+        newLineItems.push({
+          type: 'product',
+          lineId: createLineId(),
+          productId: '',
+          productName: '',
+          sku: '',
+          product: null,
+          description: '',
+          quantity: 0,
+          unit: '',
+          pricePerUnit: 0,
+          discountPerUnit: 0,
+          discountPercent: 0,
+          amount: 0,
+          productGroup: '',
+        });
+      }
+      const totals = calculateTotals(newLineItems, Number(prev.vat || 0));
+      return { ...prev, lineItems: newLineItems, ...totals };
+    });
   };
 
   const removeItem = (index: number) => {
-    const newItems = formData.items.filter((_: any, i: number) => i !== index);
-    setFormData({ ...formData, items: newItems });
-    calculateTotals(newItems);
+    setFormData((prev: any) => {
+      const newLineItems = (prev.lineItems || []).filter((_: any, i: number) => i !== index);
+      const totals = calculateTotals(newLineItems, Number(prev.vat || 0));
+      return { ...prev, lineItems: newLineItems, ...totals };
+    });
+  };
+
+  const handleNoteChange = (index: number, value: string) => {
+    setFormData((prev: any) => {
+      const newLineItems = [...(prev.lineItems || [])];
+      const target = newLineItems[index];
+      if (!target || target.type !== 'note') return prev;
+      newLineItems[index] = { ...target, note: value };
+      return { ...prev, lineItems: newLineItems };
+    });
+  };
+
+  const addNoteLine = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      lineItems: [
+        ...(prev.lineItems || []),
+        { type: 'note', lineId: createLineId(), note: '' },
+      ],
+    }));
+  };
+
+  const handleReorder = (nextOrder: any[]) => {
+    setFormData((prev: any) => {
+      const totals = calculateTotals(nextOrder, Number(prev.vat || 0));
+      return { ...prev, lineItems: nextOrder, ...totals };
+    });
   };
 
   const handleSubmit = async (e: React.SyntheticEvent, action: string = 'draft') => {
@@ -539,7 +590,8 @@ export default function QuotationForm({
       }))
       : [];
 
-    const mappedItems = (formData.items || []).map((item: any) => {
+    const productLines = getProductLines(formData.lineItems || []);
+    const mappedItems = productLines.map((item: any) => {
       const unitPrice = Number(item.pricePerUnit || 0);
       const quantity = Number(item.quantity || 0);
       const discountPercent = Number(item.discountPercent || 0);
@@ -557,6 +609,33 @@ export default function QuotationForm({
         totalPrice,
       };
     });
+    const mappedLineItems = (formData.lineItems || []).map((line: any) => {
+      if (line.type === 'note') {
+        return {
+          type: 'note',
+          lineId: line.lineId,
+          note: String(line.note || '').trim(),
+        };
+      }
+      const unitPrice = Number(line.pricePerUnit || 0);
+      const quantity = Number(line.quantity || 0);
+      const discountPercent = Number(line.discountPercent || 0);
+      const discountPerUnit = Number(line.discountPerUnit || (unitPrice * discountPercent) / 100 || 0);
+      const totalPrice = Number(line.amount || (unitPrice - discountPerUnit) * quantity || 0);
+      return {
+        type: 'product',
+        lineId: line.lineId,
+        productId: line.productId || line.sku || '',
+        productName: line.productName || line.description || '',
+        description: line.description || '',
+        quantity,
+        unit: line.unit || '',
+        sku: line.sku || undefined,
+        unitPrice,
+        discount: discountPercent,
+        totalPrice,
+      };
+    }).filter((line: any) => line.type === 'product' || line.note);
 
     const subtotalBeforeDiscount = mappedItems.reduce(
       (sum: number, item: any) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0),
@@ -594,6 +673,7 @@ export default function QuotationForm({
       validUntil: formData.validUntilDate || '',
       deliveryTerms: formData.deliveryMethodNote || formData.deliveryMethod || '',
       items: mappedItems,
+      lineItems: mappedLineItems,
       subtotal: subtotalBeforeDiscount,
       totalDiscount,
       totalAmount,
@@ -629,6 +709,160 @@ export default function QuotationForm({
   const filteredOpportunities = formData.customerId
     ? opportunities.filter((deal: any) => String(deal.customerId) === String(formData.customerId))
     : opportunities;
+
+  const LineItemRow = ({
+    line,
+    index,
+    lineNumber,
+  }: {
+    line: any;
+    index: number;
+    lineNumber?: number;
+  }) => {
+    const dragControls = useDragControls();
+    const isProduct = line.type === 'product';
+
+    return (
+      <Reorder.Item
+        value={line}
+        dragListener={false}
+        dragControls={dragControls}
+        className={`list-none rounded-lg border shadow-sm ${isProduct ? 'bg-white' : 'bg-slate-50'}`}
+      >
+        <div className={`flex items-center justify-between border-b px-3 py-2 ${isProduct ? 'bg-slate-50/60' : 'bg-slate-100/70'}`}>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onPointerDown={(event) => dragControls.start(event)}
+              className="cursor-grab text-slate-400 transition hover:text-slate-600 active:cursor-grabbing"
+              aria-label="ลากเพื่อจัดเรียง"
+            >
+              <GripVertical size={16} />
+            </button>
+            {isProduct ? (
+              <span className="text-xs font-semibold text-slate-600">รายการ #{lineNumber}</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600">
+                <StickyNote size={14} /> โน้ต
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            className="text-red-500 transition hover:text-red-700"
+            aria-label="ลบรายการ"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+        <div className="p-3">
+          {isProduct ? (
+            <div className="grid grid-cols-12 gap-3">
+              <div className="col-span-12 md:col-span-5">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">รายละเอียดสินค้า</label>
+                <div className="space-y-2">
+                  <ProductAutocomplete
+                    value={line.product || null}
+                    onChange={(product) => handleProductSelect(index, product)}
+                    placeholder="พิมพ์ชื่อสินค้า หรือรหัสสินค้า"
+                  />
+                  <Textarea
+                    value={line.description}
+                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                    rows={2}
+                    placeholder="รายละเอียดเพิ่มเติม"
+                  />
+                </div>
+              </div>
+              <div className="col-span-6 md:col-span-1">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">จำนวน</label>
+                <Input
+                  type="number"
+                  value={line.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="col-span-6 md:col-span-1">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">หน่วย</label>
+                <Input
+                  type="text"
+                  value={line.unit}
+                  onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                  className="w-full px-2 py-1 border rounded text-sm"
+                />
+              </div>
+              <div className="col-span-6 md:col-span-1">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">ราคา/หน่วย</label>
+                <Input
+                  type="number"
+                  value={line.pricePerUnit}
+                  onChange={(e) => handleItemChange(index, 'pricePerUnit', parseFloat(e.target.value) || 0)}
+                  className="w-full px-2 py-1 border rounded text-sm"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+              <div className="col-span-6 md:col-span-1">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">ส่วนลด</label>
+                <div className="space-y-2">
+                  <Input
+                    type="number"
+                    value={line.discountPerUnit}
+                    onChange={(e) => handleItemChange(index, 'discountPerUnit', parseFloat(e.target.value) || 0)}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                    placeholder="0.00"
+                    step="0.01"
+                  />
+                  <Input
+                    type="number"
+                    value={line.discountPercent}
+                    onChange={(e) => handleItemChange(index, 'discountPercent', parseFloat(e.target.value) || 0)}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                    placeholder="0%"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+              <div className="col-span-6 md:col-span-1">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">มูลค่า</label>
+                <div className="flex h-9 items-center justify-end rounded border bg-slate-50 px-2 text-sm font-semibold text-slate-700">
+                  {(line.amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="col-span-12 md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-slate-500 md:hidden">กลุ่มสินค้า</label>
+                <select
+                  value={line.productGroup}
+                  onChange={(e) => handleItemChange(index, 'productGroup', e.target.value)}
+                  className="w-full px-2 py-2 border rounded text-sm"
+                >
+                  <option value="">โปรดเลือกกลุ่มสินค้า</option>
+                  <option>PU Foam</option>
+                  <option>Sealant</option>
+                  <option>Adhesive</option>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-slate-500">รายละเอียดโน้ต</label>
+              <Textarea
+                value={line.note || ''}
+                onChange={(e) => handleNoteChange(index, e.target.value)}
+                rows={2}
+                className="w-full border rounded text-sm"
+                placeholder="พิมพ์หมายเหตุเพิ่มเติม..."
+              />
+            </div>
+          )}
+        </div>
+      </Reorder.Item>
+    );
+  };
 
   const formBody = (
     <form className="flex h-full flex-col" onSubmit={(e) => handleSubmit(e, 'submit')}>
@@ -1201,7 +1435,7 @@ export default function QuotationForm({
           </div>
           {/* รายการสินค้า */}
           <div className="mt-6 border rounded-lg p-4">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
               <h3 className="text-lg font-semibold flex items-center">
                 <span className="mr-2">📦</span> รายการสินค้า
               </h3>
@@ -1215,121 +1449,38 @@ export default function QuotationForm({
                 แสดงรหัสสินค้าบนใบเสนอราคา
               </label>
             </div>
+            <p className="text-xs text-slate-500 mb-4">ลากที่ไอคอนเพื่อสลับลำดับรายการสินค้าและโน้ตได้ทันที</p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border p-2 text-sm">ลำดับ</th>
-                    <th className="border p-2 text-sm">รายละเอียดสินค้า *</th>
-                    <th className="border p-2 text-sm">จำนวน *</th>
-                    <th className="border p-2 text-sm">หน่วย *</th>
-                    <th className="border p-2 text-sm">ราคา/หน่วย</th>
-                    <th className="border p-2 text-sm">ส่วนลด/หน่วย</th>
-                    <th className="border p-2 text-sm">ส่วนลด(%)/หน่วย</th>
-                    <th className="border p-2 text-sm">มูลค่า</th>
-                    <th className="border p-2 text-sm">กลุ่มสินค้า *</th>
-                    <th className="border p-2 text-sm"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.items.map((item: any, index: number) => (
-                    <tr key={index}>
-                      <td className="border p-2 text-center">{index + 1}</td>
-                      <td className="border p-2">
-                        <div className="space-y-2">
-                          <ProductAutocomplete
-                            value={item.product || null}
-                            onChange={(product) => handleProductSelect(index, product)}
-                            placeholder="พิมพ์ชื่อสินค้า หรือรหัสสินค้า"
-                          />
-                          <Textarea
-                            value={item.description}
-                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                            className="w-full px-2 py-1 border rounded text-sm"
-                            rows={2}
-                            placeholder="รายละเอียดเพิ่มเติม"
-                          />
-                        </div>
-                      </td>
-                      <td className="border p-2">
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="w-20 px-2 py-1 border rounded text-sm"
-                          placeholder="0"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <Input
-                          type="text"
-                          value={item.unit}
-                          onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                          className="w-20 px-2 py-1 border rounded text-sm"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <Input
-                          type="number"
-                          value={item.pricePerUnit}
-                          onChange={(e) => handleItemChange(index, 'pricePerUnit', parseFloat(e.target.value) || 0)}
-                          className="w-24 px-2 py-1 border rounded text-sm"
-                          placeholder="0.00"
-                          step="0.01"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <Input
-                          type="number"
-                          value={item.discountPerUnit}
-                          onChange={(e) => handleItemChange(index, 'discountPerUnit', parseFloat(e.target.value) || 0)}
-                          className="w-24 px-2 py-1 border rounded text-sm"
-                          placeholder="0.00"
-                          step="0.01"
-                        />
-                      </td>
-                      <td className="border p-2">
-                        <Input
-                          type="number"
-                          value={item.discountPercent}
-                          onChange={(e) => handleItemChange(index, 'discountPercent', parseFloat(e.target.value) || 0)}
-                          className="w-20 px-2 py-1 border rounded text-sm"
-                          placeholder="0%"
-                          step="0.01"
-                        />
-                      </td>
-                      <td className="border p-2 text-right font-semibold">
-                        {item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="border p-2">
-                        <select
-                          value={item.productGroup}
-                          onChange={(e) => handleItemChange(index, 'productGroup', e.target.value)}
-                          className="w-32 px-2 py-1 border rounded text-sm"
-                        >
-                          <option value="">โปรดเลือกกลุ่มสินค้า</option>
-                          <option>PU Foam</option>
-                          <option>Sealant</option>
-                          <option>Adhesive</option>
-                        </select>
-                      </td>
-                      <td className="border p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Reorder.Group
+              axis="y"
+              values={formData.lineItems || []}
+              onReorder={handleReorder}
+              className="space-y-3"
+            >
+              {(() => {
+                let productCounter = 0;
+                return (formData.lineItems || []).map((line: any, index: number) => {
+                  const lineNumber = line.type === 'product' ? ++productCounter : undefined;
+                  return (
+                    <LineItemRow
+                      key={line.lineId || `${line.type}-${index}`}
+                      line={line}
+                      index={index}
+                      lineNumber={lineNumber}
+                    />
+                  );
+                });
+              })()}
+            </Reorder.Group>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button
+                type="button"
+                onClick={() => addItems(1)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+              >
+                <Plus size={16} /> เพิ่ม 1 รายการ
+              </Button>
               <Button
                 type="button"
                 onClick={() => addItems(5)}
@@ -1343,6 +1494,14 @@ export default function QuotationForm({
                 className="bg-blue-500 hover:bg-blue-600 text-white text-sm"
               >
                 10 รายการสินค้า
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addNoteLine}
+                className="text-sm"
+              >
+                <StickyNote size={16} /> เพิ่มโน้ต
               </Button>
             </div>
           </div>

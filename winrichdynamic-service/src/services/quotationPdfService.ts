@@ -68,7 +68,11 @@ export async function buildQuotationPdfResponse(
 
   const settings = await Settings.findOne();
   const q: any = quotation as any;
-  const productIds = (q.items || []).map((item: any) => item.productId).filter(Boolean);
+  const rawLineItems = Array.isArray(q.lineItems) && q.lineItems.length
+    ? q.lineItems.map((line: any) => line?.type ? line : ({ type: 'product', ...line }))
+    : (q.items || []).map((item: any) => ({ type: 'product', ...item }));
+  const productLineItems = rawLineItems.filter((line: any) => line.type === 'product');
+  const productIds = productLineItems.map((item: any) => item.productId).filter(Boolean);
   const products = productIds.length
     ? await Product.find({ _id: { $in: productIds } }).lean()
     : [];
@@ -110,7 +114,7 @@ export async function buildQuotationPdfResponse(
     };
   }
 
-  const enrichedItems = (q.items || []).map((item: any) => {
+  const enrichedItems = (productLineItems || []).map((item: any) => {
     const productId = String(item.productId || '');
     const skuInfo = skuMap[productId] || { unitSku: {}, variants: [] };
     const unitSku = skuInfo.unitSku?.[String(item.unit || '')];
@@ -134,6 +138,22 @@ export async function buildQuotationPdfResponse(
       ...item,
       sku: resolvedSku || undefined,
       selectedOptions: hasItemOptions ? itemOptions : stripEmptyOptions(matchedVariant?.options),
+    };
+  });
+
+  let enrichedIndex = 0;
+  const enrichedLineItems = rawLineItems.map((line: any) => {
+    if (line.type !== 'product') {
+      return {
+        ...line,
+        note: line.note ? String(line.note).trim() : '',
+      };
+    }
+    const matched = enrichedItems[enrichedIndex] || {};
+    enrichedIndex += 1;
+    return {
+      ...line,
+      ...matched,
     };
   });
 
@@ -187,6 +207,7 @@ export async function buildQuotationPdfResponse(
   const quotationWithSettings = {
     ...quotation,
     items: enrichedItems,
+    lineItems: enrichedLineItems,
     ...salesInfo,
     logoUrl: settings?.logoUrl || '',
     companyName: settings?.companyName || undefined,

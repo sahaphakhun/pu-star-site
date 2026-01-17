@@ -56,7 +56,7 @@ const AppModalContent = React.forwardRef<
 >(({
   className,
   children,
-  align = "content",
+  align = "screen",
   size = "lg",
   showClose = true,
   onPointerDownOutside,

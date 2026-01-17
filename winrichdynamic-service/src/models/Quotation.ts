@@ -14,6 +14,22 @@ export interface IQuotationItem {
   selectedOptions?: Record<string, string>;
 }
 
+export interface IQuotationLineItem {
+  type: 'product' | 'note';
+  lineId?: string;
+  productId?: string;
+  productName?: string;
+  description?: string;
+  quantity?: number;
+  unit?: string;
+  sku?: string;
+  unitPrice?: number;
+  discount?: number;
+  totalPrice?: number;
+  selectedOptions?: Record<string, string>;
+  note?: string;
+}
+
 export interface IQuotation extends Document {
   quotationNumber: string; // เลขที่ใบเสนอราคา (อัตโนมัติ)
   customerId: string; // อ้างอิงไปยัง Customer
@@ -39,6 +55,7 @@ export interface IQuotation extends Document {
   
   // รายการสินค้า
   items: IQuotationItem[];
+  lineItems?: IQuotationLineItem[];
   // อ้างอิง PriceBook ที่ใช้
   priceBookId?: string;
   
@@ -170,6 +187,68 @@ const quotationItemSchema = new Schema<IQuotationItem>({
   },
 });
 
+const quotationLineItemSchema = new Schema<IQuotationLineItem>({
+  type: {
+    type: String,
+    enum: ['product', 'note'],
+    required: true,
+  },
+  lineId: {
+    type: String,
+    trim: true,
+  },
+  productId: {
+    type: String,
+    trim: true,
+  },
+  productName: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'ชื่อสินค้าต้องมีความยาวไม่เกิน 200 ตัวอักษร'],
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'รายละเอียดสินค้าต้องมีความยาวไม่เกิน 500 ตัวอักษร'],
+  },
+  quantity: {
+    type: Number,
+    min: [0, 'จำนวนต้องไม่ต่ำกว่า 0'],
+  },
+  unit: {
+    type: String,
+    trim: true,
+    maxlength: [20, 'หน่วยต้องมีความยาวไม่เกิน 20 ตัวอักษร'],
+  },
+  sku: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'SKU ต้องมีความยาวไม่เกิน 100 ตัวอักษร'],
+  },
+  unitPrice: {
+    type: Number,
+    min: [0, 'ราคาต่อหน่วยต้องไม่ต่ำกว่า 0'],
+  },
+  discount: {
+    type: Number,
+    min: [0, 'ส่วนลดต้องไม่ต่ำกว่า 0'],
+    max: [100, 'ส่วนลดต้องไม่เกิน 100%'],
+  },
+  totalPrice: {
+    type: Number,
+    min: [0, 'ราคารวมต้องไม่ต่ำกว่า 0'],
+  },
+  selectedOptions: {
+    type: Schema.Types.Mixed,
+    default: undefined,
+  },
+  note: {
+    type: String,
+    trim: true,
+    maxlength: [1000, 'หมายเหตุต้องมีความยาวไม่เกิน 1000 ตัวอักษร'],
+  },
+});
+
 const quotationSchema = new Schema<IQuotation>(
   {
     quotationNumber: {
@@ -284,6 +363,10 @@ const quotationSchema = new Schema<IQuotation>(
         (items: IQuotationItem[]) => items.length > 0,
         'ต้องมีรายการสินค้าอย่างน้อย 1 รายการ',
       ],
+    },
+    lineItems: {
+      type: [quotationLineItemSchema],
+      default: undefined,
     },
     priceBookId: {
       type: String,

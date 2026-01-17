@@ -31,6 +31,32 @@ function sanitizeQuotationData(quotation: any): any {
       })()
     }));
   };
+  const sanitizeLineItems = (arr: any[]): any[] => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map((line) => {
+      if (line?.type === 'note') {
+        return {
+          type: 'note',
+          lineId: line.lineId,
+          note: sanitizeString(line.note),
+        };
+      }
+      const item = line?.type ? line : { ...line, type: 'product' };
+      return {
+        ...item,
+        type: 'product',
+        productName: sanitizeString(item.productName),
+        description: sanitizeString(item.description),
+        unit: sanitizeString(item.unit),
+        selectedOptions: (() => {
+          if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
+          const entries = Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value));
+          if (!entries.length) return undefined;
+          return Object.fromEntries(entries.map(([key, value]) => [sanitizeString(key), sanitizeString(value)]));
+        })(),
+      };
+    });
+  };
   return {
     ...quotation,
     quotationNumber: sanitizeString(quotation.quotationNumber),
@@ -49,6 +75,7 @@ function sanitizeQuotationData(quotation: any): any {
     deliveryTerms: sanitizeString(quotation.deliveryTerms),
     notes: sanitizeString(quotation.notes),
     items: sanitizeArray(quotation.items || []),
+    lineItems: sanitizeLineItems(quotation.lineItems || []),
     companyName: sanitizeString(quotation.companyName),
     companyAddress: sanitizeString(quotation.companyAddress),
     companyPhone: sanitizeString(quotation.companyPhone),
@@ -149,11 +176,16 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
     const approverSig = sig.approverSignatureUrl ? `<img src="${sig.approverSignatureUrl}" style="max-height:40px;max-width:120px;"/>` : '';
     const confirmerSig = sig.confirmerSignatureUrl ? `<img src="${sig.confirmerSignatureUrl}" style="max-height:40px;max-width:120px;"/>` : '';
 
-    const showUnitDiscount = Array.isArray(q.items) && q.items.some((it: any) => Number(it.discount) > 0);
+    const rawLineItems = Array.isArray(q.lineItems) && q.lineItems.length
+      ? q.lineItems
+      : (q.items || []).map((item: any) => ({ type: 'product', ...item }));
+    const lineItems = rawLineItems.map((line: any) => line?.type ? line : { type: 'product', ...line });
+    const productLines = lineItems.filter((it: any) => it.type === 'product');
+    const showUnitDiscount = productLines.some((it: any) => Number(it.discount) > 0);
 
     const PER_PAGE = 17;
     const LAST_PAGE = 7;
-    const items = q.items || [];
+    const items = lineItems || [];
     const pages: any[][] = [];
     if (items.length <= LAST_PAGE) {
       pages.push(items);
@@ -214,6 +246,8 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
     td.disc{ width:13%; text-align:right; }
     td.amount{ width:16%; text-align:right; font-weight:600; }
     .note{ color:var(--primaryMid); font-size:9.5pt; margin-top:2px; }
+    tr.noteRow td{ background:#F8FAFC; }
+    td.noteCell{ color:#1F4B7A; font-style:italic; }
     .totalsWrap{ display:flex; justify-content:flex-end; margin-top:6mm; page-break-inside:avoid; }
     .totals{ width:60%; max-width:420px; }
     .tline{ display:flex; justify-content:space-between; padding:4px 0; }
@@ -235,7 +269,11 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
   <div class="doc">
     ${pages.map((chunk, pi) => {
       const isLast = (pi === totalPages - 1);
-      const beforeCount = pi > 0 ? pages.slice(0, pi).reduce((s, a) => s + a.length, 0) : 0;
+      const beforeProductCount = pi > 0
+        ? pages.slice(0, pi).reduce((s, a) => s + a.filter((line: any) => line.type === 'product').length, 0)
+        : 0;
+      let productIndex = beforeProductCount;
+      const noteColspan = showUnitDiscount ? 7 : 6;
       return `
       <section class="page">
         <div class="content">
@@ -287,29 +325,40 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
               </tr>
             </thead>
             <tbody>
-              ${chunk.map((item: any, i: number) => `
-                <tr>
-                  <td class=\"no\">${beforeCount + i + 1}</td>
-                  <td class=\"desc\">
-                    <div>${item.productName || '-'}</div>
-                    ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}
-                    ${(() => {
-            const opts = item.selectedOptions && typeof item.selectedOptions === 'object'
-              ? Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value))
-              : [];
-            if (!opts.length) return '';
-            const text = opts.map(([name, value]) => `${sanitizeString(name)}: ${sanitizeString(value)}`).join(' · ');
-            return `<div class=\"note\">${text}</div>`;
-          })()}
-                  </td>
-                  <td class=\"sku\">${sanitizeString((item as any).sku) || sanitizeString(item.productId) || '-'}</td>
-                  <td class=\"qty\">${Number(item.quantity || 0).toLocaleString()}</td>
-                  <td class=\"unit\">${sanitizeString(item.unit) || '-'}</td>
-                  <td class=\"price\">${fmt(item.unitPrice || 0)}</td>
-                  ${showUnitDiscount ? `<td class=\"disc\">${Number(item.discount || 0).toFixed(0)}%</td>` : ''}
-                  <td class=\"amount\">${fmt(item.totalPrice || 0)}</td>
-                </tr>
-              `).join('')}
+              ${chunk.map((item: any) => {
+                if (item.type === 'note') {
+                  return `
+                    <tr class=\"noteRow\">
+                      <td class=\"no\"></td>
+                      <td class=\"noteCell\" colspan=\"${noteColspan}\">หมายเหตุ: ${sanitizeString(item.note) || '-'}</td>
+                    </tr>
+                  `;
+                }
+                productIndex += 1;
+                return `
+                  <tr>
+                    <td class=\"no\">${productIndex}</td>
+                    <td class=\"desc\">
+                      <div>${item.productName || '-'}</div>
+                      ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}
+                      ${(() => {
+                        const opts = item.selectedOptions && typeof item.selectedOptions === 'object'
+                          ? Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value))
+                          : [];
+                        if (!opts.length) return '';
+                        const text = opts.map(([name, value]) => `${sanitizeString(name)}: ${sanitizeString(value)}`).join(' · ');
+                        return `<div class=\"note\">${text}</div>`;
+                      })()}
+                    </td>
+                    <td class=\"sku\">${sanitizeString((item as any).sku) || sanitizeString(item.productId) || '-'}</td>
+                    <td class=\"qty\">${Number(item.quantity || 0).toLocaleString()}</td>
+                    <td class=\"unit\">${sanitizeString(item.unit) || '-'}</td>
+                    <td class=\"price\">${fmt(item.unitPrice || 0)}</td>
+                    ${showUnitDiscount ? `<td class=\"disc\">${Number(item.discount || 0).toFixed(0)}%</td>` : ''}
+                    <td class=\"amount\">${fmt(item.totalPrice || 0)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
           ${isLast ? `

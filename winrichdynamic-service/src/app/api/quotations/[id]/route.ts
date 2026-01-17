@@ -7,6 +7,7 @@ import { updateQuotationSchema } from '@/schemas/quotation';
 import Approval from '@/models/Approval';
 import { Settings } from '@/models/Settings';
 import { checkDiscountGuardrails } from '@/utils/pricing';
+import { computeLineTotal, round2 } from '@/utils/number';
 
 // GET: ดึงข้อมูลใบเสนอราคาเดียว
 export async function GET(
@@ -67,6 +68,72 @@ export async function PUT(
     }
     const body = parsed.data as any;
 
+    const normalizeProductLine = (item: any) => {
+      const quantity = Number(item.quantity || 0);
+      const unitPrice = Number(item.unitPrice || 0);
+      const discount = Number(item.discount || 0);
+      const totalPrice = Number.isFinite(Number(item.totalPrice))
+        ? Number(item.totalPrice)
+        : round2(computeLineTotal(quantity, unitPrice, discount));
+      return {
+        productId: String(item.productId || '').trim(),
+        productName: String(item.productName || '').trim(),
+        description: item.description ? String(item.description) : '',
+        quantity,
+        unit: item.unit ? String(item.unit) : '',
+        sku: item.sku ? String(item.sku) : undefined,
+        unitPrice,
+        discount,
+        totalPrice,
+        selectedOptions: item.selectedOptions,
+      };
+    };
+
+    const normalizeLineItems = (lineItems: any[]) => lineItems
+      .map((line: any) => {
+        if (line?.type === 'note') {
+          const note = String(line.note || '').trim();
+          return note
+            ? {
+                type: 'note',
+                lineId: line.lineId ? String(line.lineId).trim() : undefined,
+                note,
+              }
+            : null;
+        }
+        const product = normalizeProductLine(line || {});
+        return {
+          type: 'product',
+          lineId: line?.lineId ? String(line.lineId).trim() : undefined,
+          ...product,
+        };
+      })
+      .filter(Boolean);
+
+    if (Array.isArray(body.lineItems)) {
+      const normalizedLineItems = normalizeLineItems(body.lineItems);
+      const productLines = normalizedLineItems.filter((line: any) => line.type === 'product');
+      if (productLines.length === 0) {
+        return NextResponse.json({ error: 'ต้องมีรายการสินค้าอย่างน้อย 1 รายการ' }, { status: 400 });
+      }
+      body.items = productLines.map((line: any) => ({
+        productId: line.productId,
+        productName: line.productName,
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        sku: line.sku,
+        unitPrice: line.unitPrice,
+        discount: line.discount,
+        totalPrice: line.totalPrice,
+        selectedOptions: line.selectedOptions,
+      }));
+      body.lineItems = normalizedLineItems;
+    }
+    if (!Array.isArray(body.lineItems) && Array.isArray(body.items)) {
+      body.lineItems = body.items.map((item: any) => ({ type: 'product', ...item }));
+    }
+
     if (body.shipToSameAsCustomer) {
       body.shippingAddress = body.customerAddress;
     }
@@ -81,7 +148,7 @@ export async function PUT(
     }
     // ถ้าไม่ใช่ draft ให้ล็อกไม่ให้แก้ไขรายการ/ราคา/ส่วนลด เพื่อคงเอกสารเดิม
     if ((existingBeforeUpdate as any).status !== 'draft') {
-      const blockedKeys = ['items','subtotal','totalDiscount','specialDiscount','totalAmount','vatRate','vatAmount','grandTotal','priceBookId','paymentTerms','deliveryTerms'];
+      const blockedKeys = ['items','lineItems','subtotal','totalDiscount','specialDiscount','totalAmount','vatRate','vatAmount','grandTotal','priceBookId','paymentTerms','deliveryTerms'];
       const hasBlocked = Object.keys(body).some(k => blockedKeys.includes(k));
       if (hasBlocked) {
         return NextResponse.json({ error: 'เอกสารไม่อยู่ในสถานะร่าง ไม่สามารถแก้ไขรายละเอียดราคา/รายการได้' }, { status: 400 });

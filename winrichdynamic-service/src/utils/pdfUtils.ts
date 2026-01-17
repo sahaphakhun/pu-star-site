@@ -61,6 +61,21 @@ export interface QuotationData {
     selectedOptions?: Record<string, string>;
     sku?: string;
   }>;
+  lineItems?: Array<{
+    type: 'product' | 'note';
+    lineId?: string;
+    productId?: string;
+    productName?: string;
+    description?: string;
+    quantity?: number;
+    unit?: string;
+    unitPrice?: number;
+    discount?: number;
+    totalPrice?: number;
+    selectedOptions?: Record<string, string>;
+    sku?: string;
+    note?: string;
+  }>;
   subtotal: number;
   totalDiscount: number;
   totalAmount: number;
