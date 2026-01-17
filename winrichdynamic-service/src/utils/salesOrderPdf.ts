@@ -19,6 +19,7 @@ export interface SalesOrderPdfData {
     unitPrice?: number;
     discount?: number;
     amount?: number;
+    imageUrl?: string;
   }>;
   subtotal?: number;
   vatRate?: number;
@@ -113,9 +114,13 @@ export function generateSalesOrderHTML(order: SalesOrderPdfData, signatures?: Sa
       const discount = Number(item.discount ?? 0);
       const quantity = Number(item.quantity || 0);
       const amount = Number(item.amount ?? (unitPrice - discount) * quantity);
+      const imgSrc = sanitizeString((item as any).imageUrl);
       return `
           <tr>
             <td style="text-align:center">${index + 1}</td>
+            <td class="img">
+              ${imgSrc ? `<img class="thumb" src="${imgSrc}" />` : `<div class="thumb placeholder">-</div>`}
+            </td>
             <td>${sanitizeString(item.name || item.description)}</td>
             <td class="num">${quantity}</td>
             <td style="text-align:center">${sanitizeString(item.unitLabel)}</td>
@@ -154,6 +159,9 @@ export function generateSalesOrderHTML(order: SalesOrderPdfData, signatures?: Sa
     th,td{ border:1px solid var(--border); padding:6px; font-size:10.5pt; }
     th{ background:var(--primary); color:#fff; text-align:center; }
     td.num{ text-align:right; }
+    td.img{ text-align:center; }
+    .thumb{ width:28px; height:28px; object-fit:cover; border-radius:4px; border:1px solid var(--border); display:inline-block; }
+    .thumb.placeholder{ display:inline-flex; align-items:center; justify-content:center; background:#F1F5F9; color:#94A3B8; font-size:8pt; }
     .totals{ margin-top:10px; display:flex; justify-content:flex-end; }
     .totals .line{ display:flex; justify-content:space-between; padding:3px 0; }
     .sig{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
@@ -191,6 +199,7 @@ export function generateSalesOrderHTML(order: SalesOrderPdfData, signatures?: Sa
     <thead>
       <tr>
         <th style="width:6%">ลำดับ</th>
+        <th style="width:8%">ภาพ</th>
         <th>รายการ</th>
         <th style="width:10%">จำนวน</th>
         <th style="width:12%">หน่วย</th>

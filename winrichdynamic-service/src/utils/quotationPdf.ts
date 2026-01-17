@@ -23,6 +23,7 @@ function sanitizeQuotationData(quotation: any): any {
       productName: sanitizeString(item.productName),
       description: sanitizeString(item.description),
       unit: sanitizeString(item.unit),
+      imageUrl: sanitizeString(item.imageUrl),
       selectedOptions: (() => {
         if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
         const entries = Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value));
@@ -48,6 +49,7 @@ function sanitizeQuotationData(quotation: any): any {
         productName: sanitizeString(item.productName),
         description: sanitizeString(item.description),
         unit: sanitizeString(item.unit),
+        imageUrl: sanitizeString(item.imageUrl),
         selectedOptions: (() => {
           if (!item.selectedOptions || typeof item.selectedOptions !== 'object') return undefined;
           const entries = Object.entries(item.selectedOptions).filter(([, value]) => Boolean(value));
@@ -238,7 +240,8 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
     /* Reduce header row height while keeping font-size */
     thead th{ background:var(--primary); color:#fff; height:24px; padding-top:4px; padding-bottom:4px; }
     td.no{ width:7%; text-align:center; }
-    td.desc{ width:45%; }
+    td.img{ width:8%; text-align:center; }
+    td.desc{ width:38%; }
     td.sku{ width:13%; text-align:center; color:#333; }
     td.qty{ width:9%; text-align:right; }
     td.unit{ width:8%; text-align:center; }
@@ -248,6 +251,8 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
     .note{ color:var(--primaryMid); font-size:9.5pt; margin-top:2px; }
     tr.noteRow td{ background:#F8FAFC; }
     td.noteCell{ color:#1F4B7A; font-style:italic; }
+    .thumb{ width:28px; height:28px; object-fit:cover; border-radius:4px; border:1px solid var(--primaryLight); display:inline-block; }
+    .thumb.placeholder{ display:inline-flex; align-items:center; justify-content:center; background:#EEF2F7; color:#94A3B8; font-size:8pt; }
     .totalsWrap{ display:flex; justify-content:flex-end; margin-top:6mm; page-break-inside:avoid; }
     .totals{ width:60%; max-width:420px; }
     .tline{ display:flex; justify-content:space-between; padding:4px 0; }
@@ -273,7 +278,7 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
         ? pages.slice(0, pi).reduce((s, a) => s + a.filter((line: any) => line.type === 'product').length, 0)
         : 0;
       let productIndex = beforeProductCount;
-      const noteColspan = showUnitDiscount ? 7 : 6;
+      const noteColspan = showUnitDiscount ? 8 : 7;
       return `
       <section class="page">
         <div class="content">
@@ -315,6 +320,7 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
             <thead>
               <tr>
                 <th>ลำดับ</th>
+                <th>ภาพสินค้า</th>
                 <th>รายละเอียด</th>
                 <th>SKU</th>
                 <th>จำนวน</th>
@@ -335,9 +341,13 @@ export function generateQuotationHTML(quotation: QuotationData, signatures?: Sig
                   `;
                 }
                 productIndex += 1;
+                const imgSrc = sanitizeString(item.imageUrl);
                 return `
                   <tr>
                     <td class=\"no\">${productIndex}</td>
+                    <td class=\"img\">
+                      ${imgSrc ? `<img class=\"thumb\" src=\"${imgSrc}\" />` : `<div class=\"thumb placeholder\">-</div>`}
+                    </td>
                     <td class=\"desc\">
                       <div>${item.productName || '-'}</div>
                       ${item.description ? `<div class=\"note\">${item.description}</div>` : ''}

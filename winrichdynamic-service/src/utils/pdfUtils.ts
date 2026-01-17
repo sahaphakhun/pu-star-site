@@ -60,6 +60,7 @@ export interface QuotationData {
     productId?: string; // for SKU column
     selectedOptions?: Record<string, string>;
     sku?: string;
+    imageUrl?: string;
   }>;
   lineItems?: Array<{
     type: 'product' | 'note';
@@ -74,6 +75,7 @@ export interface QuotationData {
     totalPrice?: number;
     selectedOptions?: Record<string, string>;
     sku?: string;
+    imageUrl?: string;
     note?: string;
   }>;
   subtotal: number;

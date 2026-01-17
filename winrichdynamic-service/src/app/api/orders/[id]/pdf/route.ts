@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/models/Order';
 import Admin from '@/models/Admin';
 import { Settings } from '@/models/Settings';
+import Product from '@/models/Product';
 import { generatePDFFromHTML } from '@/utils/pdfUtils';
 import { generateSalesOrderHTML } from '@/utils/salesOrderPdf';
 import { cookies } from 'next/headers';
@@ -22,6 +23,18 @@ export async function GET(
     }
 
     const settings: any = await Settings.findOne().lean();
+    const productIds = (order.items || [])
+      .map((item: any) => item.productId)
+      .filter(Boolean)
+      .map((id: any) => String(id));
+    const products = productIds.length
+      ? await Product.find({ _id: { $in: productIds } }).lean()
+      : [];
+    const imageMap = (products as any[]).reduce<Record<string, string>>((acc, product) => {
+      const key = String(product._id);
+      if (product.imageUrl) acc[key] = String(product.imageUrl);
+      return acc;
+    }, {});
 
     let signatureInfo: any = {};
     if (order.ownerId) {
@@ -60,6 +73,10 @@ export async function GET(
 
     const orderWithSettings = {
       ...order,
+      items: (order.items || []).map((item: any) => ({
+        ...item,
+        imageUrl: item.productId ? imageMap[String(item.productId)] : undefined,
+      })),
       companyName: settings?.companyName || undefined,
       companyAddress: settings?.companyAddress || undefined,
       companyPhone: settings?.companyPhone || undefined,

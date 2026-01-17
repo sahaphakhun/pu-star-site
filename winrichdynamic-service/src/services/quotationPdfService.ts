@@ -80,6 +80,7 @@ export async function buildQuotationPdfResponse(
     string,
     {
       defaultSku?: string;
+      imageUrl?: string;
       unitSku: Record<string, string>;
       variants: Array<{
         sku?: string;
@@ -109,6 +110,7 @@ export async function buildQuotationPdfResponse(
       : [];
     skuMap[productId] = {
       defaultSku: product.sku ? String(product.sku) : undefined,
+      imageUrl: product.imageUrl ? String(product.imageUrl) : undefined,
       unitSku,
       variants,
     };
@@ -137,6 +139,7 @@ export async function buildQuotationPdfResponse(
     return {
       ...item,
       sku: resolvedSku || undefined,
+      imageUrl: skuInfo.imageUrl || undefined,
       selectedOptions: hasItemOptions ? itemOptions : stripEmptyOptions(matchedVariant?.options),
     };
   });
