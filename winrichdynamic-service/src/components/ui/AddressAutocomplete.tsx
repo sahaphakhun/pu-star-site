@@ -83,10 +83,17 @@ function AddressDropdown<T>({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
     const [isMounted, setIsMounted] = useState(false);
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (!isMounted) return;
+        const modalRoot = triggerRef.current?.closest('[data-address-dropdown-root]') as HTMLElement | null;
+        setPortalContainer(modalRoot ?? document.body);
+    }, [isMounted, isOpen]);
 
     // Update dropdown position when opened
     useEffect(() => {
@@ -145,7 +152,7 @@ function AddressDropdown<T>({
         onSelect(item);
     };
 
-    const dropdownContent = isOpen && !disabled && isMounted ? ReactDOM.createPortal(
+    const dropdownContent = isOpen && !disabled && isMounted && portalContainer ? ReactDOM.createPortal(
         <div
             ref={dropdownRef}
             data-address-dropdown
@@ -208,7 +215,7 @@ function AddressDropdown<T>({
                 )}
             </div>
         </div>,
-        document.body
+        portalContainer
     ) : null;
 
     return (

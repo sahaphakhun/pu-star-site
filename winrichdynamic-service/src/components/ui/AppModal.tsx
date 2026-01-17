@@ -101,6 +101,7 @@ const AppModalContent = React.forwardRef<
       >
         <DialogPrimitive.Content
           ref={ref}
+          data-address-dropdown-root
           className={cn(
             "relative w-full rounded-2xl border border-slate-200 bg-white shadow-xl outline-none",
             "max-h-[88vh] overflow-hidden",
